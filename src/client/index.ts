@@ -250,7 +250,10 @@ export function apply(ctx: ClientContext): void {
       // rail glides in sync when the sidebar expands/collapses (the shell
       // animates the shared variable's effect via a CSS transition; the rail
       // must carry the same one or it snaps while the column glides).
-      return React.createElement('div', { className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', boxSizing: 'border-box', padding: `${pad}px`, background: 'transparent', pointerEvents: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: `${pad}px` } },
+      // Padding is `0 pad pad pad`: no top inset so the first card aligns with
+      // the session header's bottom edge; right/left keep the resize handle
+      // room, bottom keeps the last card off the viewport floor.
+      return React.createElement('div', { className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', boxSizing: 'border-box', padding: `0 ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: `${pad}px` } },
         items.map((it) => React.createElement('div', { key: it.w.id, style: { position: 'relative', flex: 'none' } },
           React.createElement(CardBody, { out: it.out, side }),
           React.createElement('span', { className: 'dsx-stats-resize', 'aria-label': '调整大小', onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = side; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),

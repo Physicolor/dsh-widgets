@@ -4,7 +4,7 @@
 
 Harness Widgets 是一个 **client 为主、带少量 host 代理** 的 DSH bundle 插件。它在会话页右侧提供一套可定制的部件面板，实时展示当前对话的轮次/耗时/速率/token 用量，以及 OpenCode Go 订阅套餐用量。
 
-当前版本：**v0.1.0**（持续迭代中）
+当前版本：**v0.1.1**（持续迭代中）
 
 ---
 
@@ -13,8 +13,9 @@ Harness Widgets 是一个 **client 为主、带少量 host 代理** 的 DSH bund
 ### 1. 右侧部件栏
 
 - 会话页右侧固定面板，随会话头对齐；**与 dsh-better-sidebar 的右栏并排**（锚定 `--dsh-sidebar-width`，侧边栏展开/收起时同步滑动，互不遮挡）；
-- 会话页头部新增"组件"胶囊开关（`conversation.session.header.utilities` slot）；
-- 卡片可**拖拽调整大小**（100–220px），仅在有活跃会话时显示，无会话时自动隐藏。
+- 会话页头部新增"组件"胶囊开关（`conversation.session.header.utilities` slot），激活态为品牌蓝底白字；
+- 卡片可**拖拽调整大小**（100–220px），仅在有活跃会话时显示，无会话时自动隐藏；开关状态随 localStorage 持久化，刷新后保持展开；
+- 面板背景**透明**、隐藏滚动条（Chromium/Edge/Safari 走 `::-webkit-scrollbar`，Firefox 走 `scrollbar-width: none`），首张卡片顶对齐会话头、无上内边距。
 
 ### 2. 实时会话统计（内置 7 个系统部件）
 
@@ -61,7 +62,25 @@ dsh plugin --profile web add link:D:/dsh-home/plugins/harness-widgets
 
 装完**硬刷新浏览器**（Ctrl+Shift+R），在会话页头部点击"组件"胶囊即可展开右侧部件栏；OpenCode Go 部件需先在 Models 设置中配置 `OPENCODE_GO_API_KEY`。
 
-## 🗺️ 路线图
+## 📝 变更日志
+
+> 每次发布都在此记录：本次做了什么，以及接下来打算做什么。
+
+### v0.1.1（当前）
+
+**本次改动**
+
+- 部件栏背景改为**透明**（原先为 `--dsw-alias-bg-base` 实色底，会在页面上显出一条白板边界）；
+- **隐藏右侧滚动条**（跨浏览器：Chromium/Edge/Safari 用 `::-webkit-scrollbar`，Firefox 用 `@supports` 门控的 `scrollbar-width: none`，旧 Edge 用 `-ms-overflow-style`），滚动功能保留；
+- **取消上内边距**：首张卡片顶对齐会话头底边，不再在顶部留 24px 空隙。
+
+### v0.1.0（初始发布）
+
+- 右侧部件栏 + 7 个内置统计部件 + 3 个 OpenCode Go 用量部件；
+- 设置 → 组件 页（预览/安装/排序）+ 通用设置行（内边距/卡片边长）；
+- 进行中回合的 LLM/工具时长每秒增量刷新；与 dsh-better-sidebar 并排避让。
+
+## 🗺️ 接下来目标
 
 部件注册表（`WIDGETS` 描述符）已经为"更多部件"打好框架——新增部件只需追加一条描述符。按以下方向推进（均尚未实现，正在开发中）：
 
