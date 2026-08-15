@@ -78,6 +78,29 @@
    lockstep; without it the rail snaps while the conversation column glides. */
 .dsx-stats-rail {
   transition: right var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+  /* Legacy IE / old Edge scrollbar hide. */
+  -ms-overflow-style: none;
+}
+
+/* Hide the rail's scrollbar while keeping it scrollable. Chromium, Edge, and
+   Safari take the ::-webkit-scrollbar path. The standard `scrollbar-width`
+   property MUST stay behind the `@supports not selector(::-webkit-scrollbar)`
+   gate below — the theme's own scrollbar sheet documents that a non-`auto`
+   `scrollbar-width` makes Chromium/Edge drop every ::-webkit-scrollbar rule,
+   so declaring it unconditionally would silence this `display: none` too. */
+.dsx-stats-rail::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Firefox (no ::-webkit-scrollbar pseudo-element): hide via the standard
+   property, gated the same way the theme gates it so Chromium/Edge never see
+   it and keep the WebKit path above. */
+@supports not selector(::-webkit-scrollbar) {
+  .dsx-stats-rail {
+    scrollbar-width: none;
+  }
 }
 
 body[data-dsh-sidebar-dragging] .dsx-stats-rail {
