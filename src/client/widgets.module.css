@@ -1,0 +1,330 @@
+/* Harness Widgets — rail and settings styling. Class names are intentionally
+   kept as plain globals (tsdown CSS-module pattern `[local]`) so the inline
+   components can reference them by string. All colors ride theme tokens. */
+
+.dsx-stats-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin, transparent);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dsx-stats-capsule[aria-pressed='true'] {
+  background: var(--dsw-alias-brand-primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+.dsx-stats-card {
+  position: relative;
+  box-sizing: border-box;
+  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin, transparent);
+  background: var(--dsw-specific-input-major, #fff);
+  box-shadow: var(--dsw-shadow-lv2);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+.dsx-stats-card-title {
+  color: var(--dsw-alias-label-tertiary);
+  line-height: 1.2;
+}
+
+.dsx-stats-card-value {
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  word-break: break-word;
+  line-height: 1.25;
+}
+
+.dsx-stats-card-sub {
+  color: var(--dsw-alias-label-caption);
+  font-size: 10px;
+}
+
+.dsx-stats-resize {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nesw-resize;
+  z-index: 2;
+  opacity: 0;
+  background: linear-gradient(45deg, transparent 50%, var(--dsw-alias-label-tertiary) 50%, var(--dsw-alias-label-tertiary) 62%, transparent 62%);
+}
+
+.dsx-stats-card:hover .dsx-stats-resize {
+  opacity: 1;
+}
+
+[data-conversation-scroll] {
+  transition: padding-right 0.2s ease;
+}
+
+/* The rail tracks `--dsh-sidebar-width` (set by dsh-better-sidebar when its
+   right panel opens/closes). The shell animates that variable's effect on
+   `#root`'s margin-right, so the rail carries the SAME transition to glide in
+   lockstep; without it the rail snaps while the conversation column glides. */
+.dsx-stats-rail {
+  transition: right var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+}
+
+body[data-dsh-sidebar-dragging] .dsx-stats-rail {
+  transition: none;
+}
+
+body.dsx-stats-active [data-conversation-scroll] {
+  padding-right: var(--dsx-rail-w, 220px) !important;
+}
+
+body.dsx-stats-active [data-slot='conversation.composer.dock'] {
+  visibility: hidden !important;
+}
+
+.dsx-order-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 2px 0;
+}
+
+.dsx-order-row:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.dsx-drag-handle {
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  color: var(--dsw-alias-label-tertiary);
+  padding: 6px 2px;
+}
+
+.dsx-drag-handle:active {
+  cursor: grabbing;
+}
+
+.dsx-restore {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-brand-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dsx-trash {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.dsx-trash:hover {
+  color: var(--dsw-alias-state-danger, #e5484d);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.dsx-badge {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 9px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  border: 1px solid var(--dsw-alias-border-l2);
+  white-space: nowrap;
+  flex: none;
+}
+
+.dsx-tabbar {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+}
+
+.dsx-tab {
+  padding: 8px 2px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.dsx-tab[data-active='true'] {
+  color: var(--dsw-alias-state-business-primary);
+  border-bottom-color: var(--dsw-alias-state-business-primary);
+}
+
+.dsx-search {
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 17px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+
+.dsx-mlist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dsx-mcard {
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dsx-mcard:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.dsx-mcard[aria-pressed='true'] {
+  border-color: var(--dsw-alias-brand-primary);
+}
+
+.dsx-mhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.dsx-mname {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.dsx-mdesc {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+  margin-bottom: 8px;
+}
+
+.dsx-mid {
+  font-size: 11px;
+  color: var(--dsw-alias-label-caption);
+  font-family: monospace;
+  margin-bottom: 4px;
+}
+
+.dsx-macts {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.dsx-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-brand-primary);
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dsx-btn-primary {
+  background: var(--dsw-alias-brand-primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+.dsx-navbtn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  transition: background 0.12s ease;
+}
+
+.dsx-navbtn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.dsx-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dsw-alias-border-l2);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+.dsx-dot-active {
+  background: var(--dsw-alias-brand-primary);
+}
+
+input[type='range'].dsx-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--dsw-alias-border-l2);
+  outline: none;
+  cursor: pointer;
+}
+
+input[type='range'].dsx-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--dsw-alias-bg-layer-2);
+  border: 2px solid var(--dsw-alias-brand-primary);
+  cursor: pointer;
+}

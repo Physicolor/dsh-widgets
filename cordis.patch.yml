@@ -1,0 +1,7 @@
+# Harness Widgets bundle patch: inserts the widget-rail plugin row.
+# Applied when a profile lists this bundle in dsh.profile.bundles.
+# The row name resolves to this package (dsh.bundle patch); the browser half
+# is picked up by client-modules scanning the `dsh.client` declaration.
+- insert:
+    - id: widgets
+      name: harness-widgets

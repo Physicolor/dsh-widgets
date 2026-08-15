@@ -1,0 +1,68 @@
+{
+  "name": "harness-widgets",
+  "version": "0.1.0",
+  "description": "Right-hand widget rail for DeepSeek Harness Web UI: live session stats (turns, LLM/tool time, TTFT, speed, cache hit, tokens) plus OpenCode Go quota (rolling/weekly/monthly) proxied by a same-origin host route; an extensible widget registry as the base for more platform usage widgets, visuals, utility actions and external integrations. Widgets are installable, reorderable and resizable from Settings → Components.",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/client.js.map",
+    "cordis.patch.yml",
+    "lib/types/**/*.d.ts"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "prepare": "tsdown"
+  },
+  "license": "MIT",
+  "author": "Physicolor",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Physicolor/harness-widgets.git"
+  },
+  "homepage": "https://github.com/Physicolor/harness-widgets#readme",
+  "bugs": {
+    "url": "https://github.com/Physicolor/harness-widgets/issues"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
+    "tsdown": "^0.22.2",
+    "lightningcss": "^1.25.0",
+    "typescript": "^5.6.0",
+    "react": "^18.2.0",
+    "@types/react": "~18.3.1"
+  }
+}
