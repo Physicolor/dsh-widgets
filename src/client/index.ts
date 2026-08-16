@@ -32,14 +32,20 @@ function saveHeatmap(m: Record<string, number>): void {
 }
 function dateKey(d: Date): string { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 /** Build a horizontal (GitHub-style) heatmap grid: 7 rows (Sun..Sat) × weeks
- *  as columns, ~13 weeks wide, ending at the current week (today's Sunday). */
-function buildHeatmapGrid(m: Record<string, number>): Array<Array<{ value: number; date: string }>> {
+ *  as columns (~13 wide). `position` chooses where the current week (today's
+ *  Sunday) sits within the column range: 'center' puts today's week mid-grid
+ *  (pivot to a calendar-aligned 3-month look), 'right' pins today to the last
+ *  column (classic rolling "last 13 weeks" window), 'left' anchors it to the
+ *  left edge. Columns ahead of today render empty (value 0), shown faint. */
+function buildHeatmapGrid(m: Record<string, number>, position: 'left' | 'center' | 'right' = 'center'): Array<Array<{ value: number; date: string }>> {
   const weeks = 13
   const now = new Date()
   const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()) // this week's Sunday
-  // Base = Sunday `weeks-1` weeks back; cell (r,c) = base + c*7 + r.
+  // anchorCol = the column that today's week occupies. Base = Sunday `anchorCol`
+  // weeks back; cell (r,c) = base + c*7 + r.
+  const anchorCol = position === 'right' ? weeks - 1 : position === 'left' ? 1 : Math.floor(weeks / 2)
   const base = new Date(startOfWeek)
-  base.setDate(base.getDate() - (weeks - 1) * 7)
+  base.setDate(base.getDate() - anchorCol * 7)
   const grid: Array<Array<{ value: number; date: string }>> = []
   for (let r = 0; r < 7; r++) {
     const row: Array<{ value: number; date: string }> = []
@@ -369,10 +375,10 @@ export function apply(ctx: ClientContext): void {
           usage: { inputTokens, cacheReadTokens: cacheRead, outputTokens },
           contextPercent, contextWindow, contextTokens, contextBreakdown,
           todos: Array.isArray(todosProj) && todosProj.length >= 0 ? todosProj as Stats['todos'] : null,
-          heatmapGrid: buildHeatmapGrid(heatmapRef.current),
+          heatmapGrid: buildHeatmapGrid(heatmapRef.current, (prefs.cardConfigs?.heatmap?.monthAlign as 'left' | 'center' | 'right') || 'center'),
         }
         setState({ stats })
-      }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now])
+      }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now, prefs.cardConfigs?.heatmap?.monthAlign])
       return null
     },
   ))

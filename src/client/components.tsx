@@ -365,7 +365,29 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
   const selConfig = selWidget ? (prefs.cardConfigs[selected] ?? {}) : null
   const previewOut = (): WidgetRenderOut | null => {
     if (!selWidget || !selConfig) return null
-    const stats = { ...PREVIEW_STATS, ...selConfig } as unknown as Parameters<typeof selWidget.render>[0]
+    // For the heatmap, rebuild the preview grid honoring the month position
+    // (left/center/right) so the config edit is visible in the preview.
+    let stats = { ...PREVIEW_STATS, ...selConfig } as unknown as Parameters<typeof selWidget.render>[0]
+    if (selWidget.id === 'heatmap') {
+      const pos = (selConfig.monthAlign as 'left' | 'center' | 'right') === 'right' ? 'right' : ((selConfig.monthAlign as string) === 'left' ? 'left' : 'center')
+      const grid: Array<Array<{ value: number; date: string }>> = []
+      const anchor = pos === 'right' ? 12 : pos === 'left' ? 1 : 6
+      const now = new Date()
+      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
+      const base = new Date(startOfWeek); base.setDate(base.getDate() - anchor * 7)
+      const day = (r: number, c: number): Date => { const d = new Date(base); d.setDate(base.getDate() + c * 7 + r); return d }
+      for (let r = 0; r < 7; r++) {
+        const row: Array<{ value: number; date: string }> = []
+        for (let c = 0; c < 13; c++) {
+          const d = day(r, c)
+          const off = Math.round((d.getTime() - startOfWeek.getTime()) / 86400000)
+          const v = (off < 0) ? (Math.abs(off) % 5 === 0 ? 600 : 0) : (off % 4 === 0 ? 1400 : (off % 3 === 0 ? 700 : 0))
+          row.push({ value: v, date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
+        }
+        grid.push(row)
+      }
+      stats = { ...stats, heatmapGrid: grid } as unknown as Parameters<typeof selWidget.render>[0]
+    }
     return selWidget.render(stats)
   }
   const setConfig = (field: ConfigField, value: unknown): void => {

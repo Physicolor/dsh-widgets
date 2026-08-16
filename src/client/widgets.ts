@@ -255,10 +255,15 @@ function taskRender(stats: WidgetStats): WidgetRenderOut | null {
 function heatmapRender(stats: WidgetStats): WidgetRenderOut | null {
   const grid = stats.heatmapGrid
   if (!grid || !grid.length) return null
-  const today = grid[grid.length - 1]?.[grid[grid.length - 1]?.length - 1]
+  // Locate today's cell by date (it is not always the bottom-right corner once
+  // the current month can be left/center/right aligned in the window).
+  const now = new Date()
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  let todayVal = 0
+  for (const row of grid) for (const c of row) if (c.date === todayKey) { todayVal = c.value; break }
   return {
     title: 'Token 用量',
-    headRight: today && today.value > 0 ? `${Math.round(today.value / 100) / 10}K · 今日` : undefined,
+    headRight: todayVal > 0 ? `${Math.round(todayVal / 100) / 10}K · 今日` : undefined,
     chart: { kind: 'heatmap', heatmap: grid },
   }
 }
@@ -293,7 +298,9 @@ export const WIDGETS: Widget[] = [
   { id: 'context', group: 'context', name: '一键压缩', desc: '上下文占用百分比，右上按钮两次点击执行压缩', builtin: true, render: contextRender },
   { id: 'context-water', group: 'context', name: '上下文水位', desc: '上下文系统/工具/消息占比分段条', builtin: true, render: contextWaterRender },
   { id: 'task', group: 'task', name: '任务', desc: '当前任务的进行中/已完成/待办计数', builtin: true, render: taskRender },
-  { id: 'heatmap', group: 'data', name: '用量热度图', desc: '最近 13 周每日 Token 用量热度图（自记账）', builtin: true, render: heatmapRender },
+  { id: 'heatmap', group: 'data', name: '用量热度图', desc: '最近 3 个月每日 Token 用量热度图（自记账）；可在预览中调整当前月落在左/中/右', builtin: true, render: heatmapRender, configSchema: [
+    { key: 'monthAlign', label: '当前月在窗口位置', type: 'align', default: 'center' },
+  ] },
   { id: 'quote', group: 'fun', name: '今日寄语', desc: '随机一句鼓励语录', builtin: true, render: quoteRender, configSchema: [
     { key: 'text', label: '寄语内容', type: 'text' },
     { key: 'showTitle', label: '显示标题', type: 'toggle', default: true },
