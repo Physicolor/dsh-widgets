@@ -353,6 +353,16 @@ function ConfigFieldControl({ field, value, onChange }: { field: ConfigField; va
       }),
     )
   }
+  if (field.type === 'mode') {
+    const opts = field.options ?? [['a', 'A'], ['b', 'B']]
+    const cur = (typeof value === 'string' && opts.some(([v]) => v === value)) ? value : (field.default as string ?? opts[0][0])
+    return React.createElement('div', { style: { display: 'flex', gap: 4, flexWrap: 'wrap' } },
+      opts.map(([o, label]) => {
+        const active = cur === o
+        return React.createElement('button', { key: o, type: 'button', className: 'dsx-btn' + (active ? ' dsx-btn-primary' : ''), onClick: () => onChange(o) }, label)
+      }),
+    )
+  }
   return React.createElement(React.Fragment)
 }
 
@@ -371,16 +381,18 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
   const selConfig = selWidget ? (prefs.cardConfigs[selected] ?? {}) : null
   const previewOut = (): WidgetRenderOut | null => {
     if (!selWidget || !selConfig) return null
-    // For the heatmap, rebuild the preview grid honoring the month position
-    // (left/center/right) so the config edit is visible in the preview.
+    // For the heatmap, rebuild the preview grid honoring the window-alignment
+    // mode (rolling: today on the right / quarter: aligned to calendar quarter)
+    // so the config edit is visible in the preview.
     let stats = { ...PREVIEW_STATS, ...selConfig } as unknown as Parameters<typeof selWidget.render>[0]
     if (selWidget.id === 'heatmap') {
-      const pos = (selConfig.monthAlign as 'left' | 'center' | 'right') === 'right' ? 'right' : ((selConfig.monthAlign as string) === 'left' ? 'left' : 'center')
-      const grid: Array<Array<{ value: number; date: string }>> = []
-      const anchor = pos === 'right' ? 12 : pos === 'left' ? 1 : 6
+      const mode = (selConfig.monthMode as 'rolling' | 'quarter') === 'quarter' ? 'quarter' : 'rolling'
       const now = new Date()
       const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
-      const base = new Date(startOfWeek); base.setDate(base.getDate() - anchor * 7)
+      const base = new Date(mode === 'quarter'
+        ? (() => { const q = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1); return new Date(q.getFullYear(), q.getMonth(), q.getDate() - q.getDay()) })()
+        : (() => { const b = new Date(startOfWeek); b.setDate(b.getDate() - 12 * 7); return b })())
+      const grid: Array<Array<{ value: number; date: string }>> = []
       const day = (r: number, c: number): Date => { const d = new Date(base); d.setDate(base.getDate() + c * 7 + r); return d }
       for (let r = 0; r < 7; r++) {
         const row: Array<{ value: number; date: string }> = []

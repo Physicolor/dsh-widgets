@@ -130,8 +130,10 @@ export interface WidgetRenderOut {
 export interface ConfigField {
   key: string
   label: string
-  type: 'text' | 'textarea' | 'toggle' | 'align' | 'valign'
+  type: 'text' | 'textarea' | 'toggle' | 'align' | 'valign' | 'mode'
   default?: string | boolean | 'left' | 'center' | 'right'
+  /** For type 'mode': the selectable options as [value, label] pairs. */
+  options?: Array<[string, string]>
 }
 
 /** The card shape a widget render produces. */
@@ -255,18 +257,19 @@ function taskRender(stats: WidgetStats): WidgetRenderOut | null {
 }
 
 /** Token usage heatmap card — a GitHub-style daily grid coloured by volume.
- *  A small "今日" token figure sits under the title; the grid stays
- *  bottom-aligned in the card. */
+ *  A legend under the title shows today's figure and the ~3-month total; the
+ *  grid stays bottom-aligned in the card. The window alignment (rolling with
+ *  today on the right, or calendar-quarter aligned) is user-configurable. */
 function heatmapRender(stats: WidgetStats): WidgetRenderOut | null {
   const grid = stats.heatmapGrid
   if (!grid || !grid.length) return null
-  // Locate today's cell by date (not necessarily the bottom-right corner once
-  // the current month can be left/center/right aligned in the window).
+  // Locate today's cell by date (window alignment controls where it sits).
   const now = new Date()
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   let todayVal = 0
-  for (const row of grid) for (const c of row) if (c.date === todayKey) { todayVal = c.value; break }
-  const legend = todayVal > 0 ? `今日 ${fmtTokens(todayVal)}` : undefined
+  let total = 0
+  for (const row of grid) { for (const c of row) { total += c.value; if (c.date === todayKey) todayVal = c.value } }
+  const legend = todayVal > 0 || total > 0 ? `今日 ${fmtTokens(todayVal)}  ${fmtTokens(total)}` : undefined
   return {
     title: 'Token 用量',
     legend,
@@ -304,8 +307,8 @@ export const WIDGETS: Widget[] = [
   { id: 'context', group: 'context', name: '一键压缩', desc: '上下文占用百分比，右上按钮两次点击执行压缩', builtin: true, render: contextRender },
   { id: 'context-water', group: 'context', name: '上下文水位', desc: '上下文系统/工具/消息占比分段条', builtin: true, render: contextWaterRender },
   { id: 'task', group: 'task', name: '任务', desc: '当前任务的进行中/已完成/待办计数', builtin: true, render: taskRender },
-  { id: 'heatmap', group: 'data', name: '用量热度图', desc: '最近 3 个月每日 Token 用量热度图（自记账）；可在预览中调整当前月落在左/中/右', builtin: true, render: heatmapRender, configSchema: [
-    { key: 'monthAlign', label: '当前月在窗口位置', type: 'align', default: 'center' },
+  { id: 'heatmap', group: 'data', name: '用量热度图', desc: '最近 3 个月每日 Token 用量热度图（自记账）；可在预览选择窗口对齐方式', builtin: true, render: heatmapRender, configSchema: [
+    { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
   ] },
   { id: 'quote', group: 'fun', name: '今日寄语', desc: '随机一句鼓励语录', builtin: true, render: quoteRender, configSchema: [
     { key: 'text', label: '寄语内容', type: 'text' },
