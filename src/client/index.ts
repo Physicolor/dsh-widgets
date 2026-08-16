@@ -11,7 +11,7 @@ import * as React from 'react'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import './widgets.module.css'
 import { ALL_IDS, DEFAULT_INSTALLED, WIDGETS, type UsageData } from './widgets'
-import { CardBody, SettingsPanel, WidgetsPage, type Prefs } from './components'
+import { CardBody, WidgetsPage, type Prefs } from './components'
 
 const STORAGE_KEY = 'harness-widgets.state'
 const BASE_SIDE = 150
@@ -23,6 +23,8 @@ const DEFAULTS: Prefs = {
   order: ALL_IDS.slice(),
   apiKey: '',
   railOpen: false,
+  realTime: false,
+  magnify: 1.2,
 }
 
 /** Required services: the slot registry (React is a platform module). */
@@ -44,6 +46,8 @@ function loadState(): Prefs {
     for (const id of ALL_IDS) if (s.order.indexOf(id) === -1) s.order.push(id)
     if (typeof s.apiKey !== 'string') s.apiKey = ''
     if (typeof s.railOpen !== 'boolean') s.railOpen = DEFAULTS.railOpen
+    if (typeof s.realTime !== 'boolean') s.realTime = DEFAULTS.realTime
+    if (!Number.isFinite(s.magnify) || s.magnify < 1 || s.magnify > 2) s.magnify = DEFAULTS.magnify
     return s
   } catch {
     return { ...DEFAULTS, installed: DEFAULT_INSTALLED.slice(), order: ALL_IDS.slice() }
@@ -109,12 +113,23 @@ export function apply(ctx: ClientContext): void {
   }
   ctx.effect(() => () => { listeners.clear() })
 
-  // ---- Rail-top measurement (rail starts under the session header). ----
+  // ---- Rail-top / composer-bottom measurement. ----
   let raf = 0
   function measureRailTop(): void {
     const el = document.querySelector('[data-conversation-scroll]')
     const top = el ? el.getBoundingClientRect().top : 0
     document.documentElement.style.setProperty('--dsx-rail-top', `${top}px`)
+    // Composer bottom gap: one "breathing" band under everything in the input
+    // column — the composer dock stats bar (`.FJxK*_root` inside
+    // `conversation.composer.dock`) plus its own bottom padding — so a fixed
+    // overlay can sit flush below it. Prefer the dock (the lowest visible row);
+    // then the composer seat; then the scroll body as a last resort.
+    const dock = document.querySelector('[data-slot="conversation.composer.dock"]')
+    const comp = (dock && dock.getBoundingClientRect().height > 0 && dock.getBoundingClientRect().bottom > 0)
+      ? dock
+      : (document.querySelector('[data-composer-seat]') || document.querySelector('[data-conversation-composer-overlay]') || el)
+    const gap = comp ? Math.max(0, window.innerHeight - comp.getBoundingClientRect().bottom) : 0
+    document.documentElement.style.setProperty('--dsx-input-bottom', `${gap}px`)
   }
   const scheduleMeasure = (): void => {
     if (raf !== 0) return
@@ -130,6 +145,8 @@ export function apply(ctx: ClientContext): void {
       if (t) ro.observe(t)
       const h = document.querySelector('[data-slot="conversation.session.header"]')
       if (h) ro.observe(h)
+      const c = document.querySelector('[data-composer-seat]')
+      if (c) ro.observe(c)
     }
     const sub = subscribe(scheduleMeasure)
     return () => {
@@ -137,6 +154,7 @@ export function apply(ctx: ClientContext): void {
       if (ro) ro.disconnect()
       sub()
       document.documentElement.style.removeProperty('--dsx-rail-top')
+      document.documentElement.style.removeProperty('--dsx-input-bottom')
     }
   })
 
@@ -229,11 +247,56 @@ export function apply(ctx: ClientContext): void {
     { name: 'shell.overlay', id: 'widgets-panel', order: 1000 },
     () => {
       const snap = useBridge()
+      // Hooks MUST be declared unconditionally, before the early return, or the
+      // hook count changes when `open`/`hasSession` flip (React error #310).
+      const [addOpen, setAddOpen] = React.useState(false)
+      // Two magnification triggers, chosen by prefs.realTime:
+      //  - discrete: focusIdx set on card mouseenter, ONE reflow per entry, the
+      //    CSS top/width/height transition animates it (cheap, no per-frame work).
+      //  - realtime: focusY continuously driven by the pointer Y (rAF-throttled),
+      //    reflowing every animation frame for a fully跟手 wave (slightly heavier).
+      const [focusIdx, setFocusIdx] = React.useState<number | null>(null)
+      const [focusY, setFocusY] = React.useState<number | null>(null)
+      // Last pointer Y in rail-content coordinates (clientY - railTop - 2 +
+      // scrollTop), kept so a rail scroll (which moves cards but not the mouse)
+      // re-targets the peak correctly.
+      const lastClientYRef = React.useRef<number | null>(null)
+      const contentYRef = React.useRef<number | null>(null)
+      const yRaf = React.useRef(0)
+      const moveRailFocusY = (clientY: number, el: HTMLDivElement): void => {
+        lastClientYRef.current = clientY
+        const contentY = clientY - el.getBoundingClientRect().top - 2 + el.scrollTop
+        if (yRaf.current) { contentYRef.current = contentY; return }
+        contentYRef.current = contentY
+        yRaf.current = requestAnimationFrame(() => { yRaf.current = 0; setFocusY(contentYRef.current) })
+      }
+      // Re-target the peak when the rail scrolls without the pointer moving.
+      const railScrollSync = (el: HTMLDivElement): void => {
+        if (lastClientYRef.current === null || !prefs.realTime) return
+        moveRailFocusY(lastClientYRef.current, el)
+      }
+      React.useEffect(() => {
+        return () => { if (yRaf.current) cancelAnimationFrame(yRaf.current) }
+      }, [])
+      React.useEffect(() => {
+        if (!snap.open || !snap.hasSession) { setAddOpen(false); setFocusIdx(null); setFocusY(null) }
+      }, [snap.open, snap.hasSession])
       if (!snap.open || !snap.hasSession) return null
       const side = prefs.cardSide
       const pad = prefs.panelPadding
-      const railW = side + pad * 2
+      // Left room for the bell-curve magnification overshoot so the magnified
+      // card's left growth is NOT clipped by the rail's scroll edge. The rail's
+      // right padding stays `pad`; the left gets `pad + overshoot`. The reserved
+      // gutter (--dsx-rail-w) grows by `overshoot` so the conversation does not
+      // get covered — the rail simply claims a touch more of its own gutter on
+      // the left. Peak magnification is `magnify` → card grows left by
+      // (magnify-1)·side; use whatever exceeds the existing left padding, plus a
+      // small buffer.
+      const overshoot = Math.max(0, Math.ceil(side * (prefs.magnify - 1) - pad)) + 4
+      const railW = side + pad * 2 + overshoot
       document.documentElement.style.setProperty('--dsx-rail-w', `${railW}px`)
+      document.documentElement.style.setProperty('--dsx-rail-pad', `${pad}px`)
+      document.documentElement.style.setProperty('--dsx-rail-overshoot', `${overshoot}px`)
       const base = snap.stats ?? { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, decodeMs: 0, decodeTokens: 0, usage: null }
       const widgets = prefs.order
         .filter((id) => prefs.installed.indexOf(id) !== -1)
@@ -253,12 +316,117 @@ export function apply(ctx: ClientContext): void {
       // Padding is `0 pad pad pad`: no top inset so the first card aligns with
       // the session header's bottom edge; right/left keep the resize handle
       // room, bottom keeps the last card off the viewport floor.
-      return React.createElement('div', { className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', boxSizing: 'border-box', padding: `0 ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: `${pad}px` } },
-        items.map((it) => React.createElement('div', { key: it.w.id, style: { position: 'relative', flex: 'none' } },
-          React.createElement(CardBody, { out: it.out, side }),
-          React.createElement('span', { className: 'dsx-stats-resize', 'aria-label': '调整大小', onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = side; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
-        )),
+      const scale = side / BASE_SIDE
+      const addRadius = Math.round(16 * scale)
+      const closeIcon = React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', xmlns: 'http://www.w3.org/2000/svg', 'aria-hidden': true },
+        React.createElement('path', { d: 'M14.1168 13.197L13.197 14.1167L1.8833 2.80303L2.80309 1.88324L14.1168 13.197Z', fill: 'currentColor' }),
+        React.createElement('path', { d: 'M13.197 1.88326L14.1168 2.80305L2.80309 14.1168L1.8833 13.197L13.197 1.88326Z', fill: 'currentColor' }),
       )
+      // Dock-style magnification, following the authoritative macOS Dock
+      // algorithm (see LikhithSP/MacOS-Web-Simulator Dock.jsx):
+      //   - scale is a DISCRETE STEP of the distance from the hovered card
+      //     {d0: peak, d1, d2, ≥d3 none} — a steep bell, NOT a flat gaussian, so
+      //     neighbours barely grow while the hovered card is clearly the peak.
+      //   - the hovered card is HARD-MAX by construction (d=0 returns the peak).
+      //   - cards are sized through LAYOUT (width/height change, neighbours make
+      //     room via cumulative top), not transform — so the right edge stays
+      //     pinned to the rail right and the gap between cards is constant.
+      const restCenter = (i: number): number => i * (side + pad) + side / 2
+      const peakScale = prefs.magnify
+      // Discrete falling bell, scaled relative to the peak so the curve keeps
+      // its shape at any configured magnification. d0 = peak (hovered, hard
+      // max), d1/d2 fall off fast, d>=3 not magnified.
+      const stepScale = (d: number): number => {
+        const extra = peakScale - 1
+        const dd = Math.round(d)
+        if (dd <= 0) return peakScale
+        if (dd === 1) return 1 + extra * 0.55     // one away: clearly smaller
+        if (dd === 2) return 1 + extra * 0.25     // two away: just a touch
+        return 1                                  // three+ away: not magnified
+      }
+      const active = prefs.realTime
+      const layoutCards: Array<{ s: number; top: number; w: number }> = []
+      {
+        const n = items.length
+        const hasFocus = active ? focusY !== null : focusIdx !== null
+        // Determine the anchored (peak) card index.
+        let anchor = -1
+        if (hasFocus) {
+          if (active) {
+            // nearest card to the pointer's rest-center = the peak, always.
+            const mY = focusY as number
+            let best = 0, bestD = Number.POSITIVE_INFINITY
+            for (let i = 0; i < n; i++) {
+              const dd = Math.abs(mY - restCenter(i))
+              if (dd < bestD) { bestD = dd; best = i }
+            }
+            anchor = best
+          } else {
+            anchor = Math.max(0, Math.min(focusIdx as number, n - 1))
+          }
+        }
+        const scaleArr = new Array(n).fill(1)
+        if (anchor >= 0) {
+          for (let i = 0; i < n; i++) scaleArr[i] = stepScale(Math.abs(i - anchor))
+        }
+        if (n > 0) {
+          // Layout make-room: each card's height = side*scale participates in the
+          // column, so neighbours are pushed apart by exactly `pad` plus the
+          // scaled height — spacing stays constant, no overlap.
+          const hgt = scaleArr.map((s) => side * s)
+          let acc = 2
+          for (let i = 0; i < n; i++) { layoutCards.push({ s: scaleArr[i], top: acc, w: hgt[i] }); acc += hgt[i] + pad }
+        }
+      }
+      // deck total height (base slots + room for the peak card's growth).
+      const stackHeight = items.length > 0 ? 2 + items.length * (side + pad) + (peakScale - 1) * side : 0
+      const railChildren: React.ReactNode[] = [
+        // Relative-positioned layer that owns the cards' absolute layout.
+        React.createElement('div', { key: '__deck', style: { position: 'relative', height: `${stackHeight}px` } },
+          layoutCards.map((c, idx) => {
+            const it = items[idx]
+            // Layout sizing (authoritative macOS Dock approach): width/height and
+            // top participate in layout, so neighbours make room automatically and
+            // spacing stays constant; right edge stays pinned via right:0. No
+            // transform — this is why the right edge never jitters. Realtime uses
+            // a near-instant transition, discrete a smooth one.
+            const transition = active ? 'top 0.04s linear, width 0.04s linear, height 0.04s linear' : 'top 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out)'
+            return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: { position: 'absolute', top: `${c.top.toFixed(2)}px`, right: 0, width: `${c.w.toFixed(2)}px`, height: `${c.w.toFixed(2)}px`, transition, zIndex: Math.round((c.s - 1) * 100) }, onMouseEnter: () => setFocusIdx(idx) },
+              React.createElement(CardBody, { out: it.out, side: c.w }),
+              React.createElement('span', { className: 'dsx-stats-resize', 'aria-label': '调整大小', onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = side; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
+            )
+          }),
+        ),
+        // Bottom add button: same rounded-rect geometry as a card, + icon + "添加".
+        React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', onClick: () => setAddOpen((v) => !v), style: { marginTop: `${pad}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px` } },
+          React.createElement('span', { className: 'dsx-stats-add-icon' },
+            React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
+          ),
+          React.createElement('span', { className: 'dsx-stats-add-label' }, '添加'),
+        ),
+      ]
+      const rail = React.createElement('div', {
+        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `2px ${pad}px ${pad}px ${pad + overshoot}px`, background: 'transparent', pointerEvents: 'auto' },
+        onMouseLeave: () => { setFocusIdx(null); setFocusY(null) },
+        onMouseMove: prefs.realTime ? (e: React.MouseEvent<HTMLDivElement>) => moveRailFocusY(e.clientY, e.currentTarget) : undefined,
+        onScroll: prefs.realTime ? (e: React.UIEvent<HTMLDivElement>) => railScrollSync(e.currentTarget) : undefined,
+      }, railChildren)
+      // Temporary right-side add panel: reuses the settings 组件市场 + 拖动排序
+      // (WidgetsPage) wholesale, floats over content, never affects layout.
+      // Always rendered so closing animates out; `.open` only switches visibility.
+      const addPanel = React.createElement('div', { className: 'dsx-stats-addpanel' + (addOpen ? ' open' : ''), style: { top: 'var(--dsx-rail-top,0px)' } },
+        React.createElement('div', { className: 'dsx-stats-addpanel-header' },
+          React.createElement('div', { className: 'dsx-stats-addpanel-title' }, '添加组件'),
+          React.createElement('button', { type: 'button', className: 'dsx-stats-addpanel-close', 'aria-label': '关闭', onClick: () => setAddOpen(false) }, closeIcon),
+        ),
+        React.createElement('div', { className: 'dsx-stats-addpanel-body' },
+          React.createElement(WidgetsPage, { controller: { prefs, setPrefs }, hideHeader: true }),
+        ),
+      )
+      // Always render the panel too so closing slides it out (`.open` toggles
+      // visibility/transform); when closed it is hidden (visibility + opacity)
+      // and never intercepts pointer events over the rail.
+      return React.createElement(React.Fragment, null, rail, addPanel)
     },
   ))
 
@@ -268,15 +436,6 @@ export function apply(ctx: ClientContext): void {
     () => {
       const snap = useBridge()
       return React.createElement(WidgetsPage, { controller: { prefs: snap.prefs, setPrefs } })
-    },
-  ))
-
-  // ---- General settings rows (padding + card side). ----
-  ctx.slots.inject('settings.general.item', () => ctx.slots.register(
-    { name: 'settings.general.item', id: 'widgets-rail-settings', order: 40 },
-    () => {
-      const snap = useBridge()
-      return React.createElement(SettingsPanel, { controller: { prefs: snap.prefs, setPrefs } })
     },
   ))
 

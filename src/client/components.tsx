@@ -32,6 +32,10 @@ export interface Prefs {
   order: string[]
   apiKey: string
   railOpen: boolean
+  /** Real-time (mouse-Y continuous) magnification; off = discrete focus + CSS transition. */
+  realTime: boolean
+  /** Peak magnification factor of the hovered card (e.g. 1.2 = 120%). */
+  magnify: number
 }
 
 /** The controller handed to every component. */
@@ -193,27 +197,32 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
 
 // ---- Widgets page (settings section) ----
 
-export function WidgetsPage({ controller }: { controller: WidgetsController }): React.ReactElement {
+export function WidgetsPage({ controller, hideHeader }: { controller: WidgetsController; hideHeader?: boolean }): React.ReactElement {
   const [tab, setTab] = React.useState('config')
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, minHeight: '100%' } },
-    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0 12px', borderBottom: '1px solid var(--dsw-alias-border-l2)' } },
+    hideHeader ? null : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0 12px', borderBottom: '1px solid var(--dsw-alias-border-l2)' } },
       React.createElement('div', { style: { fontSize: 18, fontWeight: 600, lineHeight: '26px', color: 'var(--dsw-alias-label-primary)' } }, '组件'),
       React.createElement('div', { style: { fontSize: 13, lineHeight: '20px', color: 'var(--dsw-alias-label-tertiary)' } }, '管理右侧栏中的小组件。'),
     ),
     React.createElement('div', { className: 'dsx-tabbar' },
       React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'config', onClick: () => setTab('config') }, '组件配置'),
       React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'market', onClick: () => setTab('market') }, '组件市场'),
+      React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'settings', onClick: () => setTab('settings') }, '组件设置'),
     ),
-    tab === 'config' ? React.createElement(ConfigTab, { controller }) : React.createElement(MarketTab, { controller, usageData: null }),
+    tab === 'config' ? React.createElement(ConfigTab, { controller })
+      : tab === 'market' ? React.createElement(MarketTab, { controller, usageData: null })
+      : React.createElement(SettingsPanel, { controller }),
   )
 }
 
 // ---- General settings rows (padding + card side) ----
 
-function Slider({ value, onChange, unit, min, max }: { value: number; onChange: (v: number) => void; unit: string; min: number; max: number }): React.ReactElement {
+function Slider({ value, onChange, unit, min, max, step }: { value: number; onChange: (v: number) => void; unit: string; min: number; max: number; step?: number }): React.ReactElement {
+  // Native range + accent-color, matching the official uitw-slider pattern so we
+  // reuse the product's slider look instead of inventing a custom one.
   return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flex: 'none' } },
-    React.createElement('input', { type: 'range', min, max, step: 1, value, className: 'dsx-slider', style: { width: 140, accentColor: 'var(--dsw-alias-brand-primary)' }, onChange: (e) => onChange(Number(e.target.value)) }),
-    React.createElement('span', { style: { width: 44, fontSize: 13, color: 'var(--dsw-alias-label-secondary)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' } }, `${value}${unit}`),
+    React.createElement('input', { type: 'range', min, max, step: step ?? 1, value, style: { width: 160, accentColor: 'var(--dsw-alias-brand-primary)' }, onChange: (e) => onChange(Number(e.target.value)) }),
+    React.createElement('span', { style: { width: 48, fontSize: 13, lineHeight: '20px', color: 'var(--dsw-alias-label-secondary)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' } }, `${value}${unit}`),
   )
 }
 
@@ -229,7 +238,15 @@ function Row({ title, desc, children }: { title: string; desc: string; children:
 
 export function SettingsPanel({ controller }: { controller: WidgetsController }): React.ReactElement {
   const { prefs, setPrefs } = controller
+  // Realtime (continuous-Y) magnification is not implemented yet — keep the
+  // switch present but disabled so users know it's unavailable.
+  const switchRow = React.createElement('label', { className: 'dsx-switch-row', title: '实时跟随鼠标连续放大暂未开放' },
+    React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: false, disabled: true, onChange: () => {} }),
+    React.createElement('span', { className: 'dsx-switch-track', 'aria-hidden': true }, React.createElement('span', { className: 'dsx-switch-thumb' })),
+  )
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
+    React.createElement(Row, { title: '实时放大（暂未开放）', desc: '跟随鼠标持续连续放大尚未实现，敬请期待', children: switchRow }),
+    React.createElement(Row, { title: '放大倍数', desc: '被悬浮组件的峰值放大比例（1.0 = 不放大，1.4 = 1.4 倍）', children: React.createElement(Slider, { min: 1, max: 1.4, step: 0.05, value: prefs.magnify, unit: 'x', onChange: (v) => setPrefs({ magnify: v }) }) }),
     React.createElement(Row, { title: '组件栏内边距', desc: '栏内四周与卡片间距（两者一致）', children: React.createElement(Slider, { min: 4, max: 40, value: prefs.panelPadding, unit: 'px', onChange: (v) => setPrefs({ panelPadding: v }) }) }),
     React.createElement(Row, { title: '卡片边长', desc: '所有卡片统一的正方形边长，字体与圆角随比例缩放', children: React.createElement(Slider, { min: 100, max: 220, value: prefs.cardSide, unit: 'px', onChange: (v) => setPrefs({ cardSide: v }) }) }),
   )
