@@ -16,6 +16,71 @@ import { CardBody, WidgetsPage, type Prefs } from './components'
 const STORAGE_KEY = 'harness-widgets.state'
 const BASE_SIDE = 150
 
+/** Map from interactive action id to the slash command it triggers. */
+const ACTION_COMMANDS: Record<string, string> = {
+  contextCompact: '/compact',
+}
+
+// ── Daily token-usage heatmap (self-accounted to localStorage). ──
+const HEATMAP_KEY = 'harness-widgets.heatmap'
+
+function loadHeatmap(): Record<string, number> {
+  try { const raw = localStorage.getItem(HEATMAP_KEY); return raw ? JSON.parse(raw) as Record<string, number> : {} } catch { return {} }
+}
+function saveHeatmap(m: Record<string, number>): void {
+  try { localStorage.setItem(HEATMAP_KEY, JSON.stringify(m)) } catch { /* storage unavailable */ }
+}
+function dateKey(d: Date): string { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+/** Build a horizontal (GitHub-style) heatmap grid: 7 rows (Sun..Sat) × weeks
+ *  as columns, ~13 weeks wide, ending at the current week (today's Sunday). */
+function buildHeatmapGrid(m: Record<string, number>): Array<Array<{ value: number; date: string }>> {
+  const weeks = 13
+  const now = new Date()
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()) // this week's Sunday
+  // Base = Sunday `weeks-1` weeks back; cell (r,c) = base + c*7 + r.
+  const base = new Date(startOfWeek)
+  base.setDate(base.getDate() - (weeks - 1) * 7)
+  const grid: Array<Array<{ value: number; date: string }>> = []
+  for (let r = 0; r < 7; r++) {
+    const row: Array<{ value: number; date: string }> = []
+    for (let c = 0; c < weeks; c++) {
+      const d = new Date(base)
+      d.setDate(base.getDate() + c * 7 + r)
+      const k = dateKey(d)
+      row.push({ value: m[k] ?? 0, date: k })
+    }
+    grid.push(row)
+  }
+  return grid
+}
+
+/** Backfill the known past usage days (8/14 0.42, 8/15 2.82, 8/16 0.83 USD)
+ *  with their relative amount values — the heatmap normalizes by max, so these
+ *  keep their true proportions (8/15 deepest, then 8/16, then 8/14). Real-time
+ *  token usage continues to accumulate on top from today onward. */
+const SEED_DAY = 'harness-widgets.heatmap.seeded'
+function seedHeatmapIfNeeded(): Record<string, number> {
+  const m = loadHeatmap()
+  try {
+    if (localStorage.getItem(SEED_DAY)) return m
+    const seeds: Record<string, number> = { '2026-08-14': 0.42, '2026-08-15': 2.82, '2026-08-16': 0.83 }
+    const next = { ...m }
+    for (const [k, v] of Object.entries(seeds)) { if (!(k in next)) next[k] = v }
+    saveHeatmap(next)
+    localStorage.setItem(SEED_DAY, '1')
+    return next
+  } catch { return m }
+}
+
+/** Add newly observed tokens to today; returns the running grid for the card. */
+function accumulateHeatmap(m: Record<string, number>, dayKey: string, delta: number): Record<string, number> {
+  if (delta <= 0) return m
+  const next = { ...m, [dayKey]: (m[dayKey] ?? 0) + delta }
+  saveHeatmap(next)
+  return next
+}
+
+
 const DEFAULTS: Prefs = {
   panelPadding: 24,
   cardSide: 150,
@@ -25,6 +90,9 @@ const DEFAULTS: Prefs = {
   railOpen: false,
   realTime: false,
   magnify: 1.2,
+  panelWidth: 500,
+  cardConfigs: {},
+  maxWidgets: 10,
 }
 
 /** Required services: the slot registry (React is a platform module). */
@@ -39,8 +107,10 @@ function loadState(): Prefs {
     if (!Number.isFinite(s.panelPadding) || s.panelPadding < 4 || s.panelPadding > 40) s.panelPadding = DEFAULTS.panelPadding
     if (!Number.isFinite(s.cardSide) || s.cardSide < 100 || s.cardSide > 220) s.cardSide = DEFAULTS.cardSide
     if (!Array.isArray(s.installed)) s.installed = DEFAULT_INSTALLED.slice()
+    // Respect the user's installed set exactly — do NOT force-append built-ins
+    // back on every load (that kept overflowing the max-widgets cap after the
+    // user uninstalled system widgets). Only the first-run path seeds defaults.
     s.installed = s.installed.filter((id) => ALL_IDS.indexOf(id) !== -1)
-    for (const id of DEFAULT_INSTALLED) if (s.installed.indexOf(id) === -1) s.installed.push(id)
     if (!Array.isArray(s.order)) s.order = ALL_IDS.slice()
     s.order = s.order.filter((id) => ALL_IDS.indexOf(id) !== -1)
     for (const id of ALL_IDS) if (s.order.indexOf(id) === -1) s.order.push(id)
@@ -48,6 +118,9 @@ function loadState(): Prefs {
     if (typeof s.railOpen !== 'boolean') s.railOpen = DEFAULTS.railOpen
     if (typeof s.realTime !== 'boolean') s.realTime = DEFAULTS.realTime
     if (!Number.isFinite(s.magnify) || s.magnify < 1 || s.magnify > 2) s.magnify = DEFAULTS.magnify
+    if (!Number.isFinite(s.panelWidth) || s.panelWidth < 260 || s.panelWidth > 760) s.panelWidth = DEFAULTS.panelWidth
+    if (typeof s.cardConfigs !== 'object' || s.cardConfigs === null || Array.isArray(s.cardConfigs)) s.cardConfigs = {}
+    if (!Number.isFinite(s.maxWidgets) || s.maxWidgets < 1 || s.maxWidgets > 20) s.maxWidgets = DEFAULTS.maxWidgets
     return s
   } catch {
     return { ...DEFAULTS, installed: DEFAULT_INSTALLED.slice(), order: ALL_IDS.slice() }
@@ -69,6 +142,12 @@ interface Stats {
   decodeMs: number
   decodeTokens: number
   usage: { inputTokens: number; cacheReadTokens: number; outputTokens: number } | null
+  contextPercent?: number | null
+  contextWindow?: number | null
+  contextTokens?: number | null
+  contextBreakdown?: { systemTokens: number; toolsTokens: number; messageTokens: number } | null
+  todos?: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed' }> | null
+  heatmapGrid?: Array<Array<{ value: number; date: string }>>
 }
 
 /** Fold assistant/tool-result nodes into the same window-scoped stats as the shipped StatsLine fallback. */
@@ -112,6 +191,20 @@ export function apply(ctx: ClientContext): void {
     return snap
   }
   ctx.effect(() => () => { listeners.clear() })
+
+  // Command execution for interactive action cards (e.g. one-click Compact).
+  // Resolve the host @Remote command seam if present; cards degrade silently
+  // when it is absent.
+  const remote = ctx.get('remote') as { commands?: { execute?: (agent: unknown, line: string) => Promise<unknown> } } | undefined
+  const runCommand = (line: string): void => {
+    void (async () => {
+      try {
+        const exe = remote?.commands?.execute
+        if (!exe) return
+        await exe(undefined as unknown, line)
+      } catch { /* best-effort: ignore failures on action cards */ }
+    })()
+  }
 
   // ---- Rail-top / composer-bottom measurement. ----
   let raf = 0
@@ -178,6 +271,14 @@ export function apply(ctx: ClientContext): void {
       const running = useSession ? useSession((s: any) => s.running) : false
       const projected = useProjection ? useProjection('sessionStats') : undefined
       const usage = useProjection ? useProjection('tokenUsage') : undefined
+      const contextPres = useProjection ? useProjection('contextPressure') : undefined
+      const contextBrk = useProjection ? useProjection('contextBreakdown') : undefined
+      const todosProj = useProjection ? useProjection('todos') : undefined
+      // Heatmap self-accounting: track the last-observed token total so each
+      // change's delta lands on "today", persisted to localStorage.
+      const heatmapRef = React.useRef<Record<string, number>>(seedHeatmapIfNeeded())
+      const lastTotalRef = React.useRef<number>(0)
+      const [heatmap, setHeatmap] = React.useState<Record<string, number>>(heatmapRef.current)
       // Presence signal: this dock slot renders only while an active session is
       // mounted (the shell drops it on the Hero/no-session state), so mount/
       // unmount is exactly "an active session exists". The rail and the body
@@ -213,6 +314,17 @@ export function apply(ctx: ClientContext): void {
           cacheRead = usage.cacheReadTokens || 0
           outputTokens = usage.outputTokens || 0
         }
+        // Accumulate the new token volume into today's heatmap cell (once per
+        // observed increase), so the "token usage heatmap" grows over time.
+        if (usage && inputTokens + outputTokens > lastTotalRef.current) {
+          const delta = (inputTokens + outputTokens) - lastTotalRef.current
+          lastTotalRef.current = inputTokens + outputTokens
+          const key = dateKey(new Date())
+          heatmapRef.current = accumulateHeatmap(heatmapRef.current, key, delta)
+          setHeatmap(heatmapRef.current)
+        } else if (lastTotalRef.current === 0 && usage && inputTokens + outputTokens > 0) {
+          lastTotalRef.current = inputTokens + outputTokens
+        }
         // Live in-flight elapsed, added to the settled whole-log figures.
         let llmMs = folded.llmMs
         let toolMs = folded.toolMs
@@ -229,15 +341,38 @@ export function apply(ctx: ClientContext): void {
         for (const call of runningCalls) {
           toolMs += Math.max(0, now - call.time)
         }
+        // contextPressure projection is { contextWindow?, pressureTokens?, projectedTokens? }.
+        // Ratio = projectedTokens / contextWindow.
+        let contextPercent: number | null = null
+        let contextWindow: number | null = null
+        let contextTokens: number | null = null
+        if (contextPres && typeof contextPres === 'object') {
+          if (typeof contextPres.contextWindow === 'number' && contextPres.contextWindow > 0) contextWindow = contextPres.contextWindow
+          if (typeof contextPres.projectedTokens === 'number') {
+            contextTokens = contextPres.projectedTokens
+            if (contextWindow) contextPercent = Math.min(1, Math.max(0, contextPres.projectedTokens / contextWindow))
+          }
+        }
+        let contextBreakdown: Stats['contextBreakdown'] = null
+        if (contextBrk && typeof contextBrk === 'object') {
+          contextBreakdown = {
+            systemTokens: (contextBrk as unknown as Record<string, unknown>).systemTokens as number | undefined ?? 0,
+            toolsTokens: (contextBrk as unknown as Record<string, unknown>).toolsTokens as number | undefined ?? 0,
+            messageTokens: (contextBrk as unknown as Record<string, unknown>).messageTokens as number | undefined ?? 0,
+          }
+        }
         const stats: Stats = {
           turns: folded.turns, steps: folded.steps,
           llmMs, toolMs,
           ttftMs: folded.ttftMs, ttftSteps: folded.ttftSteps,
           decodeMs: folded.decodeMs, decodeTokens: folded.decodeTokens,
           usage: { inputTokens, cacheReadTokens: cacheRead, outputTokens },
+          contextPercent, contextWindow, contextTokens, contextBreakdown,
+          todos: Array.isArray(todosProj) && todosProj.length >= 0 ? todosProj as Stats['todos'] : null,
+          heatmapGrid: buildHeatmapGrid(heatmapRef.current),
         }
         setState({ stats })
-      }, [settled, projected, usage, timeline, runningCalls, now])
+      }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now])
       return null
     },
   ))
@@ -250,6 +385,16 @@ export function apply(ctx: ClientContext): void {
       // Hooks MUST be declared unconditionally, before the early return, or the
       // hook count changes when `open`/`hasSession` flip (React error #310).
       const [addOpen, setAddOpen] = React.useState(false)
+      // Action-cards: an armed action id waits for a second click before firing,
+      // so destructive/expensive actions (e.g. Compact) need two taps to run.
+      const [armedAction, setArmedAction] = React.useState<string | null>(null)
+      const handleAction = (id: string): void => {
+        const command = ACTION_COMMANDS[id]
+        if (!command) return
+        if (armedAction !== id) { setArmedAction(id); return }
+        setArmedAction(null)
+        runCommand(command)
+      }
       // Two magnification triggers, chosen by prefs.realTime:
       //  - discrete: focusIdx set on card mouseenter, ONE reflow per entry, the
       //    CSS top/width/height transition animates it (cheap, no per-frame work).
@@ -301,7 +446,7 @@ export function apply(ctx: ClientContext): void {
       const widgets = prefs.order
         .filter((id) => prefs.installed.indexOf(id) !== -1)
       const items = widgets
-        .map((id) => { const w = WIDGETS.find((x) => x.id === id); return w ? { w, out: w.render({ ...base, usageData: snap.usageData }) } : null })
+        .map((id) => { const w = WIDGETS.find((x) => x.id === id); return w ? { w, out: w.render({ ...base, usageData: snap.usageData, armedAction, ...(prefs.cardConfigs?.[id] ?? {}) } as Parameters<typeof w.render>[0]) } : null })
         .filter((it): it is { w: (typeof WIDGETS)[number]; out: NonNullable<ReturnType<(typeof WIDGETS)[number]['render']>> } => it !== null && it.out != null)
       // The rail is a fixed viewport panel anchored to the right edge. The
       // dsh-better-sidebar bundle occupies the same edge with its own
@@ -392,7 +537,7 @@ export function apply(ctx: ClientContext): void {
             // a near-instant transition, discrete a smooth one.
             const transition = active ? 'top 0.04s linear, width 0.04s linear, height 0.04s linear' : 'top 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out)'
             return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: { position: 'absolute', top: `${c.top.toFixed(2)}px`, right: 0, width: `${c.w.toFixed(2)}px`, height: `${c.w.toFixed(2)}px`, transition, zIndex: Math.round((c.s - 1) * 100) }, onMouseEnter: () => setFocusIdx(idx) },
-              React.createElement(CardBody, { out: it.out, side: c.w }),
+              React.createElement(CardBody, { out: it.out, side: c.w, onAction: handleAction }),
               React.createElement('span', { className: 'dsx-stats-resize', 'aria-label': '调整大小', onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = side; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
             )
           }),
@@ -413,8 +558,17 @@ export function apply(ctx: ClientContext): void {
       }, railChildren)
       // Temporary right-side add panel: reuses the settings 组件市场 + 拖动排序
       // (WidgetsPage) wholesale, floats over content, never affects layout.
-      // Always rendered so closing animates out; `.open` only switches visibility.
-      const addPanel = React.createElement('div', { className: 'dsx-stats-addpanel' + (addOpen ? ' open' : ''), style: { top: 'var(--dsx-rail-top,0px)' } },
+      // Width is configurable (prefs.panelWidth) and draggable via the left edge.
+      const pw = prefs.panelWidth
+      const startResize = (e: React.PointerEvent): void => {
+        e.preventDefault(); e.stopPropagation()
+        const x0 = e.clientX, w0 = pw
+        const move = (ev: PointerEvent) => setPrefs({ panelWidth: Math.max(260, Math.min(760, Math.round(w0 + (x0 - ev.clientX)))) })
+        const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+        window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
+      }
+      const addPanel = React.createElement('div', { className: 'dsx-stats-addpanel' + (addOpen ? ' open' : ''), style: { top: 'var(--dsx-rail-top,0px)', width: `${pw}px` } },
+        React.createElement('span', { className: 'dsx-stats-addpanel-resize', 'aria-label': '调整宽度', onPointerDown: startResize }),
         React.createElement('div', { className: 'dsx-stats-addpanel-header' },
           React.createElement('div', { className: 'dsx-stats-addpanel-title' }, '添加组件'),
           React.createElement('button', { type: 'button', className: 'dsx-stats-addpanel-close', 'aria-label': '关闭', onClick: () => setAddOpen(false) }, closeIcon),

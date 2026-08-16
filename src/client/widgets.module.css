@@ -68,6 +68,32 @@
   opacity: 1;
 }
 
+.dsx-stats-card-corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  border: none;
+  background: var(--dsw-alias-state-business-primary);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--dsw-shadow-lv1);
+  transition: background 0.16s ease, width 0.16s ease, color 0.16s ease;
+}
+.dsx-stats-card-corner:hover {
+  background: var(--dsw-alias-state-business-primary);
+  filter: brightness(1.08);
+}
+.dsx-stats-card-corner.armed {
+  width: 56px;
+  border-radius: 15px;
+  font-weight: 600;
+}
+
 [data-conversation-scroll] {
   transition: padding-right 0.2s ease;
 }
@@ -212,7 +238,7 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
 .dsx-stats-addpanel {
   position: fixed;
   right: calc(var(--dsh-sidebar-width, 0px) + var(--dsx-rail-pad, 14px));
-  width: 300px;
+  width: auto;
   /* Bottom gap kept symmetric with the right gap for now (distance to the
      viewport right == distance to the viewport bottom). */
   bottom: calc(var(--dsh-sidebar-width, 0px) + var(--dsx-rail-pad, 14px));
@@ -232,6 +258,17 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   transform: translateX(0);
   transition-delay: 0s;
   visibility: visible;
+}
+.dsx-stats-addpanel-resize {
+  position: absolute;
+  left: -5px;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: ew-resize;
+  z-index: 3;
+  /* invisible hit area — no visible bar, matching the product's sidebar
+     drag affordance */
 }
 .dsx-stats-addpanel-header {
   flex: none;
@@ -288,6 +325,11 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
 
 .dsx-order-row:hover {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+.dsx-order-row.selected {
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--dsw-alias-state-business-primary) 45%, transparent);
+  cursor: pointer;
 }
 
 .dsx-drag-handle {
