@@ -95,12 +95,14 @@ export interface WidgetRich {
   wrap?: boolean
 }
 
-/** A top-right corner action button (two-tap confirm: circle → armed capsule). */
+/** A corner action button (two-tap confirm: circle → armed capsule). */
 export interface WidgetCorner {
   id: string
   label: string
   armedLabel: string
   armed: boolean
+  /** Which corner: top-right (default) or bottom-right. */
+  pos?: 'top' | 'bottom'
 }
 
 /** The card shape a widget render produces. */
@@ -109,6 +111,9 @@ export interface WidgetRenderOut {
   title2?: string
   /** Optional text shown at the right end of the title row (e.g. ~613K / 1M). */
   headRight?: string
+  /** Optional prominent figure rendered on its own row UNDER the title (e.g. the
+   *  context percent, with small figures beside it). Pushes content top-aligned. */
+  headAfter?: { big?: string; small?: string }
   value?: string
   sub?: string
   chart?: WidgetChart
@@ -207,8 +212,12 @@ function contextWaterRender(stats: WidgetStats): WidgetRenderOut | null {
   ]
   return {
     title: '上下文已用',
-    headRight: used && capacity ? `${used} / ${capacity}` : undefined,
-    value: `${Math.round(pct * 100)}%`,
+    // Percent + concrete figures sit on their own row below the title
+    // (user preference over the inline header).
+    headAfter: {
+      big: `${Math.round(pct * 100)}%`,
+      small: used && capacity ? `${used} / ${capacity}` : undefined,
+    },
     chart: total > 0 ? { kind: 'segments', segments, totalTokens: total } : undefined,
   }
 }
@@ -223,7 +232,7 @@ function contextRender(stats: WidgetStats): WidgetRenderOut | null {
     title: '一键压缩',
     value: pct == null ? undefined : `${pct}%`,
     sub: pct == null ? '等待上下文数据' : undefined,
-    corner: { id: 'contextCompact', label: '压缩', armedLabel: '确认', armed },
+    corner: { id: 'contextCompact', label: '压缩', armedLabel: '确认', armed, pos: 'bottom' },
   }
 }
 

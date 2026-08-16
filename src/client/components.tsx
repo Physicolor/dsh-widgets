@@ -218,7 +218,17 @@ export function CardBody({ out, side, onAction }: { out: WidgetRenderOut; side: 
       out.headRight ? React.createElement('span', { style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, out.headRight) : null,
     ),
   )
-  const head = [headFlex]
+  const headEls = [
+    headFlex,
+  ]
+  if (out.headAfter) {
+    // Prominent figure + small figures on their own row under the title.
+    headEls.push(React.createElement('div', { key: 'ha', className: 'dsx-stats-card-headafter', style: { display: 'flex', alignItems: 'baseline', gap: 6, marginTop: `${Math.round(2 * scale)}px` } },
+      out.headAfter.big != null ? React.createElement('span', { style: { fontSize: `${valuePx}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums' } }, out.headAfter.big) : null,
+      out.headAfter.small != null ? React.createElement('span', { style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, out.headAfter.small) : null,
+    ))
+  }
+  const head = headEls
   const body: React.ReactElement[] = []
   // value is shown inline in the header when headRight is present (official meter
   // header: `上下文已用 64% ~638K / 1M`); otherwise it goes to the body.
@@ -232,10 +242,13 @@ export function CardBody({ out, side, onAction }: { out: WidgetRenderOut; side: 
   const compressIcon = React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
     React.createElement('path', { d: 'M7.92136 0.349152C10.3744 0.349234 12.5564 1.5052 13.9557 3.29894L15.1281 2.12759C15.3303 1.92546 15.6767 2.06943 15.6767 2.35538V5.53923C15.6766 5.71626 15.5329 5.85976 15.3559 5.86002H12.171C11.8854 5.8597 11.7426 5.51465 11.9443 5.31249L12.9641 4.29056C11.8237 2.74305 9.98908 1.74106 7.92136 1.74097C4.46436 1.74097 1.66233 4.543 1.66233 8C1.66233 11.457 4.46436 14.259 7.92136 14.259C11.3782 14.2589 14.1804 11.4569 14.1804 8H15.5722C15.5722 12.2251 12.1465 15.6507 7.92136 15.6508C3.69614 15.6508 0.270508 12.2252 0.270508 8C0.270508 3.77478 3.69614 0.349152 7.92136 0.349152Z', fill: 'currentColor' }),
   )
+  const cornerPos = out.corner?.pos === 'bottom'
+    ? { bottom: `${Math.round(8 * scale)}px`, right: `${Math.round(8 * scale)}px` }
+    : { top: `${Math.round(8 * scale)}px`, right: `${Math.round(8 * scale)}px` }
   const corner = out.corner
     ? React.createElement('button', {
         key: 'corner', type: 'button', className: 'dsx-stats-card-corner' + (out.corner.armed ? ' armed' : ''),
-        style: { top: `${Math.round(8 * scale)}px`, right: `${Math.round(8 * scale)}px` },
+        style: cornerPos,
         title: out.corner.armed ? out.corner.armedLabel : out.corner.label,
         onClick: (e) => { e.stopPropagation(); if (onAction) onAction(out.corner!.id) },
       }, out.corner.armed ? out.corner.armedLabel : compressIcon)
@@ -246,7 +259,7 @@ export function CardBody({ out, side, onAction }: { out: WidgetRenderOut; side: 
   const vj = out.rich?.valign === 'bottom' ? 'flex-end' : out.rich?.valign === 'center' ? 'center' : undefined
   // Cards with a headRight figure (e.g. context %) sit top-aligned (data right
   // under the title) instead of being pushed to the bottom of the card.
-  const topAligned = vj || out.headRight
+  const topAligned = vj || out.headRight || out.headAfter
   const footStyle: React.CSSProperties = topAligned
     ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: vj ?? 'flex-start' }
     : { marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }
