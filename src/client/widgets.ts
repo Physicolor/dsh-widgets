@@ -251,19 +251,13 @@ function taskRender(stats: WidgetStats): WidgetRenderOut | null {
   }
 }
 
-/** Token usage heatmap card — a GitHub-style daily grid coloured by volume. */
+/** Token usage heatmap card — a GitHub-style daily grid coloured by volume.
+ *  No overlay figure: the bare grid sits bottom-aligned in the card. */
 function heatmapRender(stats: WidgetStats): WidgetRenderOut | null {
   const grid = stats.heatmapGrid
   if (!grid || !grid.length) return null
-  // Locate today's cell by date (it is not always the bottom-right corner once
-  // the current month can be left/center/right aligned in the window).
-  const now = new Date()
-  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  let todayVal = 0
-  for (const row of grid) for (const c of row) if (c.date === todayKey) { todayVal = c.value; break }
   return {
     title: 'Token 用量',
-    headRight: todayVal > 0 ? `${Math.round(todayVal / 100) / 10}K · 今日` : undefined,
     chart: { kind: 'heatmap', heatmap: grid },
   }
 }

@@ -119,6 +119,7 @@ function ChartBlock({ chart, side }: { chart: WidgetChart; side: number }): Reac
     const total = chart.totalTokens
     const fmt = (n: number): string => {
       const k = n / 1000
+      if (k >= 1000) return `~${(Math.round((k / 1000) * 10) / 10)}M`
       if (k >= 100) return `~${Math.round(k)}K`
       if (k >= 10) return `~${(Math.round(k * 10) / 10)}K`
       if (k >= 1) return `~${(Math.round(k * 10) / 10)}K`
