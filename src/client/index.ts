@@ -77,7 +77,7 @@ function buildHeatmapGrid(m: Record<string, number>, mode: 'rolling' | 'quarter'
  *  Heapmap colors normalize by max (8/15 deepest, then today, then 8/14). Values
  *  are stored in raw tokens so the legend's fmtTokens M conversion reads cleanly
  *  ("今日 1023M  2907M"). Real-time token usage keeps accumulating on today. */
-const SEED_DAY = 'harness-widgets.heatmap.seeded.2' // bump to force re-seed on upgrade
+const SEED_DAY = 'harness-widgets.heatmap.seeded.3' // bump to force re-seed on upgrade
 function seedHeatmapIfNeeded(): Record<string, number> {
   const m = loadHeatmap()
   try {
@@ -88,7 +88,10 @@ function seedHeatmapIfNeeded(): Record<string, number> {
       '2026-08-16': 1_023_264_000,
     }
     const next = { ...m }
-    for (const [k, v] of Object.entries(seeds)) { if (!(k in next)) next[k] = v }
+    // Force-overwrite these exact dates: on an upgrade re-seed any OLD keys from
+    // a previous seed version (small dollar values) must be replaced, otherwise
+    // `if (!(k in next))` keeps the stale tiny amounts and the total is wrong.
+    for (const [k, v] of Object.entries(seeds)) next[k] = v
     saveHeatmap(next)
     localStorage.setItem(SEED_DAY, '1')
     return next
@@ -101,6 +104,19 @@ function accumulateHeatmap(m: Record<string, number>, dayKey: string, delta: num
   const next = { ...m, [dayKey]: (m[dayKey] ?? 0) + delta }
   saveHeatmap(next)
   return next
+}
+
+// The cumulative session-token baseline already accounted for in the heatmap.
+// Persisting it across remounts prevents double-counting: on a fresh mount the
+// collector would otherwise re-add the ENTIRE session total to today (because
+// `lastTotalRef` restarts at 0 while the heatmap map survives in storage),
+// which inflates today's cell by the whole session every time the dock remounts.
+const HEATMAP_BASELINE = 'harness-widgets.heatmap.baseline'
+function loadHeatmapBaseline(): number {
+  try { const n = +(localStorage.getItem(HEATMAP_BASELINE) ?? ''); return Number.isFinite(n) && n > 0 ? n : 0 } catch { return 0 }
+}
+function saveHeatmapBaseline(n: number): void {
+  try { localStorage.setItem(HEATMAP_BASELINE, String(n)) } catch { /* storage unavailable */ }
 }
 
 
@@ -300,7 +316,10 @@ export function apply(ctx: ClientContext): void {
       // Heatmap self-accounting: track the last-observed token total so each
       // change's delta lands on "today", persisted to localStorage.
       const heatmapRef = React.useRef<Record<string, number>>(seedHeatmapIfNeeded())
-      const lastTotalRef = React.useRef<number>(0)
+      // Restore the already-accounted baseline so a remount re-adds only the NEW
+      // tokens, not the whole cumulative total (which previously inflated today's
+      // cell every time the dock remounted).
+      const lastTotalRef = React.useRef<number>(loadHeatmapBaseline())
       const [heatmap, setHeatmap] = React.useState<Record<string, number>>(heatmapRef.current)
       // Presence signal: this dock slot renders only while an active session is
       // mounted (the shell drops it on the Hero/no-session state), so mount/
@@ -342,11 +361,13 @@ export function apply(ctx: ClientContext): void {
         if (usage && inputTokens + outputTokens > lastTotalRef.current) {
           const delta = (inputTokens + outputTokens) - lastTotalRef.current
           lastTotalRef.current = inputTokens + outputTokens
+          saveHeatmapBaseline(lastTotalRef.current)
           const key = dateKey(new Date())
           heatmapRef.current = accumulateHeatmap(heatmapRef.current, key, delta)
           setHeatmap(heatmapRef.current)
         } else if (lastTotalRef.current === 0 && usage && inputTokens + outputTokens > 0) {
           lastTotalRef.current = inputTokens + outputTokens
+          saveHeatmapBaseline(lastTotalRef.current)
         }
         // Live in-flight elapsed, added to the settled whole-log figures.
         let llmMs = folded.llmMs
