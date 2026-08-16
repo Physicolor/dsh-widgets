@@ -4,7 +4,7 @@
 
 Harness Widgets 是一个 **client 为主、带少量 host 代理** 的 DSH bundle 插件。它在会话页右侧提供一套可定制的部件面板，实时展示当前对话的轮次/耗时/速率/token 用量，以及 OpenCode Go 订阅套餐用量。
 
-当前版本：**v0.1.1**（持续迭代中）
+当前版本：**v0.2.0**（持续迭代中）
 
 ---
 
@@ -17,7 +17,7 @@ Harness Widgets 是一个 **client 为主、带少量 host 代理** 的 DSH bund
 - 卡片可**拖拽调整大小**（100–220px），仅在有活跃会话时显示，无会话时自动隐藏；开关状态随 localStorage 持久化，刷新后保持展开；
 - 面板背景**透明**、隐藏滚动条（Chromium/Edge/Safari 走 `::-webkit-scrollbar`，Firefox 走 `scrollbar-width: none`），首张卡片顶对齐会话头、无上内边距。
 
-### 2. 实时会话统计（内置 7 个系统部件）
+### 2. 实时会话统计（内置统计部件）
 
 | 部件 | 内容 |
 | --- | --- |
@@ -31,17 +31,39 @@ Harness Widgets 是一个 **client 为主、带少量 host 代理** 的 DSH bund
 
 - 数据来自官方 `sessionStats` / `tokenUsage` 投影 + 会话 timeline 折叠，**进行中的回合每秒增量刷新**（1s tick），不是等回合结束才更新。
 
-### 3. OpenCode Go 套餐用量（3 个外部部件）
+### 3. 任务 / 上下文 / 热度图 / 寄语部件
+
+| 部件 | 内容 |
+| --- | --- |
+| 任务 | 当前任务的进行中 / 已完成 / 待办计数 |
+| 一键压缩 | 上下文占用百分比 + **右下角**品牌蓝圆钮，两次点击执行 compact（实心→确认胶囊） |
+| 上下文水位 | 系统提示词 / 工具 / 对话消息三段占比条（矩形贴边，严格复用官方 ContextMeter 配色）+ 分段明细 |
+| 用量热度图 | GitHub 式日历热力图，**自记账**每日 Token 用量（写入 localStorage）；可在预览选择窗口对齐方式 |
+| 今日寄语 | 随机鼓励语录，支持自定义文字 / 标题 / 对齐 / 换行 |
+
+- 热度图窗口对齐两种模式：**滚动**(今天永远最右，未来不可知) 与 **季度对齐**(按 1–3 / 4–6 / 7–9 / 10–12 月切窗)。
+
+### 4. OpenCode Go 套餐用量（3 个外部部件）
 
 - 滚动 / 每周 / 每月三个用量窗口 + 百分比 + 重置时间；
 - **host 半**注册同源路由 `/api/opencode-usage`，代理 `https://opencode.ai/zen/go/v1/usage`——浏览器不发跨域请求，API 密钥**不出浏览器**；
 - 密钥走 DSH credentials 缝（`OPENCODE_GO_API_KEY`，与 Models 设置页配置的 opencode-go provider 是同一把），每次请求时解析，不落盘。
 
-### 4. 设置 → 组件 页 + 通用设置行
+### 5. 悬浮放大（品牌蓝边缘高斯峰形）
+
+- **macOS Dock 式悬浮放大**：鼠标移入卡片沿边缘放大，邻近卡片按高斯峰形同步缩放，以**布局换位**（width/height/top 参与 layout）而非 transform 重叠，保持正方形与间距；
+- 放大倍数在设置中可调（`1.0–1.4`）。
+
+### 6. 设置 → 组件 页 + 卡片级配置
 
 - 部件**预览 / 安装与卸载**（系统部件 vs OpenCode Go 部件分组展示）；
-- **拖拽排序**、卡片大小、面板内边距；
+- **拖拽排序**、卡片大小、面板内边距、添加面板（可拖宽至 500px）、最多 10 个部件；
+- **卡片级配置**（选择组件后在预览下方编辑）：
+  - 今日寄语：自定义文字、是否显示标题、水平/垂直对齐、是否换行；
+  - 用量热度图：**窗口对齐方式**下拉选择（滚动 / 季度对齐）；
 - 全部偏好持久化在 localStorage，刷新保留。
+
+> 部件标题统一使用 **DeepSeek 品牌蓝**（`--dsw-alias-state-business-primary`），让右侧 rail 在暗色主题下更有层次、不那么单调。
 
 ## 🔧 工作原理
 
@@ -62,13 +84,43 @@ dsh plugin --profile web add link:D:/dsh-home/plugins/harness-widgets
 
 装完**硬刷新浏览器**（Ctrl+Shift+R），在会话页头部点击"组件"胶囊即可展开右侧部件栏；OpenCode Go 部件需先在 Models 设置中配置 `OPENCODE_GO_API_KEY`。
 
+## 📸 预览
+
+![部件栏总览](docs/screenshots/rail-overview.png)
+
+| 部件 | 预览 |
+| --- | --- |
+| 任务 | ![任务](docs/screenshots/widget-task.png) |
+| 一键压缩 | ![一键压缩](docs/screenshots/widget-compact.png) |
+| 上下文水位 | ![上下文水位](docs/screenshots/widget-context.png) |
+| 用量热度图 | ![用量热度图](docs/screenshots/widget-heatmap.png) |
+| 设置 → 组件配置 | ![组件配置](docs/screenshots/config-tab.png) |
+
+> 截图位于 `docs/screenshots/`；插件市场（dsh-market 1.8.0+）会从这里或 README 抽取展示图。
+
 ## 📝 变更日志
 
 > 每次发布都在此记录：本次做了什么，以及接下来打算做什么。
 
-### v0.1.1（当前）
+### v0.2.0（当前）
 
-**本次改动**
+**新增功能**
+
+- **macOS Dock 式悬浮放大**：卡片沿边缘放大、邻近高斯峰形同步缩放，用布局换位避免重叠；放大倍数可配置（`prefs.magnify`）。
+- **卡片级配置**：组件配置 tab 支持预览 + 表单编辑（今日寄语的文字/标题/对齐/换行；热度图的窗口对齐方式）。
+- **新增部件**：任务、一键压缩、上下文水位、用量热度图（自记账）、今日寄语——右侧 rail 从纯数字统计扩展为信息+工具型组合。
+- **品牌蓝标题**：所有部件标题改用 `--dsw-alias-state-business-primary`，暗色主题下更醒目。
+- **上下文水位卡片重构**：百分比与用量数据移到标题下方独立行（`headAfter`），分段条改为**矩形**贴边配色严格对齐官方 ContextMeter。
+- **一键压缩按钮移到右下角**（`WidgetCorner.pos`）。
+- **热度图窗口对齐**：预览里用**下拉选择器**在「滚动(今天最右) / 季度对齐」之间切换。
+
+**改动 / 修复**
+
+- `--dsw-alias-brand-primary` 在暗色主题下解析为近黑 `rgb(15,17,21)`，标题"看起来是黑的"——改用 `--dsw-alias-state-business-primary`（暗色 = DeepSeek 品牌蓝 `rgb(65,118,230)`）。
+- 热度图种子换算去掉了拍脑袋的 `$→token` 系数，改为按金额相对比例；`buildHeatmapGrid` 修正周偏移，日期正确落格。
+- Token 显示在 `≥1M` 时统一转 M（不再出现 `~1000K`）。
+
+### v0.1.1
 
 - 部件栏背景改为**透明**（原先为 `--dsw-alias-bg-base` 实色底，会在页面上显出一条白板边界）；
 - **隐藏右侧滚动条**（跨浏览器：Chromium/Edge/Safari 用 `::-webkit-scrollbar`，Firefox 用 `@supports` 门控的 `scrollbar-width: none`，旧 Edge 用 `-ms-overflow-style`），滚动功能保留；
