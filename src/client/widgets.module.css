@@ -111,6 +111,32 @@ body.dsx-stats-active [data-conversation-scroll] {
   padding-right: var(--dsx-rail-w, 220px) !important;
 }
 
+/* Trajectory/overlay tab (轨迹) alignment: the official product anchors the
+   composer seat with absolute positioning against the scroll body's PADDING
+   box (see ConversationRoot.module.css `.scrollBody:has([data-conversation-composer-overlay]) >
+   .composerSeat { right: var(--dsh-scrollbar-width) }`), so — unlike the Chat
+   seat, which is sticky inside the CONTENT box and automatically yields to the
+   padding above — it does NOT see [data-conversation-scroll]'s padding-right
+   and would span the full padding box, sliding the composer stack right over
+   the rail by the whole rail width. Give that overlay seat back the rail width
+   in its `right`, exactly the way it already gives back `--dsh-scrollbar-width`
+   for the Chat gutter gap. This fires only under BOTH conditions (rail active
+   AND a composer overlay present), so no-rail and Chat states stay untouched.
+   `body`+`:has` raise specificity past the official composed rule regardless of
+   sheet order; `left`/`bottom` are left to the official rule. */
+body.dsx-stats-active
+[data-conversation-scroll]:has([data-conversation-composer-overlay])
+> [data-composer-seat] {
+  right: calc(var(--dsh-scrollbar-width) + var(--dsx-rail-w, 220px));
+}
+
+/* Match the scroll body's padding-right transition (above) so the overlay seat
+   glides in lockstep instead of snapping while the rail opens/closes. */
+[data-conversation-scroll]:has([data-conversation-composer-overlay])
+> [data-composer-seat] {
+  transition: right 0.2s ease;
+}
+
 body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   visibility: hidden !important;
 }
