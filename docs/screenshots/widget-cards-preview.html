@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>harness-widgets — 前五个部件预览</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --card-bg: #191b20;
+    --card-border: #2a2d34;
+    --title-blue: rgb(92, 142, 230);   /* deepseek-ish blue for legibility on card */
+    --label-primary: #e6e7eb;
+    --label-tertiary: #9aa0ac;
+    --cancel: #8b929e;
+    --brand-blue: rgb(65, 118, 230);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 24px;
+    background: #101215;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .card {
+    width: 150px;
+    min-height: 150px;
+    border-radius: 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 6px 18px rgba(0,0,0,.25);
+  }
+  .card .title {
+    font-size: 13px;
+    line-height: 1.2;
+    color: var(--brand-blue);
+    font-weight: 500;
+  }
+  .card .value {
+    margin-top: auto;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--label-primary);
+  }
+  .card .value small {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--label-tertiary);
+    margin-left: 4px;
+  }
+  .card .sub {
+    margin-top: 2px;
+    font-size: 10px;
+    color: var(--cancel);
+  }
+</style>
+</head>
+<body>
+  <div class="card"><div class="title">轮次·步数</div><div class="value">11轮 <small>137步</small></div></div>
+  <div class="card"><div class="title">LLM 时长</div><div class="value">19m10s</div></div>
+  <div class="card"><div class="title">工具调用</div><div class="value">4m7s</div><div class="sub">· 进行中</div></div>
+  <div class="card"><div class="title">首 token 平均</div><div class="value">3.8s</div></div>
+  <div class="card"><div class="title">速率</div><div class="value">120 tok/s</div></div>
+</body>
+</html>

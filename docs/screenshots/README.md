@@ -1,31 +1,25 @@
 # Screenshots
 
-占位：把实拍截图放到本目录，并用 README 顶部的名称命名（缺图时预览区块会挂空图）。
+实拍/生成图目录，README 与插件市场展示使用。
 
-建议捕获清单（对应 README「📸 预览」）：
-
-| 文件名 | 内容 | 建议尺寸 |
+| 文件名 | 来源 | 内容 |
 | --- | --- | --- |
-| `rail-overview.png` | 右侧 rail 全貌（多卡片 + 品牌蓝标题） | 宽 ≥ 560px |
-| `widget-task.png` | 任务卡片 |
-| `widget-compact.png` | 一键压缩卡片（右下角品牌蓝圆钮） |
-| `widget-context.png` | 上下文水位（矩形分段条） |
-| `widget-heatmap.png` | 用量热度图 |
-| `config-tab.png` | 设置 → 组件 → 某部件配置（含下拉选择器） |
+| `rail-widgets.png` | 实拍 | 右侧部件栏小部件展示 |
+| `dock-magnify.png` | 实拍 | macOS Dock 式悬浮放大效果 |
+| `add-panel.png` | 实拍 | 添加组件面板 |
+| `widget-cards.png` | 生成 | 前五个部件卡片预览（由 `widget-cards-preview.html` 经 headless Edge 截图） |
+| `widget-cards-preview.html` | 生成 | 复刻前五个部件卡片的独立 HTML（可用 Edge headless 重截：`msedge --headless=new --screenshot=widget-cards.png --window-size=900,260 widget-cards-preview.html`） |
 
-截好图后：
+## 插件市场（dsh-market）PR（可选）
 
-1. 把 PNG 放回此目录；
-2. 插件市场 PR（可选）：到 `dsh-market` 仓库，向 `data/screenshots.json` 新增一条，**key 用本插件的 GitHub 入口 URL**：
+若要控制展示的截图与顺序，向 dsh-market 仓库 `data/screenshots.json` 新增一条，**key 用本插件 GitHub 入口 URL**，图片用 `raw.githubusercontent.com` 直链：
 
-   ```jsonc
-   "https://github.com/Physicolor/harness-widgets": [
-     "https://raw.githubusercontent.com/Physicolor/harness-widgets/main/docs/screenshots/rail-overview.png",
-     "https://raw.githubusercontent.com/Physicolor/harness-widgets/main/docs/screenshots/widget-heatmap.png",
-     "https://raw.githubusercontent.com/Physicolor/harness-widgets/main/docs/screenshots/config-tab.png"
-   ]
-   ```
+```jsonc
+"https://github.com/Physicolor/harness-widgets": [
+  "https://raw.githubusercontent.com/Physicolor/harness-widgets/main/docs/screenshots/rail-widgets.png",
+  "https://raw.githubusercontent.com/Physicolor/harness-widgets/main/docs/screenshots/dock-magnify.png",
+  "https://raw.githubusercontent.com/Physicolor/harness-widgets/main/docs/screenshots/add-panel.png"
+]
+```
 
-   放 1–8 张，都用 `raw.githubusercontent.com` 直链；顺序即展示顺序。
-
-> 不提交此 PR 也可以：市场会自动从 README 抽图。提交 PR 只是让你控制截图的选取与顺序。
+放 1–8 张；不提交 PR 时，市场也会自动从 README 抽图。

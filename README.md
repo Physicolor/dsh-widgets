@@ -86,17 +86,19 @@ dsh plugin --profile web add link:D:/dsh-home/plugins/harness-widgets
 
 ## 📸 预览
 
-![部件栏总览](docs/screenshots/rail-overview.png)
+### 部件栏总览
 
-| 部件 | 预览 |
-| --- | --- |
-| 任务 | ![任务](docs/screenshots/widget-task.png) |
-| 一键压缩 | ![一键压缩](docs/screenshots/widget-compact.png) |
-| 上下文水位 | ![上下文水位](docs/screenshots/widget-context.png) |
-| 用量热度图 | ![用量热度图](docs/screenshots/widget-heatmap.png) |
-| 设置 → 组件配置 | ![组件配置](docs/screenshots/config-tab.png) |
+![部件栏小部件展示](docs/screenshots/rail-widgets.png)
 
-> 截图位于 `docs/screenshots/`；插件市场（dsh-market 1.8.0+）会从这里或 README 抽取展示图。
+### macOS Dock 式悬浮放大
+
+![悬浮放大效果](docs/screenshots/dock-magnify.png)
+
+### 添加组件面板
+
+![添加组件](docs/screenshots/add-panel.png)
+
+> 截图位于 `docs/screenshots/`；插件市场（dsh-market 1.8.0+）会从这里或 README 抽取展示图。选取与顺序可到 dsh-market 的 `data/screenshots.json` 按条目 URL 自定义（见下方说明）。
 
 ## 📝 变更日志
 
