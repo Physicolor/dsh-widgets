@@ -68,16 +68,25 @@ function buildHeatmapGrid(m: Record<string, number>, mode: 'rolling' | 'quarter'
   return grid
 }
 
-/** Backfill the known past usage days (8/14 0.42, 8/15 2.82, 8/16 0.83 USD)
- *  with their relative amount values — the heatmap normalizes by max, so these
- *  keep their true proportions (8/15 deepest, then 8/16, then 8/14). Real-time
- *  token usage continues to accumulate on top from today onward. */
-const SEED_DAY = 'harness-widgets.heatmap.seeded'
+/** Backfill the three real usage days so they match a known 3-month total of
+ *  2907M tokens, split by the user-provided shares (they must sum to 1 because
+ *  only these three days have been used up to now):
+ *    8/16 (today) = 35.2% → 1,023,264,000
+ *    8/15          = 56.4% → 1,639,548,000
+ *    8/14          =  8.4% →   244,188,000
+ *  Heapmap colors normalize by max (8/15 deepest, then today, then 8/14). Values
+ *  are stored in raw tokens so the legend's fmtTokens M conversion reads cleanly
+ *  ("今日 1023M  2907M"). Real-time token usage keeps accumulating on today. */
+const SEED_DAY = 'harness-widgets.heatmap.seeded.2' // bump to force re-seed on upgrade
 function seedHeatmapIfNeeded(): Record<string, number> {
   const m = loadHeatmap()
   try {
     if (localStorage.getItem(SEED_DAY)) return m
-    const seeds: Record<string, number> = { '2026-08-14': 0.42, '2026-08-15': 2.82, '2026-08-16': 0.83 }
+    const seeds: Record<string, number> = {
+      '2026-08-14': 244_188_000,
+      '2026-08-15': 1_639_548_000,
+      '2026-08-16': 1_023_264_000,
+    }
     const next = { ...m }
     for (const [k, v] of Object.entries(seeds)) { if (!(k in next)) next[k] = v }
     saveHeatmap(next)
