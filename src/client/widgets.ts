@@ -114,6 +114,9 @@ export interface WidgetRenderOut {
   /** Optional prominent figure rendered on its own row UNDER the title (e.g. the
    *  context percent, with small figures beside it). Pushes content top-aligned. */
   headAfter?: { big?: string; small?: string }
+  /** Optional small caption directly under the title that does NOT affect the
+   *  vertical alignment (unlike headAfter) — for subtitles like "今日 12.2K". */
+  legend?: string
   value?: string
   sub?: string
   chart?: WidgetChart
@@ -252,12 +255,21 @@ function taskRender(stats: WidgetStats): WidgetRenderOut | null {
 }
 
 /** Token usage heatmap card — a GitHub-style daily grid coloured by volume.
- *  No overlay figure: the bare grid sits bottom-aligned in the card. */
+ *  A small "今日" token figure sits under the title; the grid stays
+ *  bottom-aligned in the card. */
 function heatmapRender(stats: WidgetStats): WidgetRenderOut | null {
   const grid = stats.heatmapGrid
   if (!grid || !grid.length) return null
+  // Locate today's cell by date (not necessarily the bottom-right corner once
+  // the current month can be left/center/right aligned in the window).
+  const now = new Date()
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  let todayVal = 0
+  for (const row of grid) for (const c of row) if (c.date === todayKey) { todayVal = c.value; break }
+  const legend = todayVal > 0 ? `今日 ${fmtTokens(todayVal)}` : undefined
   return {
     title: 'Token 用量',
+    legend,
     chart: { kind: 'heatmap', heatmap: grid },
   }
 }

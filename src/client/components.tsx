@@ -229,6 +229,11 @@ export function CardBody({ out, side, onAction }: { out: WidgetRenderOut; side: 
       out.headAfter.small != null ? React.createElement('span', { style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, out.headAfter.small) : null,
     ))
   }
+  if (out.legend) {
+    // Small caption right under the title; unlike headAfter it does not change
+    // the vertical alignment, so a bottom-anchored card (e.g. heatmap) keeps it.
+    headEls.push(React.createElement('div', { key: 'lg', className: 'dsx-stats-card-legend', style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', marginTop: `${Math.round(2 * scale)}px` } }, out.legend))
+  }
   const head = headEls
   const body: React.ReactElement[] = []
   // value is shown inline in the header when headRight is present (official meter
