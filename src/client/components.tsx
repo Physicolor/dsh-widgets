@@ -354,13 +354,17 @@ function ConfigFieldControl({ field, value, onChange }: { field: ConfigField; va
     )
   }
   if (field.type === 'mode') {
+    // Dropdown selector (not segmented buttons): a real, native <select> styled
+    // like the DSH "selector" picker, so the option list opens as a menu.
     const opts = field.options ?? [['a', 'A'], ['b', 'B']]
     const cur = (typeof value === 'string' && opts.some(([v]) => v === value)) ? value : (field.default as string ?? opts[0][0])
-    return React.createElement('div', { style: { display: 'flex', gap: 4, flexWrap: 'wrap' } },
-      opts.map(([o, label]) => {
-        const active = cur === o
-        return React.createElement('button', { key: o, type: 'button', className: 'dsx-btn' + (active ? ' dsx-btn-primary' : ''), onClick: () => onChange(o) }, label)
-      }),
+    return React.createElement('select', {
+      className: 'dsx-select',
+      value: cur,
+      title: field.label,
+      onChange: (e: React.ChangeEvent<HTMLSelectElement>) => onChange(e.target.value),
+    },
+      opts.map(([o, label]) => React.createElement('option', { key: o, value: o }, label)),
     )
   }
   return React.createElement(React.Fragment)
