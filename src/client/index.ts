@@ -106,17 +106,28 @@ function accumulateHeatmap(m: Record<string, number>, dayKey: string, delta: num
   return next
 }
 
-// The cumulative session-token baseline already accounted for in the heatmap.
-// Persisting it across remounts prevents double-counting: on a fresh mount the
-// collector would otherwise re-add the ENTIRE session total to today (because
-// `lastTotalRef` restarts at 0 while the heatmap map survives in storage),
-// which inflates today's cell by the whole session every time the dock remounts.
+// The cumulative session-token baseline already accounted for in the heatmap,
+// paired with a date key so it resets automatically on a new day. Without the
+// date, a huge yesterday-baseline (e.g. 3000M) persists and today's fresh
+// session (200M) never exceeds it → delta is always 0 → today's cell barely
+// grows. With the date, baseline resets to 0 each morning so every new session
+// starts accumulating correctly from scratch.
 const HEATMAP_BASELINE = 'harness-widgets.heatmap.baseline'
-function loadHeatmapBaseline(): number {
-  try { const n = +(localStorage.getItem(HEATMAP_BASELINE) ?? ''); return Number.isFinite(n) && n > 0 ? n : 0 } catch { return 0 }
+const HEATMAP_BASELINE_DATE = 'harness-widgets.heatmap.baseline-date'
+function loadHeatmapBaseline(): { total: number; date: string } {
+  try {
+    const date = localStorage.getItem(HEATMAP_BASELINE_DATE) ?? ''
+    const today = dateKey(new Date())
+    if (date !== today) return { total: 0, date: today } // new day → reset
+    const n = +(localStorage.getItem(HEATMAP_BASELINE) ?? '')
+    return { total: Number.isFinite(n) && n > 0 ? n : 0, date: today }
+  } catch { return { total: 0, date: dateKey(new Date()) } }
 }
 function saveHeatmapBaseline(n: number): void {
-  try { localStorage.setItem(HEATMAP_BASELINE, String(n)) } catch { /* storage unavailable */ }
+  try {
+    localStorage.setItem(HEATMAP_BASELINE, String(n))
+    localStorage.setItem(HEATMAP_BASELINE_DATE, dateKey(new Date()))
+  } catch { /* storage unavailable */ }
 }
 
 
@@ -318,8 +329,10 @@ export function apply(ctx: ClientContext): void {
       const heatmapRef = React.useRef<Record<string, number>>(seedHeatmapIfNeeded())
       // Restore the already-accounted baseline so a remount re-adds only the NEW
       // tokens, not the whole cumulative total (which previously inflated today's
-      // cell every time the dock remounted).
-      const lastTotalRef = React.useRef<number>(loadHeatmapBaseline())
+      // cell every time the dock remounted). The baseline resets to 0 on a new
+      // day so each day's accumulation starts fresh.
+      const baselineInit = loadHeatmapBaseline()
+      const lastTotalRef = React.useRef<number>(baselineInit.total)
       const [heatmap, setHeatmap] = React.useState<Record<string, number>>(heatmapRef.current)
       // Presence signal: this dock slot renders only while an active session is
       // mounted (the shell drops it on the Hero/no-session state), so mount/
@@ -358,6 +371,13 @@ export function apply(ctx: ClientContext): void {
         }
         // Accumulate the new token volume into today's heatmap cell (once per
         // observed increase), so the "token usage heatmap" grows over time.
+        // Reset baseline on day boundary so today starts fresh from 0.
+        const todayKey = dateKey(new Date())
+        const baselineDate = localStorage.getItem(HEATMAP_BASELINE_DATE) ?? ''
+        if (baselineDate !== todayKey) {
+          lastTotalRef.current = 0
+          saveHeatmapBaseline(0)
+        }
         if (usage && inputTokens + outputTokens > lastTotalRef.current) {
           const delta = (inputTokens + outputTokens) - lastTotalRef.current
           lastTotalRef.current = inputTokens + outputTokens
