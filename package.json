@@ -1,6 +1,6 @@
 {
   "name": "harness-widgets",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Right-hand widget rail for DeepSeek Harness Web UI: live session stats (turns, LLM/tool time, TTFT, speed, cache hit, tokens) plus OpenCode Go quota (rolling/weekly/monthly) proxied by a same-origin host route; an extensible widget registry as the base for more platform usage widgets, visuals, utility actions and external integrations. Widgets are installable, reorderable and resizable from Settings → Components.",
   "type": "module",
   "main": "lib/index.js",

@@ -68,16 +68,14 @@ function buildHeatmapGrid(m: Record<string, number>, mode: 'rolling' | 'quarter'
   return grid
 }
 
-/** Backfill the three real usage days so they match a known 3-month total of
- *  2907M tokens, split by the user-provided shares (they must sum to 1 because
- *  only these three days have been used up to now):
- *    8/16 (today) = 35.2% → 1,023,264,000
- *    8/15          = 56.4% → 1,639,548,000
- *    8/14          =  8.4% →   244,188,000
- *  Heapmap colors normalize by max (8/15 deepest, then today, then 8/14). Values
- *  are stored in raw tokens so the legend's fmtTokens M conversion reads cleanly
- *  ("今日 1023M  2907M"). Real-time token usage keeps accumulating on today. */
-const SEED_DAY = 'harness-widgets.heatmap.seeded.3' // bump to force re-seed on upgrade
+/** Backfill the three real usage days with their actual cumulative values:
+ *    8/14 =   244,188,000  (7.6% of total)
+ *    8/15 = 1,639,548,000  (51.2%)
+ *    8/16 = 1,319,264,000  (41.2%)
+ *  Total = 3,203,000,000 (3203M). Values stored in raw tokens so the legend
+ *  reads "今日 1319M  3203M". Colors normalize by max (8/15 deepest, then
+ *  8/16, then 8/14). Real-time usage keeps accumulating on today. */
+const SEED_DAY = 'harness-widgets.heatmap.seeded.4' // bump to force re-seed on upgrade
 function seedHeatmapIfNeeded(): Record<string, number> {
   const m = loadHeatmap()
   try {
@@ -85,12 +83,11 @@ function seedHeatmapIfNeeded(): Record<string, number> {
     const seeds: Record<string, number> = {
       '2026-08-14': 244_188_000,
       '2026-08-15': 1_639_548_000,
-      '2026-08-16': 1_023_264_000,
+      '2026-08-16': 1_319_264_000,
     }
     const next = { ...m }
     // Force-overwrite these exact dates: on an upgrade re-seed any OLD keys from
-    // a previous seed version (small dollar values) must be replaced, otherwise
-    // `if (!(k in next))` keeps the stale tiny amounts and the total is wrong.
+    // a previous seed version must be replaced to correct the values.
     for (const [k, v] of Object.entries(seeds)) next[k] = v
     saveHeatmap(next)
     localStorage.setItem(SEED_DAY, '1')

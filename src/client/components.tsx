@@ -399,11 +399,11 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
       const grid: Array<Array<{ value: number; date: string }>> = []
       const day = (r: number, c: number): Date => { const d = new Date(base); d.setDate(base.getDate() + c * 7 + r); return d }
       // Mirror the real seed so preview ≈ actual: the three used days carry their
-      // known absolute values (total 2907M), the rest stay small markers.
+      // known absolute values (total 3203M), the rest stay small markers.
       const realSeed: Record<string, number> = {
         '2026-08-14': 244_188_000,
         '2026-08-15': 1_639_548_000,
-        '2026-08-16': 1_023_264_000,
+        '2026-08-16': 1_319_264_000,
       }
       for (let r = 0; r < 7; r++) {
         const row: Array<{ value: number; date: string }> = []
