@@ -10,7 +10,7 @@
 import * as React from 'react'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import './widgets.module.css'
-import { ALL_IDS, DEFAULT_INSTALLED, WIDGETS, type UsageData } from './widgets'
+import { ALL_IDS, ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, instanceKey, parseInstanceKey, sizesOf, type UsageData, type WidgetSize } from './widgets'
 import { CardBody, WidgetsPage, type Prefs } from './components'
 
 const STORAGE_KEY = 'harness-widgets.state'
@@ -132,7 +132,7 @@ const DEFAULTS: Prefs = {
   panelPadding: 24,
   cardSide: 150,
   installed: DEFAULT_INSTALLED.slice(),
-  order: ALL_IDS.slice(),
+  order: ALL_INSTANCES.slice(),
   apiKey: '',
   railOpen: false,
   realTime: false,
@@ -140,6 +140,7 @@ const DEFAULTS: Prefs = {
   panelWidth: 500,
   cardConfigs: {},
   maxWidgets: 10,
+  columns: 2,
 }
 
 /** Required services: the slot registry (React is a platform module). */
@@ -148,19 +149,27 @@ export const inject = ['slots']
 function loadState(): Prefs {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw === null) return { ...DEFAULTS, installed: DEFAULT_INSTALLED.slice(), order: ALL_IDS.slice() }
+    if (raw === null) return { ...DEFAULTS, installed: DEFAULT_INSTALLED.slice(), order: ALL_INSTANCES.slice() }
     const p = JSON.parse(raw) as Partial<Prefs>
     const s = { ...DEFAULTS, ...p }
     if (!Number.isFinite(s.panelPadding) || s.panelPadding < 4 || s.panelPadding > 40) s.panelPadding = DEFAULTS.panelPadding
     if (!Number.isFinite(s.cardSide) || s.cardSide < 100 || s.cardSide > 220) s.cardSide = DEFAULTS.cardSide
-    if (!Array.isArray(s.installed)) s.installed = DEFAULT_INSTALLED.slice()
+    // Normalize one persisted entry to a valid instance key. Legacy bare widget
+    // ids (pre-2×4) migrate to their 2×2 instance; unknown entries are dropped.
+    const normalizeInstance = (key: string): string => {
+      const { widgetId, size } = parseInstanceKey(key)
+      const w = WIDGETS.find((x) => x.id === widgetId)
+      if (!w) return ''
+      return sizesOf(w).includes(size) ? instanceKey(widgetId, size) : ''
+    }
     // Respect the user's installed set exactly — do NOT force-append built-ins
     // back on every load (that kept overflowing the max-widgets cap after the
     // user uninstalled system widgets). Only the first-run path seeds defaults.
-    s.installed = s.installed.filter((id) => ALL_IDS.indexOf(id) !== -1)
-    if (!Array.isArray(s.order)) s.order = ALL_IDS.slice()
-    s.order = s.order.filter((id) => ALL_IDS.indexOf(id) !== -1)
-    for (const id of ALL_IDS) if (s.order.indexOf(id) === -1) s.order.push(id)
+    if (!Array.isArray(s.installed)) s.installed = []
+    s.installed = s.installed.map(normalizeInstance).filter((id): id is string => id !== '')
+    if (!Array.isArray(s.order)) s.order = []
+    s.order = s.order.map(normalizeInstance).filter((id): id is string => id !== '')
+    for (const key of ALL_INSTANCES) if (s.order.indexOf(key) === -1) s.order.push(key)
     if (typeof s.apiKey !== 'string') s.apiKey = ''
     if (typeof s.railOpen !== 'boolean') s.railOpen = DEFAULTS.railOpen
     if (typeof s.realTime !== 'boolean') s.realTime = DEFAULTS.realTime
@@ -168,9 +177,10 @@ function loadState(): Prefs {
     if (!Number.isFinite(s.panelWidth) || s.panelWidth < 260 || s.panelWidth > 760) s.panelWidth = DEFAULTS.panelWidth
     if (typeof s.cardConfigs !== 'object' || s.cardConfigs === null || Array.isArray(s.cardConfigs)) s.cardConfigs = {}
     if (!Number.isFinite(s.maxWidgets) || s.maxWidgets < 1 || s.maxWidgets > 20) s.maxWidgets = DEFAULTS.maxWidgets
+    if ([1, 2, 4].indexOf(s.columns as number) === -1) s.columns = DEFAULTS.columns
     return s
   } catch {
-    return { ...DEFAULTS, installed: DEFAULT_INSTALLED.slice(), order: ALL_IDS.slice() }
+    return { ...DEFAULTS, installed: DEFAULT_INSTALLED.slice(), order: ALL_INSTANCES.slice() }
   }
 }
 
@@ -459,33 +469,44 @@ export function apply(ctx: ClientContext): void {
       // Two magnification triggers, chosen by prefs.realTime:
       //  - discrete: focusIdx set on card mouseenter, ONE reflow per entry, the
       //    CSS top/width/height transition animates it (cheap, no per-frame work).
-      //  - realtime: focusY continuously driven by the pointer Y (rAF-throttled),
-      //    reflowing every animation frame for a fully跟手 wave (slightly heavier).
+      //  - realtime: focus driven by the pointer's 2D position (rAF-throttled),
+      //    reflowing every animation frame for a fully跟随手 wave. Both X and Y
+      //    are tracked so the peak follows the cursor in the plane, not just a row.
       const [focusIdx, setFocusIdx] = React.useState<number | null>(null)
       const [focusY, setFocusY] = React.useState<number | null>(null)
-      // Last pointer Y in rail-content coordinates (clientY - railTop - 2 +
-      // scrollTop), kept so a rail scroll (which moves cards but not the mouse)
-      // re-targets the peak correctly.
-      const lastClientYRef = React.useRef<number | null>(null)
+      const [focusX, setFocusX] = React.useState<number | null>(null)
+      // Last pointer position in rail-content coordinates, kept so a rail scroll
+      // (which moves cards but not the mouse) re-targets the peak correctly.
+      const lastClientXYRef = React.useRef<{ x: number; y: number } | null>(null)
       const contentYRef = React.useRef<number | null>(null)
-      const yRaf = React.useRef(0)
-      const moveRailFocusY = (clientY: number, el: HTMLDivElement): void => {
-        lastClientYRef.current = clientY
-        const contentY = clientY - el.getBoundingClientRect().top - 2 + el.scrollTop
-        if (yRaf.current) { contentYRef.current = contentY; return }
+      const contentXRef = React.useRef<number | null>(null)
+      const rafRef = React.useRef(0)
+      const railRectRef = React.useRef<DOMRect | null>(null)
+      const moveRailFocus = (clientX: number, clientY: number, el: HTMLDivElement): void => {
+        lastClientXYRef.current = { x: clientX, y: clientY }
+        const rect = el.getBoundingClientRect()
+        railRectRef.current = rect
+        const contentX = clientX - rect.left
+        const contentY = clientY - rect.top - 2 + el.scrollTop
+        contentXRef.current = contentX
         contentYRef.current = contentY
-        yRaf.current = requestAnimationFrame(() => { yRaf.current = 0; setFocusY(contentYRef.current) })
+        if (rafRef.current) return
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = 0
+          setFocusX(contentXRef.current)
+          setFocusY(contentYRef.current)
+        })
       }
       // Re-target the peak when the rail scrolls without the pointer moving.
       const railScrollSync = (el: HTMLDivElement): void => {
-        if (lastClientYRef.current === null || !prefs.realTime) return
-        moveRailFocusY(lastClientYRef.current, el)
+        if (lastClientXYRef.current === null || !prefs.realTime) return
+        moveRailFocus(lastClientXYRef.current.x, lastClientXYRef.current.y, el)
       }
       React.useEffect(() => {
-        return () => { if (yRaf.current) cancelAnimationFrame(yRaf.current) }
+        return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
       }, [])
       React.useEffect(() => {
-        if (!snap.open || !snap.hasSession) { setAddOpen(false); setFocusIdx(null); setFocusY(null) }
+        if (!snap.open || !snap.hasSession) { setAddOpen(false); setFocusIdx(null); setFocusY(null); setFocusX(null) }
       }, [snap.open, snap.hasSession])
       if (!snap.open || !snap.hasSession) return null
       const side = prefs.cardSide
@@ -499,16 +520,31 @@ export function apply(ctx: ClientContext): void {
       // (magnify-1)·side; use whatever exceeds the existing left padding, plus a
       // small buffer.
       const overshoot = Math.max(0, Math.ceil(side * (prefs.magnify - 1) - pad)) + 4
-      const railW = side + pad * 2 + overshoot
+      const columns = [1, 2, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
+      const multi = columns > 1
+      // Multi-column rail width is sized for the PEAK card (so a magnified row,
+      // which extends left from the right-anchored edge, never clips at the rail's
+      // left boundary). Single column keeps its original width.
+      const peakCard = Math.ceil(side * prefs.magnify)
+      const railW = (multi ? columns * peakCard + (columns + 1) * pad + overshoot : side + pad * 2 + overshoot)
       document.documentElement.style.setProperty('--dsx-rail-w', `${railW}px`)
       document.documentElement.style.setProperty('--dsx-rail-pad', `${pad}px`)
       document.documentElement.style.setProperty('--dsx-rail-overshoot', `${overshoot}px`)
       const base = snap.stats ?? { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, decodeMs: 0, decodeTokens: 0, usage: null }
-      const widgets = prefs.order
+      interface RailItem { key: string; size: WidgetSize; w: (typeof WIDGETS)[number]; out: NonNullable<ReturnType<(typeof WIDGETS)[number]['render']>>; baseW: number }
+      const items: RailItem[] = prefs.order
         .filter((id) => prefs.installed.indexOf(id) !== -1)
-      const items = widgets
-        .map((id) => { const w = WIDGETS.find((x) => x.id === id); return w ? { w, out: w.render({ ...base, usageData: snap.usageData, armedAction, ...(prefs.cardConfigs?.[id] ?? {}) } as Parameters<typeof w.render>[0]) } : null })
-        .filter((it): it is { w: (typeof WIDGETS)[number]; out: NonNullable<ReturnType<(typeof WIDGETS)[number]['render']>> } => it !== null && it.out != null)
+        .map((key) => {
+          const { widgetId, size } = parseInstanceKey(key)
+          const w = WIDGETS.find((x) => x.id === widgetId)
+          if (!w || sizesOf(w).indexOf(size) === -1) return null
+          const out = w.render({ ...base, usageData: snap.usageData, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
+          if (!out) return null
+          // 2×4 is exactly two 2×2 widths plus one inter-card gap.
+          const baseW = size === '2x4' ? 2 * side + pad : side
+          return { key, size, w, out, baseW }
+        })
+        .filter((it): it is RailItem => it !== null)
       // The rail is a fixed viewport panel anchored to the right edge. The
       // dsh-better-sidebar bundle occupies the same edge with its own
       // fixed right panel (z-index 50) and pushes the app shell via
@@ -539,53 +575,185 @@ export function apply(ctx: ClientContext): void {
       //     pinned to the rail right and the gap between cards is constant.
       const restCenter = (i: number): number => i * (side + pad) + side / 2
       const peakScale = prefs.magnify
-      // Discrete falling bell, scaled relative to the peak so the curve keeps
-      // its shape at any configured magnification. d0 = peak (hovered, hard
-      // max), d1/d2 fall off fast, d>=3 not magnified.
+      // Continuous falling bell, scaled relative to the peak so the curve keeps
+      // its shape at any configured magnification. d is measured in "grid steps"
+      // (X divided by column pitch, Y by row pitch), so the decay is naturally
+      // row/column-aware. It is CONTINUOUS (not rounded): a horizontal move of the
+      // peak within a row nudges the rows above/below by a fractional step, so
+      // they visibly respond instead of snapping to the same rounded bucket.
       const stepScale = (d: number): number => {
         const extra = peakScale - 1
-        const dd = Math.round(d)
-        if (dd <= 0) return peakScale
-        if (dd === 1) return 1 + extra * 0.55     // one away: clearly smaller
-        if (dd === 2) return 1 + extra * 0.25     // two away: just a touch
-        return 1                                  // three+ away: not magnified
+        if (d <= 0) return peakScale
+        const t = Math.max(0, 1 - d / 3)      // 0..1 over a ~3-step influence radius
+        if (t <= 0) return 1                  // three+ steps away: not magnified
+        return 1 + extra * Math.pow(t, 1.6)   // steep, peak-emphasising falloff
       }
       const active = prefs.realTime
-      const layoutCards: Array<{ s: number; top: number; w: number }> = []
+      // Row-band packing (P2, no gaps): every card is one grid-unit tall
+      // (2×2 and 2×4 share the same height). A 2×4 spans two cells in width, a
+      // 2×2 spans one. Cards pack left-to-right through the row's cell budget;
+      // when the current row cannot fit a card (e.g. a 2×4 with only one cell
+      // left), it moves to the next row, so a later 2×2 always back-fills the gap.
+      const spanOf = (i: number): number => (items[i].size === '2x4' ? 2 : 1)
+      const baseWOf = (i: number): number => items[i].baseW
+      const layoutCards: Array<{ s: number; top: number; right: number; w: number; h: number }> = []
+      const rowIndexOf: number[] = []
+      const colIndexOf: number[] = []
       {
         const n = items.length
-        const hasFocus = active ? focusY !== null : focusIdx !== null
-        // Determine the anchored (peak) card index.
+        // --- assign cards to rows (P2 packing, no gaps) ---
+        if (multi) {
+          // Greedy best-fit packing: each item lands in the EARLIEST row that has
+          // room for its span, opening a new row only when none fits. A 2×4 (span
+          // 2) that would leave a single-cell gap is therefore back-filled by a
+          // later 2×2, so no row ever shows a hole regardless of drag order.
+          const rowUsed: number[] = [0]
+          for (let i = 0; i < n; i++) {
+            const sp = spanOf(i)
+            let placed = -1
+            for (let r = 0; r < rowUsed.length; r++) {
+              if (rowUsed[r] + sp <= columns) { placed = r; break }
+            }
+            if (placed === -1) { placed = rowUsed.length; rowUsed.push(0) }
+            rowIndexOf[i] = placed
+            colIndexOf[i] = rowUsed[placed]
+            rowUsed[placed] += sp
+          }
+        } else {
+          for (let i = 0; i < n; i++) { rowIndexOf[i] = i; colIndexOf[i] = 0 }
+        }
+        const rows = (multi ? (n > 0 ? rowIndexOf[n - 1] + 1 : 0) : n)
+        // --- magnification distance field + scale ---
+        const hasFocus = active ? (multi ? (focusY !== null && focusX !== null) : focusY !== null) : focusIdx !== null
         let anchor = -1
         if (hasFocus) {
           if (active) {
-            // nearest card to the pointer's rest-center = the peak, always.
-            const mY = focusY as number
-            let best = 0, bestD = Number.POSITIVE_INFINITY
-            for (let i = 0; i < n; i++) {
-              const dd = Math.abs(mY - restCenter(i))
-              if (dd < bestD) { bestD = dd; best = i }
+            if (multi) {
+              // 2D nearest card to the pointer: the anchor is the card whose rest
+              // cell CENTRE (X and Y, both tracked) is closest to the cursor, so
+              // the peak follows in the plane and rows above/below respond too.
+              const cellW = side + pad
+              const rowH = side + pad
+              const cx2 = (i: number): number => (colIndexOf[i] + spanOf(i) / 2) * cellW
+              const cy2 = (i: number): number => rowIndexOf[i] * rowH + side / 2
+              const fx = focusX as number
+              const fy = focusY as number
+              let best = 0, bestD = Number.POSITIVE_INFINITY
+              for (let i = 0; i < n; i++) {
+                const dd = Math.hypot(cx2(i) - fx, cy2(i) - fy)
+                if (dd < bestD) { bestD = dd; best = i }
+              }
+              anchor = best
+            } else {
+              const mY = focusY as number
+              let best = 0, bestD = Number.POSITIVE_INFINITY
+              for (let i = 0; i < n; i++) {
+                const dd0 = Math.abs(mY - restCenter(i))
+                if (dd0 < bestD) { bestD = dd0; best = i }
+              }
+              anchor = best
             }
-            anchor = best
           } else {
             anchor = Math.max(0, Math.min(focusIdx as number, n - 1))
           }
         }
         const scaleArr = new Array(n).fill(1)
         if (anchor >= 0) {
-          for (let i = 0; i < n; i++) scaleArr[i] = stepScale(Math.abs(i - anchor))
+          if (multi) {
+            // 2D distance between rest cell CENTERS. X uses each card's cell
+            // centre (its left cell for a 2×4), Y uses its row centre.
+            const cellW = side + pad
+            const rowH = side + pad
+            const cx = (i: number): number => (colIndexOf[i] + spanOf(i) / 2) * cellW
+            const cy = (i: number): number => rowIndexOf[i] * rowH + side / 2
+            const axc = cx(anchor)
+            const ayc = cy(anchor)
+            for (let i = 0; i < n; i++) {
+              const steps = Math.hypot(cx(i) - axc, cy(i) - ayc) / (side + pad)
+              scaleArr[i] = stepScale(steps)
+            }
+          } else {
+            for (let i = 0; i < n; i++) scaleArr[i] = stepScale(Math.abs(i - anchor))
+          }
         }
+        // --- build actual reflow (right-edge anchored) ---
         if (n > 0) {
-          // Layout make-room: each card's height = side*scale participates in the
-          // column, so neighbours are pushed apart by exactly `pad` plus the
-          // scaled height — spacing stays constant, no overlap.
-          const hgt = scaleArr.map((s) => side * s)
-          let acc = 2
-          for (let i = 0; i < n; i++) { layoutCards.push({ s: scaleArr[i], top: acc, w: hgt[i] }); acc += hgt[i] + pad }
+          if (multi) {
+            // Each row: right-anchored, right-to-left. Cards at their scaled
+            // width; a 2×4 is wider and pushes neighbours further left. Row top
+            // accumulates by the tallest scaled height in the row (+ pad), so a
+            // magnified row pushes rows below it down. Spacing stays exactly pad.
+            const place: Array<{ s: number; top: number; right: number; w: number; h: number }> = new Array(n)
+            const rowTopAcc: number[] = new Array(rows).fill(0)
+            const rowHAcc: number[] = new Array(rows).fill(0)
+            // Every card is one grid-unit tall (2×2 and 2×4 share the same height =
+            // side × scale); only the width differs (2×4 is two units plus the gap).
+            for (let i = 0; i < n; i++) { const r = rowIndexOf[i]; const h = side * scaleArr[i]; if (h > rowHAcc[r]) rowHAcc[r] = h }
+            {
+              let acc = 2
+              for (let r = 0; r < rows; r++) { rowTopAcc[r] = acc; acc += rowHAcc[r] + pad }
+            }
+            // Within each row, place right-to-left: rightmost (highest cell) card
+            // at right:0, each next card pushed left by (prev width + pad).
+            for (let r = rows - 1; r >= 0; r--) {
+              // build list of indices in this row, sort by cell DESC (right first)
+              const inRow: number[] = []
+              for (let i = 0; i < n; i++) if (rowIndexOf[i] === r) inRow.push(i)
+              inRow.sort((a, b) => colIndexOf[b] - colIndexOf[a])
+              let colRight = 0
+              for (const i of inRow) {
+                const w = baseWOf(i) * scaleArr[i]
+                place[i] = { s: scaleArr[i], top: rowTopAcc[r], right: colRight, w, h: side * scaleArr[i] }
+                colRight += w + pad
+              }
+            }
+            for (let i = 0; i < n; i++) layoutCards.push(place[i])
+          } else {
+            // Single column, right-anchored (2×4 collapses to 2×2 width here since
+            // a single column has no room for a two-cell-wide card).
+            const hgt = scaleArr.map((s, i) => side * s)
+            let acc = 2
+            for (let i = 0; i < n; i++) { layoutCards.push({ s: scaleArr[i], top: acc, right: 0, w: hgt[i], h: hgt[i] }); acc += hgt[i] + pad }
+          }
         }
       }
-      // deck total height (base slots + room for the peak card's growth).
-      const stackHeight = items.length > 0 ? 2 + items.length * (side + pad) + (peakScale - 1) * side : 0
+      // Deck height is the LIVE bottom of the reflow (not a fixed peak): it grows
+      // while cards magnify and shrinks back when they settle, so the add button
+      // below the deck returns to its rest position instead of staying pushed far
+      // down.
+      const deckBottom = layoutCards.reduce((m, c) => Math.max(m, c.top + c.h), 2)
+      // Add button placement:
+      //  - multi + odd count: the last row is one short, so park the add button in
+      //    that empty cell. Right-anchored rows leave the gap on the LEFT of the
+      //    sole card, so the button sits just left of it on the same row.
+      //  - otherwise: sit the add button at the deck's bottom, right-aligned.
+      const nItems = items.length
+      let addTop: number
+      let addRight: number
+      if (multi && nItems > 0 && layoutCards.length > 0) {
+        // Row-band packing may leave a gap in the LAST row (e.g. an odd 2×2
+        // count, or a 2×4 creating a leftover cell). If a 2×2 add button fits in
+        // that leftover cell, park it there (right-anchored: its right edge sits
+        // just left of the row's already-placed cards); otherwise sit it below
+        // the deck, right-aligned.
+        const lastRow = rowIndexOf[nItems - 1]
+        const lastRowUsedCells = colIndexOf[nItems - 1] + spanOf(nItems - 1)
+        if (lastRowUsedCells < columns) {
+          const lastCard = layoutCards[nItems - 1]
+          addTop = lastCard.top
+          addRight = lastCard.right + lastCard.w + pad
+        } else {
+          addTop = (nItems > 0 ? deckBottom : 2) + pad
+          addRight = 0
+        }
+      } else {
+        addTop = (nItems > 0 ? deckBottom : 2) + pad
+        addRight = 0
+      }
+      // Deck height covers the live reflow bottom AND the add button (when it
+      // hangs below the deck), so neither ever clips or pushes unexpectedly.
+      const addBottom = addTop + side
+      const stackHeight = (nItems > 0 ? Math.max(deckBottom, addBottom) : addBottom) + pad
       const railChildren: React.ReactNode[] = [
         // Relative-positioned layer that owns the cards' absolute layout.
         React.createElement('div', { key: '__deck', style: { position: 'relative', height: `${stackHeight}px` } },
@@ -596,25 +764,28 @@ export function apply(ctx: ClientContext): void {
             // spacing stays constant; right edge stays pinned via right:0. No
             // transform — this is why the right edge never jitters. Realtime uses
             // a near-instant transition, discrete a smooth one.
-            const transition = active ? 'top 0.04s linear, width 0.04s linear, height 0.04s linear' : 'top 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out)'
-            return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: { position: 'absolute', top: `${c.top.toFixed(2)}px`, right: 0, width: `${c.w.toFixed(2)}px`, height: `${c.w.toFixed(2)}px`, transition, zIndex: Math.round((c.s - 1) * 100) }, onMouseEnter: () => setFocusIdx(idx) },
-              React.createElement(CardBody, { out: it.out, side: c.w, onAction: handleAction }),
+            const transition = active ? 'top 0.04s linear, right 0.04s linear, width 0.04s linear, height 0.04s linear' : 'top 0.2s var(--ds-ease-in-out), right 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out)'
+            const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, zIndex: Math.round((c.s - 1) * 100) }
+            return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle, onMouseEnter: () => setFocusIdx(idx) },
+              React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: handleAction }),
               React.createElement('span', { className: 'dsx-stats-resize', 'aria-label': '调整大小', onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = side; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
             )
           }),
-        ),
-        // Bottom add button: same rounded-rect geometry as a card, + icon + "添加".
-        React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', onClick: () => setAddOpen((v) => !v), style: { marginTop: `${pad}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px` } },
-          React.createElement('span', { className: 'dsx-stats-add-icon' },
-            React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
+          // Bottom add button, parked inside the deck so it shares the grid
+          // layout: fills the empty last-row cell on odd counts, or sits
+          // right-aligned below the rows on even counts / single column.
+          React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', onClick: () => setAddOpen((v) => !v), style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px` } },
+            React.createElement('span', { className: 'dsx-stats-add-icon' },
+              React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
+            ),
+            React.createElement('span', { className: 'dsx-stats-add-label' }, '添加'),
           ),
-          React.createElement('span', { className: 'dsx-stats-add-label' }, '添加'),
         ),
       ]
       const rail = React.createElement('div', {
         className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `2px ${pad}px ${pad}px ${pad + overshoot}px`, background: 'transparent', pointerEvents: 'auto' },
-        onMouseLeave: () => { setFocusIdx(null); setFocusY(null) },
-        onMouseMove: prefs.realTime ? (e: React.MouseEvent<HTMLDivElement>) => moveRailFocusY(e.clientY, e.currentTarget) : undefined,
+        onMouseLeave: () => { setFocusIdx(null); setFocusY(null); setFocusX(null) },
+        onMouseMove: prefs.realTime ? (e: React.MouseEvent<HTMLDivElement>) => moveRailFocus(e.clientX, e.clientY, e.currentTarget) : undefined,
         onScroll: prefs.realTime ? (e: React.UIEvent<HTMLDivElement>) => railScrollSync(e.currentTarget) : undefined,
       }, railChildren)
       // Temporary right-side add panel: reuses the settings 组件市场 + 拖动排序

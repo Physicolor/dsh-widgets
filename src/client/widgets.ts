@@ -105,6 +105,26 @@ export interface WidgetCorner {
   pos?: 'top' | 'bottom'
 }
 
+/** Supported card sizes. All cards share one grid-unit height; 2×4 is twice as
+ *  wide as 2×2 (2 grid-unit rows tall, 1 wide → the render only differs in
+ *  placement/length, never in height). */
+export type WidgetSize = '2x2' | '2x4'
+
+/** Instance key = `${widgetId}@${size}` (e.g. `context-water@2x4`). Even the same
+ *  widget at two sizes is two independent, co-installable instances. */
+export function instanceKey(widgetId: string, size: WidgetSize): string {
+  return `${widgetId}@${size}`
+}
+
+/** Parse an instance key back into its widget id and size. Unknown sizes fall
+ *  back to '2x2' so legacy persisted ids (which are bare widget ids) still work. */
+export function parseInstanceKey(key: string): { widgetId: string; size: WidgetSize } {
+  const at = key.lastIndexOf('@')
+  if (at <= 0) return { widgetId: key, size: '2x2' }
+  const size = key.slice(at + 1)
+  return size === '2x4' ? { widgetId: key.slice(0, at), size: '2x4' } : { widgetId: key.slice(0, at), size: '2x2' }
+}
+
 /** The card shape a widget render produces. */
 export interface WidgetRenderOut {
   title: string
@@ -144,7 +164,9 @@ export interface Widget {
   builtin: boolean
   group?: string
   badgeLabel?: string
-  render: (stats: WidgetStats) => WidgetRenderOut | null
+  /** Sizes this widget supports. Defaults to ['2x2'] when omitted. */
+  sizes?: WidgetSize[]
+  render: (stats: WidgetStats, meta?: { size?: WidgetSize }) => WidgetRenderOut | null
   /** Optional per-card customization fields (shown in 组件配置 when chosen). */
   configSchema?: ConfigField[]
 }
@@ -194,7 +216,7 @@ function usageBarsRender(stats: WidgetStats): WidgetRenderOut | null {
 /** Context water level card — official JObwrW template: title「上下文已用」with
  *  a right-hand figures (~X / window), the percentage under it, and a
  *  system/tools/messages segmented bar + per-segment rows. Purely informational. */
-function contextWaterRender(stats: WidgetStats): WidgetRenderOut | null {
+function contextWaterRender(stats: WidgetStats, meta?: { size?: WidgetSize }): WidgetRenderOut | null {
   const pct = stats.contextPercent
   const brk = stats.contextBreakdown
   const win = stats.contextWindow
@@ -215,6 +237,17 @@ function contextWaterRender(stats: WidgetStats): WidgetRenderOut | null {
     { label: '工具', tokens: tools, tone: 'success' as const },
     { label: '对话消息', tokens: msg, tone: 'primary' as const },
   ]
+  if (meta?.size === '2x4') {
+    // 2×4 variant: the percent + concrete figures move up into the top-right
+    // header row (value + headRight), and the segmented bar stretches across the
+    // full extended width below. Everything else matches the 2×2 version.
+    return {
+      title: '上下文已用',
+      value: `${Math.round(pct * 100)}%`,
+      headRight: used && capacity ? `${used} / ${capacity}` : undefined,
+      chart: total > 0 ? { kind: 'segments', segments, totalTokens: total } : undefined,
+    }
+  }
   return {
     title: '上下文已用',
     // Percent + concrete figures sit on their own row below the title
@@ -305,7 +338,7 @@ export const WIDGETS: Widget[] = [
   { id: 'cache', name: '缓存命中', desc: '输入缓存的命中比例', builtin: true, render: (s) => (s.usage && s.usage.inputTokens > 0 && s.usage.cacheReadTokens > 0 ? { title: '缓存命中', value: `${Math.round((s.usage.cacheReadTokens / s.usage.inputTokens) * 100)}%` } : null) },
   { id: 'tokens', name: 'Tokens', desc: '输入与输出 token 计数', builtin: true, render: (s) => (s.usage && s.usage.inputTokens > 0 ? { title: 'Tokens', value: `${fmtTokens(s.usage.inputTokens)} ${fmtTokens(s.usage.outputTokens || 0)}` } : null) },
   { id: 'context', group: 'context', name: '一键压缩', desc: '上下文占用百分比，右上按钮两次点击执行压缩', builtin: true, render: contextRender },
-  { id: 'context-water', group: 'context', name: '上下文水位', desc: '上下文系统/工具/消息占比分段条', builtin: true, render: contextWaterRender },
+  { id: 'context-water', group: 'context', name: '上下文水位', desc: '上下文系统/工具/消息占比分段条', builtin: true, sizes: ['2x2', '2x4'], render: contextWaterRender },
   { id: 'task', group: 'task', name: '任务', desc: '当前任务的进行中/已完成/待办计数', builtin: true, render: taskRender },
   { id: 'heatmap', group: 'data', name: '用量热度图', desc: '最近 3 个月每日 Token 用量热度图（自记账）；可在预览选择窗口对齐方式', builtin: true, render: heatmapRender, configSchema: [
     { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
@@ -326,8 +359,11 @@ export const WIDGETS: Widget[] = [
 /** All widget ids. */
 export const ALL_IDS = WIDGETS.map((w) => w.id)
 
-/** The default installed set (built-in widgets). */
-export const DEFAULT_INSTALLED = WIDGETS.filter((w) => w.builtin).map((w) => w.id)
+/** Every valid instance key (each widget at each of its supported sizes). */
+export const ALL_INSTANCES: string[] = WIDGETS.flatMap((w) => sizesOf(w).map((s) => instanceKey(w.id, s)))
+
+/** The default installed set: every built-in widget at its 2×2 size. */
+export const DEFAULT_INSTALLED: string[] = WIDGETS.filter((w) => w.builtin).map((w) => instanceKey(w.id, '2x2'))
 
 /** Badge text for a widget. */
 export function badgeOf(w: Widget): string {
@@ -337,4 +373,9 @@ export function badgeOf(w: Widget): string {
 /** The group key for a widget (its own id when it is not grouped). */
 export function groupOf(w: Widget): string {
   return w.group ?? w.id
+}
+
+/** The sizes a widget supports, defaulting to 2×2 only. */
+export function sizesOf(w: Widget): WidgetSize[] {
+  return Array.isArray(w.sizes) && w.sizes.length > 0 ? w.sizes.slice() : ['2x2']
 }

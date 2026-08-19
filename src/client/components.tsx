@@ -8,8 +8,8 @@
 
 import * as React from 'react'
 import {
-  WIDGETS, badgeOf, groupOf,
-  type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats,
+  WIDGETS, badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf,
+  type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize,
 } from './widgets'
 
 /** The base card side all scales derive from. */
@@ -63,6 +63,8 @@ export interface Prefs {
   cardConfigs: Record<string, Record<string, unknown>>
   /** Maximum number of installed widgets shown in the rail. */
   maxWidgets: number
+  /** Number of card columns in the rail (1 / 2 / 4). Default 2. */
+  columns: number
 }
 
 /** The controller handed to every component. */
@@ -206,8 +208,9 @@ function RichBlock({ rich, scale }: { rich: WidgetRich; scale: number }): React.
   return React.createElement(React.Fragment)
 }
 
-export function CardBody({ out, side, onAction }: { out: WidgetRenderOut; side: number; onAction?: (id: string) => void }): React.ReactElement {
-  const scale = side / BASE_SIDE
+export function CardBody({ out, unit, width, onAction }: { out: WidgetRenderOut; unit: number; width?: number; onAction?: (id: string) => void }): React.ReactElement {
+  const scale = unit / BASE_SIDE
+  const boxW = width ?? unit
   const titlePx = Math.round(13 * scale)
   const valuePx = Math.round(20 * scale)
   const radius = Math.round(16 * scale)
@@ -240,7 +243,7 @@ export function CardBody({ out, side, onAction }: { out: WidgetRenderOut; side: 
   // header: `上下文已用 64% ~638K / 1M`); otherwise it goes to the body.
   if (out.value != null && !out.headRight) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value', style: { fontSize: `${valuePx}px` } }, out.value))
   if (out.sub) body.push(React.createElement('div', { key: 's', className: 'dsx-stats-card-sub', style: { fontSize: `${Math.round(10 * scale)}px` } }, out.sub))
-  if (out.chart) { const c = ChartBlock({ chart: out.chart, side }); if (c) body.push(React.createElement('div', { key: 'c' }, c)) }
+  if (out.chart) { const c = ChartBlock({ chart: out.chart, side: unit }); if (c) body.push(React.createElement('div', { key: 'c' }, c)) }
   if (out.rich) body.push(React.createElement('div', { key: 'r' }, RichBlock({ rich: out.rich, scale })))
   // Bottom-left value sits in the normal foot; the corner button is absolutely
   // positioned top-right: a brand-blue filled round button with the official
@@ -269,7 +272,7 @@ export function CardBody({ out, side, onAction }: { out: WidgetRenderOut; side: 
   const footStyle: React.CSSProperties = topAligned
     ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: vj ?? 'flex-start' }
     : { marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }
-  return React.createElement('div', { className: 'dsx-stats-card', style: { position: 'relative', width: `${side}px`, minHeight: `${side}px`, borderRadius: `${radius}px`, padding: `${innerPad}px` } },
+  return React.createElement('div', { className: 'dsx-stats-card', style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, borderRadius: `${radius}px`, padding: `${innerPad}px` } },
     corner,
     head,
     React.createElement('div', { key: 'foot', style: footStyle }, body),
@@ -279,20 +282,24 @@ export function CardBody({ out, side, onAction }: { out: WidgetRenderOut; side: 
 
 // ---- Order list (config tab) ----
 
-function OrderList({ items, onMove, onRestore, onRemove, onSelect, selected }: {
+function OrderList({ items, onMove, onRestore, onRemove, onSelect, onResize, selected }: {
   items: string[]
   onMove: (next: string[]) => void
   onRestore?: (id: string) => void
   onRemove?: (id: string) => void
   onSelect?: (id: string) => void
+  /** Switch an installed instance's size (e.g. 2×2 ↔ 2×4). */
+  onResize?: (id: string, nextSize: WidgetSize) => void
   selected?: string
 }): React.ReactElement {
   const dragIdx = React.useRef<number | null>(null)
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 2 } },
     items.map((id, i) => {
-      const w = WIDGETS.find((x) => x.id === id)
+      const { widgetId, size } = parseInstanceKey(id)
+      const w = WIDGETS.find((x) => x.id === widgetId)
       if (!w) return null
       const isSel = selected === id
+      const sz = sizesOf(w)
       return React.createElement('div', {
         key: id, className: 'dsx-order-row' + (isSel ? ' selected' : ''), draggable: true,
         onDragStart: (e: React.DragEvent) => { dragIdx.current = i; e.dataTransfer.effectAllowed = 'move' },
@@ -312,7 +319,19 @@ function OrderList({ items, onMove, onRestore, onRemove, onSelect, selected }: {
       },
         React.createElement('span', { className: 'dsx-drag-handle' }, React.createElement(GripIcon)),
         React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, w.name),
+        React.createElement('span', { style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', flex: 'none' } }, size === '2x4' ? '2×4' : '2×2'),
         React.createElement('span', { className: 'dsx-badge' }, badgeOf(w)),
+        onResize && sz.length > 1
+          ? React.createElement('select', {
+              className: 'dsx-select', style: { fontSize: 11, width: 'auto' },
+              value: size,
+              title: '切换尺寸',
+              onClick: (e: React.MouseEvent) => e.stopPropagation(),
+              onChange: (e: React.ChangeEvent<HTMLSelectElement>) => onResize(id, e.target.value as WidgetSize),
+            },
+              sz.map((s) => React.createElement('option', { key: s, value: s }, s === '2x4' ? '2×4' : '2×2')),
+            )
+          : null,
         onRemove ? React.createElement('button', { type: 'button', className: 'dsx-trash', 'aria-label': '卸载', onClick: () => { if (onSelect && selected === id) onSelect('') ; onRemove(id) } }, React.createElement(TrashIcon)) : null,
         onRestore ? React.createElement('button', { type: 'button', className: 'dsx-restore', onClick: () => onRestore(id) }, '恢复') : null,
       )
@@ -373,6 +392,9 @@ function ConfigFieldControl({ field, value, onChange }: { field: ConfigField; va
 function ConfigTab({ controller }: { controller: WidgetsController }): React.ReactElement {
   const { prefs, setPrefs } = controller
   const [selected, setSelected] = React.useState<string>('')
+  // Local preview size (2×2 ↔ 2×4) — lets you eyeball a widget at a different
+  // size in the preview without changing the installed instance.
+  const [previewSize, setPreviewSize] = React.useState<WidgetSize>('2x2')
   const installed = prefs.order.filter((id) => prefs.installed.indexOf(id) !== -1)
   const removed = prefs.order.filter((id) => prefs.installed.indexOf(id) === -1)
   const atLimit = installed.length >= prefs.maxWidgets
@@ -380,8 +402,12 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
     if (atLimit) return
     setPrefs({ installed: prefs.installed.concat(id), order: prefs.order.filter((x) => x !== id).concat(id) })
   }
-  // Preview + config for the selected widget.
-  const selWidget = selected ? WIDGETS.find((x) => x.id === selected) : undefined
+  // Preview + config for the selected widget (an instance key: widget@size).
+  const selKey = selected ? parseInstanceKey(selected) : null
+  const selWidget = selKey ? WIDGETS.find((x) => x.id === selKey.widgetId) : undefined
+  // Preview renders at the locally selected size when the widget supports it,
+  // else falls back to the installed instance's size.
+  const selSize = (selWidget && sizesOf(selWidget).includes(previewSize)) ? previewSize : (selKey?.size ?? '2x2')
   const selConfig = selWidget ? (prefs.cardConfigs[selected] ?? {}) : null
   const previewOut = (): WidgetRenderOut | null => {
     if (!selWidget || !selConfig) return null
@@ -418,7 +444,7 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
       }
       stats = { ...stats, heatmapGrid: grid } as unknown as Parameters<typeof selWidget.render>[0]
     }
-    return selWidget.render(stats)
+    return selWidget.render(stats, { size: selSize })
   }
   const setConfig = (field: ConfigField, value: unknown): void => {
     const next = { ...(prefs.cardConfigs[selected] ?? {}) }
@@ -428,15 +454,56 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
     else next[field.key] = value
     setPrefs({ cardConfigs: { ...prefs.cardConfigs, [selected]: next } })
   }
+  // Switch one installed instance's size (2×2 ↔ 2×4): rewrite the instance key in
+  // both `order` (position) and `installed` (active set), carry the widget's
+  // per-instance config across to the new size, and DEDUPE so the same widget at
+  // the same size never appears twice (a resize to a size that already exists
+  // merges instead of duplicating).
+  const resize = (id: string, nextSize: WidgetSize): void => {
+    const { widgetId, size } = parseInstanceKey(id)
+    if (size === nextSize) return
+    const nextKey = instanceKey(widgetId, nextSize)
+    const mapKey = (k: string): string => (k === id ? nextKey : k)
+    // Rewrite id → nextKey, then drop every OTHER occurrence of nextKey (there
+    // must be exactly one instance of this widget at this size).
+    const dedupe = (arr: string[]): string[] => {
+      let kept = false
+      return arr.map(mapKey).filter((k) => {
+        if (k !== nextKey) return true
+        if (kept) return false
+        kept = true
+        return true
+      })
+    }
+    const cfg = { ...prefs.cardConfigs }
+    if (!(nextKey in cfg) && id in cfg) cfg[nextKey] = cfg[id]
+    setPrefs({
+      order: dedupe(prefs.order),
+      installed: dedupe(prefs.installed),
+      cardConfigs: cfg,
+    })
+    if (selected === id) setSelected(nextKey)
+  }
   const out = previewOut()
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } },
     React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', marginBottom: 4 } }, `已安装 ${installed.length}/${prefs.maxWidgets}（点击组件可预览与配置）`),
-    React.createElement(OrderList, { items: installed, onMove: (next) => setPrefs({ order: next.concat(removed) }), onRemove: (id) => setPrefs({ installed: prefs.installed.filter((x) => x !== id) }), onSelect: setSelected, selected }),
+    React.createElement(OrderList, { items: installed, onMove: (next) => setPrefs({ order: next.concat(removed) }), onRemove: (id) => setPrefs({ installed: prefs.installed.filter((x) => x !== id) }), onResize: resize, onSelect: setSelected, selected }),
     removed.length > 0 ? React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', margin: '10px 0 4px' } }, '已卸载（点击恢复，或拖回上方）') : null,
     removed.length > 0 ? React.createElement(OrderList, { items: removed, onMove: () => {}, onRestore: restore, onSelect: setSelected, selected }) : null,
     selWidget && selConfig ? React.createElement('div', { style: { marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dsw-alias-border-l2)', display: 'flex', flexDirection: 'column', gap: 10 } },
-      React.createElement('div', { style: { fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, `${selWidget.name} · 预览`),
-      out ? React.createElement('div', { style: { display: 'flex', justifyContent: 'center', padding: 8 } }, React.createElement(CardBody, { out, side: 150 })) : null,
+      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+        React.createElement('div', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, `${selWidget.name} · 预览`),
+        sizesOf(selWidget).length > 1
+          ? React.createElement('select', {
+              className: 'dsx-select', style: { fontSize: 11, width: 'auto' },
+              value: selSize, title: '切换预览尺寸',
+              onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setPreviewSize(e.target.value as WidgetSize),
+            },
+              sizesOf(selWidget).map((s) => React.createElement('option', { key: s, value: s }, s === '2x4' ? '2×4' : '2×2')),
+            )
+          : null,
+      ),
+      (() => { const u = 150; const pv = out ? React.createElement(CardBody, { out, unit: u, width: selSize === '2x4' ? 2 * u + 12 : undefined }) : null; return out ? React.createElement('div', { style: { display: 'flex', justifyContent: 'center', padding: 8 } }, pv) : null })(),
       selWidget.configSchema && selWidget.configSchema.length > 0 ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4 } },
         React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)' } }, '自定义'),
         selWidget.configSchema.map((f) => React.createElement('div', { key: f.key, style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--dsw-alias-border-l1)' } },
@@ -455,24 +522,47 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
   const [q, setQ] = React.useState('')
   const [previewGroup, setPreviewGroup] = React.useState<string | null>(null)
   const [previewIdx, setPreviewIdx] = React.useState(0)
-  const downloadable = WIDGETS.filter((w) => !w.builtin)
+  const [previewSize, setPreviewSize] = React.useState<WidgetSize>('2x2')
+  // The market lists EVERY widget (system + external), deduped by group so a
+  // group card (e.g. "context" → 一键压缩 + 上下文水位) is one entry in the rail.
   const seen = new Set<string>()
-  const marketCards = downloadable.filter((w) => { const g = groupOf(w); if (seen.has(g)) return false; seen.add(g); return true })
+  const marketCards = WIDGETS.filter((w) => { const g = groupOf(w); if (seen.has(g)) return false; seen.add(g); return true })
   const list = marketCards.filter((w) => `${w.name} ${w.desc} ${w.id}`.toLowerCase().indexOf(q.toLowerCase()) !== -1)
 
   if (previewGroup !== null) {
     const gw = WIDGETS.filter((w) => groupOf(w) === previewGroup)
     const w = gw[previewIdx] ?? gw[0]
-    const ids = gw.map((x) => x.id)
-    const installed = ids.every((id) => prefs.installed.indexOf(id) !== -1)
-    const out = w ? w.render(PREVIEW_STATS) : null
+    const sz = w ? sizesOf(w) : ['2x2' as WidgetSize]
+    // Current preview size: the locally selected size when this widget supports
+    // it, else this widget's first size.
+    const curSize = (w && sz.includes(previewSize)) ? previewSize : (sz[0] ?? '2x2')
+    const curKey = w ? instanceKey(w.id, curSize) : ''
+    const installed = w ? prefs.installed.indexOf(curKey) !== -1 : false
+    const out = w ? w.render(PREVIEW_STATS, { size: curSize }) : null
+    const toggleInstall = (): void => {
+      if (!w) return
+      setPrefs({
+        installed: installed
+          ? prefs.installed.filter((x) => x !== curKey)
+          : (prefs.installed.indexOf(curKey) === -1 ? prefs.installed.concat(curKey) : prefs.installed),
+      })
+    }
     const prev = () => setPreviewIdx((previewIdx - 1 + gw.length) % gw.length)
     const next = () => setPreviewIdx((previewIdx + 1) % gw.length)
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 } },
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
         React.createElement('button', { type: 'button', className: 'dsx-btn', onClick: () => setPreviewGroup(null) }, '← 返回'),
         React.createElement('span', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, w ? w.name : ''),
-        React.createElement('button', { type: 'button', disabled: !installed && prefs.installed.length >= prefs.maxWidgets, className: installed ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: () => setPrefs({ installed: installed ? prefs.installed.filter((x) => ids.indexOf(x) === -1) : prefs.installed.concat(ids) }) }, installed ? '已安装' : '下载'),
+        w && sz.length > 1
+          ? React.createElement('select', {
+              className: 'dsx-select', style: { fontSize: 11, width: 'auto' },
+              value: curSize, title: '切换尺寸',
+              onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setPreviewSize(e.target.value as WidgetSize),
+            },
+              sz.map((s) => React.createElement('option', { key: s, value: s }, s === '2x4' ? '2×4' : '2×2')),
+            )
+          : null,
+        React.createElement('button', { type: 'button', disabled: !installed && prefs.installed.length >= prefs.maxWidgets, className: installed ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: toggleInstall }, installed ? '已安装' : '下载'),
       ),
       !installed && prefs.installed.length >= prefs.maxWidgets
         ? React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-state-warn-primary, var(--dsw-alias-label-tertiary))', marginTop: -4 } }, `已达上限 ${prefs.maxWidgets} 个，先卸载再添加`)
@@ -480,7 +570,7 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
       React.createElement('div', { style: { flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '0 4px' } },
         React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '上一个', onClick: prev }, React.createElement(ChevronLeftIcon)),
         React.createElement('div', { style: { flex: 1, display: 'flex', justifyContent: 'center' } },
-          out ? React.createElement(CardBody, { out, side: 200 }) : null,
+          out ? React.createElement(CardBody, { out, unit: 200, width: curSize === '2x4' ? 412 : undefined }) : null,
         ),
         React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '下一个', onClick: next }, React.createElement(ChevronRightIcon)),
       ),
@@ -495,9 +585,9 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     React.createElement('div', { className: 'dsx-mlist' },
       list.map((w) => {
         const gw = WIDGETS.filter((x) => groupOf(x) === groupOf(w))
-        const ids = gw.map((x) => x.id)
-        const installed = ids.every((id) => prefs.installed.indexOf(id) !== -1)
-        return React.createElement('button', { key: w.id, type: 'button', className: 'dsx-mcard', 'aria-pressed': installed, onClick: () => { setPreviewGroup(groupOf(w)); setPreviewIdx(0) } },
+        // A group card is "installed" when ANY of its instances is installed.
+        const anyInstalled = gw.some((x) => sizesOf(x).some((s) => prefs.installed.indexOf(instanceKey(x.id, s)) !== -1))
+        return React.createElement('button', { key: w.id, type: 'button', className: 'dsx-mcard', 'aria-pressed': anyInstalled, onClick: () => { setPreviewGroup(groupOf(w)); setPreviewIdx(0) } },
           React.createElement('span', { className: 'dsx-mhead' },
             React.createElement('span', { className: 'dsx-mname' }, w.name),
             React.createElement('span', { className: 'dsx-badge' }, badgeOf(w)),
@@ -506,7 +596,7 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
           React.createElement('code', { className: 'dsx-mid' }, w.id),
           React.createElement('span', { className: 'dsx-macts' },
             React.createElement('span', { className: 'dsx-btn' }, '查看详情'),
-            React.createElement('span', { className: installed ? 'dsx-btn dsx-btn-primary' : 'dsx-btn' }, installed ? '已安装' : '下载'),
+            React.createElement('span', { className: anyInstalled ? 'dsx-btn dsx-btn-primary' : 'dsx-btn' }, anyInstalled ? '已安装' : '下载'),
           ),
         )
       }),
@@ -557,7 +647,17 @@ function Row({ title, desc, children }: { title: string; desc: string; children:
 
 export function SettingsPanel({ controller }: { controller: WidgetsController }): React.ReactElement {
   const { prefs, setPrefs } = controller
+  const colValue = [1, 2, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
+    React.createElement(Row, {
+      title: '列数', desc: '侧边栏卡片排布列数：1 列 = 纵向 Dock；2 列 / 4 列 = 网格布局，并解锁长方形部件能力',
+      children: React.createElement('select', {
+        className: 'dsx-select', value: colValue,
+        onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setPrefs({ columns: Number(e.target.value) }),
+      },
+        [1, 2, 4].map((c) => React.createElement('option', { key: c, value: c }, `${c} 列`)),
+      ),
+    }),
     React.createElement(Row, { title: '放大倍数', desc: '被悬浮组件的峰值放大比例（1.0 = 不放大，1.4 = 1.4 倍）', children: React.createElement(Slider, { min: 1, max: 1.4, step: 0.05, value: prefs.magnify, unit: 'x', onChange: (v) => setPrefs({ magnify: v }) }) }),
     React.createElement(Row, { title: '组件栏内边距', desc: '栏内四周与卡片间距（两者一致）', children: React.createElement(Slider, { min: 4, max: 40, value: prefs.panelPadding, unit: 'px', onChange: (v) => setPrefs({ panelPadding: v }) }) }),
     React.createElement(Row, { title: '卡片边长', desc: '所有卡片统一的正方形边长，字体与圆角随比例缩放', children: React.createElement(Slider, { min: 100, max: 220, value: prefs.cardSide, unit: 'px', onChange: (v) => setPrefs({ cardSide: v }) }) }),
