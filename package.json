@@ -1,70 +1,73 @@
-{
-  "name": "harness-widgets",
-  "version": "0.3.0",
-  "description": "Right-hand widget rail for DeepSeek Harness Web UI: live session stats (turns, LLM/tool time, TTFT, speed, cache hit, tokens), task / context / heatmap / quote widgets, OpenCode Go quota (rolling/weekly/monthly), plus multi-column grid layouts (1/2/4 columns) with 2x4 long tiles, a macOS-Dock-style continuous magnification wave, and per-instance sizing. Widgets are installable, reorderable and resizable from Settings → Components.",
-  "type": "module",
-  "main": "lib/index.js",
-  "types": "lib/types/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./lib/types/index.d.ts",
-      "default": "./lib/index.js"
-    },
-    "./client": {
-      "types": "./lib/types/client/index.d.ts",
-      "default": "./lib/client.js"
-    },
-    "./cordis.patch.yml": "./cordis.patch.yml",
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "lib/index.js",
-    "lib/client.js",
-    "lib/client.js.map",
-    "cordis.patch.yml",
-    "lib/types/**/*.d.ts",
-    "docs/screenshots/**/*.png",
-    "docs/screenshots/README.md"
-  ],
-  "scripts": {
-    "build": "tsdown",
-    "prepare": "tsdown"
-  },
-  "license": "MIT",
-  "author": "Physicolor",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Physicolor/harness-widgets.git"
-  },
-  "homepage": "https://github.com/Physicolor/harness-widgets#readme",
-  "bugs": {
-    "url": "https://github.com/Physicolor/harness-widgets/issues"
-  },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
-  },
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "platform": "web"
-    }
-  },
-  "dependencies": {},
-  "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6"
-  },
-  "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
-    "tsdown": "^0.22.2",
-    "lightningcss": "^1.25.0",
-    "typescript": "^5.6.0",
-    "react": "^18.2.0",
-    "@types/react": "~18.3.1"
-  }
+﻿{
+    "name":  "harness-widgets",
+    "version":  "0.3.1",
+    "description":  "Right-hand widget rail for DeepSeek Harness Web UI: live session stats (turns, LLM/tool time, TTFT, speed, cache hit, tokens), task / context / heatmap / quote widgets, OpenCode Go quota (rolling/weekly/monthly), plus multi-column grid layouts (1/2/4 columns) with 2x4 long tiles, a macOS-Dock-style continuous magnification wave, and per-instance sizing. Widgets are installable, reorderable and resizable from Settings 鈫?Components.",
+    "type":  "module",
+    "main":  "lib/index.js",
+    "types":  "lib/types/index.d.ts",
+    "exports":  {
+                    ".":  {
+                              "types":  "./lib/types/index.d.ts",
+                              "default":  "./lib/index.js"
+                          },
+                    "./client":  {
+                                     "types":  "./lib/types/client/index.d.ts",
+                                     "default":  "./lib/client.js"
+                                 },
+                    "./cordis.patch.yml":  "./cordis.patch.yml",
+                    "./package.json":  "./package.json"
+                },
+    "files":  [
+                  "lib/index.js",
+                  "lib/client.js",
+                  "lib/client.js.map",
+                  "cordis.patch.yml",
+                  "lib/types/**/*.d.ts",
+                  "docs/screenshots/**/*.png",
+                  "docs/screenshots/**/*.jpeg",
+                  "docs/screenshots/README.md"
+              ],
+    "scripts":  {
+                    "build":  "tsdown",
+                    "prepare":  "tsdown"
+                },
+    "license":  "MIT",
+    "author":  "Physicolor",
+    "repository":  {
+                       "type":  "git",
+                       "url":  "git+https://github.com/Physicolor/harness-widgets.git"
+                   },
+    "homepage":  "https://github.com/Physicolor/harness-widgets#readme",
+    "bugs":  {
+                 "url":  "https://github.com/Physicolor/harness-widgets/issues"
+             },
+    "publishConfig":  {
+                          "registry":  "https://registry.npmjs.org/"
+                      },
+    "dsh":  {
+                "bundle":  {
+                               "patch":  "./cordis.patch.yml"
+                           },
+                "client":  {
+                               "platform":  "web"
+                           }
+            },
+    "dependencies":  {
+
+                     },
+    "peerDependencies":  {
+                             "@deepseek-ai/cordis":  "^4.0.1",
+                             "@deepseek-ai/dsh-client-runtime":  "^0.1.0-rc.6",
+                             "@deepseek-ai/dsh-client-ui-slots":  "^0.1.0-rc.6"
+                         },
+    "devDependencies":  {
+                            "@deepseek-ai/cordis":  "^4.0.1",
+                            "@deepseek-ai/dsh-client-runtime":  "^0.1.0-rc.6",
+                            "@deepseek-ai/dsh-client-ui-slots":  "^0.1.0-rc.6",
+                            "tsdown":  "^0.22.2",
+                            "lightningcss":  "^1.25.0",
+                            "typescript":  "^5.6.0",
+                            "react":  "^18.2.0",
+                            "@types/react":  "~18.3.1"
+                        }
 }
