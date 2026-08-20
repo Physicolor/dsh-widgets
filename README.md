@@ -108,6 +108,7 @@ pnpm run check      # typecheck + tests + build
 ### v0.3.2
 **New**
 - Settings → 组件: add a "无极变化（连续跟随）" switch exposing the real-time continuous magnification mode (peak follows the pointer every animation frame) so it can be toggled and compared against the discrete step+transition mode.
+- Make the stepless mode truly stepless: every card's scale is now driven by its own continuous Euclidean distance to the pointer (rail-content coords) instead of being pinned to a discrete nearest-card anchor, so the magnified peak glides smoothly between cards as the mouse moves — any pointer movement changes every card's scale continuously.
 
 **Fixed**
 - Hover magnification no longer widens the rail or pushes the conversation column right. The bell-curve overshoot was removed from the rail width (`--dsx-rail-w`); a magnified card's leftward growth is now painted by a fixed overlay layer rendered OUTSIDE the rail's scroll-clip box (a sibling of the rail, `pointer-events:none`, tracking the rail's scroll), so the magnified card escapes clipping at the rail's left boundary instead of being cut off — the resting rail width and the conversation column distance stay unchanged.

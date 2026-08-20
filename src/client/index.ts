@@ -620,57 +620,39 @@ export function apply(ctx: ClientContext): void {
         }
       }
       const rows = (multi ? (n > 0 ? rowIndexOf[n - 1] + 1 : 0) : n)
-      // --- magnification distance field + scale ---
+      // --- magnification scale field ---
+      // Stepless (无极) mode (`active`): every card's scale is driven by ITS OWN
+      // continuous Euclidean distance to the pointer (rail-content coords), so the
+      // peak glides smoothly between cards as the mouse moves — there is NO
+      // discrete anchor whose fixed cell centre the peak is pinned to. Any pointer
+      // movement changes every card's scale continuously. The `!active` branch
+      // keeps the discrete focus (only the hovered card index is the focus).
       const hasFocus = active ? (multi ? (focusY !== null && focusX !== null) : focusY !== null) : focusIdx !== null
-      let anchor = -1
+      const scaleArr = new Array(n).fill(1)
       if (hasFocus) {
         if (active) {
           if (multi) {
-            // 2D nearest card to the pointer: the anchor is the card whose rest
-            // cell CENTRE (X and Y, both tracked) is closest to the cursor, so
-            // the peak follows in the plane and rows above/below respond too.
             const cellW = side + pad
             const rowH = side + pad
-            const cx2 = (i: number): number => (colIndexOf[i] + spanOf(i) / 2) * cellW
-            const cy2 = (i: number): number => rowIndexOf[i] * rowH + side / 2
-            const fx = focusX as number
+            // focusX is rail-box X (includes the rail's left padding); convert to
+            // content X so it shares the same axis as the card cell centres.
+            const fx = (focusX as number) - pad
             const fy = focusY as number
-            let best = 0, bestD = Number.POSITIVE_INFINITY
             for (let i = 0; i < n; i++) {
-              const dd = Math.hypot(cx2(i) - fx, cy2(i) - fy)
-              if (dd < bestD) { bestD = dd; best = i }
+              const cxi = (colIndexOf[i] + spanOf(i) / 2) * cellW
+              const cyi = rowIndexOf[i] * rowH + side / 2
+              const d = Math.hypot(cxi - fx, cyi - fy) / (side + pad)
+              scaleArr[i] = stepScale(d)
             }
-            anchor = best
           } else {
-            const mY = focusY as number
-            let best = 0, bestD = Number.POSITIVE_INFINITY
+            const fy = focusY as number
             for (let i = 0; i < n; i++) {
-              const dd0 = Math.abs(mY - restCenter(i))
-              if (dd0 < bestD) { bestD = dd0; best = i }
+              scaleArr[i] = stepScale(Math.abs(fy - restCenter(i)) / (side + pad))
             }
-            anchor = best
           }
         } else {
-          anchor = Math.max(0, Math.min(focusIdx as number, n - 1))
-        }
-      }
-      const scaleArr = new Array(n).fill(1)
-      if (anchor >= 0) {
-        if (multi) {
-          // 2D distance between rest cell CENTERS. X uses each card's cell
-          // centre (its left cell for a 2×4), Y uses its row centre.
-          const cellW = side + pad
-          const rowH = side + pad
-          const cx = (i: number): number => (colIndexOf[i] + spanOf(i) / 2) * cellW
-          const cy = (i: number): number => rowIndexOf[i] * rowH + side / 2
-          const axc = cx(anchor)
-          const ayc = cy(anchor)
-          for (let i = 0; i < n; i++) {
-            const steps = Math.hypot(cx(i) - axc, cy(i) - ayc) / (side + pad)
-            scaleArr[i] = stepScale(steps)
-          }
-        } else {
-          for (let i = 0; i < n; i++) scaleArr[i] = stepScale(Math.abs(i - anchor))
+          const a = Math.max(0, Math.min(focusIdx as number, n - 1))
+          for (let i = 0; i < n; i++) scaleArr[i] = stepScale(Math.abs(i - a))
         }
       }
       // --- build actual reflow (right-edge anchored) for a given scale array.
