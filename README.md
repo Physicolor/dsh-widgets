@@ -110,6 +110,7 @@ pnpm run check      # typecheck + tests + build
 - Hover magnification no longer widens the rail or pushes the conversation column right. The bell-curve overshoot was removed from the rail width (`--dsx-rail-w`); a magnified card's leftward growth is now painted by a fixed overlay layer rendered OUTSIDE the rail's scroll-clip box (a sibling of the rail, `pointer-events:none`, tracking the rail's scroll), so the magnified card escapes clipping at the rail's left boundary instead of being cut off — the resting rail width and the conversation column distance stay unchanged.
 - The magnify overlay mirrors the rail's exact box model (same `padding`/`box-sizing` and an inner deck), so the magnified cards stay aligned to the same right-hand vertical as the resting rail with no extra hit-test cost.
 - The rail's add button fades out with the static cards while magnifying, and the overlay mirrors it at its resting position so it stays visible and right-aligned during a hover magnification.
+- Decoupled position from size in the discrete magnify transition: `top`/`right` settle first (no delay) and `width`/`height` follow after a short `transition-delay`, so cards stabilise on their resting alignment before scaling — removes the "stretch-while-sliding" jump when moving the pointer between cards (real-time mode keeps its instant follow).
 
 ### v0.3.0
 **New**

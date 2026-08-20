@@ -803,7 +803,7 @@ export function apply(ctx: ClientContext): void {
           React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${stackHeight}px` } },
             focusLayout.map((c, idx) => {
               const it = items[idx]
-              const transition = active ? 'top 0.04s linear, right 0.04s linear, width 0.04s linear, height 0.04s linear' : 'top 0.2s var(--ds-ease-in-out), right 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out)'
+              const transition = active ? 'top 0.04s linear, right 0.04s linear, width 0.04s linear, height 0.04s linear' : 'top 0.2s var(--ds-ease-in-out), right 0.2s var(--ds-ease-in-out), width 0.26s var(--ds-ease-in-out) 0.06s, height 0.26s var(--ds-ease-in-out) 0.06s'
               const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, zIndex: Math.round((c.s - 1) * 100) }
               return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle },
                 React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: undefined }),
