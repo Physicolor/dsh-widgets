@@ -776,7 +776,7 @@ export function apply(ctx: ClientContext): void {
           // Bottom add button, parked inside the deck so it shares the grid
           // layout: fills the empty last-row cell on odd counts, or sits
           // right-aligned below the rows on even counts / single column.
-          React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', onClick: () => setAddOpen((v) => !v), style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px` } },
+          React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', onClick: () => setAddOpen((v) => !v), style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, opacity: magnifying ? 0 : 1, transition: 'opacity 0.15s ease' } },
             React.createElement('span', { className: 'dsx-stats-add-icon' },
               React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
             ),
@@ -799,15 +799,26 @@ export function apply(ctx: ClientContext): void {
       // and tracks the rail's scroll via --dsx-rail-scroll so it stays pinned to
       // the scrolled deck. zIndex 25 keeps it above the rail's own cards.
       const magnifyLayer = magnifying
-        ? React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px) + 2px)', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible' } },
-          focusLayout.map((c, idx) => {
-            const it = items[idx]
-            const transition = active ? 'top 0.04s linear, right 0.04s linear, width 0.04s linear, height 0.04s linear' : 'top 0.2s var(--ds-ease-in-out), right 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out)'
-            const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, zIndex: Math.round((c.s - 1) * 100) }
-            return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle },
-              React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: undefined }),
-            )
-          }),
+        ? React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, boxSizing: 'border-box', padding: `2px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent' } },
+          React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${stackHeight}px` } },
+            focusLayout.map((c, idx) => {
+              const it = items[idx]
+              const transition = active ? 'top 0.04s linear, right 0.04s linear, width 0.04s linear, height 0.04s linear' : 'top 0.2s var(--ds-ease-in-out), right 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out)'
+              const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, zIndex: Math.round((c.s - 1) * 100) }
+              return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle },
+                React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: undefined }),
+              )
+            }),
+            // Mirror the add button at its RESTING grid position so it stays on
+            // the same right-hand vertical as the magnified cards (the overlay
+            // fades the rail's own copy out while magnifying).
+            React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', tabIndex: -1, style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px` } },
+              React.createElement('span', { className: 'dsx-stats-add-icon' },
+                React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
+              ),
+              React.createElement('span', { className: 'dsx-stats-add-label' }, '添加'),
+            ),
+          ),
         )
         : null
       // Temporary right-side add panel: reuses the settings 组件市场 + 拖动排序
