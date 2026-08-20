@@ -621,39 +621,55 @@ export function apply(ctx: ClientContext): void {
       }
       const rows = (multi ? (n > 0 ? rowIndexOf[n - 1] + 1 : 0) : n)
       // --- magnification scale field ---
-      // Stepless (无极) mode (`active`): every card's scale is driven by ITS OWN
-      // continuous Euclidean distance to the pointer (rail-content coords), so the
-      // peak glides smoothly between cards as the mouse moves — there is NO
-      // discrete anchor whose fixed cell centre the peak is pinned to. Any pointer
-      // movement changes every card's scale continuously. The `!active` branch
-      // keeps the discrete focus (only the hovered card index is the focus).
-      const hasFocus = active ? (multi ? (focusY !== null && focusX !== null) : focusY !== null) : focusIdx !== null
-      const scaleArr = new Array(n).fill(1)
-      if (hasFocus) {
-        if (active) {
-          if (multi) {
-            const cellW = side + pad
-            const rowH = side + pad
-            // focusX is rail-box X (includes the rail's left padding); convert to
-            // content X so it shares the same axis as the card cell centres.
-            const fx = (focusX as number) - pad
-            const fy = focusY as number
-            for (let i = 0; i < n; i++) {
-              const cxi = (colIndexOf[i] + spanOf(i) / 2) * cellW
-              const cyi = rowIndexOf[i] * rowH + side / 2
-              const d = Math.hypot(cxi - fx, cyi - fy) / (side + pad)
-              scaleArr[i] = stepScale(d)
-            }
-          } else {
-            const fy = focusY as number
-            for (let i = 0; i < n; i++) {
-              scaleArr[i] = stepScale(Math.abs(fy - restCenter(i)) / (side + pad))
-            }
+      // Shared stepless core: every card's scale is its own continuous Euclidean
+      // distance to a focus point (rail-content coords). Both modes reuse this so
+      // the posture (right-edge anchored) is identical and the right edge stays
+      // flush with the rail regardless of mode.
+      //  - Stepless (`active`):   focus = the pointer's live coordinates.
+      //  - Discrete (`!active`):  focus = the pointer coordinates SNAPPED onto a
+      //    discrete grid — the row/column centres plus the midpoints between each
+      //    adjacent pair (rows → 2·rows-1 Y points, cols → 2·cols-1 X points).
+      //    The 0.2s tween then glides the peak between those grid points.
+      const cellW = side + pad
+      const rowH = side + pad
+      const scaleFor = (fx: number, fy: number): number[] => {
+        const out = new Array(n).fill(1)
+        if (multi) {
+          for (let i = 0; i < n; i++) {
+            const cxi = (colIndexOf[i] + spanOf(i) / 2) * cellW
+            const cyi = rowIndexOf[i] * rowH + side / 2
+            out[i] = stepScale(Math.hypot(cxi - fx, cyi - fy) / (side + pad))
           }
         } else {
-          const a = Math.max(0, Math.min(focusIdx as number, n - 1))
-          for (let i = 0; i < n; i++) scaleArr[i] = stepScale(Math.abs(i - a))
+          for (let i = 0; i < n; i++) out[i] = stepScale(Math.abs(fy - restCenter(i)) / (side + pad))
         }
+        return out
+      }
+      // Discrete quantization grid: row centres + adjacent midpoints (Y), and
+      // column centres + adjacent midpoints (X).
+      const yPts: number[] = []
+      for (let r = 0; r < rows; r++) {
+        yPts.push(r * rowH + side / 2)
+        if (r < rows - 1) yPts.push((r + 0.5) * rowH + side / 2)
+      }
+      const xPts: number[] = []
+      for (let cIdx = 0; cIdx < columns; cIdx++) {
+        xPts.push(cIdx * cellW + cellW / 2)
+        if (cIdx < columns - 1) xPts.push((cIdx + 0.5) * cellW + cellW / 2)
+      }
+      const nearest = (v: number, pts: number[]): number => {
+        let best = pts[0] ?? 0
+        for (let k = 1; k < pts.length; k++) if (Math.abs(pts[k] - v) < Math.abs(best - v)) best = pts[k]
+        return best
+      }
+      const hasFocus = active ? (multi ? (focusY !== null && focusX !== null) : focusY !== null) : focusIdx !== null
+      let scaleArr = new Array(n).fill(1)
+      if (hasFocus) {
+        // focusX is rail-box X (includes the rail's left padding); convert to
+        // content X so it shares the same axis as the card cell centres.
+        const rawX = (focusX ?? 0) - pad
+        const rawY = focusY ?? restCenter(Math.max(0, Math.min(focusIdx ?? 0, n - 1)))
+        scaleArr = active ? scaleFor(rawX, rawY) : scaleFor(nearest(rawX, xPts), nearest(rawY, yPts))
       }
       // --- build actual reflow (right-edge anchored) for a given scale array.
       //   Each card is one grid-unit tall (2×2 and 2×4 share the same height =
@@ -769,7 +785,7 @@ export function apply(ctx: ClientContext): void {
       const rail = React.createElement('div', {
         className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `2px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
         onMouseLeave: () => { setFocusIdx(null); setFocusY(null); setFocusX(null) },
-        onMouseMove: prefs.realTime ? (e: React.MouseEvent<HTMLDivElement>) => moveRailFocus(e.clientX, e.clientY, e.currentTarget) : undefined,
+        onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => moveRailFocus(e.clientX, e.clientY, e.currentTarget),
         onScroll: (e) => { setRailScrollTop(e.currentTarget.scrollTop); if (prefs.realTime) railScrollSync(e.currentTarget) },
       }, railChildren)
       // Magnify overlay: a FIXED layer rendered OUTSIDE the rail's scroll-clip

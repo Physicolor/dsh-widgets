@@ -105,16 +105,17 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
-### v0.3.2
+### v1.0.0
 **New**
-- Settings → 组件: add a "无极变化（连续跟随）" switch exposing the real-time continuous magnification mode (peak follows the pointer every animation frame) so it can be toggled and compared against the discrete step+transition mode.
-- Make the stepless mode truly stepless: every card's scale is now driven by its own continuous Euclidean distance to the pointer (rail-content coords) instead of being pinned to a discrete nearest-card anchor, so the magnified peak glides smoothly between cards as the mouse moves — any pointer movement changes every card's scale continuously.
-- Stepless mode now snaps straight to its steady-state right-anchored geometry every frame (`transition: none`), so a magnified card's right edge stays flush with the rail's right edge even while the pointer is moving. Previously the 0.04s tween left cards in a non-steady intermediate pose during motion (right/width desync), letting the right edge stray past the rail and only realign after the pointer stopped. Discrete mode keeps its 0.2s settle tween.
+- Settings → 组件: add a "无极变化（连续跟随）" switch exposing the real-time continuous magnification mode (peak follows the pointer every animation frame).
+- Truly stepless magnification: every card's scale is driven by its own continuous Euclidean distance to the pointer (rail-content coords) instead of a discrete nearest-card anchor, so the peak glides smoothly between cards on any pointer movement.
+- Discrete mode now REUSES the same stepless geometry: the live pointer coordinates are snapped onto a discrete grid of row/column centres plus the midpoints between adjacent ones (rows → 2·rows−1 Y points, cols → 2·cols−1 X points), and the 0.2s tween glides the peak between those grid points. Both modes therefore share one right-edge-anchored posture.
 
 **Fixed**
-- Hover magnification no longer widens the rail or pushes the conversation column right. The bell-curve overshoot was removed from the rail width (`--dsx-rail-w`); a magnified card's leftward growth is now painted by a fixed overlay layer rendered OUTSIDE the rail's scroll-clip box (a sibling of the rail, `pointer-events:none`, tracking the rail's scroll), so the magnified card escapes clipping at the rail's left boundary instead of being cut off — the resting rail width and the conversation column distance stay unchanged.
-- The magnify overlay mirrors the rail's exact box model (same `padding`/`box-sizing` and an inner deck), so the magnified cards stay aligned to the same right-hand vertical as the resting rail with no extra hit-test cost.
-- The rail's add button fades out with the static cards while magnifying, and the overlay mirrors it at its resting position so it stays visible and right-aligned during a hover magnification.
+- Hover magnification no longer widens the rail or pushes the conversation column right (bell-curve overshoot removed from `--dsx-rail-w`); a magnified card's leftward growth is painted by a fixed overlay OUTSIDE the rail's scroll-clip box, so it escapes clipping while the resting rail width and conversation distance stay unchanged.
+- The magnify overlay mirrors the rail's exact box model (same padding/box-sizing + inner deck), so magnified cards stay flush with the resting rail's right edge with no extra hit-test cost.
+- The rail's add button fades with the static cards while magnifying; the overlay mirrors it at its resting position so it stays visible and right-aligned.
+- Stepless mode snaps to its steady right-anchored geometry every frame (`transition: none`) — a tween left cards in a non-steady intermediate pose while the pointer moved, letting the right edge stray past the rail until the pointer stopped. Discrete mode keeps its 0.2s settle tween.
 
 ### v0.3.0
 **New**
