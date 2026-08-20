@@ -105,6 +105,10 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
+### v0.3.2
+**Fixed**
+- Hover magnification no longer widens the rail or pushes the conversation column right. The bell-curve overshoot was removed from the rail width (`--dsx-rail-w`); a magnified card's leftward growth is now painted by a fixed overlay layer rendered OUTSIDE the rail's scroll-clip box (a sibling of the rail, `pointer-events:none`, tracking the rail's scroll), so the magnified card escapes clipping at the rail's left boundary instead of being cut off — the resting rail width and the conversation column distance stay unchanged.
+
 ### v0.3.0
 **New**
 - Multi-column grid: 1 / 2 / 4 columns (2 by default), magnification supported.

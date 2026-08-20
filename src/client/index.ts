@@ -475,6 +475,9 @@ export function apply(ctx: ClientContext): void {
       const [focusIdx, setFocusIdx] = React.useState<number | null>(null)
       const [focusY, setFocusY] = React.useState<number | null>(null)
       const [focusX, setFocusX] = React.useState<number | null>(null)
+      // Rail content scroll offset (px), synced to the fixed magnify overlay so
+      // it tracks the scrolled deck instead of sitting at the rail's viewport top.
+      const [railScrollTop, setRailScrollTop] = React.useState(0)
       // Last pointer position in rail-content coordinates, kept so a rail scroll
       // (which moves cards but not the mouse) re-targets the peak correctly.
       const lastClientXYRef = React.useRef<{ x: number; y: number } | null>(null)
@@ -511,25 +514,19 @@ export function apply(ctx: ClientContext): void {
       if (!snap.open || !snap.hasSession) return null
       const side = prefs.cardSide
       const pad = prefs.panelPadding
-      // Left room for the bell-curve magnification overshoot so the magnified
-      // card's left growth is NOT clipped by the rail's scroll edge. The rail's
-      // right padding stays `pad`; the left gets `pad + overshoot`. The reserved
-      // gutter (--dsx-rail-w) grows by `overshoot` so the conversation does not
-      // get covered — the rail simply claims a touch more of its own gutter on
-      // the left. Peak magnification is `magnify` → card grows left by
-      // (magnify-1)·side; use whatever exceeds the existing left padding, plus a
-      // small buffer.
-      const overshoot = Math.max(0, Math.ceil(side * (prefs.magnify - 1) - pad)) + 4
       const columns = [1, 2, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
       const multi = columns > 1
-      // Multi-column rail width is sized for the PEAK card (so a magnified row,
-      // which extends left from the right-anchored edge, never clips at the rail's
-      // left boundary). Single column keeps its original width.
-      const peakCard = Math.ceil(side * prefs.magnify)
-      const railW = (multi ? columns * peakCard + (columns + 1) * pad + overshoot : side + pad * 2 + overshoot)
+      // Rail width is the STATIC grid width — NO magnification overshoot. The
+      // rail no longer reserves left room for the bell-curve overshoot (which
+      // used to widen both the rail and --dsx-rail-w, pushing the conversation
+      // column right). A magnified card's left growth is instead painted by a
+      // fixed overlay layer OUTSIDE the rail's scroll-clip box (see magnifyLayer)
+      // so the conversation column keeps the resting rail's width at all times.
+      const railW = multi ? columns * side + (columns + 1) * pad : side + pad * 2
       document.documentElement.style.setProperty('--dsx-rail-w', `${railW}px`)
       document.documentElement.style.setProperty('--dsx-rail-pad', `${pad}px`)
-      document.documentElement.style.setProperty('--dsx-rail-overshoot', `${overshoot}px`)
+      document.documentElement.style.setProperty('--dsx-rail-overshoot', `0px`)
+      document.documentElement.style.setProperty('--dsx-rail-scroll', `${railScrollTop}px`)
       const base = snap.stats ?? { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, decodeMs: 0, decodeTokens: 0, usage: null }
       interface RailItem { key: string; size: WidgetSize; w: (typeof WIDGETS)[number]; out: NonNullable<ReturnType<(typeof WIDGETS)[number]['render']>>; baseW: number }
       const items: RailItem[] = prefs.order
@@ -596,12 +593,11 @@ export function apply(ctx: ClientContext): void {
       // left), it moves to the next row, so a later 2×2 always back-fills the gap.
       const spanOf = (i: number): number => (items[i].size === '2x4' ? 2 : 1)
       const baseWOf = (i: number): number => items[i].baseW
-      const layoutCards: Array<{ s: number; top: number; right: number; w: number; h: number }> = []
       const rowIndexOf: number[] = []
       const colIndexOf: number[] = []
-      {
-        const n = items.length
-        // --- assign cards to rows (P2 packing, no gaps) ---
+      const n = items.length
+      // --- assign cards to rows (P2 packing, no gaps) ---
+      if (n > 0) {
         if (multi) {
           // Greedy best-fit packing: each item lands in the EARLIEST row that has
           // room for its span, opening a new row only when none fits. A 2×4 (span
@@ -622,106 +618,113 @@ export function apply(ctx: ClientContext): void {
         } else {
           for (let i = 0; i < n; i++) { rowIndexOf[i] = i; colIndexOf[i] = 0 }
         }
-        const rows = (multi ? (n > 0 ? rowIndexOf[n - 1] + 1 : 0) : n)
-        // --- magnification distance field + scale ---
-        const hasFocus = active ? (multi ? (focusY !== null && focusX !== null) : focusY !== null) : focusIdx !== null
-        let anchor = -1
-        if (hasFocus) {
-          if (active) {
-            if (multi) {
-              // 2D nearest card to the pointer: the anchor is the card whose rest
-              // cell CENTRE (X and Y, both tracked) is closest to the cursor, so
-              // the peak follows in the plane and rows above/below respond too.
-              const cellW = side + pad
-              const rowH = side + pad
-              const cx2 = (i: number): number => (colIndexOf[i] + spanOf(i) / 2) * cellW
-              const cy2 = (i: number): number => rowIndexOf[i] * rowH + side / 2
-              const fx = focusX as number
-              const fy = focusY as number
-              let best = 0, bestD = Number.POSITIVE_INFINITY
-              for (let i = 0; i < n; i++) {
-                const dd = Math.hypot(cx2(i) - fx, cy2(i) - fy)
-                if (dd < bestD) { bestD = dd; best = i }
-              }
-              anchor = best
-            } else {
-              const mY = focusY as number
-              let best = 0, bestD = Number.POSITIVE_INFINITY
-              for (let i = 0; i < n; i++) {
-                const dd0 = Math.abs(mY - restCenter(i))
-                if (dd0 < bestD) { bestD = dd0; best = i }
-              }
-              anchor = best
-            }
-          } else {
-            anchor = Math.max(0, Math.min(focusIdx as number, n - 1))
-          }
-        }
-        const scaleArr = new Array(n).fill(1)
-        if (anchor >= 0) {
+      }
+      const rows = (multi ? (n > 0 ? rowIndexOf[n - 1] + 1 : 0) : n)
+      // --- magnification distance field + scale ---
+      const hasFocus = active ? (multi ? (focusY !== null && focusX !== null) : focusY !== null) : focusIdx !== null
+      let anchor = -1
+      if (hasFocus) {
+        if (active) {
           if (multi) {
-            // 2D distance between rest cell CENTERS. X uses each card's cell
-            // centre (its left cell for a 2×4), Y uses its row centre.
+            // 2D nearest card to the pointer: the anchor is the card whose rest
+            // cell CENTRE (X and Y, both tracked) is closest to the cursor, so
+            // the peak follows in the plane and rows above/below respond too.
             const cellW = side + pad
             const rowH = side + pad
-            const cx = (i: number): number => (colIndexOf[i] + spanOf(i) / 2) * cellW
-            const cy = (i: number): number => rowIndexOf[i] * rowH + side / 2
-            const axc = cx(anchor)
-            const ayc = cy(anchor)
+            const cx2 = (i: number): number => (colIndexOf[i] + spanOf(i) / 2) * cellW
+            const cy2 = (i: number): number => rowIndexOf[i] * rowH + side / 2
+            const fx = focusX as number
+            const fy = focusY as number
+            let best = 0, bestD = Number.POSITIVE_INFINITY
             for (let i = 0; i < n; i++) {
-              const steps = Math.hypot(cx(i) - axc, cy(i) - ayc) / (side + pad)
-              scaleArr[i] = stepScale(steps)
+              const dd = Math.hypot(cx2(i) - fx, cy2(i) - fy)
+              if (dd < bestD) { bestD = dd; best = i }
             }
+            anchor = best
           } else {
-            for (let i = 0; i < n; i++) scaleArr[i] = stepScale(Math.abs(i - anchor))
+            const mY = focusY as number
+            let best = 0, bestD = Number.POSITIVE_INFINITY
+            for (let i = 0; i < n; i++) {
+              const dd0 = Math.abs(mY - restCenter(i))
+              if (dd0 < bestD) { bestD = dd0; best = i }
+            }
+            anchor = best
           }
+        } else {
+          anchor = Math.max(0, Math.min(focusIdx as number, n - 1))
         }
-        // --- build actual reflow (right-edge anchored) ---
+      }
+      const scaleArr = new Array(n).fill(1)
+      if (anchor >= 0) {
+        if (multi) {
+          // 2D distance between rest cell CENTERS. X uses each card's cell
+          // centre (its left cell for a 2×4), Y uses its row centre.
+          const cellW = side + pad
+          const rowH = side + pad
+          const cx = (i: number): number => (colIndexOf[i] + spanOf(i) / 2) * cellW
+          const cy = (i: number): number => rowIndexOf[i] * rowH + side / 2
+          const axc = cx(anchor)
+          const ayc = cy(anchor)
+          for (let i = 0; i < n; i++) {
+            const steps = Math.hypot(cx(i) - axc, cy(i) - ayc) / (side + pad)
+            scaleArr[i] = stepScale(steps)
+          }
+        } else {
+          for (let i = 0; i < n; i++) scaleArr[i] = stepScale(Math.abs(i - anchor))
+        }
+      }
+      // --- build actual reflow (right-edge anchored) for a given scale array.
+      //   Each card is one grid-unit tall (2×2 and 2×4 share the same height =
+      //   side × scale); only the width differs (2×4 is two units plus the gap).
+      //   Within each row cards place right-to-left (rightmost at right:0, each
+      //   next pushed left by prev width + pad); row top accumulates by the
+      //   tallest scaled height in the row (+pad), so a magnified row pushes the
+      //   rows below it down. Spacing stays exactly pad. ---
+      const placeCards = (sc: number[]): Array<{ s: number; top: number; right: number; w: number; h: number }> => {
+        const place: Array<{ s: number; top: number; right: number; w: number; h: number }> = new Array(n)
         if (n > 0) {
           if (multi) {
-            // Each row: right-anchored, right-to-left. Cards at their scaled
-            // width; a 2×4 is wider and pushes neighbours further left. Row top
-            // accumulates by the tallest scaled height in the row (+ pad), so a
-            // magnified row pushes rows below it down. Spacing stays exactly pad.
-            const place: Array<{ s: number; top: number; right: number; w: number; h: number }> = new Array(n)
             const rowTopAcc: number[] = new Array(rows).fill(0)
             const rowHAcc: number[] = new Array(rows).fill(0)
-            // Every card is one grid-unit tall (2×2 and 2×4 share the same height =
-            // side × scale); only the width differs (2×4 is two units plus the gap).
-            for (let i = 0; i < n; i++) { const r = rowIndexOf[i]; const h = side * scaleArr[i]; if (h > rowHAcc[r]) rowHAcc[r] = h }
+            for (let i = 0; i < n; i++) { const r = rowIndexOf[i]; const h = side * sc[i]; if (h > rowHAcc[r]) rowHAcc[r] = h }
             {
               let acc = 2
               for (let r = 0; r < rows; r++) { rowTopAcc[r] = acc; acc += rowHAcc[r] + pad }
             }
-            // Within each row, place right-to-left: rightmost (highest cell) card
-            // at right:0, each next card pushed left by (prev width + pad).
             for (let r = rows - 1; r >= 0; r--) {
-              // build list of indices in this row, sort by cell DESC (right first)
               const inRow: number[] = []
               for (let i = 0; i < n; i++) if (rowIndexOf[i] === r) inRow.push(i)
               inRow.sort((a, b) => colIndexOf[b] - colIndexOf[a])
               let colRight = 0
               for (const i of inRow) {
-                const w = baseWOf(i) * scaleArr[i]
-                place[i] = { s: scaleArr[i], top: rowTopAcc[r], right: colRight, w, h: side * scaleArr[i] }
+                const w = baseWOf(i) * sc[i]
+                place[i] = { s: sc[i], top: rowTopAcc[r], right: colRight, w, h: side * sc[i] }
                 colRight += w + pad
               }
             }
-            for (let i = 0; i < n; i++) layoutCards.push(place[i])
           } else {
             // Single column, right-anchored (2×4 collapses to 2×2 width here since
             // a single column has no room for a two-cell-wide card).
-            const hgt = scaleArr.map((s, i) => side * s)
             let acc = 2
-            for (let i = 0; i < n; i++) { layoutCards.push({ s: scaleArr[i], top: acc, right: 0, w: hgt[i], h: hgt[i] }); acc += hgt[i] + pad }
+            for (let i = 0; i < n; i++) { const h = side * sc[i]; place[i] = { s: sc[i], top: acc, right: 0, w: h, h }; acc += h + pad }
           }
         }
+        return place
       }
-      // Deck height is the LIVE bottom of the reflow (not a fixed peak): it grows
-      // while cards magnify and shrinks back when they settle, so the add button
-      // below the deck returns to its rest position instead of staying pushed far
-      // down.
-      const deckBottom = layoutCards.reduce((m, c) => Math.max(m, c.top + c.h), 2)
+      // Static deck (rail scroll content): resting grid, scale 1 everywhere. The
+      // rail keeps this deck intact for scrolling, occupancy and interaction.
+      const staticLayout = placeCards(new Array(n).fill(1))
+      // Focus deck (fixed overlay, escapes the rail's scroll-clip box): the live
+      // magnification reflow. Rendered only while a card is actually magnified;
+      // its leftward growth paints over the conversation edge instead of being
+      // clipped, and the rail width does not change.
+      const focusLayout = hasFocus ? placeCards(scaleArr) : []
+      // True only when the focus deck differs from rest (any card is magnified).
+      const magnifying = hasFocus && n > 0 && scaleArr.some((s) => s > 1.001)
+      // Deck height is the STATIC reflow bottom (the rail content never grows
+      // while magnifying — growth is painted by the fixed overlay), so the add
+      // button and scroll height stay fixed at the resting grid.
+      const deckBottom = staticLayout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
       // Add button placement:
       //  - multi + odd count: the last row is one short, so park the add button in
       //    that empty cell. Right-anchored rows leave the gap on the LEFT of the
@@ -730,7 +733,7 @@ export function apply(ctx: ClientContext): void {
       const nItems = items.length
       let addTop: number
       let addRight: number
-      if (multi && nItems > 0 && layoutCards.length > 0) {
+      if (multi && nItems > 0 && staticLayout.length > 0) {
         // Row-band packing may leave a gap in the LAST row (e.g. an odd 2×2
         // count, or a 2×4 creating a leftover cell). If a 2×2 add button fits in
         // that leftover cell, park it there (right-anchored: its right edge sits
@@ -739,7 +742,7 @@ export function apply(ctx: ClientContext): void {
         const lastRow = rowIndexOf[nItems - 1]
         const lastRowUsedCells = colIndexOf[nItems - 1] + spanOf(nItems - 1)
         if (lastRowUsedCells < columns) {
-          const lastCard = layoutCards[nItems - 1]
+          const lastCard = staticLayout[nItems - 1]
           addTop = lastCard.top
           addRight = lastCard.right + lastCard.w + pad
         } else {
@@ -755,19 +758,18 @@ export function apply(ctx: ClientContext): void {
       const addBottom = addTop + side
       const stackHeight = (nItems > 0 ? Math.max(deckBottom, addBottom) : addBottom) + pad
       const railChildren: React.ReactNode[] = [
-        // Relative-positioned layer that owns the cards' absolute layout.
+        // Relative-positioned layer that owns the cards' absolute layout. This
+        // is the STATIC deck: resting grid, fixed scroll height, and it carries
+        // all the interactive affordances (hover, resize). While a card is
+        // magnified it fades out and the fixed overlay below paints the bigger
+        // cards, so the two never double-draw shadows/borders.
         React.createElement('div', { key: '__deck', style: { position: 'relative', height: `${stackHeight}px` } },
-          layoutCards.map((c, idx) => {
+          staticLayout.map((c, idx) => {
             const it = items[idx]
-            // Layout sizing (authoritative macOS Dock approach): width/height and
-            // top participate in layout, so neighbours make room automatically and
-            // spacing stays constant; right edge stays pinned via right:0. No
-            // transform — this is why the right edge never jitters. Realtime uses
-            // a near-instant transition, discrete a smooth one.
-            const transition = active ? 'top 0.04s linear, right 0.04s linear, width 0.04s linear, height 0.04s linear' : 'top 0.2s var(--ds-ease-in-out), right 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out)'
-            const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, zIndex: Math.round((c.s - 1) * 100) }
+            const transition = 'top 0.2s var(--ds-ease-in-out), right 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out), opacity 0.15s ease'
+            const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, opacity: magnifying ? 0 : 1 }
             return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle, onMouseEnter: () => setFocusIdx(idx) },
-              React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: handleAction }),
+              React.createElement(CardBody, { out: it.out, unit: side, width: c.w, onAction: handleAction }),
               React.createElement('span', { className: 'dsx-stats-resize', 'aria-label': '调整大小', onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = side; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
             )
           }),
@@ -783,11 +785,31 @@ export function apply(ctx: ClientContext): void {
         ),
       ]
       const rail = React.createElement('div', {
-        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `2px ${pad}px ${pad}px ${pad + overshoot}px`, background: 'transparent', pointerEvents: 'auto' },
+        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `2px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
         onMouseLeave: () => { setFocusIdx(null); setFocusY(null); setFocusX(null) },
         onMouseMove: prefs.realTime ? (e: React.MouseEvent<HTMLDivElement>) => moveRailFocus(e.clientX, e.clientY, e.currentTarget) : undefined,
-        onScroll: prefs.realTime ? (e: React.UIEvent<HTMLDivElement>) => railScrollSync(e.currentTarget) : undefined,
+        onScroll: (e) => { setRailScrollTop(e.currentTarget.scrollTop); if (prefs.realTime) railScrollSync(e.currentTarget) },
       }, railChildren)
+      // Magnify overlay: a FIXED layer rendered OUTSIDE the rail's scroll-clip
+      // box (a sibling of the rail, so no ancestor overflow clips it). When a
+      // card is magnifying it paints the live reflow here — its leftward growth
+      // is visible over the conversation edge instead of being cut off at the
+      // rail's left boundary, and the rail width (hence the conversation column)
+      // never changes. It is pointer-events:none (interaction stays on the rail)
+      // and tracks the rail's scroll via --dsx-rail-scroll so it stays pinned to
+      // the scrolled deck. zIndex 25 keeps it above the rail's own cards.
+      const magnifyLayer = magnifying
+        ? React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px) + 2px)', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible' } },
+          focusLayout.map((c, idx) => {
+            const it = items[idx]
+            const transition = active ? 'top 0.04s linear, right 0.04s linear, width 0.04s linear, height 0.04s linear' : 'top 0.2s var(--ds-ease-in-out), right 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out)'
+            const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, zIndex: Math.round((c.s - 1) * 100) }
+            return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle },
+              React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: undefined }),
+            )
+          }),
+        )
+        : null
       // Temporary right-side add panel: reuses the settings 组件市场 + 拖动排序
       // (WidgetsPage) wholesale, floats over content, never affects layout.
       // Width is configurable (prefs.panelWidth) and draggable via the left edge.
@@ -812,7 +834,7 @@ export function apply(ctx: ClientContext): void {
       // Always render the panel too so closing slides it out (`.open` toggles
       // visibility/transform); when closed it is hidden (visibility + opacity)
       // and never intercepts pointer events over the rail.
-      return React.createElement(React.Fragment, null, rail, addPanel)
+      return React.createElement(React.Fragment, null, rail, magnifyLayer, addPanel)
     },
   ))
 
