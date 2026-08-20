@@ -36,7 +36,12 @@ Harness Widgets is a **persistent DSH bundle plugin** built on the Cordis compos
 
 ### Continuous Magnification
 
-macOS-Dock-style hover magnification, upgraded from discrete steps to **continuous exponential decay**: as the pointer moves in the X/Y plane the wave peak follows smoothly, all surrounding widgets (above and below) participate, spacing stays constant, and nothing overflows the right edge. Magnification is adjustable in settings (`1.0–1.4`).
+macOS-Dock-style hover magnification with two modes (toggle in **Settings → 组件 → 无极变化**):
+
+- **Stepless (continuous follow)**: truly stepless — every card's scale is driven by its own continuous Euclidean distance to the pointer, so the peak glides smoothly between cards on any pointer movement. It snaps to its steady right-anchored geometry every frame (`transition: none`), so a card's right edge stays flush with the rail even mid-motion — no width/right desync while the pointer moves.
+- **Discrete (default)**: reuses the same continuous geometry but snaps the pointer onto a quantized grid (row/column centres + the midpoints between adjacent ones: 2·rows−1 Y points, 2·cols−1 X points), with a 0.2s tween gliding the peak between grid points.
+
+In both modes the magnified deck is painted by a fixed overlay **outside** the rail's scroll-clip box, so leftward growth escapes clipping while the resting rail width (and the conversation column distance) never changes. Scaling preserves the square card shape and constant spacing; magnification is adjustable in settings (`1.0–1.4`).
 
 ### Built-in Widgets
 
