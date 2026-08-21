@@ -43,6 +43,10 @@ export interface WidgetStats {
   contextBreakdown?: { systemTokens: number; toolsTokens: number; messageTokens: number } | null
   /** Last ~13 weeks of daily token usage (self-accounted). */
   heatmapGrid?: Array<Array<{ value: number; date: string }>>
+  /** Raw self-accounted daily token log (dateKey -> value), so wide (2×4
+   *  half-year) and bar (last-7-day) variants can derive their own grids from
+   *  the same source the 2×2 calendar uses. */
+  heatmapRaw?: Record<string, number>
   /** Id of the currently armed (awaiting second tap) action, if any. */
   armedAction?: string | null
   /** Current task list (todos projection): status is pending | in_progress | completed. */
@@ -60,7 +64,7 @@ export interface BarDatum {
 
 /** A chart block a card body can render (declarative, theme tokens only). */
 export interface WidgetChart {
-  kind: 'bars' | 'ring' | 'line' | 'segments' | 'heatmap'
+  kind: 'bars' | 'ring' | 'line' | 'segments' | 'heatmap' | 'barsV'
   bars?: BarDatum[]
   /** For ring: one datum + its centered label. */
   value?: number
@@ -192,6 +196,62 @@ export function fmtTps(tps: number): string {
   return tps >= 10 ? String(Math.round(tps)) : String(Math.round(tps * 10) / 10)
 }
 
+/** `YYYY-MM-DD` for a local date. */
+export function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Build a GitHub-style rolling heatmap grid directly from the raw daily log.
+ * `weeks` columns (each a calendar week, Sunday-first) end at this week so the
+ * latest data is always on the right edge. `weeks=26` → ~half a year (the 2×4
+ * variant); `weeks=13` → the ~3-month 2×2 calendar.
+ */
+export function buildRollingGrid(raw: Record<string, number>, weeks: number): Array<Array<{ value: number; date: string }>> {
+  const now = new Date()
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
+  const base = new Date(startOfWeek)
+  base.setDate(base.getDate() - (weeks - 1) * 7)
+  const grid: Array<Array<{ value: number; date: string }>> = []
+  for (let r = 0; r < 7; r++) {
+    const row: Array<{ value: number; date: string }> = []
+    for (let c = 0; c < weeks; c++) {
+      const d = new Date(base)
+      d.setDate(base.getDate() + c * 7 + r)
+      const k = dayKey(d)
+      row.push({ value: raw[k] ?? 0, date: k })
+    }
+    grid.push(row)
+  }
+  return grid
+}
+
+/** Last `n` days (oldest→newest) as bar data, ending today. Labels are
+ *  short month.day (e.g. 8.28 — no year/weekday). Values stay raw tokens;
+ *  ratio is normalized to the max day. */
+export function lastNDays(raw: Record<string, number>, n: number): BarDatum[] {
+  const keys = Object.keys(raw).sort()
+  const byDate: Record<string, number> = {}
+  for (const k of keys) if (/^\d{4}-\d{2}-\d{2}$/.test(k)) byDate[k] = raw[k]
+  const now = new Date()
+  const days: BarDatum[] = []
+  const max = Math.max(1, ...Object.values(byDate).filter((v) => v > 0))
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+    const k = dayKey(d)
+    const v = byDate[k] ?? 0
+    days.push({ label: `${d.getMonth() + 1}.${d.getDate()}`, value: v, ratio: v > 0 ? v / max : 0, tone: v > 0 ? 'primary' : 'muted' })
+  }
+  return days
+}
+
+/** `8.14` style short date used by bar labels and heatmap edges. */
+export function fmtShortDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '')
+  if (!m) return iso || ''
+  return `${Number(m[2])}.${Number(m[3])}`
+}
+
 function usageRender(key: 'rolling' | 'weekly' | 'monthly', label: string): (stats: WidgetStats) => WidgetRenderOut | null {
   return (stats) => {
     const u = stats.usageData?.usage?.[key]
@@ -290,23 +350,51 @@ function taskRender(stats: WidgetStats): WidgetRenderOut | null {
 }
 
 /** Token usage heatmap card — a GitHub-style daily grid coloured by volume.
- *  A legend under the title shows today's figure and the ~3-month total; the
- *  grid stays bottom-aligned in the card. The window alignment (rolling with
- *  today on the right, or calendar-quarter aligned) is user-configurable. */
-function heatmapRender(stats: WidgetStats): WidgetRenderOut | null {
-  const grid = stats.heatmapGrid
+ *  The 2×2 size shows the rolling ~3-month calendar (window alignment
+ *  user-configurable) with a legend under the title (two plain figures:
+ *  today / window total). The 2×4 size shows a ~7-month (30-week) rolling grid
+ *  — all recent usage points at a glance — with the two figures moved into the
+ *  title row's right side (headRight) and the grid horizontally centred. */
+function heatmapRender(stats: WidgetStats, meta?: { size?: WidgetSize }): WidgetRenderOut | null {
+  const rawLog = stats.heatmapRaw
+  const wide = meta?.size === '2x4'
+  // 2×4 always derives a fresh 30-week rolling grid from the raw log; the 2×2
+  // keeps the pre-built (config-aligned) grid the collector already made.
+  const grid = rawLog && wide ? buildRollingGrid(rawLog, 30) : (stats.heatmapGrid ?? (rawLog ? buildRollingGrid(rawLog, 13) : undefined))
   if (!grid || !grid.length) return null
-  // Locate today's cell by date (window alignment controls where it sits).
   const now = new Date()
-  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const todayKey = dayKey(now)
   let todayVal = 0
   let total = 0
   for (const row of grid) { for (const c of row) { total += c.value; if (c.date === todayKey) todayVal = c.value } }
-  const legend = todayVal > 0 || total > 0 ? `今日 ${fmtTokens(todayVal)}  ${fmtTokens(total)}` : undefined
+  // Two figures, no words: "今日用量 窗口总用量". Earliest/latest dates are
+  // drawn on the chart's bottom-left/right corners by the renderer.
+  const figures = todayVal > 0 || total > 0 ? `${fmtTokens(todayVal)}  ${fmtTokens(total)}` : undefined
+  return {
+    title: 'Token 用量',
+    // 2×4: figures sit at the right end of the title row; the grid centres.
+    ...(wide ? { headRight: figures } : { legend: figures }),
+    chart: { kind: 'heatmap', heatmap: grid },
+  }
+}
+
+/** Token usage last-7-days bar chart — vertical bars, oldest→newest left→
+ *  right. X-axis labels are short month.day (only the first/last shown, on the
+ *  bottom corners); the legend is two plain figures (today / 7-day total, no
+ *  "今日/近7天" words). A horizontal x-axis baseline runs under the bars. The
+ *  bar area height matches the 2×2 calendar grid's content height. */
+function heatmapBarsRender(stats: WidgetStats): WidgetRenderOut | null {
+  const rawLog = stats.heatmapRaw
+  if (!rawLog) return null
+  const bars = lastNDays(rawLog, 7)
+  if (!bars.length) return null
+  const today = bars[bars.length - 1]?.value ?? 0
+  const weekTotal = bars.reduce((a, b) => a + b.value, 0)
+  const legend = today > 0 || weekTotal > 0 ? `${fmtTokens(today)}  ${fmtTokens(weekTotal)}` : undefined
   return {
     title: 'Token 用量',
     legend,
-    chart: { kind: 'heatmap', heatmap: grid },
+    chart: { kind: 'barsV', bars },
   }
 }
 
@@ -340,7 +428,10 @@ export const WIDGETS: Widget[] = [
   { id: 'context', group: 'context', name: '一键压缩', desc: '上下文占用百分比，右上按钮两次点击执行压缩', builtin: true, render: contextRender },
   { id: 'context-water', group: 'context', name: '上下文水位', desc: '上下文系统/工具/消息占比分段条', builtin: true, sizes: ['2x2', '2x4'], render: contextWaterRender },
   { id: 'task', group: 'task', name: '任务', desc: '当前任务的进行中/已完成/待办计数', builtin: true, render: taskRender },
-  { id: 'heatmap', group: 'data', name: '用量热度图', desc: '最近 3 个月每日 Token 用量热度图（自记账）；可在预览选择窗口对齐方式', builtin: true, render: heatmapRender, configSchema: [
+  { id: 'heatmap', group: 'data', name: '用量热度图', desc: '每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；可在预览选择 2×2 窗口对齐方式', builtin: true, sizes: ['2x2', '2x4'], render: heatmapRender, configSchema: [
+    { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
+  ] },
+  { id: 'heatmap-bars', group: 'data', name: '用量柱状图', desc: '最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致', builtin: true, render: heatmapBarsRender, configSchema: [
     { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
   ] },
   { id: 'quote', group: 'fun', name: '今日寄语', desc: '随机一句鼓励语录', builtin: true, render: quoteRender, configSchema: [

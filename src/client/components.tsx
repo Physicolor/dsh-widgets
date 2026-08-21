@@ -8,7 +8,7 @@
 
 import * as React from 'react'
 import {
-  WIDGETS, badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf,
+  WIDGETS, badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf, fmtShortDate,
   type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize,
 } from './widgets'
 
@@ -41,6 +41,21 @@ const PREVIEW_STATS: WidgetStats = {
     const day = (offset: number): string => { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
     for (let w = 0; w < 13; w++) { const row: Array<{ value: number; date: string }> = []; for (let c = 0; c < 7; c++) { const off = (w - 12) * 7 + (c - 6); const v = (off % 5 === 0) ? (Math.pow(off % 13, 2) + 4000) : (off % 3 === 0 ? (off % 11) * 800 : 0); row.push({ value: Math.max(0, v), date: day(off) })}; grid.push(row); }
     return grid
+  })(),
+  heatmapRaw: (() => {
+    // Derive a raw date->value log from the 13-week preview grid so the 2×4
+    // half-year and the 7-day bar variants preview with real-shaped data.
+    const now = new Date()
+    const raw: Record<string, number> = {}
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 12 * 7)
+    for (let i = 0; i < 13 * 7; i++) {
+      const d = new Date(start)
+      d.setDate(start.getDate() + i)
+      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      const off = i - 12 * 7
+      raw[k] = off % 5 === 0 ? (Math.pow(Math.abs(off) % 13, 2) + 4000) : (off % 3 === 0 ? (off % 11) * 800 : 0)
+    }
+    return raw
   })(),
   armedAction: null,
 }
@@ -98,7 +113,7 @@ const CHART_TONES: Record<string, string> = {
   muted: 'var(--dsw-alias-label-tertiary)',
 }
 
-function ChartBlock({ chart, side }: { chart: WidgetChart; side: number }): React.ReactElement | null {
+function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; width?: number }): React.ReactElement | null {
   const scale = side / BASE_SIDE
   const h = Math.round(56 * scale)
   if (chart.kind === 'bars' && chart.bars) {
@@ -113,6 +128,32 @@ function ChartBlock({ chart, side }: { chart: WidgetChart; side: number }): Reac
       )
     })
     return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', gap: 6 } }, items)
+  }
+  if (chart.kind === 'barsV' && chart.bars) {
+    // Vertical last-N-days bars (default 7). The bar AREA height EXACTLY matches
+    // the 2×2 heatmap calendar's content height (7 rows → 7*cell + 6*2px gaps),
+    // so the bars occupy the same vertical footprint as the day-rows they
+    // replace. Bars grow up from the floor; only the FIRST (left) and LAST
+    // (right) date labels are drawn, on the bottom corners. Bar width: 93% of
+    // the column ≈ 1.5× the previous 62% (user preference).
+    const cell = Math.round((6 + 2) * scale) // same cell size as the heatmap
+    const barAreaH = 7 * cell + 6 * 2         // = heatmap content height
+    const labelH = Math.round(10 * scale)
+    const barMax = Math.max(1, ...chart.bars.map((b) => b.value))
+    const last = chart.bars.length - 1
+    const bars = chart.bars.map((b, i) => {
+      const ratio = Math.max(0, Math.min(1, b.ratio ?? b.value / barMax))
+      const tone = CHART_TONES[b.tone ?? 'primary'] ?? CHART_TONES.primary
+      const active = (b.value ?? 0) > 0
+      // Only the first and last columns carry a date label (bottom corners);
+      // middle columns keep an empty spacer so they stay evenly sized.
+      const label = (i === 0 || i === last) ? b.label : ''
+      return React.createElement('div', { key: i, title: `${b.label}: ${b.value} tok`, style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 3, height: '100%' } },
+        React.createElement('div', { style: { width: '93%', maxWidth: Math.max(6, Math.round(21 * scale)), height: active ? `${Math.max(2, Math.round((barAreaH - labelH) * ratio))}px` : `${Math.max(2, Math.round(3 * scale))}px`, borderRadius: 4, background: tone, opacity: active ? 0.85 : 0.18 } }),
+        React.createElement('div', { style: { fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1, minHeight: labelH, display: 'flex', alignItems: 'flex-end' } }, label),
+      )
+    })
+    return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 4, height: `${barAreaH}px`, marginTop: `${Math.round(4 * scale)}px` } }, bars)
   }
   if (chart.kind === 'segments' && chart.segments && chart.totalTokens) {
     // Strictly mirrors the official ContextMeter (JObwrW) colors + layout:
@@ -165,9 +206,18 @@ function ChartBlock({ chart, side }: { chart: WidgetChart; side: number }): Reac
   }
   if (chart.kind === 'heatmap' && chart.heatmap && chart.heatmap.length) {
     // GitHub-style grid: each row is a week, each cell a day, tinted by amount.
+    // Bottom corners carry the window's earliest (left) and latest (right)
+    // dates in short month.day form (e.g. 3.2 / 8.28).
+    // A wide grid (≥20 weeks, i.e. the 2×4 half-year view) auto-fits the card
+    // width and is horizontally centred; the 2×2 grid keeps fixed cells.
+    const weeks = chart.heatmap[0]?.length ?? 13
+    const isWide = weeks >= 20
+    const pad = Math.round(12 * scale)
+    const availW = (width ?? side) - 2 * pad
+    const gap = 2
+    const wideCell = isWide ? Math.max(3, Math.floor((availW - (weeks - 1) * gap) / weeks)) : Math.round((6 + 2) * scale)
+    const cell = wideCell
     const max = Math.max(1, ...chart.heatmap.flat().map((c) => c.value))
-    const base = 6
-    const cell = Math.round((base + 2) * scale)
     const rows = chart.heatmap.map((week, wi) => {
       const cells = week.map((c) => {
         const t = max > 0 ? c.value / max : 0
@@ -176,7 +226,23 @@ function ChartBlock({ chart, side }: { chart: WidgetChart; side: number }): Reac
       })
       return React.createElement('div', { key: wi, style: { display: 'flex', gap: 2 } }, cells)
     })
-    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: `${Math.round(4 * scale)}px` } }, rows)
+    const first = chart.heatmap[0]?.[0]?.date
+    // The grid's last cell can be this-week Saturday (rolling) or a future
+    // quarter column (quarter mode), so the "latest" corner shows TODAY (the
+    // true right edge of the data), never a future date.
+    const nowD = new Date()
+    const todayIso = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}-${String(nowD.getDate()).padStart(2, '0')}`
+    const corner = (text: string | undefined, align: 'flex-start' | 'flex-end'): React.ReactElement | null => {
+      if (!text) return null
+      return React.createElement('span', { style: { display: 'flex', alignItems: align, fontSize: `${Math.round(8.5 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' } }, fmtShortDate(text))
+    }
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: `${Math.round(4 * scale)}px`, alignItems: 'center', width: '100%' } },
+      ...rows,
+      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginTop: `${Math.round(3 * scale)}px`, width: '100%' } },
+        corner(first, 'flex-start'),
+        corner(todayIso, 'flex-end'),
+      ),
+    )
   }
   return null
 }
@@ -243,7 +309,7 @@ export function CardBody({ out, unit, width, onAction }: { out: WidgetRenderOut;
   // header: `上下文已用 64% ~638K / 1M`); otherwise it goes to the body.
   if (out.value != null && !out.headRight) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value', style: { fontSize: `${valuePx}px` } }, out.value))
   if (out.sub) body.push(React.createElement('div', { key: 's', className: 'dsx-stats-card-sub', style: { fontSize: `${Math.round(10 * scale)}px` } }, out.sub))
-  if (out.chart) { const c = ChartBlock({ chart: out.chart, side: unit }); if (c) body.push(React.createElement('div', { key: 'c' }, c)) }
+  if (out.chart) { const c = ChartBlock({ chart: out.chart, side: unit, width: boxW }); if (c) body.push(React.createElement('div', { key: 'c' }, c)) }
   if (out.rich) body.push(React.createElement('div', { key: 'r' }, RichBlock({ rich: out.rich, scale })))
   // Bottom-left value sits in the normal foot; the corner button is absolutely
   // positioned top-right: a brand-blue filled round button with the official
@@ -266,9 +332,11 @@ export function CardBody({ out, unit, width, onAction }: { out: WidgetRenderOut;
   // body owns the full remaining height so the block can sit top/center/bottom;
   // otherwise default to pushing content to the bottom of the card.
   const vj = out.rich?.valign === 'bottom' ? 'flex-end' : out.rich?.valign === 'center' ? 'center' : undefined
-  // Cards with a headRight figure (e.g. context %) sit top-aligned (data right
-  // under the title) instead of being pushed to the bottom of the card.
-  const topAligned = vj || out.headRight || out.headAfter
+  // Top-aligned only when a big figure demands its own row under the title
+  // (headAfter, official meter) or a rich block pins vertically. A headRight
+  // figure (today/window tokens) lives in the title row and must NOT force
+  // top-alignment — the chart below stays bottom-aligned (2×4 cards).
+  const topAligned = vj || out.headAfter
   const footStyle: React.CSSProperties = topAligned
     ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: vj ?? 'flex-start' }
     : { marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }

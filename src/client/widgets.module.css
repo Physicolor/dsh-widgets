@@ -169,6 +169,12 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   visibility: hidden !important;
 }
 
+/* Header occlusion is NOT this plugin's job: the session header's opaque
+   background + stacking priority (so it masks the rail's top edge) belongs to
+   harness-ui-enhancer, which also draws the rounded center-column card. We
+   only make sure OUR top padding clears the enhancer card's top shadow (see
+   the rail's `2px 4px ...` padding). No header rules live here. */
+
 /* ── Mac-Dock style card magnify + brand-blue edge line. ──
    Cards keep their square shape (uniform scale, no distortion) and are laid out
    by a Dock-style neighbor reflow (absolute top + scaled width/height from JS),

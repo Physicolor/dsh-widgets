@@ -205,6 +205,7 @@ interface Stats {
   contextBreakdown?: { systemTokens: number; toolsTokens: number; messageTokens: number } | null
   todos?: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed' }> | null
   heatmapGrid?: Array<Array<{ value: number; date: string }>>
+  heatmapRaw?: Record<string, number>
 }
 
 /** Fold assistant/tool-result nodes into the same window-scoped stats as the shipped StatsLine fallback. */
@@ -441,6 +442,7 @@ export function apply(ctx: ClientContext): void {
           contextPercent, contextWindow, contextTokens, contextBreakdown,
           todos: Array.isArray(todosProj) && todosProj.length >= 0 ? todosProj as Stats['todos'] : null,
           heatmapGrid: buildHeatmapGrid(heatmapRef.current, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling'),
+          heatmapRaw: { ...heatmapRef.current },
         }
         setState({ stats })
       }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now, prefs.cardConfigs?.heatmap?.monthMode])
@@ -783,7 +785,7 @@ export function apply(ctx: ClientContext): void {
         ),
       ]
       const rail = React.createElement('div', {
-        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `2px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
+        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
         onMouseLeave: () => { setFocusIdx(null); setFocusY(null); setFocusX(null) },
         onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => moveRailFocus(e.clientX, e.clientY, e.currentTarget),
         onScroll: (e) => { setRailScrollTop(e.currentTarget.scrollTop); if (prefs.realTime) railScrollSync(e.currentTarget) },
@@ -797,7 +799,7 @@ export function apply(ctx: ClientContext): void {
       // and tracks the rail's scroll via --dsx-rail-scroll so it stays pinned to
       // the scrolled deck. zIndex 25 keeps it above the rail's own cards.
       const magnifyLayer = magnifying
-        ? React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, boxSizing: 'border-box', padding: `2px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent' } },
+        ? React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent' } },
           React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${stackHeight}px` } },
             focusLayout.map((c, idx) => {
               const it = items[idx]

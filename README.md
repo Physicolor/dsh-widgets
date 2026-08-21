@@ -56,7 +56,8 @@ In both modes the magnified deck is painted by a fixed overlay **outside** the r
 | Context waterline | system/tool/message segment bars + breakdown; 2×2 and 2×4 supported |
 | One-click compact | context usage % + round corner button (double-click to compact) |
 | Tasks | in-progress / done / todo counts |
-| Usage heatmap | GitHub-style calendar heatmap, self-tracked daily usage |
+| Usage heatmap | GitHub-style calendar heatmap, self-tracked daily usage; 2×2 = ~3-month calendar, 2×4 = half-year all-points view |
+| Last-7-days bars | vertical bars for the last 7 days; bar area height matches the calendar grid |
 | Quote of the day | random motivational quote; text/alignment/wrapping customizable |
 
 ### Component Marketplace
@@ -110,6 +111,18 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
+### v1.1.0
+**New**
+- Usage-heatmap widget now supports **2×4**: a ~7-month (30-week) rolling grid showing every recent token-usage point, derived fresh from the raw daily log, horizontally centred with the today/window figures on the title row's right.
+- New **last-7-days bar chart** widget (`heatmap-bars`, 2×2): vertical bars for the past 7 days, whose bar area height exactly matches the 2×2 calendar grid's content height (so the bars occupy the same vertical footprint as the day-rows they replace).
+
+**Changed**
+- Bar chart axis labels are now short month.day dates (e.g. `8.28`) instead of weekday chars; bars are ~1.5× wider with a fuller corner radius; the legend is two plain figures (today / 7-day total, no "今日/近7天" words); only the first and last date labels are drawn on the bottom corners (no x-axis baseline). The widget is now named **用量柱状图** (was 近7日柱状).
+- Heatmap legend drops the "今日" prefix (two figures: today / window total), and the chart's bottom-left/right corners show the window's earliest date and today's date.
+- The 2×4 heatmap grid is wider (30 weeks) and horizontally centred; its figures move to the title row's right end.
+- The 2×4 **token heatmap** and **context waterline** charts are now bottom-aligned (a title-row headRight figure no longer forces top alignment).
+- The rail's top padding grows 2px → 4px so the first card keeps clear of the enhancer rounded-card's top shadow; the magnify overlay mirrors it. No header rules live here anymore — the header's opaque rectangle (masking the rail's top) is harness-ui-enhancer's job.
+
 ### v1.0.0
 **New**
 - Settings → 组件: add a "无极变化（连续跟随）" switch exposing the real-time continuous magnification mode (peak follows the pointer every animation frame).
@@ -160,6 +173,7 @@ pnpm run check      # typecheck + tests + build
 
 The widget registry (`WIDGETS` descriptors) already lays the foundation for more — adding a widget is just one descriptor.
 
+- **Heatmap range/period controls**: let the 2×4 heatmap and bars pick custom ranges (weekly/monthly/etc.) beyond the current half-year / 7-day defaults;
 - **Multi-platform usage widgets**: Z.ai, DeepSeek balance, etc., reusing the host same-origin proxy + credentials pattern;
 - **Utility widgets**: one-click compact (needs DSH official compaction) and more;
 - **External integrations**: Feishu / WeChat push & interaction, keys strictly via DSH credentials;
