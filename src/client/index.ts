@@ -103,28 +103,37 @@ function accumulateHeatmap(m: Record<string, number>, dayKey: string, delta: num
   return next
 }
 
-// The cumulative session-token baseline already accounted for in the heatmap,
-// paired with a date key so it resets automatically on a new day. Without the
-// date, a huge yesterday-baseline (e.g. 3000M) persists and today's fresh
-// session (200M) never exceeds it → delta is always 0 → today's cell barely
-// grows. With the date, baseline resets to 0 each morning so every new session
-// starts accumulating correctly from scratch.
-const HEATMAP_BASELINE = 'harness-widgets.heatmap.baseline'
-const HEATMAP_BASELINE_DATE = 'harness-widgets.heatmap.baseline-date'
-function loadHeatmapBaseline(): { total: number; date: string } {
+// The cumulative session-token anchor already accounted for in the heatmap.
+// NOTE on semantics: useProjection('tokenUsage') is the CURRENT SESSION's
+// whole-log cumulative usage (every usage event in the session, no day
+// dimension). A DSH session persists across days, so "reset the anchor to 0
+// each morning" was WRONG: continuing yesterday's session today made the full
+// yesterday total (e.g. 47M) look like today's delta and got credited to
+// today's cell. Instead the anchor is adjusted by OBSERVED CUMULATIVE
+// RESET: while current >= anchor, today's cell grows by the difference and
+// the anchor advances; if current < anchor (new session / log reset), the
+// anchor is rebuilt to the current value WITHOUT crediting anything.
+const HEATMAP_ANCHOR = 'harness-widgets.heatmap.anchor'
+/** Old daily-reset baseline keys (pre-1.1.1). On upgrade, carry the last
+ *  observed cumulative total forward as the new anchor — WITHOUT the day
+ *  reset that caused cross-day double-counting. */
+const HEATMAP_ANCHOR_LEGACY_BASELINE = 'harness-widgets.heatmap.baseline'
+const HEATMAP_ANCHOR_LEGACY_DATE = 'harness-widgets.heatmap.baseline-date'
+function loadHeatmapAnchor(): number {
   try {
-    const date = localStorage.getItem(HEATMAP_BASELINE_DATE) ?? ''
-    const today = dateKey(new Date())
-    if (date !== today) return { total: 0, date: today } // new day → reset
-    const n = +(localStorage.getItem(HEATMAP_BASELINE) ?? '')
-    return { total: Number.isFinite(n) && n > 0 ? n : 0, date: today }
-  } catch { return { total: 0, date: dateKey(new Date()) } }
+    const n = +(localStorage.getItem(HEATMAP_ANCHOR) ?? '')
+    if (Number.isFinite(n) && n >= 0) return n
+    // No new anchor yet: migrate from the legacy daily baseline if present.
+    const legacy = +(localStorage.getItem(HEATMAP_ANCHOR_LEGACY_BASELINE) ?? '')
+    if (Number.isFinite(legacy) && legacy >= 0) {
+      saveHeatmapAnchor(legacy)
+      return legacy
+    }
+    return 0
+  } catch { return 0 }
 }
-function saveHeatmapBaseline(n: number): void {
-  try {
-    localStorage.setItem(HEATMAP_BASELINE, String(n))
-    localStorage.setItem(HEATMAP_BASELINE_DATE, dateKey(new Date()))
-  } catch { /* storage unavailable */ }
+function saveHeatmapAnchor(n: number): void {
+  try { localStorage.setItem(HEATMAP_ANCHOR, String(n)) } catch { /* storage unavailable */ }
 }
 
 
@@ -333,14 +342,12 @@ export function apply(ctx: ClientContext): void {
       const contextBrk = useProjection ? useProjection('contextBreakdown') : undefined
       const todosProj = useProjection ? useProjection('todos') : undefined
       // Heatmap self-accounting: track the last-observed token total so each
-      // change's delta lands on "today", persisted to localStorage.
+      // change's delta lands on "today", persisted to localStorage. The anchor
+      // is NOT reset per day (see HEATMAP_ANCHOR notes) — it only moves when
+      // the observed cumulative total actually advances (same-session growth,
+      // including across a day boundary) or resets (new session).
       const heatmapRef = React.useRef<Record<string, number>>(seedHeatmapIfNeeded())
-      // Restore the already-accounted baseline so a remount re-adds only the NEW
-      // tokens, not the whole cumulative total (which previously inflated today's
-      // cell every time the dock remounted). The baseline resets to 0 on a new
-      // day so each day's accumulation starts fresh.
-      const baselineInit = loadHeatmapBaseline()
-      const lastTotalRef = React.useRef<number>(baselineInit.total)
+      const lastTotalRef = React.useRef<number>(loadHeatmapAnchor())
       const [heatmap, setHeatmap] = React.useState<Record<string, number>>(heatmapRef.current)
       // Presence signal: this dock slot renders only while an active session is
       // mounted (the shell drops it on the Hero/no-session state), so mount/
@@ -377,25 +384,26 @@ export function apply(ctx: ClientContext): void {
           cacheRead = usage.cacheReadTokens || 0
           outputTokens = usage.outputTokens || 0
         }
-        // Accumulate the new token volume into today's heatmap cell (once per
-        // observed increase), so the "token usage heatmap" grows over time.
-        // Reset baseline on day boundary so today starts fresh from 0.
+        // Accumulate the new token volume into today's heatmap cell. The anchor is
+        // the last-observed session cumulative total: same-session growth (even
+        // across a day boundary) credits only the difference to today; a
+        // cumulative RESET (new session / log rebuild) re-anchors without
+        // crediting. This fixes the old "reset to 0 each morning" strategy,
+        // which credited yesterday's whole total to today when a session
+        // continued across midnight.
         const todayKey = dateKey(new Date())
-        const baselineDate = localStorage.getItem(HEATMAP_BASELINE_DATE) ?? ''
-        if (baselineDate !== todayKey) {
-          lastTotalRef.current = 0
-          saveHeatmapBaseline(0)
-        }
-        if (usage && inputTokens + outputTokens > lastTotalRef.current) {
-          const delta = (inputTokens + outputTokens) - lastTotalRef.current
-          lastTotalRef.current = inputTokens + outputTokens
-          saveHeatmapBaseline(lastTotalRef.current)
-          const key = dateKey(new Date())
-          heatmapRef.current = accumulateHeatmap(heatmapRef.current, key, delta)
+        const current = inputTokens + outputTokens
+        if (usage && current > lastTotalRef.current) {
+          const delta = current - lastTotalRef.current
+          lastTotalRef.current = current
+          saveHeatmapAnchor(lastTotalRef.current)
+          heatmapRef.current = accumulateHeatmap(heatmapRef.current, todayKey, delta)
           setHeatmap(heatmapRef.current)
-        } else if (lastTotalRef.current === 0 && usage && inputTokens + outputTokens > 0) {
-          lastTotalRef.current = inputTokens + outputTokens
-          saveHeatmapBaseline(lastTotalRef.current)
+        } else if (usage && current < lastTotalRef.current) {
+          // Session switched / log reset: the cumulative total fell back.
+          // Re-anchor to the new base WITHOUT crediting any delta.
+          lastTotalRef.current = current
+          saveHeatmapAnchor(lastTotalRef.current)
         }
         // Live in-flight elapsed, added to the settled whole-log figures.
         let llmMs = folded.llmMs

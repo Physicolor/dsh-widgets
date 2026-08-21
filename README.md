@@ -111,6 +111,10 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
+### v1.1.1
+**Fixed**
+- 🔢 Token-usage heatmap double-counting across a day boundary: `tokenUsage` is the current session's whole-log cumulative usage (no day dimension), but the old accounting reset its baseline to 0 each morning — continuing yesterday's session today credited the ENTIRE yesterday total (e.g. 47M) to today's cell. The anchor now advances only with observed cumulative growth (same-session, including across midnight) and re-anchors without crediting when the total resets (new session / log rebuild). Legacy baseline keys migrate to the new anchor on first load.
+
 ### v1.1.0
 **New**
 - Usage-heatmap widget now supports **2×4**: a ~7-month (30-week) rolling grid showing every recent token-usage point, derived fresh from the raw daily log, horizontally centred with the today/window figures on the title row's right.
