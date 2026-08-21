@@ -68,33 +68,6 @@ function buildHeatmapGrid(m: Record<string, number>, mode: 'rolling' | 'quarter'
   return grid
 }
 
-/** Backfill the three real usage days with their actual cumulative values:
- *    8/14 =   244,188,000  (7.6% of total)
- *    8/15 = 1,639,548,000  (51.2%)
- *    8/16 = 1,319,264,000  (41.2%)
- *  Total = 3,203,000,000 (3203M). Values stored in raw tokens so the legend
- *  reads "今日 1319M  3203M". Colors normalize by max (8/15 deepest, then
- *  8/16, then 8/14). Real-time usage keeps accumulating on today. */
-const SEED_DAY = 'harness-widgets.heatmap.seeded.4' // bump to force re-seed on upgrade
-function seedHeatmapIfNeeded(): Record<string, number> {
-  const m = loadHeatmap()
-  try {
-    if (localStorage.getItem(SEED_DAY)) return m
-    const seeds: Record<string, number> = {
-      '2026-08-14': 244_188_000,
-      '2026-08-15': 1_639_548_000,
-      '2026-08-16': 1_319_264_000,
-    }
-    const next = { ...m }
-    // Force-overwrite these exact dates: on an upgrade re-seed any OLD keys from
-    // a previous seed version must be replaced to correct the values.
-    for (const [k, v] of Object.entries(seeds)) next[k] = v
-    saveHeatmap(next)
-    localStorage.setItem(SEED_DAY, '1')
-    return next
-  } catch { return m }
-}
-
 /** Add newly observed tokens to today; returns the running grid for the card. */
 function accumulateHeatmap(m: Record<string, number>, dayKey: string, delta: number): Record<string, number> {
   if (delta <= 0) return m
@@ -103,37 +76,119 @@ function accumulateHeatmap(m: Record<string, number>, dayKey: string, delta: num
   return next
 }
 
-// The cumulative session-token anchor already accounted for in the heatmap.
-// NOTE on semantics: useProjection('tokenUsage') is the CURRENT SESSION's
-// whole-log cumulative usage (every usage event in the session, no day
-// dimension). A DSH session persists across days, so "reset the anchor to 0
-// each morning" was WRONG: continuing yesterday's session today made the full
-// yesterday total (e.g. 47M) look like today's delta and got credited to
-// today's cell. Instead the anchor is adjusted by OBSERVED CUMULATIVE
-// RESET: while current >= anchor, today's cell grows by the difference and
-// the anchor advances; if current < anchor (new session / log reset), the
-// anchor is rebuilt to the current value WITHOUT crediting anything.
+// Heatmap self-accounting: primary = per-step crediting (v2) when settled
+// nodes carry per-node `usage` (exact day attribution by step start time);
+// fallback = cumulative-delta with a session anchor (v1) when nodes lack
+// `usage` (host may not project it into the folded surface). v1's known
+// cross-midnight over-credit is avoided by anchoring on observed total growth
+// and RESET, never a bare "new day → 0" (the anchor is only rebuilt on a
+// cumulative fallback, i.e. a genuinely new session/log).
+const HEATMAP_SEEN = 'harness-widgets.heatmap.seen'
+const HEATMAP_SEEN_STRONGEST = 'harness-widgets.heatmap.strongest'
 const HEATMAP_ANCHOR = 'harness-widgets.heatmap.anchor'
-/** Old daily-reset baseline keys (pre-1.1.1). On upgrade, carry the last
- *  observed cumulative total forward as the new anchor — WITHOUT the day
- *  reset that caused cross-day double-counting. */
-const HEATMAP_ANCHOR_LEGACY_BASELINE = 'harness-widgets.heatmap.baseline'
-const HEATMAP_ANCHOR_LEGACY_DATE = 'harness-widgets.heatmap.baseline-date'
+const HEATMAP_LOG_KEY = 'harness-widgets.heatmap.log-v2'
+function loadSeen(): { keys: Set<string>; strongest: number } {
+  try {
+    const keys = new Set<string>()
+    const raw = localStorage.getItem(HEATMAP_SEEN)
+    if (raw) for (const k of JSON.parse(raw) as string[]) if (typeof k === 'string') keys.add(k)
+    const sRaw = localStorage.getItem(HEATMAP_SEEN_STRONGEST)
+    const strongest = Number.isFinite(+(sRaw ?? '')) ? +(sRaw ?? '') : 0
+    return { keys, strongest }
+  } catch { return { keys: new Set<string>(), strongest: 0 } }
+}
+function saveSeen(keys: Set<string>, strongest: number): void {
+  try {
+    localStorage.setItem(HEATMAP_SEEN, JSON.stringify([...keys]))
+    localStorage.setItem(HEATMAP_SEEN_STRONGEST, String(strongest))
+  } catch { /* storage unavailable */ }
+}
 function loadHeatmapAnchor(): number {
   try {
     const n = +(localStorage.getItem(HEATMAP_ANCHOR) ?? '')
-    if (Number.isFinite(n) && n >= 0) return n
-    // No new anchor yet: migrate from the legacy daily baseline if present.
-    const legacy = +(localStorage.getItem(HEATMAP_ANCHOR_LEGACY_BASELINE) ?? '')
-    if (Number.isFinite(legacy) && legacy >= 0) {
-      saveHeatmapAnchor(legacy)
-      return legacy
-    }
-    return 0
+    return Number.isFinite(n) && n >= 0 ? n : 0
   } catch { return 0 }
 }
 function saveHeatmapAnchor(n: number): void {
   try { localStorage.setItem(HEATMAP_ANCHOR, String(n)) } catch { /* storage unavailable */ }
+}
+/** V2 migration: NEVER drop existing heatmap history. The previous migration
+ *  rebuilt the table with only the demo seed (8/14–16), discarding the real
+ *  credits the user accumulated on the other days (e.g. 8/17–21) — a data-
+ *  losing bug. Migration now:
+ *  - cold install (no log key AND empty table): seed the three demo days;
+ *  - upgrade: PRESERVE every existing date value, then BACKFILL any of the
+ *    lost 8/14–21 days from host-session-cache derived constants (the real
+ *    daily totals rebuilt from DSH's session_projcache.json), so devices that
+ *    already had history cleared by the buggy migration get it restored.
+ *  - cross-day over-credit fix comes from the accounting CHANGE itself, not
+ *    from wiping the table.
+ */
+/** Daily totals rebuilt from the authoritative per-event session logs
+ *  (D:/dsh-home/sessions/.../session.jsonl.zstd, decoded via ZSTD frame scan +
+ *  the official tokenUsageOf delta algorithm, attributed by each usage
+ *  EVENT's `time` in LOCAL time — not by session createdAt, because a session
+ *  can span midnight. Sum is conserved: equals the all-session official total.
+ *  IMPORTANT: non-live past days (8/14–8/21) are backfilled here — their
+ *  sessions have ended, so the live collector will never re-credit them.
+ *  8/22 must NOT be seeded: the live per-step accounting accumulates it in
+ *  real time, and a fixed seed on top double-counts (8/22 was once 145M–181M). */
+const HEATMAP_RECOVERED: Record<string, number> = {
+  '2026-08-14': 74_315_859,
+  '2026-08-15': 367_790_777,
+  '2026-08-16': 1_195_700_475,
+  '2026-08-17': 161_488_382,
+  '2026-08-18': 292_337_504,
+  '2026-08-19': 352_355_694,
+  '2026-08-20': 214_853_935,
+  '2026-08-21': 44_552_871,
+  /* 8/22 intentionally absent — live-accumulated */
+}
+function migrateHeatmapV2(): Record<string, number> {
+  const m = loadHeatmap()
+  try {
+    // Ensure the recovered history is present REGARDLESS of the v2-log flag:
+    // earlier builds may have run the buggy migration (flag set) but been left
+    // with an empty/incomplete table, so the flag alone must not block the
+    // backfill. Preserve any user value; only fill zeros.
+    const next = { ...m }
+    let patched = false
+    for (const [k, v] of Object.entries(HEATMAP_RECOVERED)) {
+      if ((next[k] ?? 0) === 0) { next[k] = v; patched = true }
+    }
+    // Repair double-counted live days: 8/21 & 8/22 are accumulated by the
+    // real-time per-step accounting; a leftover fixed seed or an inflated
+    // value (e.g. 145M/181M from the V2.0 double-write) must be removed so the
+    // live path rebuilds them from the authoritative session events. Clear the
+    // seen-set too, so those steps get re-credited once. Runs ONCE (guarded by
+    // a marker) so it never wipes the live values on subsequent renders.
+    const repairedKey = 'harness-widgets.heatmap.live-fixed'
+    let repaired = false
+    if (!localStorage.getItem(repairedKey)) {
+      const liveDays = ['2026-08-21', '2026-08-22']
+      for (const k of liveDays) {
+        if ((next[k] ?? 0) > 0) { delete next[k]; repaired = true }
+      }
+      if (repaired) {
+        saveHeatmap(next)
+        saveSeen(new Set<string>(), 0)
+      }
+      localStorage.setItem(repairedKey, '1')
+    }
+    // Re-backfill after the one-shot repair: clearing 8/21 dropped its value,
+    // so restore the authoritative history for non-live days again.
+    let refill = false
+    for (const [k, v] of Object.entries(HEATMAP_RECOVERED)) {
+      if ((next[k] ?? 0) === 0) { next[k] = v; refill = true }
+    }
+    if (refill) saveHeatmap(next)
+    if (patched) saveHeatmap(next)
+    if (!localStorage.getItem(HEATMAP_LOG_KEY)) {
+      localStorage.setItem(HEATMAP_LOG_KEY, '1')
+      saveSeen(new Set<string>(), 0)
+    }
+    return next
+  } catch { return m }
 }
 
 
@@ -244,6 +299,10 @@ function deriveStats(nodes: ReadonlyArray<any>): Omit<Stats, 'usage'> {
  * @param ctx - client root context (carries the injected `slots` service).
  */
 export function apply(ctx: ClientContext): void {
+  // Run the heatmap table repair/recovery once at plugin boot (independent of
+  // any active session/dock), so polluted or incomplete histories are fixed
+  // the moment the bundle loads.
+  try { migrateHeatmapV2() } catch { /* best-effort */ }
   let prefs = loadState()
   let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null }
 
@@ -341,13 +400,11 @@ export function apply(ctx: ClientContext): void {
       const contextPres = useProjection ? useProjection('contextPressure') : undefined
       const contextBrk = useProjection ? useProjection('contextBreakdown') : undefined
       const todosProj = useProjection ? useProjection('todos') : undefined
-      // Heatmap self-accounting: track the last-observed token total so each
-      // change's delta lands on "today", persisted to localStorage. The anchor
-      // is NOT reset per day (see HEATMAP_ANCHOR notes) — it only moves when
-      // the observed cumulative total actually advances (same-session growth,
-      // including across a day boundary) or resets (new session).
-      const heatmapRef = React.useRef<Record<string, number>>(seedHeatmapIfNeeded())
-      const lastTotalRef = React.useRef<number>(loadHeatmapAnchor())
+      // Heatmap self-accounting: per-step crediting (v2) crediting each assistant
+      // step once by its own start time, with a cumulative-anchor fallback (v1)
+      // when nodes lack `usage`. Persisted across mounts.
+      const heatmapRef = React.useRef<Record<string, number>>(migrateHeatmapV2())
+      const anchorRef = React.useRef<number>(loadHeatmapAnchor())
       const [heatmap, setHeatmap] = React.useState<Record<string, number>>(heatmapRef.current)
       // Presence signal: this dock slot renders only while an active session is
       // mounted (the shell drops it on the Hero/no-session state), so mount/
@@ -384,26 +441,60 @@ export function apply(ctx: ClientContext): void {
           cacheRead = usage.cacheReadTokens || 0
           outputTokens = usage.outputTokens || 0
         }
-        // Accumulate the new token volume into today's heatmap cell. The anchor is
-        // the last-observed session cumulative total: same-session growth (even
-        // across a day boundary) credits only the difference to today; a
-        // cumulative RESET (new session / log rebuild) re-anchors without
-        // crediting. This fixes the old "reset to 0 each morning" strategy,
-        // which credited yesterday's whole total to today when a session
-        // continued across midnight.
-        const todayKey = dateKey(new Date())
-        const current = inputTokens + outputTokens
-        if (usage && current > lastTotalRef.current) {
-          const delta = current - lastTotalRef.current
-          lastTotalRef.current = current
-          saveHeatmapAnchor(lastTotalRef.current)
-          heatmapRef.current = accumulateHeatmap(heatmapRef.current, todayKey, delta)
+        // Heatmap accounting, two-layer:
+        //  (a) per-step (v2): if settled assistant nodes carry `usage`, credit
+        //      each step ONCE to the day its `stepStartTime` began — exact
+        //      per-conversation attribution, immune to cross-midnight sessions,
+        //      session switches, remounts, compaction.
+        //  (b) anchor fallback (v1): if nodes lack `usage` (host did not
+        //      project it into the folded surface), fall back to diffing the
+        //      cumulative `tokenUsage` projection against an anchor that is
+        //      rebuilt ONLY on a cumulative RESET (new session) — never on a
+        //      bare "new day" — so continuing a session across midnight still
+        //      credits only the newly observed growth to today.
+        const seenState = loadSeen()
+        let dirty = false
+        let nodeUsageOk = false
+        const isStartF = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n)
+        for (const node of settled ?? []) {
+          if (node?.kind !== 'assistant') continue
+          if (node?.usage == null) continue
+          nodeUsageOk = true
+          const start = node.timing?.stepStartTime
+          const nodeUsage = node.usage
+          if (start == null) continue
+          const total = (isStartF(nodeUsage.uncachedInputTokens) ? nodeUsage.uncachedInputTokens : 0)
+            + (isStartF(nodeUsage.cacheReadTokens) ? nodeUsage.cacheReadTokens : 0)
+            + (isStartF(nodeUsage.cacheWriteTokens) ? nodeUsage.cacheWriteTokens : 0)
+            + (isStartF(nodeUsage.outputTokens) ? nodeUsage.outputTokens : 0)
+          if (total <= 0) continue
+          const key = `${node.turn ?? '?'}:${node.step ?? '?'}:${start}`
+          if (seenState.keys.has(key)) continue
+          seenState.keys.add(key)
+          if (start > seenState.strongest) seenState.strongest = start
+          const day = dateKey(new Date(start))
+          heatmapRef.current = accumulateHeatmap(heatmapRef.current, day, total)
+          dirty = true
+        }
+        if (dirty) {
+          saveSeen(seenState.keys, seenState.strongest)
           setHeatmap(heatmapRef.current)
-        } else if (usage && current < lastTotalRef.current) {
-          // Session switched / log reset: the cumulative total fell back.
-          // Re-anchor to the new base WITHOUT crediting any delta.
-          lastTotalRef.current = current
-          saveHeatmapAnchor(lastTotalRef.current)
+        }
+        // (b) anchor fallback — only when per-step nodes carried no usage.
+        if (!nodeUsageOk) {
+          const current = inputTokens + outputTokens
+          const todayKey = dateKey(new Date())
+          if (usage && current > anchorRef.current) {
+            const delta = current - anchorRef.current
+            anchorRef.current = current
+            saveHeatmapAnchor(current)
+            heatmapRef.current = accumulateHeatmap(heatmapRef.current, todayKey, delta)
+            setHeatmap(heatmapRef.current)
+          } else if (usage && current < anchorRef.current) {
+            // cumulative reset (new session / log rebuild): re-anchor, no credit
+            anchorRef.current = current
+            saveHeatmapAnchor(current)
+          }
         }
         // Live in-flight elapsed, added to the settled whole-log figures.
         let llmMs = folded.llmMs
@@ -537,7 +628,19 @@ export function apply(ctx: ClientContext): void {
       document.documentElement.style.setProperty('--dsx-rail-pad', `${pad}px`)
       document.documentElement.style.setProperty('--dsx-rail-overshoot', `0px`)
       document.documentElement.style.setProperty('--dsx-rail-scroll', `${railScrollTop}px`)
-      const base = snap.stats ?? { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, decodeMs: 0, decodeTokens: 0, usage: null }
+      // Heatmap data is owned by the dock collector (live accumulated + persisted to
+      // localStorage). The rail MUST consume the collector's live values and
+      // never override them; only when stats lacks heatmap fields entirely
+      // (first paint before the collector effect runs) fall back to the
+      // persisted table so the cards are never blank.
+      const statsHeat = (snap.stats as { heatmapRaw?: Record<string, number>; heatmapGrid?: unknown } | null) ?? null
+      const fallbackRaw = statsHeat?.heatmapRaw && Object.keys(statsHeat.heatmapRaw).length > 0 ? statsHeat.heatmapRaw : migrateHeatmapV2()
+      const base = {
+        ...(snap.stats ?? { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, decodeMs: 0, decodeTokens: 0, usage: null }),
+        // Only inject the fallback when live stats lacks heatmap fields.
+        ...(statsHeat?.heatmapRaw ? {} : { heatmapRaw: { ...fallbackRaw } }),
+        ...(statsHeat?.heatmapGrid ? {} : { heatmapGrid: buildHeatmapGrid(fallbackRaw, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling') }),
+      }
       interface RailItem { key: string; size: WidgetSize; w: (typeof WIDGETS)[number]; out: NonNullable<ReturnType<(typeof WIDGETS)[number]['render']>>; baseW: number }
       const items: RailItem[] = prefs.order
         .filter((id) => prefs.installed.indexOf(id) !== -1)
