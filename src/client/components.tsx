@@ -8,15 +8,29 @@
 
 import * as React from 'react'
 import {
-  WIDGETS, badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf, fmtShortDate,
+  WIDGETS, badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf, fmtShortDate, buildRollingGrid,
   type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize,
 } from './widgets'
 
 /** The base card side all scales derive from. */
 const BASE_SIDE = 150
 
-/** Placeholder usage for the market preview (before the real host fetch lands). */
 /** Realistic non-zero preview stats so every card renders (none return null). */
+/** Raw preview usage log: derived once so BOTH the 2×2 grid and the 2×4 / bar
+ *  variants share exactly the same source the real collector uses. */
+const PREVIEW_RAW: Record<string, number> = (() => {
+  const now = new Date()
+  const raw: Record<string, number> = {}
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 12 * 7)
+  for (let i = 0; i < 13 * 7; i++) {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
+    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const off = i - 12 * 7
+    raw[k] = off % 5 === 0 ? (Math.pow(Math.abs(off) % 13, 2) + 4000) : (off % 3 === 0 ? (off % 11) * 800 : 0)
+  }
+  return raw
+})()
 const PREVIEW_STATS: WidgetStats = {
   turns: 11, steps: 137,
   llmMs: 1_150_000, toolMs: 247_000,
@@ -35,28 +49,11 @@ const PREVIEW_STATS: WidgetStats = {
     { content: '打磨悬浮动画', status: 'pending' },
     { content: '发布 npm', status: 'pending' },
   ],
-  heatmapGrid: (() => {
-    const now = new Date()
-    const grid: Array<Array<{ value: number; date: string }>> = []
-    const day = (offset: number): string => { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
-    for (let w = 0; w < 13; w++) { const row: Array<{ value: number; date: string }> = []; for (let c = 0; c < 7; c++) { const off = (w - 12) * 7 + (c - 6); const v = (off % 5 === 0) ? (Math.pow(off % 13, 2) + 4000) : (off % 3 === 0 ? (off % 11) * 800 : 0); row.push({ value: Math.max(0, v), date: day(off) })}; grid.push(row); }
-    return grid
-  })(),
-  heatmapRaw: (() => {
-    // Derive a raw date->value log from the 13-week preview grid so the 2×4
-    // half-year and the 7-day bar variants preview with real-shaped data.
-    const now = new Date()
-    const raw: Record<string, number> = {}
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 12 * 7)
-    for (let i = 0; i < 13 * 7; i++) {
-      const d = new Date(start)
-      d.setDate(start.getDate() + i)
-      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      const off = i - 12 * 7
-      raw[k] = off % 5 === 0 ? (Math.pow(Math.abs(off) % 13, 2) + 4000) : (off % 3 === 0 ? (off % 11) * 800 : 0)
-    }
-    return raw
-  })(),
+  // Grid built by the SAME path as the real 2×2 calendar (7 week-rows × 13
+  // day-columns) — the old preview built it transposed (13×7), which rendered
+  // the heatmap with width and height swapped.
+  heatmapGrid: buildRollingGrid(PREVIEW_RAW, 13),
+  heatmapRaw: PREVIEW_RAW,
   armedAction: null,
 }
 
@@ -506,6 +503,12 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
       }
       stats = { ...stats, heatmapGrid: grid } as unknown as Parameters<typeof selWidget.render>[0]
     }
+    // Quote preview needs sample content — the real card deliberately renders
+    // nothing until the user types a text (preview only, never persisted).
+    if (selWidget.id === 'quote') {
+      const rawText = selConfig.text as string | undefined
+      if (!rawText || !rawText.trim()) (stats as Record<string, unknown>).text = '（填写寄语内容后显示）'
+    }
     return selWidget.render(stats, { size: selSize })
   }
   const setConfig = (field: ConfigField, value: unknown): void => {
@@ -557,7 +560,6 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
   const [q, setQ] = React.useState('')
   const [previewGroup, setPreviewGroup] = React.useState<string | null>(null)
   const [previewIdx, setPreviewIdx] = React.useState(0)
-  const [previewSize, setPreviewSize] = React.useState<WidgetSize>('2x2')
   // The market lists EVERY widget (system + external), deduped by group so a
   // group card (e.g. "context" → 一键压缩 + 上下文水位) is one entry in the rail.
   const seen = new Set<string>()
@@ -572,15 +574,20 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
   }
 
   if (previewGroup !== null) {
+    // Every supported size is its own selectable instance (2×2 first, then
+    // 2×4), so multi-size widgets like the heatmap appear as independent
+    // components instead of a size switcher.
     const gw = WIDGETS.filter((w) => groupOf(w) === previewGroup)
-    const w = gw[previewIdx] ?? gw[0]
-    const sz = w ? sizesOf(w) : ['2x2' as WidgetSize]
-    // Current preview size: the locally selected size when this widget supports
-    // it, else this widget's first size.
-    const curSize = (w && sz.includes(previewSize)) ? previewSize : (sz[0] ?? '2x2')
+    const instances = gw.flatMap((w) => sizesOf(w).map((s) => ({ w, s })))
+    const cur = instances[previewIdx] ?? instances[0]
+    const w = cur?.w
+    const curSize = cur?.s ?? '2x2'
     const curKey = w ? instanceKey(w.id, curSize) : ''
     const installed = w ? prefs.installed.indexOf(curKey) !== -1 : false
-    const out = w ? w.render(PREVIEW_STATS, { size: curSize }) : null
+    // Quote preview shows sample content (the real card renders nothing until
+    // the user types a text — preview only, never persisted).
+    const previewStats = w && w.id === 'quote' ? { ...PREVIEW_STATS, text: '预览寄语：写一句你的话' } as WidgetStats : PREVIEW_STATS
+    const out = w ? w.render(previewStats, { size: curSize }) : null
     // Everything ships bundled: the market only ADDS the selected instance
     // (widget@size) to the rail. Already-added instances show as disabled.
     const add = (): void => {
@@ -590,24 +597,12 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
         order: prefs.order.indexOf(curKey) === -1 ? prefs.order.concat(curKey) : prefs.order,
       })
     }
-    // Size chooser: left/right arrows cycle the supported sizes (like the
-    // coding-plan pair), instead of a dropdown.
-    const sizeIdx = sz.indexOf(curSize)
-    const prevSize = () => setPreviewSize(sz[(sizeIdx - 1 + sz.length) % sz.length])
-    const nextSize = () => setPreviewSize(sz[(sizeIdx + 1) % sz.length])
-    const prev = () => setPreviewIdx((previewIdx - 1 + gw.length) % gw.length)
-    const next = () => setPreviewIdx((previewIdx + 1) % gw.length)
+    const prev = () => setPreviewIdx((previewIdx - 1 + instances.length) % instances.length)
+    const next = () => setPreviewIdx((previewIdx + 1) % instances.length)
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0, position: 'relative' } },
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
         React.createElement('button', { type: 'button', className: 'dsx-btn', onClick: () => setPreviewGroup(null) }, '← 返回'),
-        React.createElement('span', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, w ? w.name : ''),
-        w && sz.length > 1
-          ? React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 2, flex: 'none' } },
-              React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '更小尺寸', onClick: prevSize }, React.createElement(ChevronLeftIcon)),
-              React.createElement('span', { style: { fontSize: 12, color: 'var(--dsw-alias-label-secondary)', width: 40, textAlign: 'center', fontVariantNumeric: 'tabular-nums' } }, curSize === '2x4' ? '2×4' : '2×2'),
-              React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '更大尺寸', onClick: nextSize }, React.createElement(ChevronRightIcon)),
-            )
-          : null,
+        React.createElement('span', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, w ? `${w.name}${curSize === '2x4' ? ' 2×4' : ' 2×2'}` : ''),
         React.createElement('button', { type: 'button', disabled: installed || prefs.installed.length >= prefs.maxWidgets, className: installed ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: add }, installed ? '已添加' : '添加'),
       ),
       !installed && prefs.installed.length >= prefs.maxWidgets
@@ -621,7 +616,7 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
         React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '下一个', onClick: next }, React.createElement(ChevronRightIcon)),
       ),
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 } },
-        gw.map((x, i) => React.createElement('button', { key: x.id, type: 'button', className: i === previewIdx ? 'dsx-dot dsx-dot-active' : 'dsx-dot', 'aria-label': x.name, onClick: () => setPreviewIdx(i) })),
+        instances.map((inst, i) => React.createElement('button', { key: inst.w.id + '@' + inst.s, type: 'button', className: i === previewIdx ? 'dsx-dot dsx-dot-active' : 'dsx-dot', 'aria-label': `${inst.w.name} ${inst.s === '2x4' ? '2×4' : '2×2'}`, onClick: () => setPreviewIdx(i) })),
       ),
     )
   }
@@ -631,6 +626,9 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     React.createElement('div', { className: 'dsx-mlist' },
       list.map((w) => {
         const gw = WIDGETS.filter((x) => groupOf(x) === groupOf(w))
+        // Instance count = every widget at every supported size (a 2×2 and a
+        // 2×4 of the same widget are two independent market entries).
+        const instanceCount = gw.reduce((a, x) => a + sizesOf(x).length, 0)
         // A group card is "added" when ANY of its instances is in the rail.
         const anyInstalled = gw.some((x) => sizesOf(x).some((s) => prefs.installed.indexOf(instanceKey(x.id, s)) !== -1))
         // Card layout: type name (bold) + widget count (capsule badge) on the
@@ -638,7 +636,7 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
         return React.createElement('button', { key: w.id, type: 'button', className: 'dsx-mcard', 'aria-pressed': anyInstalled, onClick: () => { setPreviewGroup(groupOf(w)); setPreviewIdx(0) } },
           React.createElement('span', { className: 'dsx-mhead' },
             React.createElement('span', { className: 'dsx-mname' }, GROUP_LABELS[groupOf(w)] ?? w.name),
-            React.createElement('span', { className: 'dsx-badge' }, String(gw.length)),
+            React.createElement('span', { className: 'dsx-badge' }, String(instanceCount)),
           ),
           React.createElement('span', { className: 'dsx-mdesc' }, w.desc),
           React.createElement('span', { className: 'dsx-macts' },

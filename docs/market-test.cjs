@@ -72,27 +72,47 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
     await page.waitForTimeout(700)
     const hasSelect = await page.locator('.dsx-select').count()
     const navBtns = await page.locator('.dsx-navbtn').count()
-    const addLabel = await page.evaluate(() => Array.from(document.querySelectorAll('.dsx-stats-addpanel button')).map((b) => b.textContent).join('|'))
-    console.log('DETAIL_NO_DROPDOWN (select count):', hasSelect, 'size-arrow buttons:', navBtns)
-    console.log('DETAIL_BUTTONS:', JSON.stringify(addLabel))
+    const dots = await page.locator('.dsx-dot').count()
+    console.log('DETAIL_NO_DROPDOWN (select count):', hasSelect, 'nav buttons (prev/next only):', navBtns, 'instances (dots):', dots)
 
-    // preview width before (2x2 initially)
+    // instance order: heatmap 2x2 first, heatmap 2x4 second
+    const dotLabels = await page.evaluate(() => Array.from(document.querySelectorAll('.dsx-dot')).map((d) => d.getAttribute('aria-label')))
+    console.log('INSTANCE_ORDER:', JSON.stringify(dotLabels))
+
+    // preview width 2x2 (first instance, default) — a SQUARE heatmap card
     const previewW = await page.evaluate(() => {
       const card = document.querySelector('.dsx-stats-addpanel .dsx-stats-card')
       return card ? Math.round(card.getBoundingClientRect().width) : null
     })
-    console.log('PREVIEW_W_2x2:', previewW)
+    const previewH = await page.evaluate(() => {
+      const card = document.querySelector('.dsx-stats-addpanel .dsx-stats-card')
+      return card ? Math.round(card.getBoundingClientRect().height) : null
+    })
+    console.log('PREVIEW_2x2_WxH:', previewW, 'x', previewH, '(square expected)')
 
-    // click the size-right arrow to switch to 2x4
-    const rightArrow = page.locator('.dsx-navbtn[aria-label="更大尺寸"]').first()
-    if (await rightArrow.count()) { await rightArrow.click(); await page.waitForTimeout(700) }
+    // heatmap orientation: the 2x2 grid must be 7 week-rows x 13 day-columns
+    const heatShape = await page.evaluate(() => {
+      let rows = 0, transposed = 0
+      document.querySelectorAll('.dsx-stats-addpanel div').forEach((el) => {
+        const kids = Array.from(el.children)
+        const allCells = kids.length && kids.every((k) => k.title && /tok/.test(k.title))
+        if (allCells && kids.length === 13) rows++
+        if (allCells && kids.length === 7) transposed++
+      })
+      return { weekRows: rows, transposedRowsOf7: transposed }
+    })
+    console.log('HEATMAP_ORIENTATION:', JSON.stringify(heatShape))
+
+    // next instance = heatmap 2x4 (wider preview 412)
+    await page.locator('.dsx-dot').nth(1).click()
+    await page.waitForTimeout(600)
     const previewW2 = await page.evaluate(() => {
       const card = document.querySelector('.dsx-stats-addpanel .dsx-stats-card')
       return card ? Math.round(card.getBoundingClientRect().width) : null
     })
-    console.log('PREVIEW_W_after_arrow (2x4 expected wider):', previewW2)
+    console.log('PREVIEW_2x4_W:', previewW2, '(wider expected)')
 
-    // add (scoped to the panel: the rail's own add button shares the 添加 text)
+    // add
     const addBtn2 = page.locator('.dsx-stats-addpanel button.dsx-btn-primary:has-text("添加")').first()
     if (await addBtn2.count()) { await addBtn2.click(); await page.waitForTimeout(800) }
     const afterCards = await page.locator('.dsx-stats-rail .dsx-stats-card-slot').count()

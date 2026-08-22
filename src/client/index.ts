@@ -442,7 +442,9 @@ export function apply(ctx: ClientContext): void {
   function measureRailTop(): void {
     const el = document.querySelector('[data-conversation-scroll]')
     const top = el ? el.getBoundingClientRect().top : 0
-    document.documentElement.style.setProperty('--dsx-rail-top', `${top}px`)
+    // 12px breathing gap below the session header; the rail AND the magnify
+    // overlay share this variable so both stay aligned.
+    document.documentElement.style.setProperty('--dsx-rail-top', `${top + 12}px`)
     // Composer bottom gap: one "breathing" band under everything in the input
     // column — the composer dock stats bar (`.FJxK*_root` inside
     // `conversation.composer.dock`) plus its own bottom padding — so a fixed
