@@ -398,21 +398,20 @@ function heatmapBarsRender(stats: WidgetStats): WidgetRenderOut | null {
   }
 }
 
-/** A small rotating inspirational quote, with per-card customization:
- *  custom text, show-title toggle, alignment, wrap. */
-let quoteIdx = 0
-const DEFAULT_QUOTES = ['每天进步一点点', '保持好奇，保持热爱', '耐心是成功的好朋友', '只管努力，剩下的交给时间', '今天也是元气满满的一天']
-function quoteRender(stats: WidgetStats): WidgetRenderOut {
-  quoteIdx = (quoteIdx + 1) % DEFAULT_QUOTES.length
+/** A quote card only renders content when the user typed a custom text — no
+ *  default filler (which used to rotate on every render and re-render). */
+function quoteRender(stats: WidgetStats): WidgetRenderOut | null {
   const c = stats as unknown as Record<string, unknown>
   const text = c.text as string | undefined
   const showTitle = c.showTitle as boolean | undefined
   const align = c.align as 'left' | 'center' | 'right' | undefined
   const valign = c.valign as 'top' | 'center' | 'bottom' | undefined
   const wrap = c.wrap as boolean | undefined
+  const trimmed = text && text.trim()
+  if (!trimmed) return null
   return {
     title: showTitle === false ? '' : '今日寄语',
-    rich: { type: 'quote', text: (text && text.trim()) || DEFAULT_QUOTES[quoteIdx], align, valign, wrap },
+    rich: { type: 'quote', text: trimmed, align, valign, wrap },
   }
 }
 
@@ -434,7 +433,7 @@ export const WIDGETS: Widget[] = [
   { id: 'context', group: 'system', name: '一键压缩', desc: '上下文占用百分比，右上按钮两次点击执行压缩', builtin: true, render: contextRender },
   { id: 'context-water', group: 'system', name: '上下文水位', desc: '上下文系统/工具/消息占比分段条', builtin: true, sizes: ['2x2', '2x4'], render: contextWaterRender },
   { id: 'task', group: 'system', name: '任务', desc: '当前任务的进行中/已完成/待办计数', builtin: true, render: taskRender },
-  { id: 'quote', group: 'system', name: '今日寄语', desc: '随机一句鼓励语录', builtin: true, render: quoteRender, configSchema: [
+  { id: 'quote', group: 'other', name: '今日寄语', desc: '显示你自定义的一句话（未填写文本时不显示内容）', builtin: true, render: quoteRender, configSchema: [
     { key: 'text', label: '寄语内容', type: 'text' },
     { key: 'showTitle', label: '显示标题', type: 'toggle', default: true },
     { key: 'align', label: '水平对齐', type: 'align', default: 'left' },
@@ -459,8 +458,13 @@ export const ALL_IDS = WIDGETS.map((w) => w.id)
 /** Every valid instance key (each widget at each of its supported sizes). */
 export const ALL_INSTANCES: string[] = WIDGETS.flatMap((w) => sizesOf(w).map((s) => instanceKey(w.id, s)))
 
-/** The default installed set: every built-in widget at its 2×2 size. */
-export const DEFAULT_INSTALLED: string[] = WIDGETS.filter((w) => w.builtin).map((w) => instanceKey(w.id, '2x2'))
+/** The stats-line family: widgets that mirror the official composer stats bar
+ *  (turns / LLM · tool time / TTFT / rate / cache / tokens). Fresh installs
+ *  pre-load ONLY these; everything else is added from the market on demand. */
+export const STATS_WIDGET_IDS = ['counts', 'llm', 'tool', 'ttft', 'tps', 'cache', 'tokens']
+
+/** The default installed set: the stats-line family at 2×2. */
+export const DEFAULT_INSTALLED: string[] = STATS_WIDGET_IDS.map((id) => instanceKey(id, '2x2'))
 
 /** Badge text for a widget. */
 export function badgeOf(w: Widget): string {

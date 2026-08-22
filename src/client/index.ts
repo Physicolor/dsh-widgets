@@ -211,6 +211,7 @@ const DEFAULTS: Prefs = {
   cardConfigs: {},
   maxWidgets: 10,
   columns: 2,
+  hideStatsLine: false,
 }
 
 /** Required services: the slot registry (React is a platform module). */
@@ -247,6 +248,7 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
   if (typeof s.cardConfigs !== 'object' || s.cardConfigs === null || Array.isArray(s.cardConfigs)) s.cardConfigs = {}
   if (!Number.isFinite(s.maxWidgets) || s.maxWidgets < 1 || s.maxWidgets > 20) s.maxWidgets = DEFAULTS.maxWidgets
   if ([1, 2, 4].indexOf(s.columns as number) === -1) s.columns = DEFAULTS.columns
+  if (typeof s.hideStatsLine !== 'boolean') s.hideStatsLine = DEFAULTS.hideStatsLine
   return s
 }
 
@@ -1208,5 +1210,13 @@ export function apply(ctx: ClientContext): void {
     const sub = subscribe(apply)
     apply()
     return () => { sub(); document.body.classList.remove('dsx-stats-active') }
+  })
+
+  // ---- Official composer stats-line hide switch (personal preference). ----
+  ctx.effect(() => {
+    const apply = (): void => { document.body.classList.toggle('dsx-hide-statsline', prefs.hideStatsLine) }
+    const sub = subscribe(apply)
+    apply()
+    return () => { sub(); document.body.classList.remove('dsx-hide-statsline') }
   })
 }

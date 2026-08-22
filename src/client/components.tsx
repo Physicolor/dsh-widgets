@@ -80,6 +80,10 @@ export interface Prefs {
   maxWidgets: number
   /** Number of card columns in the rail (1 / 2 / 4). Default 2. */
   columns: number
+  /** Hide the official composer stats line under the input box (personal
+   *  preference — the rail widgets can show the same data). Default OFF so
+   *  other users keep their stats bar. */
+  hideStatsLine: boolean
 }
 
 /** The controller handed to every component. */
@@ -564,6 +568,7 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     system: '系统',
     'opencode-go': 'OpenCode Go',
     'coding-plan': 'Coding Plan 用量',
+    other: '其它',
   }
 
   if (previewGroup !== null) {
@@ -592,7 +597,7 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     const nextSize = () => setPreviewSize(sz[(sizeIdx + 1) % sz.length])
     const prev = () => setPreviewIdx((previewIdx - 1 + gw.length) % gw.length)
     const next = () => setPreviewIdx((previewIdx + 1) % gw.length)
-    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 } },
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0, position: 'relative' } },
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
         React.createElement('button', { type: 'button', className: 'dsx-btn', onClick: () => setPreviewGroup(null) }, '← 返回'),
         React.createElement('span', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, w ? w.name : ''),
@@ -606,7 +611,7 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
         React.createElement('button', { type: 'button', disabled: installed || prefs.installed.length >= prefs.maxWidgets, className: installed ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: add }, installed ? '已添加' : '添加'),
       ),
       !installed && prefs.installed.length >= prefs.maxWidgets
-        ? React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-state-warn-primary, var(--dsw-alias-label-tertiary))', marginTop: -4 } }, `已达上限 ${prefs.maxWidgets} 个，先在组件配置中移除再添加`)
+        ? React.createElement('div', { className: 'dsx-limit-tip' }, `已达上限 ${prefs.maxWidgets} 个，先在组件配置中移除再添加`)
         : null,
       React.createElement('div', { style: { flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '0 4px' } },
         React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '上一个', onClick: prev }, React.createElement(ChevronLeftIcon)),
@@ -628,13 +633,14 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
         const gw = WIDGETS.filter((x) => groupOf(x) === groupOf(w))
         // A group card is "added" when ANY of its instances is in the rail.
         const anyInstalled = gw.some((x) => sizesOf(x).some((s) => prefs.installed.indexOf(instanceKey(x.id, s)) !== -1))
+        // Card layout: type name (bold) + widget count (capsule badge) on the
+        // first line, one description line, actions — no extra id line.
         return React.createElement('button', { key: w.id, type: 'button', className: 'dsx-mcard', 'aria-pressed': anyInstalled, onClick: () => { setPreviewGroup(groupOf(w)); setPreviewIdx(0) } },
           React.createElement('span', { className: 'dsx-mhead' },
-            React.createElement('span', { className: 'dsx-mname' }, w.name),
-            React.createElement('span', { className: 'dsx-badge' }, GROUP_LABELS[groupOf(w)] ?? badgeOf(w)),
+            React.createElement('span', { className: 'dsx-mname' }, GROUP_LABELS[groupOf(w)] ?? w.name),
+            React.createElement('span', { className: 'dsx-badge' }, String(gw.length)),
           ),
           React.createElement('span', { className: 'dsx-mdesc' }, w.desc),
-          React.createElement('code', { className: 'dsx-mid' }, w.id),
           React.createElement('span', { className: 'dsx-macts' },
             React.createElement('span', { className: 'dsx-btn' }, '查看详情'),
             React.createElement('span', { className: anyInstalled ? 'dsx-btn dsx-btn-primary' : 'dsx-btn' }, anyInstalled ? '已添加' : '添加'),
@@ -711,5 +717,12 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
     React.createElement(Row, { title: '卡片边长', desc: '所有卡片统一的正方形边长，字体与圆角随比例缩放', children: React.createElement(Slider, { min: 100, max: 220, value: prefs.cardSide, unit: 'px', onChange: (v) => setPrefs({ cardSide: v }) }) }),
     React.createElement(Row, { title: '添加面板宽度', desc: '右侧“添加组件”面板的宽度，也可拖其左边缘调整', children: React.createElement(Slider, { min: 260, max: 760, value: prefs.panelWidth, unit: 'px', onChange: (v) => setPrefs({ panelWidth: v }) }) }),
     React.createElement(Row, { title: '最多组件数', desc: '侧边栏最多显示的组件数量，超限后无法再添加', children: React.createElement(Slider, { min: 1, max: 20, value: prefs.maxWidgets, unit: '个', onChange: (v) => setPrefs({ maxWidgets: v }) }) }),
+    React.createElement(Row, {
+      title: '隐藏输入框下方文字条', desc: '隐藏输入框下方的官方统计文字条（轮次/LLM 时长等）；组件栏中可查看同类信息，纯属个人偏好',
+      children: React.createElement('label', { className: 'dsx-switch-row' },
+        React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: prefs.hideStatsLine, onChange: (e) => setPrefs({ hideStatsLine: e.target.checked }) }),
+        React.createElement('span', { className: 'dsx-switch-track' }, React.createElement('span', { className: 'dsx-switch-thumb' })),
+      ),
+    }),
   )
 }

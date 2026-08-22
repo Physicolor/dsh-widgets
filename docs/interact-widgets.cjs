@@ -15,6 +15,20 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
   page.on('pageerror', (e) => consoleErrors.push(`PAGEERROR: ${e.message}`))
 
   await page.goto('http://127.0.0.1:3080', { waitUntil: 'networkidle', timeout: 30000 })
+  // Fidelity guard: snapshot the REAL host state (user data) and restore it
+  // before closing, so this test never mutates a user's saved configuration.
+  const originalState = await page.evaluate(async () => {
+    const r = await fetch('/api/widgets-state')
+    return r.ok ? await r.json() : null
+  })
+  const restoreState = () => page.evaluate(async (orig) => {
+    if (!orig) return
+    await fetch('/api/widgets-state', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ savedAt: typeof orig.savedAt === 'number' ? orig.savedAt : 0, state: orig.state || {} }),
+    }).catch(() => {})
+  }, originalState)
   const bodyText = (await page.evaluate(() => document.body.innerText)).slice(0, 500)
   console.log('PAGE_TEXT_HEAD:', JSON.stringify(bodyText))
 
@@ -232,5 +246,6 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
     })
     console.log('RT_FOLLOW_STEADY:', JSON.stringify(s))
   }
+  await restoreState()
   await browser.close()
 })().catch((e) => { console.error('SCRIPT_FAIL', e); process.exit(1) })

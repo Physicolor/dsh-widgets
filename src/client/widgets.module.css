@@ -624,3 +624,28 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
 .dsx-switch-input:disabled + .dsx-switch-track .dsx-switch-thumb {
   box-shadow: none;
 }
+
+/* Floating limit warning: absolute + centred, never takes layout height. */
+.dsx-limit-tip {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 64px;
+  z-index: 30;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--dsw-alias-state-warn-primary, var(--dsw-alias-label-tertiary));
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 92%, transparent);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  padding: 4px 12px;
+  box-shadow: var(--dsw-shadow-lv1);
+  pointer-events: none;
+}
+
+/* Personal-preference switch: hide the official composer stats line below the
+   input box (the rail widgets can show the same data). Default OFF. */
+body.dsx-hide-statsline [data-slot='conversation.composer.dock'] > div {
+  display: none !important;
+}
