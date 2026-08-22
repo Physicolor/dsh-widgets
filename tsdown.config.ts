@@ -29,7 +29,7 @@ const PLATFORM_MODULES = [
   '@deepseek-ai/dsh-client-runtime/client',
 ] as const
 
-const PLUGIN_ID = 'harness-widgets'
+const PLUGIN_ID = 'dsh-widgets'
 const CSS_VIRTUAL_PREFIX = '\0dsh-css:'
 const CSS_VIRTUAL_SUFFIX = '.mjs'
 
@@ -45,7 +45,7 @@ function sourceAssetPath(source: string, importer: string): string {
 
 /** Host (node) half: plain ESM with the OpenCode usage proxy route. */
 const nodeConfig: UserConfig = {
-  name: 'harness-widgets/node',
+  name: 'dsh-widgets/node',
   entry: { index: 'src/index.ts' },
   outDir: 'lib',
   format: ['esm'],
@@ -60,7 +60,7 @@ const nodeConfig: UserConfig = {
 
 /** Browser bundle: closure-factory format consumed by the loader module table. */
 const clientConfig: UserConfig = {
-  name: 'harness-widgets/client',
+  name: 'dsh-widgets/client',
   entry: { client: 'src/client/index.ts' },
   outDir: 'lib',
   format: 'cjs',

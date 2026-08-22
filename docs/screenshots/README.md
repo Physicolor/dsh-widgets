@@ -15,10 +15,10 @@
 若要控制展示的截图与顺序，向 dsh-market 仓库 `data/screenshots.json` 新增一条，**key 用本插件 GitHub 入口 URL**，图片用 `raw.githubusercontent.com` 直链：
 
 ```jsonc
-"https://github.com/Physicolor/harness-widgets": [
-  "https://raw.githubusercontent.com/Physicolor/harness-widgets/main/docs/screenshots/rail-widgets.png",
-  "https://raw.githubusercontent.com/Physicolor/harness-widgets/main/docs/screenshots/dock-magnify.png",
-  "https://raw.githubusercontent.com/Physicolor/harness-widgets/main/docs/screenshots/add-panel.png"
+"https://github.com/Physicolor/dsh-widgets": [
+  "https://raw.githubusercontent.com/Physicolor/dsh-widgets/main/docs/screenshots/rail-widgets.png",
+  "https://raw.githubusercontent.com/Physicolor/dsh-widgets/main/docs/screenshots/dock-magnify.png",
+  "https://raw.githubusercontent.com/Physicolor/dsh-widgets/main/docs/screenshots/add-panel.png"
 ]
 ```
 

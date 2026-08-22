@@ -8,9 +8,9 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/npm/v/harness-widgets?style=flat&label=latest%20release&color=4D6BFE" alt="Latest release">
-  <img src="https://img.shields.io/npm/dt/harness-widgets?style=flat&label=total%20downloads&color=4D6BFE" alt="Total downloads">
-  <a href="https://github.com/Physicolor/harness-widgets/stargazers"><img src="https://img.shields.io/github/stars/Physicolor/harness-widgets?style=flat&label=%E2%98%85&color=08C" alt="GitHub stars"></a>
+  <img src="https://img.shields.io/npm/v/dsh-widgets?style=flat&label=latest%20release&color=4D6BFE" alt="Latest release">
+  <img src="https://img.shields.io/npm/dt/dsh-widgets?style=flat&label=total%20downloads&color=4D6BFE" alt="Total downloads">
+  <a href="https://github.com/Physicolor/dsh-widgets/stargazers"><img src="https://img.shields.io/github/stars/Physicolor/dsh-widgets?style=flat&label=%E2%98%85&color=08C" alt="GitHub stars"></a>
   <img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License">
   <img src="https://img.shields.io/badge/DSH%200.1.x-4493F8?style=flat-square" alt="Supported: DeepSeek Harness 0.1.x">
 </p>
@@ -84,7 +84,7 @@ Rolling / weekly / monthly usage windows + percentage + reset time. The host hal
 
 ```sh
 # via npm (plugin market)
-dsh plugin --profile web add harness-widgets
+dsh plugin --profile web add dsh-widgets
 
 # local development (link)
 dsh plugin --profile web add link:D:/dsh-home/plugins/harness-widgets
@@ -110,6 +110,13 @@ pnpm run check      # typecheck + tests + build
 - Coordinates explicitly with `dsh-better-sidebar`'s right rail (shares `--dsh-sidebar-width`); no residue after uninstall.
 
 ## Changelog
+
+### v1.1.4
+**Meta — renamed package to `dsh-widgets`:**
+- 📦 npm package renamed `harness-widgets` → `dsh-widgets` (dsh- prefix matches the ecosystem norm and npm search; `dsh-ui-enhancer`-style queries now hit this package). Old package is deprecated and redirects here.
+- 🔀 GitHub repo renamed `Physicolor/harness-widgets` → `Physicolor/dsh-widgets` (old URL auto-redirects; stars/forks/issues preserved).
+- ♻️ Install command is now `dsh plugin --profile web add dsh-widgets`.
+- 💾 No data impact: localStorage keys (`harness-widgets.*`) stay unchanged, so heatmap and widget state are carried over.
 
 ### v1.1.3
 **Meta:**

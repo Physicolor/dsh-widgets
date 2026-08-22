@@ -4,4 +4,4 @@
 # is picked up by client-modules scanning the `dsh.client` declaration.
 - insert:
     - id: widgets
-      name: harness-widgets
+      name: dsh-widgets
