@@ -681,6 +681,31 @@ export function apply(ctx: ClientContext): void {
       // transition, so entering/exiting magnifies smoothly.
       const [focusY, setFocusY] = React.useState<number | null>(null)
       const [focusX, setFocusX] = React.useState<number | null>(null)
+      // Animation phase for the overlay's CSS size tween. Entering/leaving the
+      // wave uses a short tween (smooth grow/shrink, no pop); while FOLLOWING
+      // the pointer the transition is disabled so every frame lands directly on
+      // the steady-state right-anchored geometry — that keeps the right edge on
+      // the rail's right line and the inter-card gaps exactly `pad` even under
+      // fast pointer movement (a live width tween would linger in non-steady
+      // intermediate geometry: misaligned right edges and uneven gaps).
+      const [animPhase, setAnimPhase] = React.useState<'idle' | 'grow' | 'follow' | 'shrink'>('idle')
+      const animPhaseRef = React.useRef<'idle' | 'grow' | 'follow' | 'shrink'>('idle')
+      const phaseTimer = React.useRef<number | undefined>(undefined)
+      const schedulePhase = (next: 'grow' | 'follow' | 'shrink' | 'idle', afterMs: number): void => {
+        if (phaseTimer.current !== undefined) window.clearTimeout(phaseTimer.current)
+        if (afterMs <= 0) { animPhaseRef.current = next; setAnimPhase(next); return }
+        animPhaseRef.current = next
+        setAnimPhase(next)
+        phaseTimer.current = window.setTimeout(() => {
+          phaseTimer.current = undefined
+          // Follow is only meaningful while still engaged; a leave that raced
+          // this timer morphs into the shrink phase instead.
+          const final = next === 'follow' ? (armedRef.current ? 'follow' : 'shrink') : next
+          animPhaseRef.current = final
+          setAnimPhase(final)
+        }, afterMs)
+      }
+      React.useEffect(() => () => { if (phaseTimer.current !== undefined) window.clearTimeout(phaseTimer.current) }, [])
       // Rail content scroll offset (px), synced to the fixed magnify overlay so
       // it tracks the scrolled deck instead of sitting at the rail's viewport top.
       const [railScrollTop, setRailScrollTop] = React.useState(0)
@@ -722,8 +747,22 @@ export function apply(ctx: ClientContext): void {
         if (rafRef.current) return
         rafRef.current = requestAnimationFrame(() => {
           rafRef.current = 0
-          setFocusX(contentXRef.current)
-          setFocusY(contentYRef.current)
+          const x = contentXRef.current
+          const y = contentYRef.current
+          // First engaged frame (or re-engage after a leave) uses the "grow"
+          // tween so the wave scales up smoothly; once the tween settles we
+          // switch to "follow" (no transition) so fast pointer movement lands
+          // instantly on steady-state geometry. Only the realtime style needs
+          // the follow mode — discrete keeps its tween for grid gliding.
+          if (prefs.realTime && animPhaseRef.current !== 'follow' && animPhaseRef.current !== 'grow') {
+            schedulePhase('grow', 0)
+            schedulePhase('follow', 170)
+          } else if (!prefs.realTime && animPhaseRef.current === 'idle') {
+            schedulePhase('grow', 0)
+            schedulePhase('follow', 170)
+          }
+          setFocusX(x)
+          setFocusY(y)
         })
       }
       // Re-target the peak when the rail scrolls without the pointer moving.
@@ -741,6 +780,9 @@ export function apply(ctx: ClientContext): void {
           setAddOpen(false); setFocusY(null); setFocusX(null)
           armedRef.current = false
           cardElsRef.current = []
+          animPhaseRef.current = 'idle'
+          setAnimPhase('idle')
+          if (phaseTimer.current !== undefined) { window.clearTimeout(phaseTimer.current); phaseTimer.current = undefined }
         }
       }, [snap.open, snap.hasSession])
       if (!snap.open || !snap.hasSession) return null
@@ -1064,7 +1106,14 @@ export function apply(ctx: ClientContext): void {
       ]
       const rail = React.createElement('div', {
         className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
-        onMouseLeave: () => { armedRef.current = false; setFocusY(null); setFocusX(null) },
+        onMouseLeave: () => {
+          armedRef.current = false
+          setFocusY(null); setFocusX(null)
+          // Smooth shrink back to resting size (the overlay stays mounted and
+          // its width/height tween runs against the resting layout).
+          if (animPhaseRef.current !== 'idle' && animPhaseRef.current !== 'shrink') schedulePhase('shrink', 0)
+          schedulePhase('idle', 200)
+        },
         onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => moveRailFocus(e.clientX, e.clientY, e.currentTarget),
         onScroll: (e) => { setRailScrollTop(e.currentTarget.scrollTop); railScrollSync(e.currentTarget) },
       }, railChildren)
@@ -1079,24 +1128,36 @@ export function apply(ctx: ClientContext): void {
       // ALWAYS mounted: entering/exiting updates only scale, and the CSS
       // width/height transition below animates the growth/shrink smoothly
       // (mounting at the target size would pop). Opacity hides it while rest.
+      // Positions (top/right) are INSTANT always — right-anchored geometry
+      // keeps the right edge on the rail's right line. The size tween applies
+      // to the enter/exit phases (grow/shrink) and to the discrete style's
+      // grid gliding; the realtime FOLLOW phase has no transition so every
+      // frame lands directly on the steady-state geometry (right edge aligned
+      // AND inter-card gaps exactly `pad`, even under fast pointer movement).
+      const tweenSize = !active || animPhase === 'grow' || animPhase === 'shrink'
+      const overlayTransition = tweenSize
+        ? 'top 0s, right 0s, width 0.15s var(--ds-ease-in-out), height 0.15s var(--ds-ease-in-out)'
+        : 'none'
       const magnifyLayer = React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent', opacity: magnifying ? 1 : 0, transition: 'opacity 0.15s ease' } },
         React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${stackHeight}px` } },
+          // Positions (top/right) are INSTANT always — right-anchored geometry
+          // keeps the right edge on the rail's right line. The size tween
+          // applies to the enter/exit phases (grow/shrink) and to the discrete
+          // style's grid gliding; the realtime FOLLOW phase has no transition
+          // so every frame lands directly on the steady-state geometry (right
+          // edge aligned AND inter-card gaps exactly `pad`, even under fast
+          // pointer movement).
           focusLayout.map((c, idx) => {
             const it = items[idx]
-            // Positions (top/right) are INSTANT — right-anchored geometry means
-            // the right edge never leaves the rail's right edge mid-tween; only
-            // width/height carry the 0.15s tween, which both smooths the
-            // enter/exit and lets the wave glide as the pointer crosses gaps.
-            const transition = 'top 0s, right 0s, width 0.15s var(--ds-ease-in-out), height 0.15s var(--ds-ease-in-out)'
-              const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, zIndex: Math.round((c.s - 1) * 100) }
-              return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle },
-                React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: undefined }),
-              )
-            }),
-            // Mirror the add button at its WAVE position (focusedAdd), scaled by its own
-            // wave factor — it displaces with the magnified deck like a card,
-            // and its size follows the same bell curve.
-            React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', tabIndex: -1, style: { position: 'absolute', top: `${focusedAdd.top.toFixed(2)}px`, right: `${focusedAdd.right.toFixed(2)}px`, width: `${(side * addScale).toFixed(2)}px`, height: `${(side * addScale).toFixed(2)}px`, borderRadius: `${Math.round(addRadius * addScale)}px`, transition: 'top 0s, right 0s, width 0.15s var(--ds-ease-in-out), height 0.15s var(--ds-ease-in-out)', zIndex: 30 } },
+            const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition: overlayTransition, zIndex: Math.round((c.s - 1) * 100) }
+            return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle },
+              React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: undefined }),
+            )
+          }),
+          // Mirror the add button at its WAVE position (focusedAdd), scaled by
+          // its own wave factor — it displaces with the magnified deck like a
+          // card, and its size follows the same bell curve.
+          React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', tabIndex: -1, style: { position: 'absolute', top: `${focusedAdd.top.toFixed(2)}px`, right: `${focusedAdd.right.toFixed(2)}px`, width: `${(side * addScale).toFixed(2)}px`, height: `${(side * addScale).toFixed(2)}px`, borderRadius: `${Math.round(addRadius * addScale)}px`, transition: overlayTransition, zIndex: 30 } },
               React.createElement('span', { className: 'dsx-stats-add-icon' },
                 React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
               ),

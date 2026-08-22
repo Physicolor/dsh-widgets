@@ -142,6 +142,10 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
     p.realTime = true
     localStorage.setItem('harness-widgets.state', JSON.stringify(p))
   })
+  // Reload so the plugin re-reads prefs from localStorage (evaluate alone does
+  // not touch the in-memory prefs, which would silently stay in discrete mode).
+  await page2.reload({ waitUntil: 'networkidle' })
+  await page2.waitForTimeout(1500)
   const s2 = page2.getByText('组件状态保存问题排查').first()
   if ((await s2.count()) > 0) {
     await s2.click({ timeout: 5000 }).catch(() => {})
@@ -180,5 +184,53 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
     }
   }
   console.log('RT_CONSOLE_ERRORS:', JSON.stringify(errs2))
+
+  // --- Follow-phase steadiness (realtime): after the entry tween settles, the
+  // overlay must have NO transition (so fast movement lands on steady-state
+  // geometry) and every sample must keep the right edge aligned and the
+  // inter-card gaps exactly pad (24). ---
+  const fb = await page2.locator('.dsx-stats-card-slot').first().boundingBox()
+  if (fb) {
+    await page2.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2)
+    await page2.waitForTimeout(450) // entry tween (170ms) fully settled
+    for (let i = 1; i <= 10; i++) {
+      await page2.mouse.move(fb.x + fb.width / 2 + i * 14, fb.y + fb.height / 2)
+      await page2.waitForTimeout(22)
+    }
+    const s = await page2.evaluate(() => {
+      const layer = Array.from(document.querySelectorAll('div')).find((el) => el.style.zIndex === '25')
+      if (!layer) return null
+      const first = layer.querySelector('.dsx-stats-card-slot')
+      if (!first) return null
+      const cs = getComputedStyle(first)
+      const overlaySlots = Array.from(layer.querySelectorAll('.dsx-stats-card-slot')).map((el) => {
+        const r = el.getBoundingClientRect()
+        return { top: r.top, left: r.left, right: r.right, width: r.width }
+      })
+      const staticRights = Array.from(document.querySelectorAll('.dsx-stats-rail .dsx-stats-card-slot')).map((el) => el.getBoundingClientRect().right)
+      // group by row (top within 2px), sort by left, measure adjacent gaps
+      const rows = new Map()
+      for (const sl of overlaySlots) {
+        let key = null
+        for (const k of rows.keys()) if (Math.abs(k - sl.top) <= 2) { key = k; break }
+        if (key === null) { key = sl.top; rows.set(key, []) }
+        rows.get(key).push(sl)
+      }
+      const gaps = []
+      for (const list of rows.values()) {
+        list.sort((a, b) => a.left - b.left)
+        for (let i = 1; i < list.length; i++) gaps.push(Math.round(list[i].left - list[i - 1].right))
+      }
+      return {
+        transitionDuration: cs.transitionDuration,
+        transitionProperty: cs.transitionProperty,
+        overlayRightmost: Math.round(Math.max(...overlaySlots.map((s2) => s2.right))),
+        staticRightmost: Math.round(Math.max(...staticRights)),
+        diff: Math.round(Math.max(...overlaySlots.map((s2) => s2.right)) - Math.max(...staticRights)),
+        gaps,
+      }
+    })
+    console.log('RT_FOLLOW_STEADY:', JSON.stringify(s))
+  }
   await browser.close()
 })().catch((e) => { console.error('SCRIPT_FAIL', e); process.exit(1) })
