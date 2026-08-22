@@ -43,10 +43,8 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
       console.log('FIRST_CARD_BOX:', JSON.stringify(box))
       // magnify overlay is the fixed div with z-index 25
       const hasOverlay = () => page.evaluate(() => {
-        for (const el of document.querySelectorAll('div')) {
-          if (el.style.zIndex === '25' && getComputedStyle(el).position === 'fixed') return true
-        }
-        return false
+        const layer = Array.from(document.querySelectorAll('div')).find((el) => el.style.zIndex === '25')
+        return layer ? parseFloat(getComputedStyle(layer).opacity) > 0.5 : false
       })
       console.log('OVERLAY_BEFORE:', await hasOverlay())
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
@@ -64,19 +62,71 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
   }
   console.log('CONSOLE_ERRORS:', JSON.stringify(consoleErrors))
 
-  // --- Add-button magnification: hover the LAST card (nearest to the bottom
-  // add button) so the wave peak propagates to the add button, then assert
-  // the overlay's mirrored add button grows wider than the resting side.
+  // --- v1.1.6 round: smooth tween / right-edge alignment / gap wave / add rides ---
   const cardCount = await page.locator('.dsx-stats-card-slot').count()
+  console.log('V116_ROUND: discrete overlay diagnostics')
+  const overlayTransition = await page.evaluate(() => {
+    const layer = Array.from(document.querySelectorAll('div')).find((el) => el.style.zIndex === '25')
+    if (!layer) return null
+    const slot = layer.querySelector('.dsx-stats-card-slot')
+    if (!slot) return null
+    const cs = getComputedStyle(slot)
+    return { props: cs.transitionProperty, durations: cs.transitionDuration }
+  })
+  console.log('OVERLAY_TRANSITION:', JSON.stringify(overlayTransition))
+
+  // right-edge alignment while a card row is magnified
+  await page.evaluate(() => { const r = document.querySelector('.dsx-stats-rail'); if (r) r.scrollTop = 0 })
+  await page.waitForTimeout(300)
+  const firstCardBox = await page.locator('.dsx-stats-card-slot').first().boundingBox()
+  if (firstCardBox) {
+    await page.mouse.move(firstCardBox.x + firstCardBox.width / 2, firstCardBox.y + firstCardBox.height / 2)
+    await page.waitForTimeout(700)
+    const align = await page.evaluate(() => {
+      const rail = document.querySelector('.dsx-stats-rail')
+      const layer = Array.from(document.querySelectorAll('div')).find((el) => el.style.zIndex === '25')
+      if (!rail || !layer) return null
+      const rr = rail.getBoundingClientRect()
+      const slots = (sel) => Array.from(document.querySelectorAll(sel)).map((s) => s.getBoundingClientRect().right)
+      const staticRights = slots('.dsx-stats-rail .dsx-stats-card-slot')
+      const overlayRights = slots('div[style*="z-index: 25"] .dsx-stats-card-slot')
+      return { railRight: rr.right, staticRightmost: Math.max(...staticRights), overlayRightmost: Math.max(...overlayRights), diff: Math.max(...overlayRights) - Math.max(...staticRights) }
+    })
+    console.log('RIGHT_ALIGN:', JSON.stringify(align))
+
+    // gap wave: hover card #1, sample widths; move into the gap + glide right,
+    // sample again — the wave must keep changing (not frozen at card #1).
+    const wA = await page.evaluate(() => Array.from(document.querySelectorAll('div[style*="z-index: 25"] .dsx-stats-card-slot')).map((s) => Math.round(parseFloat(s.style.width))) )
+    await page.mouse.move(firstCardBox.x + firstCardBox.width / 2, firstCardBox.y + firstCardBox.height / 2)
+    await page.waitForTimeout(400)
+    const gapX = firstCardBox.x + firstCardBox.width + 6
+    await page.mouse.move(gapX, firstCardBox.y + firstCardBox.height / 2)
+    await page.waitForTimeout(300)
+    await page.mouse.move(gapX + 24, firstCardBox.y + firstCardBox.height / 2)
+    await page.waitForTimeout(300)
+    const wB = await page.evaluate(() => Array.from(document.querySelectorAll('div[style*="z-index: 25"] .dsx-stats-card-slot')).map((s) => Math.round(parseFloat(s.style.width))) )
+    console.log('GAP_WAVE_A:', JSON.stringify(wA), 'B:', JSON.stringify(wB), 'CHANGED:', JSON.stringify(wA) !== JSON.stringify(wB))
+  }
+
+  // add button placement rides the wave: hover the last card while scrolled to
+  // the bottom, the overlay add must sit BELOW the resting static add.
   await page.evaluate(() => { const r = document.querySelector('.dsx-stats-rail'); if (r) r.scrollTop = r.scrollHeight })
-  await page.waitForTimeout(500)
-  const lastCard = await page.locator('.dsx-stats-card-slot').nth(cardCount - 1).boundingBox()
-  if (lastCard) {
-    await page.mouse.move(lastCard.x + lastCard.width / 2, lastCard.y + lastCard.height / 2)
-    await page.waitForTimeout(900)
-    const widths = await page.evaluate(() => Array.from(document.querySelectorAll('.dsx-stats-add')).map((b) => b.offsetWidth))
-    console.log('ADD_BUTTON_WIDTHS(over last card):', JSON.stringify(widths), 'restSide=150')
-    console.log('ADD_SCALES_UP:', Math.max(...widths) > 150)
+  await page.waitForTimeout(400)
+  const lastCard2 = await page.locator('.dsx-stats-card-slot').nth(cardCount - 1).boundingBox()
+  if (lastCard2) {
+    await page.mouse.move(lastCard2.x + lastCard2.width / 2, lastCard2.y + lastCard2.height / 2)
+    await page.waitForTimeout(700)
+    const addTops = await page.evaluate(() => {
+      const layer = Array.from(document.querySelectorAll('div')).find((el) => el.style.zIndex === '25')
+      const railAdd = document.querySelector('.dsx-stats-rail .dsx-stats-add')
+      const ovAdd = layer ? layer.querySelector('.dsx-stats-add') : null
+      return {
+        railTop: railAdd ? Math.round(railAdd.getBoundingClientRect().top) : null,
+        ovTop: ovAdd ? Math.round(ovAdd.getBoundingClientRect().top) : null,
+        ovWidth: ovAdd ? Math.round(ovAdd.getBoundingClientRect().width) : null,
+      }
+    })
+    console.log('ADD_RIDES_WAVE:', JSON.stringify(addTops))
   }
 
   // --- Realtime mode round: a SECOND page (fresh JS env, same origin) with
@@ -107,10 +157,8 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
   const cards2 = await page2.locator('.dsx-stats-card-slot').count()
   console.log('RT_CARD_SLOTS:', cards2)
   const hasOverlay2 = () => page2.evaluate(() => {
-    for (const el of document.querySelectorAll('div')) {
-      if (el.style.zIndex === '25' && getComputedStyle(el).position === 'fixed') return true
-    }
-    return false
+    const layer = Array.from(document.querySelectorAll('div')).find((el) => el.style.zIndex === '25')
+    return layer ? parseFloat(getComputedStyle(layer).opacity) > 0.5 : false
   })
   if (cards2 > 0) {
     const box2 = await page2.locator('.dsx-stats-card-slot').first().boundingBox()

@@ -112,11 +112,13 @@ pnpm run check      # typecheck + tests + build
 ## Changelog
 
 ### v1.1.6
-**Fixed — hover magnification is card-anchored; the add button rides the wave:**
+**Fixed — card-anchored magnification, wave-following add button, smooth enter/exit:**
 
-- Realtime (continuous) mode previously magnified from ANY position inside the rail — the wave engaged even when the pointer sat in the gaps between cards. It now engages **only when the pointer actually hits a card**, stays engaged while crossing the gaps (so moving between cards never flickers the wave off), and disarms **only when the pointer leaves the rail** (e.g. to the left/right). The discrete mode keeps the same card-anchored posture.
-- The bottom **add button now participates in the magnification wave like a card**: when the wave's peak nears it (e.g. hovering the row above it), the mirrored overlay button grows with the same bell curve at its resting grid position — previously it stayed fixed at the resting size while every card around it scaled.
-- 🧪 Headless-verified (playwright, both modes): no overlay in the blank rail margin (realtime), overlay on card hit, overlay kept while crossing card gaps, overlay dropped after leaving the rail; the add button grew 150 → 166 px under the wave.
+- **Card-anchored trigger (all modes).** The wave engages only when the pointer actually hits a card; crossing the gaps keeps it engaged AND the peak keeps gliding with the pointer (discrete mode: snapped to the quantized grid, so it still moves while you cross a gap; realtime: follows the pointer every frame). Only leaving the rail disarms it.
+- **Add button rides the wave, position included.** Its placement is recomputed from the focused (scaled) rows, so when the cards above grow taller the button moves down with the magnified deck bottom / last-row gap, and its size follows the same bell curve at that position (previously only its size scaled, pinned to the resting grid).
+- **Right edge stays aligned.** Overlay card positions (`top`/`right`) are applied instantly while only `width`/`height` carry the 0.15 s tween — the right-anchored geometry keeps every row's right edge exactly on the resting right line during motion (no mid-tween drift past the rail, in either mode).
+- **Smooth enter/exit.** The overlay is always mounted (hidden by opacity), so entering/leaving magnifies via the CSS size tween instead of popping in at the target size — no flicker; exiting shrinks back to the resting size the same way.
+- 🧪 Headless-verified (playwright, both modes): visibility flips only on card hit / gap-cross / rail-leave as specified; overlay rightmost == static rightmost (diff 0); gap movement keeps the wave changing; the add button sits below the resting position (702 → 753 px) and grows to 166 px under the wave; control console clean.
 
 ### v1.1.5
 **Fixed — widget state now survives restarts (root cause: browser `localStorage` only):**

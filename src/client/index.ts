@@ -670,13 +670,15 @@ export function apply(ctx: ClientContext): void {
         setArmedAction(null)
         runCommand(command)
       }
-      // Two magnification triggers, chosen by prefs.realTime:
-      //  - discrete: focusIdx set on card mouseenter, ONE reflow per entry, the
-      //    CSS top/width/height transition animates it (cheap, no per-frame work).
-      //  - realtime: focus driven by the pointer's 2D position (rAF-throttled),
-      //    reflowing every animation frame for a fully跟随手 wave. Both X and Y
-      //    are tracked so the peak follows the cursor in the plane, not just a row.
-      const [focusIdx, setFocusIdx] = React.useState<number | null>(null)
+      // One magnification engine, two wave styles (chosen by prefs.realTime):
+      //  - discrete: the live pointer is snapped onto a quantized grid (row /
+      //    column centres + midpoints), so the peak glides between grid points
+      //    as the pointer crosses cards AND the gaps between them.
+      //  - realtime: the peak follows the pointer's 2D position every frame.
+      // Both are driven by the same focusX/focusY (armed by an actual card
+      // hit, kept while crossing gaps, disarmed on leaving the rail); the
+      // size tween lives entirely in the overlay's CSS width/height
+      // transition, so entering/exiting magnifies smoothly.
       const [focusY, setFocusY] = React.useState<number | null>(null)
       const [focusX, setFocusX] = React.useState<number | null>(null)
       // Rail content scroll offset (px), synced to the fixed magnify overlay so
@@ -725,8 +727,10 @@ export function apply(ctx: ClientContext): void {
         })
       }
       // Re-target the peak when the rail scrolls without the pointer moving.
+      // Both modes re-sync (the scroll moves the deck under a stationary
+      // pointer, so the wave must follow the new card positions).
       const railScrollSync = (el: HTMLDivElement): void => {
-        if (lastClientXYRef.current === null || !prefs.realTime) return
+        if (lastClientXYRef.current === null) return
         moveRailFocus(lastClientXYRef.current.x, lastClientXYRef.current.y, el)
       }
       React.useEffect(() => {
@@ -734,7 +738,7 @@ export function apply(ctx: ClientContext): void {
       }, [])
       React.useEffect(() => {
         if (!snap.open || !snap.hasSession) {
-          setAddOpen(false); setFocusIdx(null); setFocusY(null); setFocusX(null)
+          setAddOpen(false); setFocusY(null); setFocusX(null)
           armedRef.current = false
           cardElsRef.current = []
         }
@@ -902,15 +906,18 @@ export function apply(ctx: ClientContext): void {
         for (let k = 1; k < pts.length; k++) if (Math.abs(pts[k] - v) < Math.abs(best - v)) best = pts[k]
         return best
       }
-      const hasFocus = active ? (multi ? (focusY !== null && focusX !== null) : focusY !== null) : focusIdx !== null
+      // Engagement: focus coordinates exist AND the pointer has hit a card once
+      // since entering the rail (armed). Crossing the gaps keeps the arm;
+      // leaving the rail disarms. Both modes share this state machine.
+      const engaged = focusX !== null && focusY !== null && armedRef.current
       let scaleArr = new Array(n).fill(1)
       // Focus in rail-content coordinates. rawX is the rail-box X minus the
       // left padding (card cell centres are content-relative); rawY already is.
       let rawX = 0
       let rawY = 0
-      if (hasFocus) {
+      if (engaged) {
         rawX = (focusX ?? 0) - pad
-        rawY = focusY ?? restCenter(Math.max(0, Math.min(focusIdx ?? 0, n - 1)))
+        rawY = focusY ?? 0
         scaleArr = active ? scaleFor(rawX, rawY) : scaleFor(nearest(rawX, xPts), nearest(rawY, yPts))
       }
       // --- build actual reflow (right-edge anchored) for a given scale array.
@@ -955,10 +962,11 @@ export function apply(ctx: ClientContext): void {
       // rail keeps this deck intact for scrolling, occupancy and interaction.
       const staticLayout = placeCards(new Array(n).fill(1))
       // Focus deck (fixed overlay, escapes the rail's scroll-clip box): the live
-      // magnification reflow. Rendered only while a card is actually magnified;
-      // its leftward growth paints over the conversation edge instead of being
-      // clipped, and the rail width does not change.
-      const focusLayout = hasFocus ? placeCards(scaleArr) : []
+      // magnification reflow. It is ALWAYS rendered (resting grid when not
+      // engaged) so the overlay's CSS width/height transition can animate the
+      // growth/shrink smoothly on enter and exit instead of popping in at the
+      // target size; its opacity hides it while resting.
+      const focusLayout = placeCards(engaged ? scaleArr : new Array(n).fill(1))
       // Deck height is the STATIC reflow bottom (the rail content never grows
       // while magnifying — growth is painted by the fixed overlay), so the add
       // button and scroll height stay fixed at the resting grid.
@@ -995,15 +1003,36 @@ export function apply(ctx: ClientContext): void {
       // hangs below the deck), so neither ever clips or pushes unexpectedly.
       const addBottom = addTop + side
       const stackHeight = (nItems > 0 ? Math.max(deckBottom, addBottom) : addBottom) + pad
-      // The add button participates in the magnification wave like a card: its
-      // centre is measured in the same content coordinates, so the button grows
-      // with the same bell curve when the wave's peak nears it. Right/top stay
-      // fixed (exactly like a card's), and the growth paints in the overlay.
-      const addScale = hasFocus && n > 0
-        ? stepScale(Math.hypot((railW - 2 * pad - addRight - side / 2) - rawX, (addTop + side / 2) - rawY) / (side + pad))
+      // The add button participates in the magnification wave like a card — and its
+      // PLACEMENT rides the wave layout too: top/right are recomputed from the
+      // focused (scaled) rows, so when cards above it grow taller the button
+      // moves down with the magnified deck bottom / last-row gap, exactly like
+      // a card would. Resting (unengaged) it equals the static placement.
+      const focusedAdd = (() => {
+        if (n === 0) return { top: 2 + pad, right: 0 }
+        if (multi) {
+          const rowHAcc: number[] = new Array(rows).fill(0)
+          for (let i = 0; i < n; i++) { const r = rowIndexOf[i]; const h = side * scaleArr[i]; if (h > rowHAcc[r]) rowHAcc[r] = h }
+          const rowTopAcc: number[] = new Array(rows).fill(0)
+          { let acc = 2; for (let r = 0; r < rows; r++) { rowTopAcc[r] = acc; acc += rowHAcc[r] + pad } }
+          const lastRow = rowIndexOf[n - 1]
+          const lastRowUsed = colIndexOf[n - 1] + spanOf(n - 1)
+          if (lastRowUsed < columns) {
+            const lc = focusLayout[n - 1]
+            return { top: rowTopAcc[lastRow], right: lc.right + lc.w + pad }
+          }
+          const bottom = focusLayout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
+          return { top: bottom + pad, right: 0 }
+        }
+        const bottom = focusLayout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
+        return { top: bottom + pad, right: 0 }
+      })()
+      const addCenter = { x: railW - 2 * pad - focusedAdd.right - side / 2, y: focusedAdd.top + side / 2 }
+      const addScale = engaged && n > 0
+        ? stepScale(Math.hypot(addCenter.x - rawX, addCenter.y - rawY) / (side + pad))
         : 1
       // True only when the focus deck or the add button differs from rest.
-      const magnifying = hasFocus && n > 0 && (scaleArr.some((s) => s > 1.001) || addScale > 1.001)
+      const magnifying = engaged && n > 0 && (scaleArr.some((s) => s > 1.001) || addScale > 1.001)
       const railChildren: React.ReactNode[] = [
         // Relative-positioned layer that owns the cards' absolute layout. This
         // is the STATIC deck: resting grid, fixed scroll height, and it carries
@@ -1013,9 +1042,11 @@ export function apply(ctx: ClientContext): void {
         React.createElement('div', { key: '__deck', style: { position: 'relative', height: `${stackHeight}px` } },
           staticLayout.map((c, idx) => {
             const it = items[idx]
-            const transition = 'top 0.2s var(--ds-ease-in-out), right 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out), opacity 0.15s ease'
+            // Static cards never change size themselves (the overlay paints the
+            // scaled copies); only their opacity fades while magnifying.
+            const transition = 'opacity 0.15s ease'
             const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, opacity: magnifying ? 0 : 1 }
-            return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle, onMouseEnter: () => setFocusIdx(idx), ref: (el: HTMLDivElement | null) => { cardElsRef.current[idx] = el } },
+            return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle, ref: (el: HTMLDivElement | null) => { cardElsRef.current[idx] = el } },
               React.createElement(CardBody, { out: it.out, unit: side, width: c.w, onAction: handleAction }),
               React.createElement('span', { className: 'dsx-stats-resize', 'aria-label': '调整大小', onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = side; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
             )
@@ -1033,9 +1064,9 @@ export function apply(ctx: ClientContext): void {
       ]
       const rail = React.createElement('div', {
         className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
-        onMouseLeave: () => { armedRef.current = false; setFocusIdx(null); setFocusY(null); setFocusX(null) },
+        onMouseLeave: () => { armedRef.current = false; setFocusY(null); setFocusX(null) },
         onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => moveRailFocus(e.clientX, e.clientY, e.currentTarget),
-        onScroll: (e) => { setRailScrollTop(e.currentTarget.scrollTop); if (prefs.realTime) railScrollSync(e.currentTarget) },
+        onScroll: (e) => { setRailScrollTop(e.currentTarget.scrollTop); railScrollSync(e.currentTarget) },
       }, railChildren)
       // Magnify overlay: a FIXED layer rendered OUTSIDE the rail's scroll-clip
       // box (a sibling of the rail, so no ancestor overflow clips it). When a
@@ -1045,29 +1076,27 @@ export function apply(ctx: ClientContext): void {
       // never changes. It is pointer-events:none (interaction stays on the rail)
       // and tracks the rail's scroll via --dsx-rail-scroll so it stays pinned to
       // the scrolled deck. zIndex 25 keeps it above the rail's own cards.
-      const magnifyLayer = magnifying
-        ? React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent' } },
-          React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${stackHeight}px` } },
-            focusLayout.map((c, idx) => {
-              const it = items[idx]
-              // Stepless mode snaps straight to its steady-state right-anchored
-              // geometry every frame (transition: none). A CSS transition here
-              // would leave cards in a non-steady intermediate pose while the
-              // pointer moves (right/width desync) — that is what let a card's
-              // right edge stray past the rail's right edge during motion and
-              // only realign once the pointer stopped. Discrete mode keeps its
-              // 0.2s tween for the hover settle.
-              const transition = active ? 'none' : 'top 0.2s var(--ds-ease-in-out), right 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out)'
+      // ALWAYS mounted: entering/exiting updates only scale, and the CSS
+      // width/height transition below animates the growth/shrink smoothly
+      // (mounting at the target size would pop). Opacity hides it while rest.
+      const magnifyLayer = React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent', opacity: magnifying ? 1 : 0, transition: 'opacity 0.15s ease' } },
+        React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${stackHeight}px` } },
+          focusLayout.map((c, idx) => {
+            const it = items[idx]
+            // Positions (top/right) are INSTANT — right-anchored geometry means
+            // the right edge never leaves the rail's right edge mid-tween; only
+            // width/height carry the 0.15s tween, which both smooths the
+            // enter/exit and lets the wave glide as the pointer crosses gaps.
+            const transition = 'top 0s, right 0s, width 0.15s var(--ds-ease-in-out), height 0.15s var(--ds-ease-in-out)'
               const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, zIndex: Math.round((c.s - 1) * 100) }
               return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle },
                 React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: undefined }),
               )
             }),
-            // Mirror the add button at its RESTING grid position, scaled by its own
-            // wave factor — same right/top anchor as a card, growth painted
-            // outward (the overlay fades the rail's own copy out while
-            // magnifying).
-            React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', tabIndex: -1, style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${(side * addScale).toFixed(2)}px`, height: `${(side * addScale).toFixed(2)}px`, borderRadius: `${Math.round(addRadius * addScale)}px`, zIndex: Math.round((addScale - 1) * 100) } },
+            // Mirror the add button at its WAVE position (focusedAdd), scaled by its own
+            // wave factor — it displaces with the magnified deck like a card,
+            // and its size follows the same bell curve.
+            React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', tabIndex: -1, style: { position: 'absolute', top: `${focusedAdd.top.toFixed(2)}px`, right: `${focusedAdd.right.toFixed(2)}px`, width: `${(side * addScale).toFixed(2)}px`, height: `${(side * addScale).toFixed(2)}px`, borderRadius: `${Math.round(addRadius * addScale)}px`, transition: 'top 0s, right 0s, width 0.15s var(--ds-ease-in-out), height 0.15s var(--ds-ease-in-out)', zIndex: 30 } },
               React.createElement('span', { className: 'dsx-stats-add-icon' },
                 React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
               ),
@@ -1075,7 +1104,6 @@ export function apply(ctx: ClientContext): void {
             ),
           ),
         )
-        : null
       // Temporary right-side add panel: reuses the settings 组件市场 + 拖动排序
       // (WidgetsPage) wholesale, floats over content, never affects layout.
       // Width is configurable (prefs.panelWidth) and draggable via the left edge.
