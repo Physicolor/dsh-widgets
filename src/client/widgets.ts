@@ -245,6 +245,26 @@ export function lastNDays(raw: Record<string, number>, n: number): BarDatum[] {
   return days
 }
 
+/** Week-aligned variant: `n` bars starting from this week's SUNDAY (today may
+ *  land anywhere inside the window; future/past spill days render as zeros). */
+export function lastNDaysWeekly(raw: Record<string, number>, n: number): BarDatum[] {
+  const keys = Object.keys(raw).sort()
+  const byDate: Record<string, number> = {}
+  for (const k of keys) if (/^\d{4}-\d{2}-\d{2}$/.test(k)) byDate[k] = raw[k]
+  const now = new Date()
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
+  const days: BarDatum[] = []
+  const max = Math.max(1, ...Object.values(byDate).filter((v) => v > 0))
+  for (let i = 0; i < n; i++) {
+    const d = new Date(startOfWeek)
+    d.setDate(startOfWeek.getDate() + i)
+    const k = dayKey(d)
+    const v = byDate[k] ?? 0
+    days.push({ label: `${d.getMonth() + 1}.${d.getDate()}`, value: v, ratio: v > 0 ? v / max : 0, tone: v > 0 ? 'primary' : 'muted' })
+  }
+  return days
+}
+
 /** `8.14` style short date used by bar labels and heatmap edges. */
 export function fmtShortDate(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '')
@@ -334,18 +354,18 @@ function contextRender(stats: WidgetStats): WidgetRenderOut | null {
   }
 }
 
-/** Task card: counts of pending / in_progress / completed from the todos projection. */
-function taskRender(stats: WidgetStats): WidgetRenderOut | null {
+/** Task card: counts of pending / in_progress / completed. Stays visible even
+ *  without a todos projection — shows 暂无任务 so the card never vanishes. */
+function taskRender(stats: WidgetStats): WidgetRenderOut {
   const todos = stats.todos
-  if (!todos) return null
-  const pending = todos.filter((t) => t.status === 'pending').length
-  const doing = todos.filter((t) => t.status === 'in_progress').length
-  const done = todos.filter((t) => t.status === 'completed').length
-  const total = todos.length
+  const pending = todos ? todos.filter((t) => t.status === 'pending').length : 0
+  const doing = todos ? todos.filter((t) => t.status === 'in_progress').length : 0
+  const done = todos ? todos.filter((t) => t.status === 'completed').length : 0
+  const total = todos ? todos.length : 0
   return {
     title: '任务',
-    value: `${done} 已完成`,
-    sub: total > 0 ? `${doing} 进行中 · ${pending} 待办` : undefined,
+    value: total > 0 ? `${done} 已完成` : '暂无任务',
+    sub: `${doing} 进行中 · ${pending} 待办`,
   }
 }
 
@@ -386,9 +406,13 @@ function heatmapRender(stats: WidgetStats, meta?: { size?: WidgetSize }): Widget
 function heatmapBarsRender(stats: WidgetStats): WidgetRenderOut | null {
   const rawLog = stats.heatmapRaw
   if (!rawLog) return null
-  const bars = lastNDays(rawLog, 7)
+  const c = stats as unknown as Record<string, unknown>
+  // Window alignment: rolling = last 7 days ending today; weekly = the 7 bars
+  // of the current calendar week (Sunday-aligned), per the config option.
+  const mode = c.monthMode as string | undefined
+  const bars = mode === 'weekly' ? lastNDaysWeekly(rawLog, 7) : lastNDays(rawLog, 7)
   if (!bars.length) return null
-  const today = bars[bars.length - 1]?.value ?? 0
+  const today = rawLog[dayKey(new Date())] ?? 0
   const weekTotal = bars.reduce((a, b) => a + b.value, 0)
   const legend = today > 0 || weekTotal > 0 ? `${fmtTokens(today)}  ${fmtTokens(weekTotal)}` : undefined
   return {
@@ -444,7 +468,7 @@ export const WIDGETS: Widget[] = [
     { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
   ] },
   { id: 'heatmap-bars', group: 'coding-plan', name: '用量柱状图', desc: '最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致', builtin: true, render: heatmapBarsRender, configSchema: [
-    { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
+    { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(最近7天)'], ['weekly', '每周对齐']] },
   ] },
   { id: 'usage-bars', group: 'opencode-go', name: '用量对比', desc: 'OpenCode 滚动/周/月三窗口用量柱状图', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageBarsRender },
   { id: 'usage-rolling', group: 'opencode-go', name: '滚动用量', desc: 'OpenCode Go 滚动窗口用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('rolling', '滚动用量') },
