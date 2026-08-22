@@ -1,6 +1,6 @@
 <p align="right"><a href="README.md">English</a> · <b>简体中文</b></p>
 
-<h1 align="center">Harness Widgets</h1>
+<h1 align="center">DeepSeek-Harness Widgets</h1>
 
 <p align="center">
   <strong>为 DeepSeek Harness 打造的美观、可扩展的右侧组件系统。</strong><br>
@@ -16,10 +16,10 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/cover.jpeg" alt="Harness Widgets 预览" width="100%">
+  <img src="docs/screenshots/cover.jpeg" alt="DeepSeek-Harness Widgets 预览" width="100%">
 </p>
 
-Harness Widgets 是一个基于 Cordis 的 DeepSeek Harness **持久 bundle 插件**。它在会话页右侧提供一套可定制的多列组件面板，实时展示对话洞察、用量监控与快捷工具，并通过声明式注册表支持无限扩展。
+DeepSeek-Harness Widgets 是一个基于 Cordis 的 DeepSeek Harness **持久 bundle 插件**。它在会话页右侧提供一套可定制的多列组件面板，实时展示对话洞察、用量监控与快捷工具，并通过声明式注册表支持无限扩展。
 
 ---
 

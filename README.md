@@ -1,6 +1,6 @@
 <p align="right"><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
 
-<h1 align="center">Harness Widgets</h1>
+<h1 align="center">DeepSeek-Harness Widgets</h1>
 
 <p align="center">
   <strong>A beautiful, extensible right-side widget system for DeepSeek Harness.</strong><br>
@@ -16,10 +16,10 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/cover.jpeg" alt="Harness Widgets preview" width="100%">
+  <img src="docs/screenshots/cover.jpeg" alt="DeepSeek-Harness Widgets preview" width="100%">
 </p>
 
-Harness Widgets is a **persistent DSH bundle plugin** built on the Cordis composition model. It provides a customizable multi-column widget rail on the right side of the conversation page — real-time session insights, usage monitoring, and quick actions — with an extensible declarative registry.
+DeepSeek-Harness Widgets is a **persistent DSH bundle plugin** built on the Cordis composition model. It provides a customizable multi-column widget rail on the right side of the conversation page — real-time session insights, usage monitoring, and quick actions — with an extensible declarative registry.
 
 ---
 
