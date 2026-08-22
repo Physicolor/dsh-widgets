@@ -393,7 +393,32 @@ export function apply(ctx: ClientContext): void {
     React.useEffect(() => subscribe(() => setSnap({ ...state, prefs: { ...prefs } })), [])
     return snap
   }
-  ctx.effect(() => () => { listeners.clear() })
+  // Cross-tab + visibility re-sync, so "every change takes effect immediately"
+  // also holds when the same DSH service is open in several tabs/windows:
+  //  - `storage` events fire in OTHER tabs of the SAME origin when one saves →
+  //    re-read + emit instead of waiting for a reload;
+  //  - `visibilitychange` re-pulls the host store, so switching back to a tab
+  //    whose origin differs (localhost vs 127.0.0.1) still converges to the
+  //    last saved configuration.
+  const onStorage = (e: StorageEvent): void => {
+    if (e.key !== STORAGE_KEY && e.key !== SAVED_AT_KEY) return
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw === null) return
+      prefs = normalizePrefs(JSON.parse(raw) as Partial<Prefs>)
+      emit()
+    } catch { /* malformed concurrent write; the next save wins */ }
+  }
+  const onVisibility = (): void => {
+    if (document.visibilityState === 'visible') void syncWithHost()
+  }
+  window.addEventListener('storage', onStorage)
+  document.addEventListener('visibilitychange', onVisibility)
+  ctx.effect(() => () => {
+    listeners.clear()
+    window.removeEventListener('storage', onStorage)
+    document.removeEventListener('visibilitychange', onVisibility)
+  })
   void syncWithHost()
 
   // Command execution for interactive action cards (e.g. one-click Compact).
