@@ -350,14 +350,11 @@ export function CardBody({ out, unit, width, onAction }: { out: WidgetRenderOut;
 
 // ---- Order list (config tab) ----
 
-function OrderList({ items, onMove, onRestore, onRemove, onSelect, onResize, selected }: {
+function OrderList({ items, onMove, onRemove, onSelect, selected }: {
   items: string[]
   onMove: (next: string[]) => void
-  onRestore?: (id: string) => void
   onRemove?: (id: string) => void
   onSelect?: (id: string) => void
-  /** Switch an installed instance's size (e.g. 2×2 ↔ 2×4). */
-  onResize?: (id: string, nextSize: WidgetSize) => void
   selected?: string
 }): React.ReactElement {
   const dragIdx = React.useRef<number | null>(null)
@@ -367,7 +364,6 @@ function OrderList({ items, onMove, onRestore, onRemove, onSelect, onResize, sel
       const w = WIDGETS.find((x) => x.id === widgetId)
       if (!w) return null
       const isSel = selected === id
-      const sz = sizesOf(w)
       return React.createElement('div', {
         key: id, className: 'dsx-order-row' + (isSel ? ' selected' : ''), draggable: true,
         onDragStart: (e: React.DragEvent) => { dragIdx.current = i; e.dataTransfer.effectAllowed = 'move' },
@@ -389,19 +385,7 @@ function OrderList({ items, onMove, onRestore, onRemove, onSelect, onResize, sel
         React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, w.name),
         React.createElement('span', { style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', flex: 'none' } }, size === '2x4' ? '2×4' : '2×2'),
         React.createElement('span', { className: 'dsx-badge' }, badgeOf(w)),
-        onResize && sz.length > 1
-          ? React.createElement('select', {
-              className: 'dsx-select', style: { fontSize: 11, width: 'auto' },
-              value: size,
-              title: '切换尺寸',
-              onClick: (e: React.MouseEvent) => e.stopPropagation(),
-              onChange: (e: React.ChangeEvent<HTMLSelectElement>) => onResize(id, e.target.value as WidgetSize),
-            },
-              sz.map((s) => React.createElement('option', { key: s, value: s }, s === '2x4' ? '2×4' : '2×2')),
-            )
-          : null,
-        onRemove ? React.createElement('button', { type: 'button', className: 'dsx-trash', 'aria-label': '卸载', onClick: () => { if (onSelect && selected === id) onSelect('') ; onRemove(id) } }, React.createElement(TrashIcon)) : null,
-        onRestore ? React.createElement('button', { type: 'button', className: 'dsx-restore', onClick: () => onRestore(id) }, '恢复') : null,
+        onRemove ? React.createElement('button', { type: 'button', className: 'dsx-trash', 'aria-label': '移除', title: '从组件栏移除', onClick: () => { if (onSelect && selected === id) onSelect('') ; onRemove(id) } }, React.createElement(TrashIcon)) : null,
       )
     }),
   )
@@ -461,14 +445,20 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
   const { prefs, setPrefs } = controller
   const [selected, setSelected] = React.useState<string>('')
   // Local preview size (2×2 ↔ 2×4) — lets you eyeball a widget at a different
-  // size in the preview without changing the installed instance.
+  // size in the preview without changing the added instance.
   const [previewSize, setPreviewSize] = React.useState<WidgetSize>('2x2')
+  // There is no separate "uninstalled" zone any more: everything ships bundled
+  // and the market only ADDS instances. Removing a row deletes it entirely
+  // (installed + order + its per-instance config).
   const installed = prefs.order.filter((id) => prefs.installed.indexOf(id) !== -1)
-  const removed = prefs.order.filter((id) => prefs.installed.indexOf(id) === -1)
-  const atLimit = installed.length >= prefs.maxWidgets
-  const restore = (id: string): void => {
-    if (atLimit) return
-    setPrefs({ installed: prefs.installed.concat(id), order: prefs.order.filter((x) => x !== id).concat(id) })
+  const remove = (id: string): void => {
+    const cfg = { ...prefs.cardConfigs }
+    delete cfg[id]
+    setPrefs({
+      installed: prefs.installed.filter((x) => x !== id),
+      order: prefs.order.filter((x) => x !== id),
+      cardConfigs: cfg,
+    })
   }
   // Preview + config for the selected widget (an instance key: widget@size).
   const selKey = selected ? parseInstanceKey(selected) : null
@@ -527,37 +517,10 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
   // per-instance config across to the new size, and DEDUPE so the same widget at
   // the same size never appears twice (a resize to a size that already exists
   // merges instead of duplicating).
-  const resize = (id: string, nextSize: WidgetSize): void => {
-    const { widgetId, size } = parseInstanceKey(id)
-    if (size === nextSize) return
-    const nextKey = instanceKey(widgetId, nextSize)
-    const mapKey = (k: string): string => (k === id ? nextKey : k)
-    // Rewrite id → nextKey, then drop every OTHER occurrence of nextKey (there
-    // must be exactly one instance of this widget at this size).
-    const dedupe = (arr: string[]): string[] => {
-      let kept = false
-      return arr.map(mapKey).filter((k) => {
-        if (k !== nextKey) return true
-        if (kept) return false
-        kept = true
-        return true
-      })
-    }
-    const cfg = { ...prefs.cardConfigs }
-    if (!(nextKey in cfg) && id in cfg) cfg[nextKey] = cfg[id]
-    setPrefs({
-      order: dedupe(prefs.order),
-      installed: dedupe(prefs.installed),
-      cardConfigs: cfg,
-    })
-    if (selected === id) setSelected(nextKey)
-  }
   const out = previewOut()
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } },
-    React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', marginBottom: 4 } }, `已安装 ${installed.length}/${prefs.maxWidgets}（点击组件可预览与配置）`),
-    React.createElement(OrderList, { items: installed, onMove: (next) => setPrefs({ order: next.concat(removed) }), onRemove: (id) => setPrefs({ installed: prefs.installed.filter((x) => x !== id) }), onResize: resize, onSelect: setSelected, selected }),
-    removed.length > 0 ? React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', margin: '10px 0 4px' } }, '已卸载（点击恢复，或拖回上方）') : null,
-    removed.length > 0 ? React.createElement(OrderList, { items: removed, onMove: () => {}, onRestore: restore, onSelect: setSelected, selected }) : null,
+    React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', marginBottom: 4 } }, `已添加 ${installed.length}/${prefs.maxWidgets}（点击组件可预览与配置）`),
+    React.createElement(OrderList, { items: installed, onMove: (next) => setPrefs({ order: next }), onRemove: remove, onSelect: setSelected, selected }),
     selWidget && selConfig ? React.createElement('div', { style: { marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dsw-alias-border-l2)', display: 'flex', flexDirection: 'column', gap: 10 } },
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
         React.createElement('div', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, `${selWidget.name} · 预览`),
@@ -596,6 +559,12 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
   const seen = new Set<string>()
   const marketCards = WIDGETS.filter((w) => { const g = groupOf(w); if (seen.has(g)) return false; seen.add(g); return true })
   const list = marketCards.filter((w) => `${w.name} ${w.desc} ${w.id}`.toLowerCase().indexOf(q.toLowerCase()) !== -1)
+  // Group labels shown on the market cards.
+  const GROUP_LABELS: Record<string, string> = {
+    system: '系统',
+    'opencode-go': 'OpenCode Go',
+    'coding-plan': 'Coding Plan 用量',
+  }
 
   if (previewGroup !== null) {
     const gw = WIDGETS.filter((w) => groupOf(w) === previewGroup)
@@ -607,14 +576,20 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     const curKey = w ? instanceKey(w.id, curSize) : ''
     const installed = w ? prefs.installed.indexOf(curKey) !== -1 : false
     const out = w ? w.render(PREVIEW_STATS, { size: curSize }) : null
-    const toggleInstall = (): void => {
-      if (!w) return
+    // Everything ships bundled: the market only ADDS the selected instance
+    // (widget@size) to the rail. Already-added instances show as disabled.
+    const add = (): void => {
+      if (!w || installed || prefs.installed.length >= prefs.maxWidgets) return
       setPrefs({
-        installed: installed
-          ? prefs.installed.filter((x) => x !== curKey)
-          : (prefs.installed.indexOf(curKey) === -1 ? prefs.installed.concat(curKey) : prefs.installed),
+        installed: prefs.installed.concat(curKey),
+        order: prefs.order.indexOf(curKey) === -1 ? prefs.order.concat(curKey) : prefs.order,
       })
     }
+    // Size chooser: left/right arrows cycle the supported sizes (like the
+    // coding-plan pair), instead of a dropdown.
+    const sizeIdx = sz.indexOf(curSize)
+    const prevSize = () => setPreviewSize(sz[(sizeIdx - 1 + sz.length) % sz.length])
+    const nextSize = () => setPreviewSize(sz[(sizeIdx + 1) % sz.length])
     const prev = () => setPreviewIdx((previewIdx - 1 + gw.length) % gw.length)
     const next = () => setPreviewIdx((previewIdx + 1) % gw.length)
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 } },
@@ -622,18 +597,16 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
         React.createElement('button', { type: 'button', className: 'dsx-btn', onClick: () => setPreviewGroup(null) }, '← 返回'),
         React.createElement('span', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, w ? w.name : ''),
         w && sz.length > 1
-          ? React.createElement('select', {
-              className: 'dsx-select', style: { fontSize: 11, width: 'auto' },
-              value: curSize, title: '切换尺寸',
-              onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setPreviewSize(e.target.value as WidgetSize),
-            },
-              sz.map((s) => React.createElement('option', { key: s, value: s }, s === '2x4' ? '2×4' : '2×2')),
+          ? React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 2, flex: 'none' } },
+              React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '更小尺寸', onClick: prevSize }, React.createElement(ChevronLeftIcon)),
+              React.createElement('span', { style: { fontSize: 12, color: 'var(--dsw-alias-label-secondary)', width: 40, textAlign: 'center', fontVariantNumeric: 'tabular-nums' } }, curSize === '2x4' ? '2×4' : '2×2'),
+              React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '更大尺寸', onClick: nextSize }, React.createElement(ChevronRightIcon)),
             )
           : null,
-        React.createElement('button', { type: 'button', disabled: !installed && prefs.installed.length >= prefs.maxWidgets, className: installed ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: toggleInstall }, installed ? '已安装' : '下载'),
+        React.createElement('button', { type: 'button', disabled: installed || prefs.installed.length >= prefs.maxWidgets, className: installed ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: add }, installed ? '已添加' : '添加'),
       ),
       !installed && prefs.installed.length >= prefs.maxWidgets
-        ? React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-state-warn-primary, var(--dsw-alias-label-tertiary))', marginTop: -4 } }, `已达上限 ${prefs.maxWidgets} 个，先卸载再添加`)
+        ? React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-state-warn-primary, var(--dsw-alias-label-tertiary))', marginTop: -4 } }, `已达上限 ${prefs.maxWidgets} 个，先在组件配置中移除再添加`)
         : null,
       React.createElement('div', { style: { flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '0 4px' } },
         React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '上一个', onClick: prev }, React.createElement(ChevronLeftIcon)),
@@ -653,18 +626,18 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     React.createElement('div', { className: 'dsx-mlist' },
       list.map((w) => {
         const gw = WIDGETS.filter((x) => groupOf(x) === groupOf(w))
-        // A group card is "installed" when ANY of its instances is installed.
+        // A group card is "added" when ANY of its instances is in the rail.
         const anyInstalled = gw.some((x) => sizesOf(x).some((s) => prefs.installed.indexOf(instanceKey(x.id, s)) !== -1))
         return React.createElement('button', { key: w.id, type: 'button', className: 'dsx-mcard', 'aria-pressed': anyInstalled, onClick: () => { setPreviewGroup(groupOf(w)); setPreviewIdx(0) } },
           React.createElement('span', { className: 'dsx-mhead' },
             React.createElement('span', { className: 'dsx-mname' }, w.name),
-            React.createElement('span', { className: 'dsx-badge' }, badgeOf(w)),
+            React.createElement('span', { className: 'dsx-badge' }, GROUP_LABELS[groupOf(w)] ?? badgeOf(w)),
           ),
           React.createElement('span', { className: 'dsx-mdesc' }, w.desc),
           React.createElement('code', { className: 'dsx-mid' }, w.id),
           React.createElement('span', { className: 'dsx-macts' },
             React.createElement('span', { className: 'dsx-btn' }, '查看详情'),
-            React.createElement('span', { className: anyInstalled ? 'dsx-btn dsx-btn-primary' : 'dsx-btn' }, anyInstalled ? '已安装' : '下载'),
+            React.createElement('span', { className: anyInstalled ? 'dsx-btn dsx-btn-primary' : 'dsx-btn' }, anyInstalled ? '已添加' : '添加'),
           ),
         )
       }),

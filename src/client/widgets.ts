@@ -416,30 +416,36 @@ function quoteRender(stats: WidgetStats): WidgetRenderOut {
   }
 }
 
-/** The complete widget registry. */
+/** The complete widget registry. Grouping drives the component-market tabs:
+ *  - 'system'      : every built-in widget (the old composer stats-line family
+ *                    plus the other stock cards). There is no separate
+ *                    install/uninstall — everything ships bundled, so the
+ *                    market only ADDS instances to the rail.
+ *  - 'opencode-go' : OpenCode Go usage quota cards.
+ *  - 'coding-plan' : Token-usage heatmap + last-7-days bars. */
 export const WIDGETS: Widget[] = [
-  { id: 'counts', name: '轮次·步数', desc: '本轮会话的轮次与步骤计数', builtin: true, render: (s) => ({ title: '轮次·步数', value: `${s.turns}轮 ${s.steps}步` }) },
-  { id: 'llm', name: 'LLM 时长', desc: '模型推理累计耗时', builtin: true, render: (s) => (s.llmMs > 0 ? { title: 'LLM 时长', value: fmtDuration(s.llmMs) } : null) },
-  { id: 'tool', name: '工具调用', desc: '工具调用累计耗时', builtin: true, render: (s) => (s.toolMs > 0 ? { title: '工具调用', value: fmtDuration(s.toolMs) } : null) },
-  { id: 'ttft', name: '首 token 平均', desc: '平均首 token 延迟', builtin: true, render: (s) => (s.ttftSteps > 0 ? { title: '首 token 平均', value: fmtDuration(s.ttftMs / s.ttftSteps) } : null) },
-  { id: 'tps', name: '速率', desc: '解码吞吐速度', builtin: true, render: (s) => (s.decodeMs > 0 ? { title: '速率', value: `${fmtTps(s.decodeTokens / (s.decodeMs / 1000))} tok/s` } : null) },
-  { id: 'cache', name: '缓存命中', desc: '输入缓存的命中比例', builtin: true, render: (s) => (s.usage && s.usage.inputTokens > 0 && s.usage.cacheReadTokens > 0 ? { title: '缓存命中', value: `${Math.round((s.usage.cacheReadTokens / s.usage.inputTokens) * 100)}%` } : null) },
-  { id: 'tokens', name: 'Tokens', desc: '输入与输出 token 计数', builtin: true, render: (s) => (s.usage && s.usage.inputTokens > 0 ? { title: 'Tokens', value: `${fmtTokens(s.usage.inputTokens)} ${fmtTokens(s.usage.outputTokens || 0)}` } : null) },
-  { id: 'context', group: 'context', name: '一键压缩', desc: '上下文占用百分比，右上按钮两次点击执行压缩', builtin: true, render: contextRender },
-  { id: 'context-water', group: 'context', name: '上下文水位', desc: '上下文系统/工具/消息占比分段条', builtin: true, sizes: ['2x2', '2x4'], render: contextWaterRender },
-  { id: 'task', group: 'task', name: '任务', desc: '当前任务的进行中/已完成/待办计数', builtin: true, render: taskRender },
-  { id: 'heatmap', group: 'data', name: '用量热度图', desc: '每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；可在预览选择 2×2 窗口对齐方式', builtin: true, sizes: ['2x2', '2x4'], render: heatmapRender, configSchema: [
-    { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
-  ] },
-  { id: 'heatmap-bars', group: 'data', name: '用量柱状图', desc: '最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致', builtin: true, render: heatmapBarsRender, configSchema: [
-    { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
-  ] },
-  { id: 'quote', group: 'fun', name: '今日寄语', desc: '随机一句鼓励语录', builtin: true, render: quoteRender, configSchema: [
+  { id: 'counts', group: 'system', name: '轮次·步数', desc: '本轮会话的轮次与步骤计数', builtin: true, render: (s) => ({ title: '轮次·步数', value: `${s.turns}轮 ${s.steps}步` }) },
+  { id: 'llm', group: 'system', name: 'LLM 时长', desc: '模型推理累计耗时', builtin: true, render: (s) => (s.llmMs > 0 ? { title: 'LLM 时长', value: fmtDuration(s.llmMs) } : null) },
+  { id: 'tool', group: 'system', name: '工具调用', desc: '工具调用累计耗时', builtin: true, render: (s) => (s.toolMs > 0 ? { title: '工具调用', value: fmtDuration(s.toolMs) } : null) },
+  { id: 'ttft', group: 'system', name: '首 token 平均', desc: '平均首 token 延迟', builtin: true, render: (s) => (s.ttftSteps > 0 ? { title: '首 token 平均', value: fmtDuration(s.ttftMs / s.ttftSteps) } : null) },
+  { id: 'tps', group: 'system', name: '速率', desc: '解码吞吐速度', builtin: true, render: (s) => (s.decodeMs > 0 ? { title: '速率', value: `${fmtTps(s.decodeTokens / (s.decodeMs / 1000))} tok/s` } : null) },
+  { id: 'cache', group: 'system', name: '缓存命中', desc: '输入缓存的命中比例', builtin: true, render: (s) => (s.usage && s.usage.inputTokens > 0 && s.usage.cacheReadTokens > 0 ? { title: '缓存命中', value: `${Math.round((s.usage.cacheReadTokens / s.usage.inputTokens) * 100)}%` } : null) },
+  { id: 'tokens', group: 'system', name: 'Tokens', desc: '输入与输出 token 计数', builtin: true, render: (s) => (s.usage && s.usage.inputTokens > 0 ? { title: 'Tokens', value: `${fmtTokens(s.usage.inputTokens)} ${fmtTokens(s.usage.outputTokens || 0)}` } : null) },
+  { id: 'context', group: 'system', name: '一键压缩', desc: '上下文占用百分比，右上按钮两次点击执行压缩', builtin: true, render: contextRender },
+  { id: 'context-water', group: 'system', name: '上下文水位', desc: '上下文系统/工具/消息占比分段条', builtin: true, sizes: ['2x2', '2x4'], render: contextWaterRender },
+  { id: 'task', group: 'system', name: '任务', desc: '当前任务的进行中/已完成/待办计数', builtin: true, render: taskRender },
+  { id: 'quote', group: 'system', name: '今日寄语', desc: '随机一句鼓励语录', builtin: true, render: quoteRender, configSchema: [
     { key: 'text', label: '寄语内容', type: 'text' },
     { key: 'showTitle', label: '显示标题', type: 'toggle', default: true },
     { key: 'align', label: '水平对齐', type: 'align', default: 'left' },
     { key: 'valign', label: '垂直位置', type: 'valign', default: 'top' },
     { key: 'wrap', label: '允许换行', type: 'toggle', default: true },
+  ] },
+  { id: 'heatmap', group: 'coding-plan', name: '用量热度图', desc: '每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；大小可在市场左右切换', builtin: true, sizes: ['2x2', '2x4'], render: heatmapRender, configSchema: [
+    { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
+  ] },
+  { id: 'heatmap-bars', group: 'coding-plan', name: '用量柱状图', desc: '最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致', builtin: true, render: heatmapBarsRender, configSchema: [
+    { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
   ] },
   { id: 'usage-bars', group: 'opencode-go', name: '用量对比', desc: 'OpenCode 滚动/周/月三窗口用量柱状图', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageBarsRender },
   { id: 'usage-rolling', group: 'opencode-go', name: '滚动用量', desc: 'OpenCode Go 滚动窗口用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('rolling', '滚动用量') },
