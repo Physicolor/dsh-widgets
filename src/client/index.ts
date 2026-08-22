@@ -14,6 +14,12 @@ import { ALL_IDS, ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, instanceKey, parseI
 import { CardBody, WidgetsPage, type Prefs } from './components'
 
 const STORAGE_KEY = 'harness-widgets.state'
+/** Local mirror of the last saved-at timestamp, compared against the host file
+ *  on boot so the same DSH service converges from any browser origin
+ *  (localhost vs 127.0.0.1 are different localStorage realms). */
+const SAVED_AT_KEY = 'harness-widgets.state.savedAt'
+/** Same-origin host route holding the authoritative state file. */
+const STORE_API = '/api/widgets-state'
 const BASE_SIDE = 150
 
 /** Map from interactive action id to the slash command it triggers. */
@@ -210,46 +216,88 @@ const DEFAULTS: Prefs = {
 /** Required services: the slot registry (React is a platform module). */
 export const inject = ['slots']
 
+/** Normalize an arbitrary persisted/remote prefs object into a valid Prefs.
+ *  Shared by localStorage loads and the authoritative host-store sync, so both
+ *  channels survive schema drift identically. */
+function normalizePrefs(p: Partial<Prefs>): Prefs {
+  const s = { ...DEFAULTS, ...p }
+  if (!Number.isFinite(s.panelPadding) || s.panelPadding < 4 || s.panelPadding > 40) s.panelPadding = DEFAULTS.panelPadding
+  if (!Number.isFinite(s.cardSide) || s.cardSide < 100 || s.cardSide > 220) s.cardSide = DEFAULTS.cardSide
+  // Normalize one persisted entry to a valid instance key. Legacy bare widget
+  // ids (pre-2×4) migrate to their 2×2 instance; unknown entries are dropped.
+  const normalizeInstance = (key: string): string => {
+    const { widgetId, size } = parseInstanceKey(key)
+    const w = WIDGETS.find((x) => x.id === widgetId)
+    if (!w) return ''
+    return sizesOf(w).includes(size) ? instanceKey(widgetId, size) : ''
+  }
+  // Respect the user's installed set exactly — do NOT force-append built-ins
+  // back on every load (that kept overflowing the max-widgets cap after the
+  // user uninstalled system widgets). Only the first-run path seeds defaults.
+  if (!Array.isArray(s.installed)) s.installed = []
+  s.installed = s.installed.map(normalizeInstance).filter((id): id is string => id !== '')
+  if (!Array.isArray(s.order)) s.order = []
+  s.order = s.order.map(normalizeInstance).filter((id): id is string => id !== '')
+  for (const key of ALL_INSTANCES) if (s.order.indexOf(key) === -1) s.order.push(key)
+  if (typeof s.apiKey !== 'string') s.apiKey = ''
+  if (typeof s.railOpen !== 'boolean') s.railOpen = DEFAULTS.railOpen
+  if (typeof s.realTime !== 'boolean') s.realTime = DEFAULTS.realTime
+  if (!Number.isFinite(s.magnify) || s.magnify < 1 || s.magnify > 2) s.magnify = DEFAULTS.magnify
+  if (!Number.isFinite(s.panelWidth) || s.panelWidth < 260 || s.panelWidth > 760) s.panelWidth = DEFAULTS.panelWidth
+  if (typeof s.cardConfigs !== 'object' || s.cardConfigs === null || Array.isArray(s.cardConfigs)) s.cardConfigs = {}
+  if (!Number.isFinite(s.maxWidgets) || s.maxWidgets < 1 || s.maxWidgets > 20) s.maxWidgets = DEFAULTS.maxWidgets
+  if ([1, 2, 4].indexOf(s.columns as number) === -1) s.columns = DEFAULTS.columns
+  return s
+}
+
 function loadState(): Prefs {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw === null) return { ...DEFAULTS, installed: DEFAULT_INSTALLED.slice(), order: ALL_INSTANCES.slice() }
-    const p = JSON.parse(raw) as Partial<Prefs>
-    const s = { ...DEFAULTS, ...p }
-    if (!Number.isFinite(s.panelPadding) || s.panelPadding < 4 || s.panelPadding > 40) s.panelPadding = DEFAULTS.panelPadding
-    if (!Number.isFinite(s.cardSide) || s.cardSide < 100 || s.cardSide > 220) s.cardSide = DEFAULTS.cardSide
-    // Normalize one persisted entry to a valid instance key. Legacy bare widget
-    // ids (pre-2×4) migrate to their 2×2 instance; unknown entries are dropped.
-    const normalizeInstance = (key: string): string => {
-      const { widgetId, size } = parseInstanceKey(key)
-      const w = WIDGETS.find((x) => x.id === widgetId)
-      if (!w) return ''
-      return sizesOf(w).includes(size) ? instanceKey(widgetId, size) : ''
-    }
-    // Respect the user's installed set exactly — do NOT force-append built-ins
-    // back on every load (that kept overflowing the max-widgets cap after the
-    // user uninstalled system widgets). Only the first-run path seeds defaults.
-    if (!Array.isArray(s.installed)) s.installed = []
-    s.installed = s.installed.map(normalizeInstance).filter((id): id is string => id !== '')
-    if (!Array.isArray(s.order)) s.order = []
-    s.order = s.order.map(normalizeInstance).filter((id): id is string => id !== '')
-    for (const key of ALL_INSTANCES) if (s.order.indexOf(key) === -1) s.order.push(key)
-    if (typeof s.apiKey !== 'string') s.apiKey = ''
-    if (typeof s.railOpen !== 'boolean') s.railOpen = DEFAULTS.railOpen
-    if (typeof s.realTime !== 'boolean') s.realTime = DEFAULTS.realTime
-    if (!Number.isFinite(s.magnify) || s.magnify < 1 || s.magnify > 2) s.magnify = DEFAULTS.magnify
-    if (!Number.isFinite(s.panelWidth) || s.panelWidth < 260 || s.panelWidth > 760) s.panelWidth = DEFAULTS.panelWidth
-    if (typeof s.cardConfigs !== 'object' || s.cardConfigs === null || Array.isArray(s.cardConfigs)) s.cardConfigs = {}
-    if (!Number.isFinite(s.maxWidgets) || s.maxWidgets < 1 || s.maxWidgets > 20) s.maxWidgets = DEFAULTS.maxWidgets
-    if ([1, 2, 4].indexOf(s.columns as number) === -1) s.columns = DEFAULTS.columns
-    return s
+    return normalizePrefs(JSON.parse(raw) as Partial<Prefs>)
   } catch {
     return { ...DEFAULTS, installed: DEFAULT_INSTALLED.slice(), order: ALL_INSTANCES.slice() }
   }
 }
 
+function loadSavedAt(): number {
+  try {
+    const n = +(localStorage.getItem(SAVED_AT_KEY) ?? '')
+    return Number.isFinite(n) && n > 0 ? n : 0
+  } catch {
+    return 0
+  }
+}
+
+/** Debounced PUT to the host store; localStorage is always the fast path, the
+ *  host file the authoritative one (survives origin switches and clearing). */
+let hostSyncTimer: number | undefined
+let pendingState: Prefs | null = null
+let pendingAt = 0
+async function putState(s: Prefs, at: number): Promise<void> {
+  try {
+    await fetch(STORE_API, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ savedAt: at, state: s }),
+    })
+  } catch { /* host unreachable: localStorage still holds the state; a later boot sync re-pushes */ }
+}
 function saveState(s: Prefs): void {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)) } catch { /* storage unavailable */ }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s))
+    pendingAt = Date.now()
+    localStorage.setItem(SAVED_AT_KEY, String(pendingAt))
+  } catch { /* storage unavailable */ }
+  pendingState = s
+  if (hostSyncTimer !== undefined) window.clearTimeout(hostSyncTimer)
+  hostSyncTimer = window.setTimeout(() => {
+    hostSyncTimer = undefined
+    const toSend = pendingState
+    const at = pendingAt
+    pendingState = null
+    if (toSend !== null) void putState(toSend, at)
+  }, 400)
 }
 
 /** Session stats shape collected by the dock collector. */
@@ -311,12 +359,42 @@ export function apply(ctx: ClientContext): void {
   function subscribe(fn: () => void): () => void { listeners.add(fn); return () => { listeners.delete(fn) } }
   function setState(patch: Partial<typeof state>): void { state = { ...state, ...patch }; emit() }
   function setPrefs(patch: Partial<Prefs>): void { prefs = { ...prefs, ...patch }; saveState(prefs); emit() }
+
+  // ---- Boot sync with the authoritative host store. ----
+  // localStorage is a fast per-origin cache; the host file (`/api/widgets-state`,
+  // under the profile data dir) is ground truth. Whichever side holds the newer
+  // savedAt wins, so ANY browser origin (localhost vs 127.0.0.1, a second
+  // machine's browser, private mode) converges to the last saved configuration
+  // the moment it loads instead of resetting to defaults.
+  const syncWithHost = async (): Promise<void> => {
+    try {
+      const res = await fetch(STORE_API)
+      if (!res.ok) return
+      const data = (await res.json()) as { savedAt?: number; state?: Partial<Prefs> }
+      const hostAt = Number.isFinite(Number(data.savedAt)) ? Number(data.savedAt ?? 0) : 0
+      const hostState = data.state !== null && typeof data.state === 'object' ? data.state : null
+      const localAt = loadSavedAt()
+      if (hostState && hostAt > localAt) {
+        // Host is newer (another origin/browser saved it) → adopt + mirror locally.
+        prefs = normalizePrefs(hostState)
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
+          localStorage.setItem(SAVED_AT_KEY, String(hostAt))
+        } catch { /* ignore */ }
+        emit()
+      } else if (hostAt < localAt && localAt > 0) {
+        // Local is newer (host file absent/stale — e.g. first run after upgrade).
+        try { await putState(prefs, localAt) } catch { /* best-effort */ }
+      }
+    } catch { /* host unavailable; stay on localStorage only */ }
+  }
   function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; prefs: Prefs } {
     const [snap, setSnap] = React.useState({ ...state, prefs: { ...prefs } })
     React.useEffect(() => subscribe(() => setSnap({ ...state, prefs: { ...prefs } })), [])
     return snap
   }
   ctx.effect(() => () => { listeners.clear() })
+  void syncWithHost()
 
   // Command execution for interactive action cards (e.g. one-click Compact).
   // Resolve the host @Remote command seam if present; cards degrade silently
