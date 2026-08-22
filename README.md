@@ -111,6 +111,12 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
+### v1.1.2
+**Fixed**
+- 🔢 Token-usage heatmap now accounts **per assistant step by its own start time** (v2), with a cumulative-anchor fallback when a host omits per-node `usage`. A day's cell = exactly the tokens of steps that began that day (LOCAL time), so sessions spanning midnight split correctly across both days; element dedup by `turn:step:start` keeps remounts / session switches / compaction idempotent.
+- 🧹 **Boot-time repair**: a one-shot fix clears polluted live-day values (8/22 had shown 145M–181M from a fixed seed double-counting with live accumulation) and resets the dedup set, so the live path rebuilds the day exactly; a marker keeps it one-shot so later live values are never wiped.
+- 📚 Non-live past days (8/14–8/21: 74.32M / 367.79M / 1195.70M / 161.49M / 292.34M / 352.36M / 214.85M / 44.55M) are backfilled from the authoritative per-event session logs (official delta algorithm, LOCAL-time attribution), whose sessions have ended — never double-counted. 8/22 is live-accumulated (≈114.87M and growing). Manual one-shot recovery: `docs/heatmap-recovery.js`.
+
 ### v1.1.1
 **Fixed**
 - 🔢 Token-usage heatmap accounting reworked to **per-conversation-step crediting**: every assistant step is credited exactly once, by its OWN start time (`timing.stepStartTime`), so a day's cell holds exactly the tokens of steps that *began* that day — the old daily-reset-baseline diffing credited yesterday's whole total (e.g. 47M→117M) to today whenever a session continued across midnight. Steps are deduped by `turn:step:start` (remounts, session switches, compaction, cross-midnight sessions all behave). A cumulative-anchor fallback covers hosts where the folded surface omits per-node `usage`, re-anchoring only on a genuine cumulative reset (new session), never on a bare day change.
