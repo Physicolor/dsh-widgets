@@ -128,6 +128,7 @@ pnpm run check      # typecheck + tests + build
 - 🙈 **Stats-line switch hides text only.** Enabling it keeps the official bar's space and layout untouched and makes just its labels transparent — matching manual "hide the text" setups; off shows the bar normally.
 - 📊 **Usage bars align per week.** The 用量柱状图 window option is now 滚动(最近7天) / **每周对齐** (Sunday-aligned current week), instead of the misplaced quarter mode.
 - ✅ **Tasks never vanish.** Without a todos projection the task card shows **暂无任务 · 0 进行中 · 0 待办** instead of disappearing.
+- ✂️ Removed the divider line above the 自定义 (per-card schema) block in the config preview.
 - 🏠 **Fresh installs pre-load only the stats-line family** (turns · LLM/tool time · TTFT · rate · cache · tokens — mirroring the official composer stats bar); everything else is a market add. Existing users' arrangements are untouched by design.
 - 🙈 **New personal-preference switch** in 组件设置: "隐藏输入框下方文字条" hides the official composer stats bar under the input box (the rail shows the same data). Default OFF so other users keep their bar.
 - 💬 **Quote card renders nothing without a custom text** (no default filler that used to rotate on every render), and it lives in its own 其它 group for now.
