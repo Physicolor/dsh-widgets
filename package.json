@@ -1,6 +1,6 @@
 {
   "name": "dsh-widgets",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Right-hand widget rail for DeepSeek Harness Web UI: live session stats, task/context/heatmap/quote widgets, OpenCode Go quota, multi-column grid layouts (1/2/4 columns) with 2x4 long tiles, a continuous magnification wave, and per-instance sizing. Widgets are installable, reorderable and resizable from Settings > Components.",
   "type": "module",
   "main": "lib/index.js",
