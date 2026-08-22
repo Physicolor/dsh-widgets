@@ -76,9 +76,12 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
   await page.waitForTimeout(600)
   const afterToggle = await page.evaluate(() => {
     const d = document.querySelector('[data-slot="conversation.composer.dock"] > div')
-    return d ? getComputedStyle(d).display : 'no-el'
+    if (!d) return 'no-el'
+    const cs = getComputedStyle(d)
+    const firstSpan = d.querySelector('span')
+    return { display: cs.display, color: cs.color, spanColor: firstSpan ? getComputedStyle(firstSpan).color : null }
   })
-  console.log('STATSLINE_AFTER_ON:', afterToggle, '(none expected)')
+  console.log('STATSLINE_AFTER_ON:', JSON.stringify(afterToggle), '(display block + transparent text expected)')
   // restore switch off
   if (toggled) await page.evaluate(() => { const i = Array.from(document.querySelectorAll('.dsx-stats-addpanel input[type="checkbox"]')).find((x) => x.checked === true); if (i) i.click() })
   await page.waitForTimeout(600)

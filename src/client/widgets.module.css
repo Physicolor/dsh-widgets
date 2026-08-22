@@ -1,4 +1,4 @@
-/* Harness Widgets — rail and settings styling. Class names are intentionally
+﻿/* Harness Widgets 鈥?rail and settings styling. Class names are intentionally
    kept as plain globals (tsdown CSS-module pattern `[local]`) so the inline
    components can reference them by string. All colors ride theme tokens. */
 
@@ -113,7 +113,7 @@
 /* Hide the rail's scrollbar while keeping it scrollable. Chromium, Edge, and
    Safari take the ::-webkit-scrollbar path. The standard `scrollbar-width`
    property MUST stay behind the `@supports not selector(::-webkit-scrollbar)`
-   gate below — the theme's own scrollbar sheet documents that a non-`auto`
+   gate below 鈥?the theme's own scrollbar sheet documents that a non-`auto`
    `scrollbar-width` makes Chromium/Edge drop every ::-webkit-scrollbar rule,
    so declaring it unconditionally would silence this `display: none` too. */
 .dsx-stats-rail::-webkit-scrollbar {
@@ -139,12 +139,12 @@ body.dsx-stats-active [data-conversation-scroll] {
   padding-right: var(--dsx-rail-w, 220px) !important;
 }
 
-/* Trajectory/overlay tab (轨迹) alignment: the official product anchors the
+/* Trajectory/overlay tab (杞ㄨ抗) alignment: the official product anchors the
    composer seat with absolute positioning against the scroll body's PADDING
    box (see ConversationRoot.module.css `.scrollBody:has([data-conversation-composer-overlay]) >
-   .composerSeat { right: var(--dsh-scrollbar-width) }`), so — unlike the Chat
+   .composerSeat { right: var(--dsh-scrollbar-width) }`), so 鈥?unlike the Chat
    seat, which is sticky inside the CONTENT box and automatically yields to the
-   padding above — it does NOT see [data-conversation-scroll]'s padding-right
+   padding above 鈥?it does NOT see [data-conversation-scroll]'s padding-right
    and would span the full padding box, sliding the composer stack right over
    the rail by the whole rail width. Give that overlay seat back the rail width
    in its `right`, exactly the way it already gives back `--dsh-scrollbar-width`
@@ -175,12 +175,12 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
    only make sure OUR top padding clears the enhancer card's top shadow (see
    the rail's `2px 4px ...` padding). No header rules live here. */
 
-/* ── Mac-Dock style card magnify + brand-blue edge line. ──
+/* 鈹€鈹€ Mac-Dock style card magnify + brand-blue edge line. 鈹€鈹€
    Cards keep their square shape (uniform scale, no distortion) and are laid out
    by a Dock-style neighbor reflow (absolute top + scaled width/height from JS),
-   so a magnified card pushes neighbors apart instead of overlapping them — the
+   so a magnified card pushes neighbors apart instead of overlapping them 鈥?the
    spacing between cards is preserved at every zoom. The CSS only animates the
-   reflow properties (top/width/height) and paints the brand-blue hover edge. ── */
+   reflow properties (top/width/height) and paints the brand-blue hover edge. 鈹€鈹€ */
 .dsx-stats-card-slot {
   transition: top 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out);
   will-change: top, width, height;
@@ -199,7 +199,7 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   transition: opacity 0.12s ease;
 }
 
-/* ── Bottom add button: same rounded-rect geometry as a card. ── */
+/* 鈹€鈹€ Bottom add button: same rounded-rect geometry as a card. 鈹€鈹€ */
 .dsx-stats-add {
   box-sizing: border-box;
   flex: none;
@@ -234,13 +234,13 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   font-weight: 500;
 }
 
-/* ── Temporary right-side add panel (fixed overlay, never affects layout).
+/* 鈹€鈹€ Temporary right-side add panel (fixed overlay, never affects layout).
    Always rendered so closing slides out via the .open flag. Its outer offsets
    follow the real geometry: the right edge sits exactly as far from the
    viewport right as the cards do (--dsh-sidebar-width + rail padding), and its
    bottom sits exactly as high as the input box's bottom gap (--dsx-input-bottom).
-   No opacity fade on close — only the horizontal slide, so it returns crisply;
-   visibility still flips so the closed overlay never intercepts pointer events. ── */
+   No opacity fade on close 鈥?only the horizontal slide, so it returns crisply;
+   visibility still flips so the closed overlay never intercepts pointer events. 鈹€鈹€ */
 .dsx-stats-addpanel {
   position: fixed;
   right: calc(var(--dsh-sidebar-width, 0px) + var(--dsx-rail-pad, 14px));
@@ -273,7 +273,7 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   width: 10px;
   cursor: ew-resize;
   z-index: 3;
-  /* invisible hit area — no visible bar, matching the product's sidebar
+  /* invisible hit area 鈥?no visible bar, matching the product's sidebar
      drag affordance */
 }
 .dsx-stats-addpanel-header {
@@ -429,7 +429,7 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   margin-bottom: 10px;
 }
 
-/* Dropdown selector matching the DSH "selector" picker look (e.g. model/创造模式):  */
+/* Dropdown selector matching the DSH "selector" picker look (e.g. model/鍒涢€犳ā寮?:  */
 /* a bordered rounded control with a native chevron and a real popup menu. */
 .dsx-select {
   appearance: none;
@@ -571,7 +571,7 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   background: var(--dsw-alias-brand-primary);
 }
 
-/* ── Switch (official settings-row checkbox-switch, adapted to --dsw-* tokens). ── */
+/* 鈹€鈹€ Switch (official settings-row checkbox-switch, adapted to --dsw-* tokens). 鈹€鈹€ */
 .dsx-switch-row {
   position: relative;
   display: inline-flex;
@@ -644,8 +644,11 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   pointer-events: none;
 }
 
-/* Personal-preference switch: hide the official composer stats line below the
-   input box (the rail widgets can show the same data). Default OFF. */
-body.dsx-hide-statsline [data-slot='conversation.composer.dock'] > div {
-  display: none !important;
+/* Hide-only-the-text switch: the official composer stats line below the
+   input box keeps its space (layout untouched) but its labels are invisible —
+   exactly like hiding just the text. Default OFF = show the bar. */
+body.dsx-hide-statsline [data-slot='conversation.composer.dock'] > div,
+body.dsx-hide-statsline [data-slot='conversation.composer.dock'] > div * {
+  color: transparent !important;
 }
+

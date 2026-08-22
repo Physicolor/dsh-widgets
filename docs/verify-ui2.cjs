@@ -70,9 +70,10 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
     const panel = document.querySelector('.dsx-stats-addpanel')
     if (!panel) return null
     const text = panel.innerText
-    const selects = panel.querySelectorAll('select').length
+    const selects = panel.querySelectorAll('select')
+    const sizeSelect = Array.from(selects).find((s) => s.title === '卡片大小')
     const segmented = panel.querySelectorAll('.dsx-stats-addpanel button.dsx-btn').length
-    return { hasCardSizeHeading: text.includes('卡片大小'), hasCustomHeading: text.includes('自定义'), selectCount: selects, has2x4Button: text.includes('2×4') }
+    return { hasPreviewHeading: text.includes('· 预览'), sizeSelectTitle: sizeSelect ? sizeSelect.title : null, segmentedButtons: segmented }
   })
   console.log('CONFIG_CARD_SIZE:', JSON.stringify(cfgDiagnostics))
 

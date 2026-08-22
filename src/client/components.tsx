@@ -529,12 +529,24 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
     React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', marginBottom: 4 } }, `已添加 ${installed.length}/${prefs.maxWidgets}（点击组件可预览与配置）`),
     React.createElement(OrderList, { items: installed, onMove: (next) => setPrefs({ order: next }), onRemove: remove, onSelect: setSelected, selected }),
     selWidget && selConfig ? React.createElement('div', { style: { marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dsw-alias-border-l2)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } },
-      // Preview fills the remaining vertical space and centres, so any extra
-      // room becomes generous padding above/below the card (2×4 previews are
-      // scaled 0.85 so their right-edge buttons stay visible without pushing
-      // the layout).
-      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 90, justifyContent: 'center', alignItems: 'center', gap: 10, padding: '10px 8px' } },
-        React.createElement('div', { style: { fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, `${selWidget.name} · 预览`),
+      // Preview title anchored top-LEFT; the card-size dropdown sits beside it
+      // on the right (same dsx-select style as the 窗口对齐方式 field).
+      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+        React.createElement('div', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, `${selWidget.name} · 预览`),
+        sizesOf(selWidget).length > 1
+          ? React.createElement('select', {
+              className: 'dsx-select', style: { fontSize: 11, width: 'auto' },
+              value: selSize, title: '卡片大小',
+              onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setPreviewSize(e.target.value as WidgetSize),
+            },
+              sizesOf(selWidget).map((s) => React.createElement('option', { key: s, value: s }, s === '2x4' ? '2×4' : '2×2')),
+            )
+          : null,
+      ),
+      // The preview fills the space BELOW the title and centres, so extra room
+      // becomes generous vertical padding (2×4 previews scale 0.85 so their
+      // right-edge buttons stay visible without pushing the layout).
+      React.createElement('div', { style: { flex: 1, minHeight: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 8px 8px' } },
         (() => {
           const u = 150
           const isWide = selSize === '2x4'
@@ -544,23 +556,14 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
             : null
         })(),
       ),
-      // 卡片大小 lives in the custom area under its own heading; the schema
-      // fields keep their 自定义 heading below it.
-      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 10, borderTop: '1px solid var(--dsw-alias-border-l2)' } },
-        sizesOf(selWidget).length > 1 ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4 } },
-          React.createElement('div', { style: { fontSize: 12, fontWeight: 600, color: 'var(--dsw-alias-label-tertiary)' } }, '卡片大小'),
-          React.createElement('div', { style: { display: 'flex', gap: 4 } },
-            sizesOf(selWidget).map((s) => React.createElement('button', { key: s, type: 'button', className: 'dsx-btn' + (selSize === s ? ' dsx-btn-primary' : ''), onClick: () => setPreviewSize(s), style: { minWidth: 56 } }, s === '2x4' ? '2×4' : '2×2')),
-          ),
-        ) : null,
-        selWidget.configSchema && selWidget.configSchema.length > 0 ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4 } },
-          React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)' } }, '自定义'),
-          selWidget.configSchema.map((f) => React.createElement('div', { key: f.key, style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--dsw-alias-border-l1)' } },
-            React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)' } }, f.label),
-            React.createElement('div', { style: { flex: 'none', minWidth: 0 } }, React.createElement(ConfigFieldControl, { field: f, value: selConfig[f.key], onChange: (v) => setConfig(f, v) })),
-          )),
-        ) : null,
-      ),
+      // Per-card schema fields keep their 自定义 heading below the preview.
+      selWidget.configSchema && selWidget.configSchema.length > 0 ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 10, borderTop: '1px solid var(--dsw-alias-border-l2)' } },
+        React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)' } }, '自定义'),
+        selWidget.configSchema.map((f) => React.createElement('div', { key: f.key, style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--dsw-alias-border-l1)' } },
+          React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)' } }, f.label),
+          React.createElement('div', { style: { flex: 'none', minWidth: 0 } }, React.createElement(ConfigFieldControl, { field: f, value: selConfig[f.key], onChange: (v) => setConfig(f, v) })),
+        )),
+      ) : null,
     ) : null,
   )
 }
@@ -732,7 +735,7 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
     React.createElement(Row, { title: '添加面板宽度', desc: '右侧“添加组件”面板的宽度，也可拖其左边缘调整', children: React.createElement(Slider, { min: 260, max: 760, value: prefs.panelWidth, unit: 'px', onChange: (v) => setPrefs({ panelWidth: v }) }) }),
     React.createElement(Row, { title: '最多组件数', desc: '侧边栏最多显示的组件数量，超限后无法再添加', children: React.createElement(Slider, { min: 1, max: 20, value: prefs.maxWidgets, unit: '个', onChange: (v) => setPrefs({ maxWidgets: v }) }) }),
     React.createElement(Row, {
-      title: '隐藏输入框下方文字条', desc: '隐藏输入框下方的状态统计条，减少界面信息密度，专注对话内容；组件栏可查看同类数据',
+      title: '隐藏输入框下方文字条', desc: '隐藏输入框下方状态统计条的文字（保留原空间、不影响布局）；关闭时正常显示',
       children: React.createElement('label', { className: 'dsx-switch-row' },
         React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: prefs.hideStatsLine, onChange: (e) => setPrefs({ hideStatsLine: e.target.checked }) }),
         React.createElement('span', { className: 'dsx-switch-track' }, React.createElement('span', { className: 'dsx-switch-thumb' })),
