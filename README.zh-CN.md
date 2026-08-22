@@ -75,7 +75,7 @@ macOS Dock 式悬浮放大，提供两种模式（在 **设置 → 组件 → �
 
 - **部件注册表**：`WIDGETS` 声明式描述符（id / 名称 / 尺寸 / 分组 / render），部件栏与设置页共用同一注册表，新增部件只需追加一条描述符；
 - **数据收集器**：挂载在 `conversation.composer.dock` slot，该 slot 仅在活跃会话存在时渲染，天然充当「会话存在」信号；
-- **Host 半**：`webServer` + `credentials` 两个服务，注册 `/api/opencode-usage` 同源代理路由；
+- **Host 半**：`webServer` + `credentials` 两个服务，注册 `/api/opencode-usage` 同源代理路由与 `/api/widgets-state` 状态存储（组件栏配置持久化到 `profiles/web/dsh-widgets-state.json`——权威副本，浏览器换 origin、无痕模式、站点数据被清都丢不了）；
 - **可逆清理**：所有注册通过 fiber 的 effect 生命周期管理，卸载即恢复；
 - **Slot 接入**：`shell.overlay`（面板）、`conversation.session.header.utilities`（胶囊开关）、`settings.section`（设置页）。
 
@@ -109,6 +109,27 @@ pnpm run check      # 类型检查 + 测试 + 构建
 - 与 `dsh-better-sidebar` 右栏显式协调（共用 `--dsh-sidebar-width`），卸载后无残留。
 
 ## 变更日志
+
+### v1.1.5
+**修复 — 组件状态重启后不再复位（根因：此前只存在浏览器 localStorage）**
+
+- 组件配置（已安装 / 排序 / 各卡片自定义 / 尺寸 / 面板与放大设置）此前**只**存在每个浏览器的 `localStorage`——按 origin 隔离的浏览器级缓存。一旦浏览器 origin 变化（`localhost:3080` 与 `127.0.0.1:3080` 就是两个不同 origin）、处于无痕模式或站点数据被清、或某次写入被静默吞掉（旧 `saveState` 吞异常），配置就悄悄回到默认；而且它**永远不会跟随到另一台设备**——那台设备的浏览器里根本没有这份状态。
+- ⚙️ Host 半新增 `/api/widgets-state` 路由：组件栏状态**原子写入**（临时文件 + rename）profile 数据目录下的 `profiles/web/dsh-widgets-state.json`——每台 DSH 服务一份权威副本，凡是访问到这台服务的任意浏览器/地址都共享它。
+- 🔄 启动时客户端与 host 存储同步：localStorage 与 host 文件谁带的 `savedAt` 更新就听谁的，任意 origin/浏览器都会收敛到最后一次保存的配置而不是复位；每次修改双写（localStorage 即时、host 走 400ms 防抖的 PUT）。
+- 💾 既有 `harness-widgets.*` localStorage 键原样保留；Token 用量热度图账本仍按浏览器本地（它是高频记账数据），而 UI 配置从此设备级稳定。设备间按设计保持独立：每台运行自己 DSH 服务的机器各存各的状态文件（不做云同步）。
+- 🧪 路由/请求体处理复用 OpenCode 代理已验证的同款写法，不引入未经验证的新契约。
+
+### v1.1.4
+**元信息 — 包改名 `dsh-widgets`**
+- 📦 npm 包名 `harness-widgets` → `dsh-widgets`（符合生态 dsh- 前缀与 npm 搜索习惯），旧包已废弃并指向新包。
+- 🔀 GitHub 仓库 `Physicolor/harness-widgets` → `Physicolor/dsh-widgets`（旧地址自动跳转，star/fork/issue 保留）。
+- ♻️ 安装命令更新为 `dsh plugin --profile web add dsh-widgets`。
+- 💾 无数据影响：localStorage 键（`harness-widgets.*`）不变，热度图与组件状态无缝迁移。
+
+### v1.1.3
+**元信息**
+- 🏷️ 补充 npm `keywords`（deepseek-harness / dsh / cordis / plugin / web-ui / widgets / dashboard / heatmap），便于 npm 搜索；无代码改动。
+- 🪧 GitHub topics 扩充（deepseek-harness, cordis, cordis-plugin, browser-extension, web-ui, widgets, dashboard, heatmap）。
 
 ### v1.1.2
 **修复**
@@ -186,7 +207,8 @@ pnpm run check      # 类型检查 + 测试 + 构建
 - **多平台用量部件**：Z.ai、DeepSeek 余额等，沿用 host 同源代理 + credentials 模式；
 - **实用工具部件**：一键 compact（需接入 DSH 官方 compaction 能力）等；
 - **外部接口集成**：飞书、微信等推送/交互，密钥严格走 DSH credentials；
-- **部件市场**：开放第三方部件注册机制，让社区部件像插件一样入驻。
+- **部件市场**：开放第三方部件注册机制，让社区部件像插件一样入驻；
+- **跨设备同步**（可选）：当前每台 DSH 服务各自维护一份 `dsh-widgets-state.json`——未来可加云/账号同步层让多台机器共享一份配置，但「本地优先、设备独立」是刻意保留的默认行为。
 
 ## License
 
