@@ -1067,25 +1067,36 @@ export function apply(ctx: ClientContext): void {
       const deckBottom = staticLayout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
       // Add button placement, shared by the static deck and the focus overlay.
 // Rows are right-anchored, so the leftover cell(s) of a short last row sit at
-// the row's LEFT edge. The button parks in that gap ONLY when it is actually
-// wide enough (leftGap >= side); otherwise it sits below the deck, right
-// aligned. The leftmost placed card, not the last item, anchors the gap — the
-// old code anchored off the last item, which for a left-packed 4-col row put
-// the button on top of the row's own cards.
+// the row's LEFT edge. The button parks in that gap ONLY when the STATIC gap
+// is actually wide enough (leftGap >= side) — the fit decision must not
+// flip under magnification (a focused row's wider cards would shrink the gap
+// below `side` and jump the button to the deck bottom-right mid-hover).
+// Placement itself rides the passed `layout` (static or scaled), so while
+// hovering the button stays in its gap slot, gliding with the row.
+// The leftmost placed card, not the last item, anchors the gap — the old code
+// anchored off the last item, which for a left-packed 4-col row put the button
+// on top of the row's own cards.
 const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: number; h: number }>): { top: number; right: number } => {
   if (n === 0) return { top: 2 + pad, right: 0 }
   if (multi) {
     const lastRow = rowIndexOf[n - 1]
     const lastRowUsed = colIndexOf[n - 1] + spanOf(n - 1)
     if (lastRowUsed < columns) {
-      let leftmost = layout[n - 1]
+      // fit-check against the STATIC widths so hovering never flips the slot
+      let sLeftmost = staticLayout[n - 1]
       for (let i = n - 2; i >= 0; i--) {
         if (rowIndexOf[i] !== lastRow) continue
-        if (layout[i].right > leftmost.right) leftmost = layout[i]
+        if (staticLayout[i].right > sLeftmost.right) sLeftmost = staticLayout[i]
       }
       const contentW = railW - 2 * pad
-      const leftGap = contentW - leftmost.right - leftmost.w - pad
-      if (leftGap >= side) return { top: leftmost.top, right: leftmost.right + leftmost.w + pad }
+      if (contentW - sLeftmost.right - sLeftmost.w - pad >= side) {
+        let leftmost = layout[n - 1]
+        for (let i = n - 2; i >= 0; i--) {
+          if (rowIndexOf[i] !== lastRow) continue
+          if (layout[i].right > leftmost.right) leftmost = layout[i]
+        }
+        return { top: leftmost.top, right: leftmost.right + leftmost.w + pad }
+      }
     }
     const bottom = layout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
     return { top: bottom + pad, right: 0 }

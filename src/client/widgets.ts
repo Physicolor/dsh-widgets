@@ -228,25 +228,30 @@ export function buildRollingGrid(raw: Record<string, number>, weeks: number): Ar
 
 /** Last `n` days (oldest→newest) as bar data, ending today. Labels are
  *  short month.day (e.g. 8.28 — no year/weekday). Values stay raw tokens;
- *  ratio is normalized to the max day. */
+ *  ratio is normalized to the MAX WITHIN THIS WINDOW (not the whole history),
+ *  so the tallest bar of the last-7-days always reaches full height and the
+ *  chart stays full — a huge historical outlier must not flatten the window. */
 export function lastNDays(raw: Record<string, number>, n: number): BarDatum[] {
   const keys = Object.keys(raw).sort()
   const byDate: Record<string, number> = {}
   for (const k of keys) if (/^\d{4}-\d{2}-\d{2}$/.test(k)) byDate[k] = raw[k]
   const now = new Date()
   const days: BarDatum[] = []
-  const max = Math.max(1, ...Object.values(byDate).filter((v) => v > 0))
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
     const k = dayKey(d)
     const v = byDate[k] ?? 0
-    days.push({ label: `${d.getMonth() + 1}.${d.getDate()}`, value: v, ratio: v > 0 ? v / max : 0, tone: v > 0 ? 'primary' : 'muted' })
+    days.push({ label: `${d.getMonth() + 1}.${d.getDate()}`, value: v, ratio: 0, tone: v > 0 ? 'primary' : 'muted' })
   }
+  const max = Math.max(1, ...days.map((d) => d.value))
+  for (const d of days) d.ratio = d.value > 0 ? d.value / max : 0
   return days
 }
 
 /** Week-aligned variant: `n` bars starting from this week's SUNDAY (today may
- *  land anywhere inside the window; future/past spill days render as zeros). */
+ *  land anywhere inside the window; future/past spill days render as zeros).
+ *  Same window-normalized max as `lastNDays` — the tallest bar in the 7-bar
+ *  window always reaches full height. */
 export function lastNDaysWeekly(raw: Record<string, number>, n: number): BarDatum[] {
   const keys = Object.keys(raw).sort()
   const byDate: Record<string, number> = {}
@@ -254,14 +259,15 @@ export function lastNDaysWeekly(raw: Record<string, number>, n: number): BarDatu
   const now = new Date()
   const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
   const days: BarDatum[] = []
-  const max = Math.max(1, ...Object.values(byDate).filter((v) => v > 0))
   for (let i = 0; i < n; i++) {
     const d = new Date(startOfWeek)
     d.setDate(startOfWeek.getDate() + i)
     const k = dayKey(d)
     const v = byDate[k] ?? 0
-    days.push({ label: `${d.getMonth() + 1}.${d.getDate()}`, value: v, ratio: v > 0 ? v / max : 0, tone: v > 0 ? 'primary' : 'muted' })
+    days.push({ label: `${d.getMonth() + 1}.${d.getDate()}`, value: v, ratio: 0, tone: v > 0 ? 'primary' : 'muted' })
   }
+  const max = Math.max(1, ...days.map((d) => d.value))
+  for (const d of days) d.ratio = d.value > 0 ? d.value / max : 0
   return days
 }
 
