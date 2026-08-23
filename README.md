@@ -129,6 +129,7 @@ pnpm run check      # typecheck + tests + build
 - 📊 **Usage bars align per week.** The 用量柱状图 window option is now 滚动(最近7天) / **每周对齐** (Sunday-aligned current week), instead of the misplaced quarter mode.
 - ✅ **Tasks never vanish.** Without a todos projection the task card shows **暂无任务 · 0 进行中 · 0 待办** instead of disappearing.
 - ✂️ Removed the divider line above the 自定义 (per-card schema) block in the config preview.
+- 🔧 **Capsule button styling restored.** The CSS file carried a UTF-8 BOM that leaked into the first rule's selector at build time (a junk prefix before `.dsx-stats-capsule{…}`), silently killing the 组件 capsule's base style (border-radius, padding, background, height). Rewrote the file as BOM-free UTF-8; verified the capsule computes `border-radius:14px / height:28px / background / padding / 1px border` again.
 - 🏠 **Fresh installs pre-load only the stats-line family** (turns · LLM/tool time · TTFT · rate · cache · tokens — mirroring the official composer stats bar); everything else is a market add. Existing users' arrangements are untouched by design.
 - 🙈 **New personal-preference switch** in 组件设置: "隐藏输入框下方文字条" hides the official composer stats bar under the input box (the rail shows the same data). Default OFF so other users keep their bar.
 - 💬 **Quote card renders nothing without a custom text** (no default filler that used to rotate on every render), and it lives in its own 其它 group for now.

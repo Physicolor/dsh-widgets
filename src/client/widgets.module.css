@@ -1,6 +1,4 @@
-﻿/* Harness Widgets 鈥?rail and settings styling. Class names are intentionally
-   kept as plain globals (tsdown CSS-module pattern `[local]`) so the inline
-   components can reference them by string. All colors ride theme tokens. */
+/* Harness Widgets — rail and settings styling. Plain class names, no CSS-module hashing: the client toggles them from JS verbatim. */
 
 .dsx-stats-capsule {
   display: inline-flex;
