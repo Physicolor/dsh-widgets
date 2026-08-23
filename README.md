@@ -111,15 +111,12 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
-### v1.2.1
-**Changed**
-- 📊 Token-usage bar chart now normalizes bar heights to the **max within the shown 7-day window** (rolling and weekly) instead of the whole history: the tallest bar of the week always reaches full height and the rest scale proportionally, so the chart stays full even when an older day (e.g. the 1.2G outlier) would otherwise flatten the window.
-
 ### v1.2.0
 **Fixed**
 - 🗓️ Heatmap no longer over-credits today with a previous session's whole history. The fallback anchor now tracks the per-step-credited cumulative, and the fallback only diffs growth when the active session actually has a step that began today. Reopening yesterday's session (or the projection lag right after a new-session switch) used to diff the entire prior total — e.g. 106M — into today's cell.
 - 🌐 Heatmap day attribution now honors a configurable timezone (**记账时区** in the heatmap card config), defaulting to Beijing UTC+8 (the day rolls at 08:00 UTC). Options: 北京 (UTC+8) / 跟随系统 / UTC. Previously attribution followed the browser clock, so the day boundary shifted whenever the system timezone was not UTC+8.
 - 🧹 One-shot cleanup drops an already-polluted today value so the live collector rebuilds it cleanly.
+- 📊 Token-usage bar chart now normalizes bar heights to the **max within the shown 7-day window** (rolling and weekly) instead of the whole history: the tallest bar of the week always reaches full height and the rest scale proportionally, so the chart stays full even when an older day (e.g. the 1.2G outlier) would otherwise flatten the window.
 
 ### v1.1.6
 **Fixed — card-anchored magnification, wave-following add button, smooth enter/exit:**
