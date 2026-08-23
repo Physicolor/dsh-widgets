@@ -1065,36 +1065,40 @@ export function apply(ctx: ClientContext): void {
       // while magnifying — growth is painted by the fixed overlay), so the add
       // button and scroll height stay fixed at the resting grid.
       const deckBottom = staticLayout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
-      // Add button placement:
-      //  - multi + odd count: the last row is one short, so park the add button in
-      //    that empty cell. Right-anchored rows leave the gap on the LEFT of the
-      //    sole card, so the button sits just left of it on the same row.
-      //  - otherwise: sit the add button at the deck's bottom, right-aligned.
-      const nItems = items.length
-      let addTop: number
-      let addRight: number
-      if (multi && nItems > 0 && staticLayout.length > 0) {
-        // Row-band packing may leave a gap in the LAST row (e.g. an odd 2×2
-        // count, or a 2×4 creating a leftover cell). If a 2×2 add button fits in
-        // that leftover cell, park it there (right-anchored: its right edge sits
-        // just left of the row's already-placed cards); otherwise sit it below
-        // the deck, right-aligned.
-        const lastRow = rowIndexOf[nItems - 1]
-        const lastRowUsedCells = colIndexOf[nItems - 1] + spanOf(nItems - 1)
-        if (lastRowUsedCells < columns) {
-          const lastCard = staticLayout[nItems - 1]
-          addTop = lastCard.top
-          addRight = lastCard.right + lastCard.w + pad
-        } else {
-          addTop = (nItems > 0 ? deckBottom : 2) + pad
-          addRight = 0
-        }
-      } else {
-        addTop = (nItems > 0 ? deckBottom : 2) + pad
-        addRight = 0
+      // Add button placement, shared by the static deck and the focus overlay.
+// Rows are right-anchored, so the leftover cell(s) of a short last row sit at
+// the row's LEFT edge. The button parks in that gap ONLY when it is actually
+// wide enough (leftGap >= side); otherwise it sits below the deck, right
+// aligned. The leftmost placed card, not the last item, anchors the gap — the
+// old code anchored off the last item, which for a left-packed 4-col row put
+// the button on top of the row's own cards.
+const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: number; h: number }>): { top: number; right: number } => {
+  if (n === 0) return { top: 2 + pad, right: 0 }
+  if (multi) {
+    const lastRow = rowIndexOf[n - 1]
+    const lastRowUsed = colIndexOf[n - 1] + spanOf(n - 1)
+    if (lastRowUsed < columns) {
+      let leftmost = layout[n - 1]
+      for (let i = n - 2; i >= 0; i--) {
+        if (rowIndexOf[i] !== lastRow) continue
+        if (layout[i].right > leftmost.right) leftmost = layout[i]
       }
-      // Deck height covers the live reflow bottom AND the add button (when it
+      const contentW = railW - 2 * pad
+      const leftGap = contentW - leftmost.right - leftmost.w - pad
+      if (leftGap >= side) return { top: leftmost.top, right: leftmost.right + leftmost.w + pad }
+    }
+    const bottom = layout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
+    return { top: bottom + pad, right: 0 }
+  }
+  const bottom = layout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
+  return { top: bottom + pad, right: 0 }
+}
+// Deck height covers the live reflow bottom AND the add button (when it
       // hangs below the deck), so neither ever clips or pushes unexpectedly.
+      const nItems = items.length
+      const staticAdd = addSlotFor(staticLayout)
+      const addTop = staticAdd.top
+      const addRight = staticAdd.right
       const addBottom = addTop + side
       const stackHeight = (nItems > 0 ? Math.max(deckBottom, addBottom) : addBottom) + pad
       // The add button participates in the magnification wave like a card — and its
@@ -1102,25 +1106,7 @@ export function apply(ctx: ClientContext): void {
       // focused (scaled) rows, so when cards above it grow taller the button
       // moves down with the magnified deck bottom / last-row gap, exactly like
       // a card would. Resting (unengaged) it equals the static placement.
-      const focusedAdd = (() => {
-        if (n === 0) return { top: 2 + pad, right: 0 }
-        if (multi) {
-          const rowHAcc: number[] = new Array(rows).fill(0)
-          for (let i = 0; i < n; i++) { const r = rowIndexOf[i]; const h = side * scaleArr[i]; if (h > rowHAcc[r]) rowHAcc[r] = h }
-          const rowTopAcc: number[] = new Array(rows).fill(0)
-          { let acc = 2; for (let r = 0; r < rows; r++) { rowTopAcc[r] = acc; acc += rowHAcc[r] + pad } }
-          const lastRow = rowIndexOf[n - 1]
-          const lastRowUsed = colIndexOf[n - 1] + spanOf(n - 1)
-          if (lastRowUsed < columns) {
-            const lc = focusLayout[n - 1]
-            return { top: rowTopAcc[lastRow], right: lc.right + lc.w + pad }
-          }
-          const bottom = focusLayout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
-          return { top: bottom + pad, right: 0 }
-        }
-        const bottom = focusLayout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
-        return { top: bottom + pad, right: 0 }
-      })()
+      const focusedAdd = addSlotFor(focusLayout)
       const addCenter = { x: railW - 2 * pad - focusedAdd.right - side / 2, y: focusedAdd.top + side / 2 }
       const addScale = engaged && n > 0
         ? stepScale(Math.hypot(addCenter.x - rawX, addCenter.y - rawY) / (side + pad))
