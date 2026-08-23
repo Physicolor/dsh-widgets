@@ -466,6 +466,7 @@ export const WIDGETS: Widget[] = [
   ] },
   { id: 'heatmap', group: 'coding-plan', name: '用量热度图', desc: '每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；大小可在市场左右切换', builtin: true, sizes: ['2x2', '2x4'], render: heatmapRender, configSchema: [
     { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
+    { key: 'timeZone', label: '记账时区', type: 'mode', default: 'Asia/Shanghai', options: [['Asia/Shanghai', '北京 (UTC+8)'], ['local', '跟随系统'], ['UTC', 'UTC']] },
   ] },
   { id: 'heatmap-bars', group: 'coding-plan', name: '用量柱状图', desc: '最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致', builtin: true, render: heatmapBarsRender, configSchema: [
     { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(最近7天)'], ['weekly', '每周对齐']] },

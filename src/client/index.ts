@@ -36,7 +36,20 @@ function loadHeatmap(): Record<string, number> {
 function saveHeatmap(m: Record<string, number>): void {
   try { localStorage.setItem(HEATMAP_KEY, JSON.stringify(m)) } catch { /* storage unavailable */ }
 }
-function dateKey(d: Date): string { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+/** Default heatmap accounting timezone: Beijing (UTC+8). Configurable per
+ *  heatmap card (cardConfigs.heatmap.timeZone); 'local' = browser clock. */
+const DEFAULT_TZ = 'Asia/Shanghai'
+function dateKey(d: Date, tz?: string): string {
+  const tzName = tz || DEFAULT_TZ
+  if (tzName !== 'local') {
+    try {
+      // en-CA formats as YYYY-MM-DD in the requested timezone — the calendar
+      // day boundary follows the timezone, not the browser clock.
+      return new Intl.DateTimeFormat('en-CA', { timeZone: tzName }).format(d)
+    } catch { /* unknown tz → fall through to local calendar day */ }
+  }
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 /** Build a horizontal (GitHub-style) heatmap grid: 7 rows (Sun..Sat) × weeks
  *  as columns (~13 wide). Two window-alignment modes:
  *   - 'rolling' : classic rolling window — the last 13 weeks ending today,
@@ -45,7 +58,7 @@ function dateKey(d: Date): string { return `${d.getFullYear()}-${String(d.getMon
  *     10–12月) that contains today; today then lands wherever it naturally
  *     falls within the quarter (e.g. mid-quarter dates sit toward the middle).
  *  Future columns render empty (value 0), shown faint. */
-function buildHeatmapGrid(m: Record<string, number>, mode: 'rolling' | 'quarter' = 'rolling'): Array<Array<{ value: number; date: string }>> {
+function buildHeatmapGrid(m: Record<string, number>, mode: 'rolling' | 'quarter' = 'rolling', tz?: string): Array<Array<{ value: number; date: string }>> {
   const weeks = 13
   const now = new Date()
   const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()) // this week's Sunday
@@ -66,7 +79,7 @@ function buildHeatmapGrid(m: Record<string, number>, mode: 'rolling' | 'quarter'
     for (let c = 0; c < weeks; c++) {
       const d = new Date(base)
       d.setDate(base.getDate() + c * 7 + r)
-      const k = dateKey(d)
+      const k = dateKey(d, tz)
       row.push({ value: m[k] ?? 0, date: k })
     }
     grid.push(row)
@@ -171,7 +184,10 @@ function migrateHeatmapV2(): Record<string, number> {
     const repairedKey = 'harness-widgets.heatmap.live-fixed'
     let repaired = false
     if (!localStorage.getItem(repairedKey)) {
-      const liveDays = ['2026-08-21', '2026-08-22']
+      // Only the CURRENT live day may be cleared for re-accumulation — past
+      // days are closed history and must never be wiped (the old hard-coded
+      // 8/21+8/22 list would delete a finished day's value on a fresh browser).
+      const liveDays = [dateKey(new Date())]
       for (const k of liveDays) {
         if ((next[k] ?? 0) > 0) { delete next[k]; repaired = true }
       }
@@ -180,6 +196,15 @@ function migrateHeatmapV2(): Record<string, number> {
         saveSeen(new Set<string>(), 0)
       }
       localStorage.setItem(repairedKey, '1')
+    }
+    // One-shot: clear TODAY's cell so any polluted value from the pre-fix
+    // accounting (cross-day over-credit that diffed a whole session history
+    // into today) is dropped; the live collector rebuilds it from here on.
+    const tzResetKey = 'harness-widgets.heatmap.today-reset-v1'
+    if (!localStorage.getItem(tzResetKey)) {
+      const tk = dateKey(new Date())
+      if ((next[tk] ?? 0) > 0) { delete next[tk]; patched = true }
+      localStorage.setItem(tzResetKey, '1')
     }
     // Re-backfill after the one-shot repair: clearing 8/21 dropped its value,
     // so restore the authoritative history for non-live days again.
@@ -560,6 +585,9 @@ export function apply(ctx: ClientContext): void {
         //      bare "new day" — so continuing a session across midnight still
         //      credits only the newly observed growth to today.
         const seenState = loadSeen()
+        // Heatmap timezone: per-card config (default Beijing UTC+8), 'local' =
+        // browser clock. Every day attribution below uses it.
+        const heatTz = (prefs.cardConfigs?.heatmap?.timeZone as string) || DEFAULT_TZ
         let dirty = false
         let nodeUsageOk = false
         const isStartF = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n)
@@ -579,7 +607,7 @@ export function apply(ctx: ClientContext): void {
           if (seenState.keys.has(key)) continue
           seenState.keys.add(key)
           if (start > seenState.strongest) seenState.strongest = start
-          const day = dateKey(new Date(start))
+          const day = dateKey(new Date(start), heatTz)
           heatmapRef.current = accumulateHeatmap(heatmapRef.current, day, total)
           dirty = true
         }
@@ -588,17 +616,37 @@ export function apply(ctx: ClientContext): void {
           setHeatmap(heatmapRef.current)
         }
         // (b) anchor fallback — only when per-step nodes carried no usage.
-        if (!nodeUsageOk) {
-          const current = inputTokens + outputTokens
-          const todayKey = dateKey(new Date())
-          if (usage && current > anchorRef.current) {
+        // Anchor discipline (the cross-day over-credit fix):
+        //   * while per-step crediting is active, keep the anchor parked at the
+        //     observed cumulative — a later fallback takeover then diffs only
+        //     what per-step did NOT already credit (never the whole history);
+        //   * the fallback credits growth ONLY when the active session shows a
+        //     step that actually began today (todayActivity). Without it, an
+        //     anchor that lags the cumulative (page reopened on yesterday's
+        //     session, projection lag right after a new-session switch) would
+        //     diff the entire prior-day total into today's cell.
+        const current = usage ? inputTokens + outputTokens : 0
+        if (nodeUsageOk && usage && current > anchorRef.current) {
+          anchorRef.current = current
+          saveHeatmapAnchor(current)
+        }
+        if (!nodeUsageOk && usage) {
+          const todayKey = dateKey(new Date(), heatTz)
+          const todayActivity = (settled ?? []).some((n: any) =>
+            n?.kind === 'assistant' && n?.timing?.stepStartTime != null && dateKey(new Date(n.timing.stepStartTime), heatTz) === todayKey)
+          if (current < anchorRef.current) {
+            // cumulative reset (new session / log rebuild): re-anchor, no credit
+            anchorRef.current = current
+            saveHeatmapAnchor(current)
+          } else if (todayActivity) {
             const delta = current - anchorRef.current
             anchorRef.current = current
             saveHeatmapAnchor(current)
             heatmapRef.current = accumulateHeatmap(heatmapRef.current, todayKey, delta)
             setHeatmap(heatmapRef.current)
-          } else if (usage && current < anchorRef.current) {
-            // cumulative reset (new session / log rebuild): re-anchor, no credit
+          } else if (current > anchorRef.current) {
+            // history only (no step began today yet): park the anchor at the
+            // cumulative without crediting, so it can never be diffed later.
             anchorRef.current = current
             saveHeatmapAnchor(current)
           }
@@ -647,11 +695,11 @@ export function apply(ctx: ClientContext): void {
           usage: { inputTokens, cacheReadTokens: cacheRead, outputTokens },
           contextPercent, contextWindow, contextTokens, contextBreakdown,
           todos: Array.isArray(todosProj) && todosProj.length >= 0 ? todosProj as Stats['todos'] : null,
-          heatmapGrid: buildHeatmapGrid(heatmapRef.current, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling'),
+          heatmapGrid: buildHeatmapGrid(heatmapRef.current, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling', heatTz),
           heatmapRaw: { ...heatmapRef.current },
         }
         setState({ stats })
-      }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now, prefs.cardConfigs?.heatmap?.monthMode])
+      }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now, prefs.cardConfigs?.heatmap?.monthMode, prefs.cardConfigs?.heatmap?.timeZone])
       return null
     },
   ))
@@ -816,7 +864,7 @@ export function apply(ctx: ClientContext): void {
         ...(snap.stats ?? { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, decodeMs: 0, decodeTokens: 0, usage: null }),
         // Only inject the fallback when live stats lacks heatmap fields.
         ...(statsHeat?.heatmapRaw ? {} : { heatmapRaw: { ...fallbackRaw } }),
-        ...(statsHeat?.heatmapGrid ? {} : { heatmapGrid: buildHeatmapGrid(fallbackRaw, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling') }),
+        ...(statsHeat?.heatmapGrid ? {} : { heatmapGrid: buildHeatmapGrid(fallbackRaw, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling', (prefs.cardConfigs?.heatmap?.timeZone as string) || DEFAULT_TZ) }),
       }
       interface RailItem { key: string; size: WidgetSize; w: (typeof WIDGETS)[number]; out: NonNullable<ReturnType<(typeof WIDGETS)[number]['render']>>; baseW: number }
       const items: RailItem[] = prefs.order
