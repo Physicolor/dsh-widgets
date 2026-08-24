@@ -307,6 +307,9 @@ async function putState(s: Prefs, at: number): Promise<void> {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ savedAt: at, state: s }),
+      // A keepalive request is allowed to outlive the page, so a state write
+      // that is still in flight when the window/tab closes is not dropped.
+      keepalive: true,
     })
   } catch { /* host unreachable: localStorage still holds the state; a later boot sync re-pushes */ }
 }
@@ -325,6 +328,37 @@ function saveState(s: Prefs): void {
     pendingState = null
     if (toSend !== null) void putState(toSend, at)
   }, 400)
+}
+/**
+ * Flush any state that has not yet reached the host store when the page is
+ * being torn down (window/tab close, navigation, desktop-app quit). The
+ * 400 ms debounce means the last edit before a quick close is usually still
+ * pending here; a normal fetch would be cancelled with the page, but
+ * `sendBeacon` is delivered by the browser even as the page is destroyed —
+ * which is what keeps the write inside desktop shells that spawn a fresh
+ * random loopback origin on every launch (their localStorage is a new realm
+ * each boot, so the host file is the only channel that survives).
+ */
+function flushPendingState(): void {
+  const toSend = pendingState
+  if (toSend === null) return
+  const at = pendingAt
+  pendingState = null
+  try {
+    const body = JSON.stringify({ savedAt: at, state: toSend })
+    // sendBeacon is a POST; the host handler accepts PUT or POST, so the
+    // same route copes with it. A Blob pins the JSON content type.
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      navigator.sendBeacon(STORE_API, new Blob([body], { type: 'application/json' }))
+    } else {
+      void fetch(STORE_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: true,
+      })
+    }
+  } catch { /* page is going away; nothing more can be done — the boot sync on the next launch converges */ }
 }
 
 /** Session stats shape collected by the dock collector. */
@@ -439,12 +473,18 @@ export function apply(ctx: ClientContext): void {
   const onVisibility = (): void => {
     if (document.visibilityState === 'visible') void syncWithHost()
   }
+  // Flush a pending host-store write the moment the page starts unloading,
+  // so desktop shells that close the window shortly after an edit do not
+  // lose it (the debounced PUT would be cancelled with the page).
+  const onPageHide = (): void => flushPendingState()
   window.addEventListener('storage', onStorage)
   document.addEventListener('visibilitychange', onVisibility)
+  window.addEventListener('pagehide', onPageHide)
   ctx.effect(() => () => {
     listeners.clear()
     window.removeEventListener('storage', onStorage)
     document.removeEventListener('visibilitychange', onVisibility)
+    window.removeEventListener('pagehide', onPageHide)
   })
   void syncWithHost()
 

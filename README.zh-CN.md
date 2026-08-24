@@ -110,6 +110,14 @@ pnpm run check      # 类型检查 + 测试 + 构建
 
 ## 变更日志
 
+### v1.2.1
+**修复 — 页面关闭时把最后一次修改同步冲入 host 存储，组件状态在任何桌面壳、任何浏览器/设备下都不再丢失：**
+
+- **根因**。组件配置双通道写入：`localStorage`（快速路径）+ 经 **400ms 防抖** PUT 到 `/api/widgets-state` 的 host 文件（权威、跨 origin）。防抖写入**没有关闭前 flush**：若窗口/标签在 400ms 窗口内（或 PUT 仍在途时）关闭，请求随页面一起被销毁。而采用「每次启动随机回环端口」的桌面壳（如 DSH Desktop 各版本）每次启动的 `localStorage` 都是全新 realm——这一记漏掉的 PUT 就意味着修改永久丢失，表现为「桌面端改完不保存」；固定的本地 web 端口（origin 稳定）则把同样的缺陷隐形掩盖。
+- 💾 **关闭前 flush**。新增 `pagehide` 监听，页面开始销毁瞬间调用 `flushPendingState()`：把尚未到达 host 存储的状态用 `navigator.sendBeacon` 送出（页面销毁时浏览器仍会投递），并以 keepalive fetch 兜底；host 路由本就同时接受 PUT 与 POST，同一端点即可承载。改完立刻关闭，修改不再丢失——任何桌面壳、浏览器 origin、无痕模式、清除站点数据的会话都适用。
+- 🛡️ 防抖 PUT 同步加 `keepalive: true`：已在途的写入同样能活过页面销毁。
+- 🧪 无头浏览器对真实 host 存储做端到端实测：胶囊点击（真实 `setPrefs` → `saveState`）后**立即** `pagehide`（约 80ms，远在 400ms 防抖之内）→ 真实 beacon 发出；host 文件 `savedAt` 前进并等于 `localStorage`；防抖 fetch 不再重复触发；测试最后已还原用户的真实状态。
+
 ### v1.2.0
 **修复**
 - 🗓️ 热度图不再把昨天会话的整段累计误记进今天：fallback 锚点现在跟随按步记账的累计，且仅当活跃会话今天确实产生了 step 时才做差值记账（此前重开昨天的会话、或新建会话瞬间投影滞后，会把整段历史——如 106M——diff 进今天的格子）。
