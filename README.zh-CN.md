@@ -110,6 +110,11 @@ pnpm run check      # 类型检查 + 测试 + 构建
 
 ## 变更日志
 
+### v1.2.2
+**修复 — 深色模式下实心操作按钮文字重新可见：**
+
+- 🌗 实心主按钮（`dsx-btn-primary`——「已添加 / 添加 / 查看详情」）、「组件」状态胶囊的按下态、以及组件卡片内的操作按钮（primary/danger 两类）此前都用 `var(--dsw-alias-brand-primary)` 作背景并硬编码白色文字；深色模式下品牌主色渲染为近白色，文字与背景同色、完全看不见。现统一改为：primary 用 `var(--dsw-alias-state-business-primary)`、danger 用 `var(--dsw-alias-state-error-primary)` 作背景——与官方 UI 实心操作按钮同一组 token，深浅两套主题下白字均清晰可读。
+
 ### v1.2.1
 **修复 — 页面关闭时把最后一次修改同步冲入 host 存储，组件状态在任何桌面壳、任何浏览器/设备下都不再丢失：**
 

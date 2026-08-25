@@ -111,6 +111,11 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
+### v1.2.2
+**Fixed — filled action buttons are readable in dark mode again:**
+
+- 🌗 Filled primary buttons (`dsx-btn-primary` — 已添加 / 添加 / 查看详情), the pressed state of the 组件 stats capsule, and widget-card action buttons (primary/danger kinds) painted `var(--dsw-alias-brand-primary)` behind hard-coded white text. In dark mode the brand token renders near-white, so the label merged into the fill and became invisible. Primary now fills with `var(--dsw-alias-state-business-primary)` and danger with `var(--dsw-alias-state-error-primary)` — the same token pair the official UI uses for filled action buttons — so the white label stays legible in both light and dark themes.
+
 ### v1.2.1
 **Fixed — the last edit is now flushed to the host store when the page closes, so widget state survives ANY desktop shell and every browser/device:**
 

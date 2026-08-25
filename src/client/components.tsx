@@ -258,7 +258,8 @@ function ActionsBlock({ actions, onAction, scale }: { actions: WidgetAction[]; o
   const btnEls = actions.map((a) => {
     const kind = a.kind
     const st = { ...btnStyle }
-    if (kind === 'danger' || kind === 'primary') { st.background = 'var(--dsw-alias-brand-primary)'; st.color = '#fff'; st.borderColor = 'transparent' }
+    if (kind === 'primary') { st.background = 'var(--dsw-alias-state-business-primary)'; st.color = '#fff'; st.borderColor = 'transparent' }
+    else if (kind === 'danger') { st.background = 'var(--dsw-alias-state-error-primary)'; st.color = '#fff'; st.borderColor = 'transparent' }
     return React.createElement('button', { key: a.id, type: 'button', title: a.confirmHint, onClick: (e) => { e.stopPropagation(); if (onAction) onAction(a.id) }, 'data-action': a.id, style: st }, a.label)
   })
   return React.createElement('div', { style: { display: 'flex', gap: Math.round(6 * scale), marginTop: Math.round(6 * scale), flexWrap: 'wrap' } }, btnEls)

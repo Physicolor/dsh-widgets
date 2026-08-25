@@ -16,7 +16,7 @@
 }
 
 .dsx-stats-capsule[aria-pressed='true'] {
-  background: var(--dsw-alias-brand-primary);
+  background: var(--dsw-alias-state-business-primary);
   color: #fff;
   border-color: transparent;
 }
@@ -531,7 +531,7 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
 }
 
 .dsx-btn-primary {
-  background: var(--dsw-alias-brand-primary);
+  background: var(--dsw-alias-state-business-primary);
   color: #fff;
   border-color: transparent;
 }
