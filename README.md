@@ -116,6 +116,10 @@ pnpm run check      # typecheck + tests + build
 
 - 🌗 Filled primary buttons (`dsx-btn-primary` — 已添加 / 添加 / 查看详情), the pressed state of the 组件 stats capsule, and widget-card action buttons (primary/danger kinds) painted `var(--dsw-alias-brand-primary)` behind hard-coded white text. In dark mode the brand token renders near-white, so the label merged into the fill and became invisible. Primary now fills with `var(--dsw-alias-state-business-primary)` and danger with `var(--dsw-alias-state-error-primary)` — the same token pair the official UI uses for filled action buttons — so the white label stays legible in both light and dark themes.
 
+**Fixed — the add-panel height no longer collapses when dsh-better-sidebar's right panel is open:**
+
+- 📐 The temporary add panel's `bottom` offset tracked `--dsh-sidebar-width` — the better-sidebar *width* variable that pushes `#root` aside when the right panel is open. With the right sidebar open (e.g. 320px) the bottom lifted by that whole width while `top` stayed fixed, halving the visible panel; it reproduced regardless of open order. It now anchors to the input-box breathing gap (`--dsx-input-bottom`), the intent the rail-measure comment always stated — the right offset still follows the sidebar, the vertical one never does. Headless-verified: panel height is identical with the sidebar off / 320px / 480px, vs the old rule dropping 886→566px at 320px.
+
 ### v1.2.1
 **Fixed — the last edit is now flushed to the host store when the page closes, so widget state survives ANY desktop shell and every browser/device:**
 

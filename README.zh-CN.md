@@ -115,6 +115,10 @@ pnpm run check      # 类型检查 + 测试 + 构建
 
 - 🌗 实心主按钮（`dsx-btn-primary`——「已添加 / 添加 / 查看详情」）、「组件」状态胶囊的按下态、以及组件卡片内的操作按钮（primary/danger 两类）此前都用 `var(--dsw-alias-brand-primary)` 作背景并硬编码白色文字；深色模式下品牌主色渲染为近白色，文字与背景同色、完全看不见。现统一改为：primary 用 `var(--dsw-alias-state-business-primary)`、danger 用 `var(--dsw-alias-state-error-primary)` 作背景——与官方 UI 实心操作按钮同一组 token，深浅两套主题下白字均清晰可读。
 
+**修复 — Better Sidebar 右侧边栏开启时添加面板高度不再塌缩一半：**
+
+- 📐 添加面板的 `bottom` 此前错误地跟随 `--dsh-sidebar-width`——那是 better-sidebar 用来把 `#root` 右推的**面板宽度**变量；右侧边栏一开（如 320px），bottom 被抬升整整一个面板宽度而 top 固定，可见高度直接减半，且与先开哪边无关。现改为锚定输入框底部留白（`--dsx-input-bottom`，本就是 rail 测量注释里声明的意图）——右侧偏移仍跟随侧栏，竖直偏移永不跟随。无头实测：侧栏关闭 / 320px / 480px 三种状态下面板高度完全一致（旧规则在 320px 时 886→566px）。
+
 ### v1.2.1
 **修复 — 页面关闭时把最后一次修改同步冲入 host 存储，组件状态在任何桌面壳、任何浏览器/设备下都不再丢失：**
 

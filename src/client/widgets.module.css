@@ -243,9 +243,14 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   position: fixed;
   right: calc(var(--dsh-sidebar-width, 0px) + var(--dsx-rail-pad, 14px));
   width: auto;
-  /* Bottom gap kept symmetric with the right gap for now (distance to the
-     viewport right == distance to the viewport bottom). */
-  bottom: calc(var(--dsh-sidebar-width, 0px) + var(--dsx-rail-pad, 14px));
+  /* Bottom = input-box breathing gap (--dsx-input-bottom) -- NEVER track
+     --dsh-sidebar-width here: that variable is dsh-better-sidebar's right
+     panel WIDTH (it pushes #root aside when the right sidebar is open); used
+     as a vertical gap it lifts the bottom by the whole panel width, halving
+     the visible panel height (top stays fixed). Symmetry with the right gap
+     is wrong for the same reason -- the right gap grows with the sidebar,
+     not with the viewport. */
+  bottom: var(--dsx-input-bottom, var(--dsx-rail-pad, 14px));
   z-index: 30;
   box-sizing: border-box;
   display: flex;
