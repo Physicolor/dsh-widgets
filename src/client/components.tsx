@@ -615,11 +615,19 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     }
     const prev = () => setPreviewIdx((previewIdx - 1 + instances.length) % instances.length)
     const next = () => setPreviewIdx((previewIdx + 1) % instances.length)
+    // In a 1-column layout a 2×4 tile has nowhere to sit: the rail hides those
+    // instances, and the market must say so — title struck through, a yellow
+    // capsule next to it, and the add button disabled.
+    const oneCol = prefs.columns === 1
+    const sizeBlocked = oneCol && curSize === '2x4'
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0, position: 'relative' } },
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
         React.createElement('button', { type: 'button', className: 'dsx-btn', onClick: () => setPreviewGroup(null) }, '← 返回'),
-        React.createElement('span', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, w ? `${w.name}${curSize === '2x4' ? ' 2×4' : ' 2×2'}` : ''),
-        React.createElement('button', { type: 'button', disabled: installed || prefs.installed.length >= prefs.maxWidgets, className: installed ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: add }, installed ? '已添加' : '添加'),
+        React.createElement('div', { style: { flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 } },
+          React.createElement('span', { style: { fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: sizeBlocked ? 'line-through' : undefined, opacity: sizeBlocked ? 0.75 : undefined } }, w ? `${w.name}${curSize === '2x4' ? ' 2×4' : ' 2×2'}` : ''),
+          sizeBlocked ? React.createElement('span', { className: 'dsx-size-warn' }, '1列不可用') : null,
+        ),
+        React.createElement('button', { type: 'button', disabled: installed || sizeBlocked || prefs.installed.length >= prefs.maxWidgets, className: installed || sizeBlocked ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: add, title: sizeBlocked ? '1 列布局下不显示 2×4 组件' : undefined }, installed ? '已添加' : '添加'),
       ),
       !installed && prefs.installed.length >= prefs.maxWidgets
         ? React.createElement('div', { className: 'dsx-limit-tip' }, `已达上限 ${prefs.maxWidgets} 个，先在组件配置中移除再添加`)

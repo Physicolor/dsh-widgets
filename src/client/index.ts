@@ -920,6 +920,12 @@ export function apply(ctx: ClientContext): void {
           return { key, size, w, out, baseW }
         })
         .filter((it): it is RailItem => it !== null)
+        // In a 1-column layout a 2×4 tile (two cells wide) cannot fit the single
+        // rail column, so its instances are hidden — TEMPORARILY blocklisted,
+        // not removed: switching back to 2/4 columns restores them from
+        // installed/order as-is. The market marks those entries in the same state
+        // (struck-through title + yellow capsule + disabled add).
+        .filter((it) => !(columns === 1 && it.size === '2x4'))
       // The rail is a fixed viewport panel anchored to the right edge. The
       // dsh-better-sidebar bundle occupies the same edge with its own
       // fixed right panel (z-index 50) and pushes the app shell via

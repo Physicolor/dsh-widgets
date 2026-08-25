@@ -628,6 +628,24 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   box-shadow: none;
 }
 
+/* Yellow capsule next to a 2×4 market title when the rail is in 1-column
+   mode (the tile cannot fit a single-column rail): warn colour with a dark
+   label so it reads in both themes (the warn token itself is amber). */
+.dsx-size-warn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--dsw-alias-state-warn-primary, #f2b04a);
+  color: #4a3800;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* Floating limit warning: absolute + centred, never takes layout height. */
 .dsx-limit-tip {
   position: absolute;
