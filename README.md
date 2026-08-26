@@ -115,6 +115,12 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
+### v1.2.6
+**Improved — preview state toggling + dark-mode select arrow fix:**
+
+- 🖱️ Stateful widgets (currently 峰谷定价) now let you **click the preview card to flip its state** (peak/off-peak) in both the 组件配置 and 组件市场 previews — no need to wait for the real window to review the EXPENSIVE red glow and the CHEAP look; a "点击卡片切换：高峰/低峰" hint shows under the card. Declared per-widget via the `simToggle` descriptor, so future stateful widgets just add one line.
+- 🔽 Fixed `.dsx-select` chevron not rendering/not following the dark theme: `fill='currentColor'` in a background-image data-URI SVG draws nothing (SVG-as-background-image resolves in an isolated image context), so the arrow now uses explicit fills — mid-grey in light mode, near-white under `body[data-ds-dark-theme]`.
+
 ### v1.2.5
 **New — OpenCode usage rings widget:**
 

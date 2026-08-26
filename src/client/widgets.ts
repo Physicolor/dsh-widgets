@@ -116,6 +116,14 @@ export interface WidgetCorner {
  *  placement/length, never in height). */
 export type WidgetSize = '2x2' | '2x4'
 
+/** Extra render context. `sim` lets a preview force a widget into a specific
+ *  state (e.g. peak-pricing preview toggling EXPENSIVE/CHEAP) so its states can
+ *  be reviewed without waiting for the real condition. */
+export interface WidgetRenderMeta {
+  size?: WidgetSize
+  sim?: Record<string, unknown>
+}
+
 /** Instance key = `${widgetId}@${size}` (e.g. `context-water@2x4`). Even the same
  *  widget at two sizes is two independent, co-installable instances. */
 export function instanceKey(widgetId: string, size: WidgetSize): string {
@@ -183,7 +191,10 @@ export interface Widget {
   badgeLabel?: string
   /** Sizes this widget supports. Defaults to ['2x2'] when omitted. */
   sizes?: WidgetSize[]
-  render: (stats: WidgetStats, meta?: { size?: WidgetSize }) => WidgetRenderOut | null
+  render: (stats: WidgetStats, meta?: WidgetRenderMeta) => WidgetRenderOut | null
+  /** When set (label text), the preview surfaces let you click the card to flip
+   *  the widget's simulated state (e.g. peak-pricing 高峰/低峰). */
+  simToggle?: string
   /** Optional per-card customization fields (shown in 组件配置 when chosen). */
   configSchema?: ConfigField[]
 }
@@ -337,8 +348,9 @@ const PEAK_WINDOWS_BJ: Array<{ label: string; start: number; end: number }> = [
 ]
 
 /** Is right now inside a peak window (Beijing local clock)? Returns the active
- *  window label too, so the meter can light the matching row. */
-function peakNow(now = new Date()): { peak: boolean; activeLabel?: string } {
+ *  window label too, so the meter can light the matching row. Exported so the
+ *  preview surfaces can flip the simulated state relative to the real one. */
+export function peakStatusNow(now = new Date()): { peak: boolean; activeLabel?: string } {
   const dow = now.getDay() // 0 = Sunday
   if (dow === 0 || dow === 6) return { peak: false }
   const mins = now.getHours() * 60 + now.getMinutes()
@@ -351,9 +363,16 @@ function peakNow(now = new Date()): { peak: boolean; activeLabel?: string } {
 /** Peak-pricing card (2×2): which DeepSeek pricing window is live right now.
  *  Value mirrors the cache/tokens card (big bottom-left label): EXPENSIVE while
  *  a peak window is active (whole card glows red), CHEAP otherwise. The two
- *  windows live under the title; the active one lights up brand-blue. */
-function peakPricingRender(): WidgetRenderOut {
-  const { peak, activeLabel } = peakNow()
+ *  windows live under the title; the active one lights up brand-blue. A preview
+ *  can pass meta.sim = { peak: boolean, window?: 0|1 } to force either state. */
+function peakPricingRender(_stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRenderOut {
+  const sim = meta?.sim
+  const simPeak = sim && typeof sim.peak === 'boolean' ? sim.peak : null
+  const live = peakStatusNow()
+  const peak = simPeak !== null ? simPeak : live.peak
+  const activeLabel = simPeak !== null
+    ? (simPeak ? (PEAK_WINDOWS_BJ[(sim && typeof sim.window === 'number' ? sim.window : 0)] ?? PEAK_WINDOWS_BJ[0]).label : undefined)
+    : live.activeLabel
   return {
     title: '峰谷定价',
     meter: PEAK_WINDOWS_BJ.map((w) => ({ label: w.label, active: w.label === activeLabel })),
@@ -366,7 +385,7 @@ function peakPricingRender(): WidgetRenderOut {
 /** Context water level card — official JObwrW template: title「上下文已用」with
  *  a right-hand figures (~X / window), the percentage under it, and a
  *  system/tools/messages segmented bar + per-segment rows. Purely informational. */
-function contextWaterRender(stats: WidgetStats, meta?: { size?: WidgetSize }): WidgetRenderOut | null {
+function contextWaterRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRenderOut | null {
   const pct = stats.contextPercent
   const brk = stats.contextBreakdown
   const win = stats.contextWindow
@@ -445,7 +464,7 @@ function taskRender(stats: WidgetStats): WidgetRenderOut {
  *  today / window total). The 2×4 size shows a ~7-month (30-week) rolling grid
  *  — all recent usage points at a glance — with the two figures moved into the
  *  title row's right side (headRight) and the grid horizontally centred. */
-function heatmapRender(stats: WidgetStats, meta?: { size?: WidgetSize }): WidgetRenderOut | null {
+function heatmapRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRenderOut | null {
   const rawLog = stats.heatmapRaw
   const wide = meta?.size === '2x4'
   // 2×4 always derives a fresh 30-week rolling grid from the raw log; the 2×2
@@ -546,7 +565,7 @@ export const WIDGETS: Widget[] = [
   { id: 'usage-rolling', group: 'opencode-go', name: '滚动用量', desc: 'OpenCode Go 滚动窗口用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('rolling', '滚动用量') },
   { id: 'usage-weekly', group: 'opencode-go', name: '每周用量', desc: 'OpenCode Go 每周用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('weekly', '每周用量') },
   { id: 'usage-monthly', group: 'opencode-go', name: '每月用量', desc: 'OpenCode Go 每月用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('monthly', '每月用量') },
-  { id: 'peak-pricing', group: 'pricing', name: '峰谷定价', desc: 'DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰）', builtin: false, badgeLabel: '峰谷定价', render: peakPricingRender },
+  { id: 'peak-pricing', group: 'pricing', name: '峰谷定价', desc: 'DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰）', builtin: false, badgeLabel: '峰谷定价', simToggle: '高峰/低峰', render: peakPricingRender },
 ]
 
 /** All widget ids. */

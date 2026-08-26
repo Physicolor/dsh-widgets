@@ -8,8 +8,8 @@
 
 import * as React from 'react'
 import {
-  WIDGETS, badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf, fmtShortDate, buildRollingGrid,
-  type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize,
+  WIDGETS, badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf, fmtShortDate, buildRollingGrid, peakStatusNow,
+  type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize, type WidgetRenderMeta,
 } from './widgets'
 
 /** The base card side all scales derive from. */
@@ -511,6 +511,17 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
   // Local preview size (2×2 ↔ 2×4) — lets you eyeball a widget at a different
   // size in the preview without changing the added instance.
   const [previewSize, setPreviewSize] = React.useState<WidgetSize>('2x2')
+  // Simulated state for widgets with states (e.g. peak-pricing): clicking the
+  // preview card flips it, so both states can be reviewed live.
+  const [previewSim, setPreviewSim] = React.useState<Record<string, unknown> | null>(null)
+  React.useEffect(() => { setPreviewSim(null) }, [selected])
+  const toggleSim = (): void => {
+    if (!selWidget?.simToggle) return
+    const cur = previewSim
+    setPreviewSim(cur && typeof cur.peak === 'boolean'
+      ? { peak: !cur.peak, window: typeof cur.window === 'number' ? cur.window : 0 }
+      : { peak: !peakStatusNow().peak })
+  }
   // There is no separate "uninstalled" zone any more: everything ships bundled
   // and the market only ADDS instances. Removing a row deletes it entirely
   // (installed + order + its per-instance config).
@@ -572,7 +583,7 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
       const rawText = selConfig.text as string | undefined
       if (!rawText || !rawText.trim()) (stats as Record<string, unknown>).text = '（填写寄语内容后显示）'
     }
-    return selWidget.render(stats, { size: selSize })
+    return selWidget.render(stats, { size: selSize, ...(previewSim ? { sim: previewSim } : {}) })
   }
   const setConfig = (field: ConfigField, value: unknown): void => {
     const next = { ...(prefs.cardConfigs[selected] ?? {}) }
@@ -614,8 +625,15 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
           const u = 150
           const isWide = selSize === '2x4'
           const pv = out ? React.createElement(CardBody, { out, unit: u, width: isWide ? 2 * u + 12 : undefined }) : null
+          const simTip = selWidget.simToggle
+            ? React.createElement('div', { key: 'simtip', style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', marginTop: 8, textAlign: 'center' } }, `点击卡片切换：${selWidget.simToggle}`)
+            : null
           return out
-            ? React.createElement('div', { style: { transform: isWide ? 'scale(0.85)' : undefined, transformOrigin: 'center center' } }, pv)
+            ? React.createElement('div', {
+                style: { display: 'flex', flexDirection: 'column', alignItems: 'center', transform: isWide ? 'scale(0.85)' : undefined, transformOrigin: 'center center', cursor: selWidget.simToggle ? 'pointer' : undefined, userSelect: 'none' },
+                title: selWidget.simToggle ? '点击切换预览状态' : undefined,
+                onClick: selWidget.simToggle ? () => toggleSim() : undefined,
+              }, pv, simTip)
             : null
         })(),
       ),
@@ -638,6 +656,10 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
   const [q, setQ] = React.useState('')
   const [previewGroup, setPreviewGroup] = React.useState<string | null>(null)
   const [previewIdx, setPreviewIdx] = React.useState(0)
+  // Simulated state for widgets with states (e.g. peak-pricing): clicking the
+  // preview card flips it, so both states can be reviewed live.
+  const [previewSim, setPreviewSim] = React.useState<Record<string, unknown> | null>(null)
+  React.useEffect(() => { setPreviewSim(null) }, [previewGroup, previewIdx])
   // The market lists EVERY widget (system + external), deduped by group so a
   // group card (e.g. "context" → 一键压缩 + 上下文水位) is one entry in the rail.
   const seen = new Set<string>()
@@ -666,7 +688,14 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     // Quote preview shows sample content (the real card renders nothing until
     // the user types a text — preview only, never persisted).
     const previewStats = w && w.id === 'quote' ? { ...PREVIEW_STATS, text: '预览寄语：写一句你的话' } as WidgetStats : PREVIEW_STATS
-    const out = w ? w.render(previewStats, { size: curSize }) : null
+    const out = w ? w.render(previewStats, { size: curSize, ...(previewSim ? { sim: previewSim } : {}) }) : null
+    const toggleSim = (): void => {
+      if (!w?.simToggle) return
+      const cur = previewSim
+      setPreviewSim(cur && typeof cur.peak === 'boolean'
+        ? { peak: !cur.peak, window: typeof cur.window === 'number' ? cur.window : 0 }
+        : { peak: !peakStatusNow().peak })
+    }
     // Everything ships bundled: the market only ADDS the selected instance
     // (widget@size) to the rail. Already-added instances show as disabled.
     const add = (): void => {
@@ -699,8 +728,13 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
         React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '上一个', onClick: prev }, React.createElement(ChevronLeftIcon)),
         React.createElement('div', { style: { width: 360, flex: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center' } },
           out
-            ? React.createElement('div', { style: { transform: curSize === '2x4' ? 'scale(0.85)' : undefined, transformOrigin: 'center center' } },
+            ? React.createElement('div', {
+                style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transform: curSize === '2x4' ? 'scale(0.85)' : undefined, transformOrigin: 'center center', cursor: w?.simToggle ? 'pointer' : undefined, userSelect: 'none' },
+                title: w?.simToggle ? '点击切换预览状态' : undefined,
+                onClick: w?.simToggle ? toggleSim : undefined,
+              },
                 React.createElement(CardBody, { out, unit: 200, width: curSize === '2x4' ? 412 : undefined }),
+                w && w.simToggle ? React.createElement('div', { style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', whiteSpace: 'nowrap' } }, `点击卡片切换：${w.simToggle}`) : null,
               )
             : null,
         ),
