@@ -111,6 +111,13 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
+### v1.2.3
+**Changed — the OpenCode usage bars are now proportioned like a proper data-viz bar chart:**
+
+- 📊 The 用量对比 (usage-bars) component's three bars no longer use a fixed ~12px width spread by `space-around`. Each bar's column now flexes to an equal share of the card width (the same elastic columns as the 用量柱状图 daily token bars) with the same 4px gutter, and each bar fills ~60% of its column — ≈24px on a 2×2 card, proportionate to its 56px height (a full-width 100% version read as fat blocks).
+- 🟣 Bars are fully rounded (5px corners) — without a baseline track underneath, square bottoms read as overly sharp.
+- 📏 No value labels on the bars (small-chart convention — labels on a 3-bar mini chart read as chartjunk); the exact percent surfaces on hover via the native title tooltip, and faint dashed 25/50/75% reference lines behind the bars let each bar's height be eyeballed against a quarter scale at a glance.
+
 ### v1.2.2
 **Fixed — filled action buttons are readable in dark mode again:**
 
