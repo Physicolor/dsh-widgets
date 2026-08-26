@@ -68,7 +68,7 @@ In both modes the magnified deck is painted by a fixed overlay **outside** the r
 
 ### OpenCode Go Usage
 
-Rolling / weekly / monthly usage windows + percentage + reset time. The host half registers a same-origin route proxying `opencode.ai`; the browser makes no cross-origin requests, and keys go through DSH credentials.
+Rolling / weekly / monthly usage windows + percentage + reset time. The host half registers a same-origin route proxying `opencode.ai`; the browser makes no cross-origin requests, and keys go through DSH credentials. Two presentations: **用量对比** (three-window bars) and **用量环图** (three-window donut rings — percent in each ring centre, exact value on hover, same urgency colouring).
 
 ### Peak Pricing (market widget)
 
@@ -114,6 +114,13 @@ pnpm run check      # typecheck + tests + build
 - Coordinates explicitly with `dsh-better-sidebar`'s right rail (shares `--dsh-sidebar-width`); no residue after uninstall.
 
 ## Changelog
+
+### v1.2.5
+**New — OpenCode usage rings widget:**
+
+- 🍩 New market widget 用量环图 (usage-rings, OpenCode Go group): one donut per window (rolling / weekly / monthly) side by side — the same data as the 用量对比 bars chart, in circle form.
+- ⭕ The ring centres stay clean (no in-ring text), so the rings can be drawn thick and full (5px stroke, maximised diameter); each percent sits directly under its ring in a larger weight, and the window name + exact value surface on hover via the title tooltip (same urgency colours as the bars chart: ≥95 red, ≥75 amber, else green). Ring-to-ring spacing equals the card inner padding (12px on a 2×2) — the rings tighten to keep the three-across footprint — and the number-to-ring gap is slightly wider than snug (4px) so the layout carries over cleanly to planned 2×1 wide cards.
+- 🧭 The existing 用量对比 bars widget is untouched — both presentations coexist and install independently.
 
 ### v1.2.4
 **New — 峰谷定价 (peak-pricing) widget:**

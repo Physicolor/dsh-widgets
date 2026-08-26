@@ -64,8 +64,10 @@ export interface BarDatum {
 
 /** A chart block a card body can render (declarative, theme tokens only). */
 export interface WidgetChart {
-  kind: 'bars' | 'ring' | 'line' | 'segments' | 'heatmap' | 'barsV'
+  kind: 'bars' | 'ring' | 'rings' | 'line' | 'segments' | 'heatmap' | 'barsV'
   bars?: BarDatum[]
+  /** Three-per-window donut row (e.g. OpenCode rolling/weekly/monthly). */
+  rings?: Array<{ label: string; value: number; ratio?: number; tone?: 'primary' | 'success' | 'warn' | 'danger' | 'muted' }>
   /** For ring: one datum + its centered label. */
   value?: number
   valueLabel?: string
@@ -310,6 +312,20 @@ function usageBarsRender(stats: WidgetStats): WidgetRenderOut | null {
   return { title: 'OpenCode 用量', chart: { kind: 'bars', bars } }
 }
 
+/** OpenCode Go dosage as three small donuts (one per window) — same data as the
+ *  bars chart, circle form. Each ring shows its percent in the centre and the
+ *  window label under it, coloured by the same urgency scale. */
+function usageRingsRender(stats: WidgetStats): WidgetRenderOut | null {
+  const u = stats.usageData?.usage
+  if (!u) return { title: 'OpenCode 用量', value: '—' }
+  const tone = (p: number): 'success' | 'warn' | 'danger' => (p >= 95 ? 'danger' : p >= 75 ? 'warn' : 'success')
+  const mk = (label: string, p: number) => ({ label, value: p, ratio: p / 100, tone: tone(p) })
+  return {
+    title: 'OpenCode 用量',
+    chart: { kind: 'rings', rings: [mk('滚动', u.rolling.percent), mk('周', u.weekly.percent), mk('月', u.monthly.percent)] },
+  }
+}
+
 /** Peak-pricing windows, Beijing time (UTC+8). DeepSeek V4 Flash / V4 Flash
  *  Vision Exp / V4 Pro price peaks: Mon–Fri 01:00–04:00 and 06:00–10:00 UTC,
  *  which is 09:00–12:00 and 14:00–18:00 Beijing. Every other time — including
@@ -526,6 +542,7 @@ export const WIDGETS: Widget[] = [
     { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(最近7天)'], ['weekly', '每周对齐']] },
   ] },
   { id: 'usage-bars', group: 'opencode-go', name: '用量对比', desc: 'OpenCode 滚动/周/月三窗口用量柱状图', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageBarsRender },
+  { id: 'usage-rings', group: 'opencode-go', name: '用量环图', desc: 'OpenCode 滚动/周/月三窗口用量环形图', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRingsRender },
   { id: 'usage-rolling', group: 'opencode-go', name: '滚动用量', desc: 'OpenCode Go 滚动窗口用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('rolling', '滚动用量') },
   { id: 'usage-weekly', group: 'opencode-go', name: '每周用量', desc: 'OpenCode Go 每周用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('weekly', '每周用量') },
   { id: 'usage-monthly', group: 'opencode-go', name: '每月用量', desc: 'OpenCode Go 每月用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('monthly', '每月用量') },

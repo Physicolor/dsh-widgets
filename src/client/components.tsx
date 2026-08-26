@@ -210,6 +210,33 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
       React.createElement('div', { style: { display: 'flex', flexDirection: 'column', marginTop: 2 } }, rows),
     )
   }
+  if (chart.kind === 'rings' && chart.rings && chart.rings.length) {
+    // Three donuts side by side (e.g. OpenCode rolling/weekly/monthly usage).
+    // The centre stays clean — no in-ring text — so each ring can be drawn
+    // thick and full; the percent sits under its ring and the window name
+    // surfaces on hover via the title tooltip. Ring-to-ring spacing equals the
+    // card inner padding itself (12px on a 2×2), matching the card's padding
+    // rhythm — the rings shrink accordingly so the three still fit the card
+    // width. The number-to-ring gap is slightly larger than a snug fit.
+    const pad = Math.round(8 * scale)
+    const mg = Math.round(12 * scale) // inter-ring gap = the card inner padding itself
+    const avail = (width ?? side) - 2 * pad
+    const r = Math.max(10, Math.min(24 * scale, (avail - (chart.rings.length - 1) * mg) / (chart.rings.length * 2)))
+    const sw = Math.max(3.5, Math.round(5 * scale))
+    const items = chart.rings.map((rg, i) => {
+      const p = Math.max(0, Math.min(1, rg.ratio ?? rg.value / (chart.max ?? 100)))
+      const c = 2 * Math.PI * (r - sw / 2)
+      const tone = CHART_TONES[rg.tone ?? 'primary'] ?? CHART_TONES.primary
+      return React.createElement('div', { key: i, title: `${rg.label} ${Math.round(rg.value)}%`, style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.round(4 * scale) } },
+        React.createElement('svg', { width: Math.round(r * 2), height: Math.round(r * 2), viewBox: `0 0 ${Math.round(r * 2)} ${Math.round(r * 2)}`, 'aria-hidden': true },
+          React.createElement('circle', { cx: r, cy: r, r: r - sw / 2, fill: 'none', stroke: 'var(--dsw-alias-interactive-bg-hover)', strokeWidth: sw }),
+          React.createElement('circle', { cx: r, cy: r, r: r - sw / 2, fill: 'none', stroke: tone, strokeWidth: sw, strokeDasharray: `${c * p} ${c}`, transform: `rotate(-90 ${r} ${r})`, strokeLinecap: 'round' }),
+        ),
+        React.createElement('div', { style: { fontSize: `${Math.round(11 * scale)}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 } }, `${Math.round(rg.value)}%`),
+      )
+    })
+    return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-end', gap: mg } }, items)
+  }
   if (chart.kind === 'ring') {
     const p = Math.max(0, Math.min(1, (chart.value ?? 0) / (chart.max ?? 100)))
     const r = 22 * scale
