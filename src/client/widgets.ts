@@ -141,13 +141,24 @@ export interface WidgetRenderOut {
   /** Optional small caption directly under the title that does NOT affect the
    *  vertical alignment (unlike headAfter) — for subtitles like "今日 12.2K". */
   legend?: string
+  /** Optional two-line meter under the title (e.g. peak-pricing windows). The
+   *  active line lights up (brand blue, slightly enlarged); idle lines keep the
+   *  faint legend look. */
+  meter?: Array<{ label: string; active?: boolean }>
   value?: string
+  /** Value color override (e.g. 'danger' renders the value in the error red,
+   *  used by the peak-pricing EXPENSIVE state). */
+  valueTone?: 'danger'
   sub?: string
   chart?: WidgetChart
   actions?: WidgetAction[]
   rich?: WidgetRich
   /** Top-right corner capsule/round button (e.g. one-click Compact). */
   corner?: WidgetCorner
+  /** Whole-card red inner-glow alert (e.g. peak pricing is live): a red glow
+   *  bleeds in from the card edges while the centre stays clean, with a small
+   *  breathing animation. Applied as the `dsx-peak-alert` class. */
+  alert?: boolean
 }
 
 /** A per-card configuration field rendered in the 组件配置 tab. */
@@ -297,6 +308,43 @@ function usageBarsRender(stats: WidgetStats): WidgetRenderOut | null {
     { label: '月', value: u.monthly.percent, ratio: u.monthly.percent / 100, tone: tone(u.monthly.percent) },
   ]
   return { title: 'OpenCode 用量', chart: { kind: 'bars', bars } }
+}
+
+/** Peak-pricing windows, Beijing time (UTC+8). DeepSeek V4 Flash / V4 Flash
+ *  Vision Exp / V4 Pro price peaks: Mon–Fri 01:00–04:00 and 06:00–10:00 UTC,
+ *  which is 09:00–12:00 and 14:00–18:00 Beijing. Every other time — including
+ *  weekends — is off-peak. Hard-coded for now; a custom-schedule setting is
+ *  planned (README Roadmap). */
+const PEAK_WINDOWS_BJ: Array<{ label: string; start: number; end: number }> = [
+  { label: '上午 09:00–12:00', start: 9 * 60, end: 12 * 60 },
+  { label: '下午 14:00–18:00', start: 14 * 60, end: 18 * 60 },
+]
+
+/** Is right now inside a peak window (Beijing local clock)? Returns the active
+ *  window label too, so the meter can light the matching row. */
+function peakNow(now = new Date()): { peak: boolean; activeLabel?: string } {
+  const dow = now.getDay() // 0 = Sunday
+  if (dow === 0 || dow === 6) return { peak: false }
+  const mins = now.getHours() * 60 + now.getMinutes()
+  for (const w of PEAK_WINDOWS_BJ) {
+    if (mins >= w.start && mins < w.end) return { peak: true, activeLabel: w.label }
+  }
+  return { peak: false }
+}
+
+/** Peak-pricing card (2×2): which DeepSeek pricing window is live right now.
+ *  Value mirrors the cache/tokens card (big bottom-left label): EXPENSIVE while
+ *  a peak window is active (whole card glows red), CHEAP otherwise. The two
+ *  windows live under the title; the active one lights up brand-blue. */
+function peakPricingRender(): WidgetRenderOut {
+  const { peak, activeLabel } = peakNow()
+  return {
+    title: '峰谷定价',
+    meter: PEAK_WINDOWS_BJ.map((w) => ({ label: w.label, active: w.label === activeLabel })),
+    value: peak ? 'EXPENSIVE' : 'CHEAP',
+    valueTone: peak ? 'danger' : undefined,
+    alert: peak,
+  }
 }
 
 /** Context water level card — official JObwrW template: title「上下文已用」with
@@ -481,6 +529,7 @@ export const WIDGETS: Widget[] = [
   { id: 'usage-rolling', group: 'opencode-go', name: '滚动用量', desc: 'OpenCode Go 滚动窗口用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('rolling', '滚动用量') },
   { id: 'usage-weekly', group: 'opencode-go', name: '每周用量', desc: 'OpenCode Go 每周用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('weekly', '每周用量') },
   { id: 'usage-monthly', group: 'opencode-go', name: '每月用量', desc: 'OpenCode Go 每月用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('monthly', '每月用量') },
+  { id: 'peak-pricing', group: 'pricing', name: '峰谷定价', desc: 'DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰）', builtin: false, badgeLabel: '峰谷定价', render: peakPricingRender },
 ]
 
 /** All widget ids. */

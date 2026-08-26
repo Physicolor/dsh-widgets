@@ -602,6 +602,13 @@ export function apply(ctx: ClientContext): void {
         const id = window.setInterval(() => setNow(Date.now()), 1000)
         return () => window.clearInterval(id)
       }, [running])
+      // Time-sensitive cards (e.g. 峰谷定价 peak-pricing windows) must re-read
+      // the clock even with no turn running: a 30s tick rebuilds stats so the
+      // window check stays fresh across a peak/off-peak boundary.
+      React.useEffect(() => {
+        const id = window.setInterval(() => setNow(Date.now()), 30000)
+        return () => window.clearInterval(id)
+      }, [])
       React.useEffect(() => {
         const p = projected
         const folded = p && p.steps !== undefined ? p : deriveStats(settled)

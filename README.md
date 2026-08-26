@@ -70,6 +70,10 @@ In both modes the magnified deck is painted by a fixed overlay **outside** the r
 
 Rolling / weekly / monthly usage windows + percentage + reset time. The host half registers a same-origin route proxying `opencode.ai`; the browser makes no cross-origin requests, and keys go through DSH credentials.
 
+### Peak Pricing (market widget)
+
+A 2×2-only 峰谷定价 card showing whether the current moment is inside a DeepSeek peak-pricing window. Peak hours (Beijing time, UTC+8): Mon–Fri **09:00–12:00** and **14:00–18:00** — everything else, including weekends, is off-peak. Off-peak shows **CHEAP**; during a peak window the whole card glows with a breathing red inner glow (never a solid fill — the centre stays fully readable) and shows **EXPENSIVE**, while the corresponding window row under the title lights up brand-blue and scales up slightly. The schedule is hard-coded for now; a custom-schedule setting is on the roadmap.
+
 ---
 
 ## Architecture
@@ -110,6 +114,15 @@ pnpm run check      # typecheck + tests + build
 - Coordinates explicitly with `dsh-better-sidebar`'s right rail (shares `--dsh-sidebar-width`); no residue after uninstall.
 
 ## Changelog
+
+### v1.2.4
+**New — 峰谷定价 (peak-pricing) widget:**
+
+- ⏱️ New market widget 峰谷定价 (2×2 only): shows whether right now is inside a DeepSeek V4 peak-pricing window. Hard-coded to Beijing time (Mon–Fri **09:00–12:00** & **14:00–18:00**, the UTC 01:00–04:00 / 06:00–10:00 windows); a custom-schedule setting is on the roadmap.
+- 💰 Bottom-left big label mirrors the cache/tokens card (same font, size, position): red **EXPENSIVE** inside a peak window, **CHEAP** otherwise.
+- 🟥 During a peak window the whole card glows with a gentle breathing red inner glow (scheme B — bleeds in from the edges, centre stays readable, never a solid fill; 2.2s, modest swing, pure urgency, no click bait); `prefers-reduced-motion` users get the static steady glow.
+- 🔵 The two window rows under the title reuse the token-bar legend font: the live row lights up brand-blue and scales up slightly (10px→12px, 500→600), the other stays faint.
+- ⏲️ A 30s always-on tick rebuilds stats even with no turn running, so a peak/off-peak flip at a window boundary lands promptly (the previous 1s tick only existed while a turn was running).
 
 ### v1.2.3
 **Changed — the OpenCode usage bars are now proportioned like a proper data-viz bar chart:**
@@ -270,6 +283,7 @@ The widget registry (`WIDGETS` descriptors) already lays the foundation for more
 
 - **Heatmap range/period controls**: let the 2×4 heatmap and bars pick custom ranges (weekly/monthly/etc.) beyond the current half-year / 7-day defaults;
 - **Multi-platform usage widgets**: Z.ai, DeepSeek balance, etc., reusing the host same-origin proxy + credentials pattern;
+- **Custom peak-pricing schedules**: expose window customization for the 峰谷定价 widget (currently hard-coded Beijing weekdays 09:00–12:00 / 14:00–18:00) — custom start/end times, weekday sets, and timezone;
 - **Utility widgets**: one-click compact (needs DSH official compaction) and more;
 - **External integrations**: Feishu / WeChat push & interaction, keys strictly via DSH credentials;
 - **Widget marketplace**: open a third-party widget registration mechanism so community widgets can join like plugins;

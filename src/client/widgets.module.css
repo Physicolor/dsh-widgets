@@ -673,3 +673,37 @@ body.dsx-hide-statsline [data-slot='conversation.composer.dock'] > div * {
   color: transparent !important;
 }
 
+/* 钬斺€  Peak-pricing alert: red inner glow (B scheme) instead of a solid red
+   fill — the glow bleeds in from the card edges while the centre stays clean
+   and readable. A small breathing animation (2.2s, modest ~20% swing) adds
+   urgency without ever pushing the user to click anything; it is pure
+   atmosphere. Reduced-motion users get the static steady glow. 钬斺€ */
+.dsx-peak-alert {
+  box-shadow:
+    inset 0 0 22px color-mix(in srgb, var(--dsw-alias-state-error-primary) 32%, transparent),
+    inset 0 0 5px color-mix(in srgb, var(--dsw-alias-state-error-primary) 20%, transparent),
+    var(--dsw-shadow-lv2);
+  animation: dsx-peak-breathe 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes dsx-peak-breathe {
+  from {
+    box-shadow:
+      inset 0 0 15px color-mix(in srgb, var(--dsw-alias-state-error-primary) 20%, transparent),
+      inset 0 0 4px color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent),
+      var(--dsw-shadow-lv2);
+  }
+  to {
+    box-shadow:
+      inset 0 0 30px color-mix(in srgb, var(--dsw-alias-state-error-primary) 42%, transparent),
+      inset 0 0 7px color-mix(in srgb, var(--dsw-alias-state-error-primary) 28%, transparent),
+      var(--dsw-shadow-lv2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dsx-peak-alert {
+    animation: none;
+  }
+}
+

@@ -324,11 +324,27 @@ export function CardBody({ out, unit, width, onAction }: { out: WidgetRenderOut;
     // the vertical alignment, so a bottom-anchored card (e.g. heatmap) keeps it.
     headEls.push(React.createElement('div', { key: 'lg', className: 'dsx-stats-card-legend', style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', marginTop: `${Math.round(2 * scale)}px` } }, out.legend))
   }
+  if (out.meter && out.meter.length) {
+    // Two-line live meter under the title (e.g. peak-pricing windows): the
+    // active row lights up brand-blue and scales up slightly, the idle row
+    // keeps the faint legend look. Both use the same font as the token-bar
+    // legend so the format stays consistent across cards.
+    headEls.push(React.createElement('div', { key: 'mt', className: 'dsx-stats-card-meter', style: { display: 'flex', flexDirection: 'column', gap: 3, marginTop: `${Math.round(4 * scale)}px` } },
+      out.meter.map((m, i) => React.createElement('div', { key: i, style: {
+        fontSize: `${m.active ? Math.round(12 * scale) : Math.round(10 * scale)}px`,
+        fontWeight: m.active ? 600 : 500,
+        color: m.active ? 'var(--dsw-alias-state-business-primary)' : 'var(--dsw-alias-label-tertiary)',
+        lineHeight: 1.2,
+        fontVariantNumeric: 'tabular-nums',
+        transition: 'color 0.25s ease, font-size 0.25s ease, font-weight 0.25s ease',
+      } }, m.label)),
+    ))
+  }
   const head = headEls
   const body: React.ReactElement[] = []
   // value is shown inline in the header when headRight is present (official meter
   // header: `上下文已用 64% ~638K / 1M`); otherwise it goes to the body.
-  if (out.value != null && !out.headRight) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value', style: { fontSize: `${valuePx}px` } }, out.value))
+  if (out.value != null && !out.headRight) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value', style: { fontSize: `${valuePx}px`, color: out.valueTone === 'danger' ? 'var(--dsw-alias-state-error-primary)' : undefined } }, out.value))
   if (out.sub) body.push(React.createElement('div', { key: 's', className: 'dsx-stats-card-sub', style: { fontSize: `${Math.round(10 * scale)}px` } }, out.sub))
   if (out.chart) { const c = ChartBlock({ chart: out.chart, side: unit, width: boxW }); if (c) body.push(React.createElement('div', { key: 'c' }, c)) }
   if (out.rich) body.push(React.createElement('div', { key: 'r' }, RichBlock({ rich: out.rich, scale })))
@@ -361,7 +377,7 @@ export function CardBody({ out, unit, width, onAction }: { out: WidgetRenderOut;
   const footStyle: React.CSSProperties = topAligned
     ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: vj ?? 'flex-start' }
     : { marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }
-  return React.createElement('div', { className: 'dsx-stats-card', style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, borderRadius: `${radius}px`, padding: `${innerPad}px` } },
+  return React.createElement('div', { className: 'dsx-stats-card' + (out.alert ? ' dsx-peak-alert' : ''), style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, borderRadius: `${radius}px`, padding: `${innerPad}px` } },
     corner,
     head,
     React.createElement('div', { key: 'foot', style: footStyle }, body),
@@ -605,6 +621,7 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     system: '系统',
     'opencode-go': 'OpenCode Go',
     'coding-plan': 'Coding Plan 用量',
+    pricing: '峰谷定价',
     other: '其它',
   }
 
