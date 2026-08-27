@@ -115,20 +115,7 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
-### v1.2.6
-**Improved — preview state toggling + dark-mode select arrow fix:**
-
-- 🖱️ Stateful widgets (currently 峰谷定价) now let you **click the preview card to flip its state** (peak/off-peak) in both the 组件配置 and 组件市场 previews — no need to wait for the real window to review the EXPENSIVE red glow and the CHEAP look; a "点击卡片切换：高峰/低峰" hint shows under the card. Declared per-widget via the `simToggle` descriptor, so future stateful widgets just add one line.
-- 🔽 Fixed `.dsx-select` chevron not rendering/not following the dark theme: `fill='currentColor'` in a background-image data-URI SVG draws nothing (SVG-as-background-image resolves in an isolated image context), so the arrow now uses explicit fills — mid-grey in light mode, near-white under `body[data-ds-dark-theme]`.
-
-### v1.2.5
-**New — OpenCode usage rings widget:**
-
-- 🍩 New market widget 用量环图 (usage-rings, OpenCode Go group): one donut per window (rolling / weekly / monthly) side by side — the same data as the 用量对比 bars chart, in circle form.
-- ⭕ The ring centres stay clean (no in-ring text), so the rings can be drawn thick and full (5px stroke, maximised diameter); each percent sits directly under its ring in a larger weight, and the window name + exact value surface on hover via the title tooltip (same urgency colours as the bars chart: ≥95 red, ≥75 amber, else green). Ring-to-ring spacing equals the card inner padding (12px on a 2×2) — the rings tighten to keep the three-across footprint — and the number-to-ring gap is slightly wider than snug (4px) so the layout carries over cleanly to planned 2×1 wide cards.
-- 🧭 The existing 用量对比 bars widget is untouched — both presentations coexist and install independently.
-
-### v1.2.4
+### v1.2.2
 **New — 峰谷定价 (peak-pricing) widget:**
 
 - ⏱️ New market widget 峰谷定价 (2×2 only): shows whether right now is inside a DeepSeek V4 peak-pricing window. Hard-coded to Beijing time (Mon–Fri **09:00–12:00** & **14:00–18:00**, the UTC 01:00–04:00 / 06:00–10:00 windows); a custom-schedule setting is on the roadmap.
@@ -137,14 +124,23 @@ pnpm run check      # typecheck + tests + build
 - 🔵 The two window rows under the title reuse the token-bar legend font: the live row lights up brand-blue and scales up slightly (10px→12px, 500→600), the other stays faint.
 - ⏲️ A 30s always-on tick rebuilds stats even with no turn running, so a peak/off-peak flip at a window boundary lands promptly (the previous 1s tick only existed while a turn was running).
 
-### v1.2.3
+**New — OpenCode usage rings widget:**
+
+- 🍩 New market widget 用量环图 (usage-rings, OpenCode Go group): one donut per window (rolling / weekly / monthly) side by side — the same data as the 用量对比 bars chart, in circle form.
+- ⭕ The ring centres stay clean (no in-ring text), so the rings can be drawn thick and full (5px stroke, maximised diameter); each percent sits directly under its ring in a larger weight, and the window name + exact value surface on hover via the title tooltip (same urgency colours as the bars chart: ≥95 red, ≥75 amber, else green). Ring-to-ring spacing equals the card inner padding (12px on a 2×2) — the rings tighten to keep the three-across footprint — and the number-to-ring gap is slightly wider than snug (4px) so the layout carries over cleanly to planned 2×1 wide cards.
+- 🧭 The existing 用量对比 bars widget is untouched — both presentations coexist and install independently.
+
 **Changed — the OpenCode usage bars are now proportioned like a proper data-viz bar chart:**
 
 - 📊 The 用量对比 (usage-bars) component's three bars no longer use a fixed ~12px width spread by `space-around`. Each bar's column now flexes to an equal share of the card width (the same elastic columns as the 用量柱状图 daily token bars) with the same 4px gutter, and each bar fills ~60% of its column — ≈24px on a 2×2 card, proportionate to its 56px height (a full-width 100% version read as fat blocks).
 - 🟣 Bars are fully rounded (5px corners) — without a baseline track underneath, square bottoms read as overly sharp.
 - 📏 No value labels on the bars (small-chart convention — labels on a 3-bar mini chart read as chartjunk); the exact percent surfaces on hover via the native title tooltip, and faint dashed 25/50/75% reference lines behind the bars let each bar's height be eyeballed against a quarter scale at a glance.
 
-### v1.2.2
+**Improved — preview state toggling + dark-mode select arrow fix:**
+
+- 🖱️ Stateful widgets (currently 峰谷定价) now let you **click the preview card to flip its state** (peak/off-peak) in both the 组件配置 and 组件市场 previews — no need to wait for the real window to review the EXPENSIVE red glow and the CHEAP look; a "点击卡片切换：高峰/低峰" hint shows under the card. Declared per-widget via the `simToggle` descriptor, so future stateful widgets just add one line.
+- 🔽 Fixed `.dsx-select` chevron not rendering/not following the dark theme: `fill='currentColor'` in a background-image data-URI SVG draws nothing (SVG-as-background-image resolves in an isolated image context), so the arrow now uses explicit fills — mid-grey in light mode, near-white under `body[data-ds-dark-theme]`.
+
 **Fixed — filled action buttons are readable in dark mode again:**
 
 - 🌗 Filled primary buttons (`dsx-btn-primary` — 已添加 / 添加 / 查看详情), the pressed state of the 组件 stats capsule, and widget-card action buttons (primary/danger kinds) painted `var(--dsw-alias-brand-primary)` behind hard-coded white text. In dark mode the brand token renders near-white, so the label merged into the fill and became invisible. Primary now fills with `var(--dsw-alias-state-business-primary)` and danger with `var(--dsw-alias-state-error-primary)` — the same token pair the official UI uses for filled action buttons — so the white label stays legible in both light and dark themes.
