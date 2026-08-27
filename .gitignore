@@ -2,3 +2,7 @@ node_modules/
 *.tsbuildinfo
 *.log
 .DS_Store
+
+# Private design workspace (cover/poster generator). Local-only: kept out of
+# the public repo on purpose - edit freely, git will never show it as dirty.
+docs/poster/
