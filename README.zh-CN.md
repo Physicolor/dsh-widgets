@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/cover.jpeg" alt="DeepSeek-Harness Widgets 预览" width="100%">
+  <img src="docs/screenshots/cover.png" alt="DeepSeek-Harness Widgets 预览" width="100%">
 </p>
 
 DeepSeek-Harness Widgets 是一个基于 Cordis 的 DeepSeek Harness **持久 bundle 插件**。它在会话页右侧提供一套可定制的多列组件面板，实时展示对话洞察、用量监控与快捷工具，并通过声明式注册表支持无限扩展。

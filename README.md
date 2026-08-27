@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/cover.jpeg" alt="DeepSeek-Harness Widgets preview" width="100%">
+  <img src="docs/screenshots/cover.png" alt="DeepSeek-Harness Widgets preview" width="100%">
 </p>
 
 DeepSeek-Harness Widgets is a **persistent DSH bundle plugin** built on the Cordis composition model. It provides a customizable multi-column widget rail on the right side of the conversation page — real-time session insights, usage monitoring, and quick actions — with an extensible declarative registry.
