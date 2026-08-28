@@ -20,6 +20,8 @@ import { promises as fs } from 'node:fs'
 
 const USAGE_URL = 'https://opencode.ai/zen/go/v1/usage'
 const KEY_ENV = 'OPENCODE_GO_API_KEY'
+/** Spare pool keys (dsh-multikey-pool convention) appended after the primary. */
+const POOL_KEY_ENVS = ['OPENCODE_GO_API_KEY', 'OPENCODE_GO_POOL_2', 'OPENCODE_GO_POOL_3', 'OPENCODE_GO_POOL_4', 'OPENCODE_GO_POOL_5', 'OPENCODE_GO_POOL_6', 'OPENCODE_GO_POOL_7', 'OPENCODE_GO_POOL_8', 'OPENCODE_GO_POOL_9']
 /** Max accepted PUT body (a prefs JSON is a few KB; this is a hard safety cap). */
 const MAX_STATE_BYTES = 2 * 1024 * 1024
 
@@ -101,6 +103,66 @@ export function apply(ctx: {
         res.writeHead(502, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))
       }
+    },
+  }))
+
+  // Multi-key usage proxy: resolves every pooled OpenCode Go key (primary +
+  // dsh-multikey-pool spares) and returns each key's usage plus a host-computed
+  // 共同用量 total (per-window proportional mean of the available percents).
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: '/api/opencode-usage-multi',
+    handler: async (_req, res) => {
+      const keys: Array<Record<string, unknown>> = []
+      for (const ref of POOL_KEY_ENVS) {
+        const resolved = await ctx.credentials.resolve(ref).catch(() => undefined)
+        const key = resolved?.value
+        if (key === undefined || key === '') continue
+        const entry: Record<string, unknown> = { ref, label: `Key ${keys.length + 1}`, tail: key.slice(-4), data: null }
+        try {
+          const upstream = await fetch(USAGE_URL, { headers: { Authorization: `Bearer ${key}` } })
+          const data = await upstream.json().catch(() => null)
+          entry.data = data
+        } catch { /* keep data: null */ }
+        keys.push(entry)
+      }
+      // Proportional total: mean percent per window among keys that reported;
+      // status/reset follow the most-advanced (highest-percent) member.
+      const read = (win: 'rolling' | 'weekly' | 'monthly'): Array<{ percent: number; status?: string; resetsAt?: string }> => {
+        const out: Array<{ percent: number; status?: string; resetsAt?: string }> = []
+        for (const k of keys) {
+          const d = k.data as { usage?: Record<string, { percent?: number; status?: string; resetsAt?: string }> } | null
+          const item = d?.usage?.[win]
+          if (typeof item?.percent !== 'number') continue
+          out.push({ percent: item.percent, status: item.status, resetsAt: item.resetsAt })
+        }
+        return out
+      }
+      const total = (() => {
+        const build = (win: 'rolling' | 'weekly' | 'monthly'): { status: string; percent: number; resetsAt: string } | undefined => {
+          const items = read(win)
+          if (items.length === 0) return undefined
+          const max = items.reduce((a, b) => (b.percent > a.percent ? b : a))
+          return {
+            percent: Math.round(items.reduce((a, b) => a + b.percent, 0) / items.length),
+            status: max.status ?? 'ok',
+            resetsAt: max.resetsAt ?? '',
+          }
+        }
+        const rolling = build('rolling')
+        const weekly = build('weekly')
+        const monthly = build('monthly')
+        if (rolling === undefined && weekly === undefined && monthly === undefined) return null
+        return {
+          usage: {
+            rolling: rolling ?? { status: 'ok', percent: 0, resetsAt: '' },
+            weekly: weekly ?? { status: 'ok', percent: 0, resetsAt: '' },
+            monthly: monthly ?? { status: 'ok', percent: 0, resetsAt: '' },
+          },
+        }
+      })()
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ keys, total }))
     },
   }))
 

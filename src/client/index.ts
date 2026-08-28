@@ -10,8 +10,9 @@
 import * as React from 'react'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import './widgets.module.css'
-import { ALL_IDS, ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, instanceKey, parseInstanceKey, sizesOf, type UsageData, type WidgetSize } from './widgets'
+import { ALL_IDS, ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, instanceKey, parseInstanceKey, sizesOf, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './widgets'
 import { CardBody, WidgetsPage, type Prefs } from './components'
+import { t, installLocale, onLocaleChange } from './i18n'
 
 const STORAGE_KEY = 'harness-widgets.state'
 /** Local mirror of the last saved-at timestamp, compared against the host file
@@ -408,12 +409,20 @@ function deriveStats(nodes: ReadonlyArray<any>): Omit<Stats, 'usage'> {
  * @param ctx - client root context (carries the injected `slots` service).
  */
 export function apply(ctx: ClientContext): void {
+  // i18n: prefer the official locale service (reads the active locale at call
+  // time); fall back to the built-in dictionaries when it is absent. Locale
+  // switches re-render every always-mounted surface via the bridge.
+  ctx.effect(() => {
+    const disposeLocale = installLocale(ctx.get('locale') as { bind?: (ns: string) => (key: string, params?: Record<string, unknown>) => string; subscribe?: (fn: () => void) => () => void } | undefined)
+    const disposeListener = onLocaleChange(() => { emit() })
+    return () => { disposeLocale(); disposeListener() }
+  })
   // Run the heatmap table repair/recovery once at plugin boot (independent of
   // any active session/dock), so polluted or incomplete histories are fixed
   // the moment the bundle loads.
   try { migrateHeatmapV2() } catch { /* best-effort */ }
   let prefs = loadState()
-  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null }
+  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null }
 
   const listeners = new Set<() => void>()
   function emit(): void { for (const fn of listeners) fn() }
@@ -449,7 +458,7 @@ export function apply(ctx: ClientContext): void {
       }
     } catch { /* host unavailable; stay on localStorage only */ }
   }
-  function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; prefs: Prefs } {
+  function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; usageMulti: UsageMulti | null; prefs: Prefs } {
     const [snap, setSnap] = React.useState({ ...state, prefs: { ...prefs } })
     React.useEffect(() => subscribe(() => setSnap({ ...state, prefs: { ...prefs } })), [])
     return snap
@@ -555,7 +564,7 @@ export function apply(ctx: ClientContext): void {
     () => {
       const snap = useBridge()
       const toggle = (): void => { const next = !snap.open; setState({ open: next }); setPrefs({ railOpen: next }) }
-      return React.createElement('button', { type: 'button', className: 'dsx-stats-capsule', 'aria-pressed': snap.open, onClick: toggle }, React.createElement('span', null, '组件'))
+      return React.createElement('button', { type: 'button', className: 'dsx-stats-capsule', 'aria-pressed': snap.open, onClick: toggle }, React.createElement('span', null, t('ui.capsule')))
     },
   ))
 
@@ -592,6 +601,11 @@ export function apply(ctx: ClientContext): void {
           .then((r) => r.json())
           .then((data: UsageData) => setState({ usageData: data }))
           .catch(() => { /* keep last known usage */ })
+        // Multi-key pool usage (总 Key 视图 + 每把 Key 独立视图).
+        fetch('/api/opencode-usage-multi')
+          .then((r) => r.json())
+          .then((data: UsageMulti) => setState({ usageMulti: data }))
+          .catch(() => { /* pool endpoint optional: cards fall back to single-key */ })
       }, [])
       // One-second tick while a turn is running, so the in-flight LLM and tool
       // durations advance between settle boundaries instead of freezing.
@@ -769,6 +783,25 @@ export function apply(ctx: ClientContext): void {
         setArmedAction(null)
         runCommand(command)
       }
+      // Whole-card cycle (pooled usage widgets): advance the instance's
+      // poolView along its cycle and persist it via cardConfigs so the choice
+      // survives reloads and other browser origins. The pool plugin is told
+      // about the selection too: landing on Key N actually makes the pool use
+      // that key (prefer), returning to 总 Key clears the pin.
+      const cyclePool = (key: string) => (out: WidgetRenderOut): void => {
+        const modes = out.cycle?.modes ?? []
+        if (modes.length === 0) return
+        const current = out.cycle?.current ?? 'total'
+        const idx = modes.indexOf(current)
+        const next = modes[(idx < 0 ? -1 : idx) + 1] ?? modes[0] ?? 'total'
+        setPrefs({ cardConfigs: { ...prefs.cardConfigs, [key]: { ...(prefs.cardConfigs[key] ?? {}), poolView: next } } })
+        const entry = snap.usageMulti?.keys.find((k) => k.label === next)
+        void fetch('/api/multikey', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'prefer', ref: next === 'total' ? '' : (entry?.ref ?? '') }),
+        }).catch(() => { /* pool endpoint optional: display only */ })
+      }
       // One magnification engine, two wave styles (chosen by prefs.realTime):
       //  - discrete: the live pointer is snapped onto a quantized grid (row /
       //    column centres + midpoints), so the peak glides between grid points
@@ -914,13 +947,18 @@ export function apply(ctx: ClientContext): void {
         ...(statsHeat?.heatmapGrid ? {} : { heatmapGrid: buildHeatmapGrid(fallbackRaw, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling', (prefs.cardConfigs?.heatmap?.timeZone as string) || DEFAULT_TZ) }),
       }
       interface RailItem { key: string; size: WidgetSize; w: (typeof WIDGETS)[number]; out: NonNullable<ReturnType<(typeof WIDGETS)[number]['render']>>; baseW: number }
+      // Pooled usage views: ['total', 'Key 1', 'Key 2', …] when the pool has
+      // more than one key; otherwise usage cards fall back to single-key data.
+      const poolModes = (snap.usageMulti?.keys.length ?? 0) > 1
+        ? ['total', ...snap.usageMulti!.keys.map((entry, i) => entry.label || `Key ${i + 1}`)]
+        : undefined
       const items: RailItem[] = prefs.order
         .filter((id) => prefs.installed.indexOf(id) !== -1)
         .map((key) => {
           const { widgetId, size } = parseInstanceKey(key)
           const w = WIDGETS.find((x) => x.id === widgetId)
           if (!w || sizesOf(w).indexOf(size) === -1) return null
-          const out = w.render({ ...base, usageData: snap.usageData, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
+          const out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
           if (!out) return null
           // 2×4 is exactly two 2×2 widths plus one inter-card gap.
           const baseW = size === '2x4' ? 2 * side + pad : side
@@ -936,13 +974,15 @@ export function apply(ctx: ClientContext): void {
       // The rail is a fixed viewport panel anchored to the right edge. The
       // dsh-better-sidebar bundle occupies the same edge with its own
       // fixed right panel (z-index 50) and pushes the app shell via
-      // `#root { margin-right: var(--dsh-sidebar-width) }`. Anchor our right
-      // edge to that same variable (0 while it is absent/closed) so the two
-      // panels sit side by side instead of the sidebar covering the rail.
-      // `transition: right` mirrors the shell's margin-right transition, so the
-      // rail glides in sync when the sidebar expands/collapses (the shell
-      // animates the shared variable's effect via a CSS transition; the rail
-      // must carry the same one or it snaps while the column glides).
+      // `#root { margin-right: var(--dsh-sidebar-width) }` (neutralized by
+      // dsh-ui-harmonizer to the conversation column's margin-right). The rail
+      // sits flush to the viewport right edge (right:0) and its CSS carries
+      // `transform: translateX(calc(var(--dsh-sidebar-width, 0px) * -1))`, so
+      // expanding/collapsing the sidebar translates the rail on the
+      // COMPOSITOR — the rail subtree (cards, heatmaps) never reflows per
+      // frame. transform uses the same shared variable, duration and easing as
+      // the conversation column's margin-right, so both glide in lockstep
+      // (the shell animates the shared variable's effect via a CSS transition).
       // Padding is `0 pad pad pad`: no top inset so the first card aligns with
       // the session header's bottom edge; right/left keep the resize handle
       // room, bottom keeps the last card off the viewport floor.
@@ -1191,23 +1231,23 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
             const transition = 'opacity 0.15s ease'
             const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, opacity: magnifying ? 0 : 1 }
             return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle, ref: (el: HTMLDivElement | null) => { cardElsRef.current[idx] = el } },
-              React.createElement(CardBody, { out: it.out, unit: side, width: c.w, onAction: handleAction }),
-              React.createElement('span', { className: 'dsx-stats-resize', 'aria-label': '调整大小', onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = side; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
+              React.createElement(CardBody, { out: it.out, unit: side, width: c.w, onAction: handleAction, onCycle: cyclePool(it.key) }),
+              React.createElement('span', { className: 'dsx-stats-resize', 'aria-label': t('ui.rail.resizeAria'), onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = side; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
             )
           }),
           // Bottom add button, parked inside the deck so it shares the grid
           // layout: fills the empty last-row cell on odd counts, or sits
           // right-aligned below the rows on even counts / single column.
-          React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', onClick: () => setAddOpen((v) => !v), style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, opacity: magnifying ? 0 : 1, transition: 'opacity 0.15s ease' } },
+          React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), onClick: () => setAddOpen((v) => !v), style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, opacity: magnifying ? 0 : 1, transition: 'opacity 0.15s ease' } },
             React.createElement('span', { className: 'dsx-stats-add-icon' },
               React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
             ),
-            React.createElement('span', { className: 'dsx-stats-add-label' }, '添加'),
+            React.createElement('span', { className: 'dsx-stats-add-label' }, t('ui.rail.addLabel')),
           ),
         ),
       ]
       const rail = React.createElement('div', {
-        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
+        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: '0px', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
         onMouseLeave: () => {
           armedRef.current = false
           setFocusY(null); setFocusX(null)
@@ -1240,7 +1280,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       const overlayTransition = tweenSize
         ? 'top 0s, right 0s, width 0.15s var(--ds-ease-in-out), height 0.15s var(--ds-ease-in-out)'
         : 'none'
-      const magnifyLayer = React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent', opacity: magnifying ? 1 : 0, transition: 'opacity 0.15s ease' } },
+      const magnifyLayer = React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: '0px', width: `${railW}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent', opacity: magnifying ? 1 : 0, transition: 'opacity 0.15s ease', transform: 'translateX(calc(var(--dsh-sidebar-width, 0px) * -1))' } },
         React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${stackHeight}px` } },
           // Positions (top/right) are INSTANT always — right-anchored geometry
           // keeps the right edge on the rail's right line. The size tween
@@ -1253,17 +1293,25 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
             const it = items[idx]
             const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition: overlayTransition, zIndex: Math.round((c.s - 1) * 100) }
             return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle },
-              React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: undefined }),
+              // Lazy body: cards render ONLY while actually magnifying. The slot
+              // div stays mounted (its geometry tween continues seamlessly on
+              // enter/exit), but the heavy card DOM (heatmaps, charts) is
+              // absent at rest — halving the rail's resident DOM and its
+              // layout cost while the right sidebar animates. At rest the
+              // overlay is invisible (opacity 0) anyway, and on engage the
+              // body mounts at rest geometry BEFORE the size tween starts, so
+              // the fade-in shows no pop.
+              magnifying ? React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: undefined }) : null,
             )
           }),
           // Mirror the add button at its WAVE position (focusedAdd), scaled by
           // its own wave factor — it displaces with the magnified deck like a
           // card, and its size follows the same bell curve.
-          React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': '添加组件', tabIndex: -1, style: { position: 'absolute', top: `${focusedAdd.top.toFixed(2)}px`, right: `${focusedAdd.right.toFixed(2)}px`, width: `${(side * addScale).toFixed(2)}px`, height: `${(side * addScale).toFixed(2)}px`, borderRadius: `${Math.round(addRadius * addScale)}px`, transition: overlayTransition, zIndex: 30 } },
+          React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), tabIndex: -1, style: { position: 'absolute', top: `${focusedAdd.top.toFixed(2)}px`, right: `${focusedAdd.right.toFixed(2)}px`, width: `${(side * addScale).toFixed(2)}px`, height: `${(side * addScale).toFixed(2)}px`, borderRadius: `${Math.round(addRadius * addScale)}px`, transition: overlayTransition, zIndex: 30 } },
               React.createElement('span', { className: 'dsx-stats-add-icon' },
                 React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
               ),
-              React.createElement('span', { className: 'dsx-stats-add-label' }, '添加'),
+              React.createElement('span', { className: 'dsx-stats-add-label' }, t('ui.rail.addLabel')),
             ),
           ),
         )
@@ -1279,10 +1327,10 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
         window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
       }
       const addPanel = React.createElement('div', { className: 'dsx-stats-addpanel' + (addOpen ? ' open' : ''), style: { top: 'var(--dsx-rail-top,0px)', width: `${pw}px` } },
-        React.createElement('span', { className: 'dsx-stats-addpanel-resize', 'aria-label': '调整宽度', onPointerDown: startResize }),
+        React.createElement('span', { className: 'dsx-stats-addpanel-resize', 'aria-label': t('ui.addPanel.resizeAria'), onPointerDown: startResize }),
         React.createElement('div', { className: 'dsx-stats-addpanel-header' },
-          React.createElement('div', { className: 'dsx-stats-addpanel-title' }, '添加组件'),
-          React.createElement('button', { type: 'button', className: 'dsx-stats-addpanel-close', 'aria-label': '关闭', onClick: () => setAddOpen(false) }, closeIcon),
+          React.createElement('div', { className: 'dsx-stats-addpanel-title' }, t('ui.addPanel.title')),
+          React.createElement('button', { type: 'button', className: 'dsx-stats-addpanel-close', 'aria-label': t('ui.addPanel.closeAria'), onClick: () => setAddOpen(false) }, closeIcon),
         ),
         React.createElement('div', { className: 'dsx-stats-addpanel-body' },
           React.createElement(WidgetsPage, { controller: { prefs, setPrefs }, hideHeader: true }),
@@ -1297,7 +1345,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
 
   // ---- Settings section ("组件" page). ----
   ctx.slots.inject('settings.section', () => ctx.slots.register(
-    { name: 'settings.section', id: 'widgets', order: 30, label: '组件' },
+    { name: 'settings.section', id: 'widgets', order: 30, label: () => t('ui.section.label') },
     () => {
       const snap = useBridge()
       return React.createElement(WidgetsPage, { controller: { prefs: snap.prefs, setPrefs } })

@@ -115,6 +115,45 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
+### v1.2.3
+**Perf — 右面板开合动画掉帧修复（与 dsh-better-sidebar / dsh-ui-harmonizer 协同）：**
+
+- 🧊 rail 与放大 overlay 的侧移从 `right` 属性动画改为**合成器 transform 平移**（`translateX(calc(var(--dsh-sidebar-width) * -1))`，`right:0`）：better-sidebar 面板开合时 rail 整树在合成层平移，卡片/热力图零逐帧 reflow；之前 `transition: right` 每帧重排整个 rail 子树，与对话列的 margin 动画叠加后随对话 DOM 规模掉帧，且两过渡相互不同步。
+- 🗑️ 移除卡片 slot 常驻 `will-change: top,width,height`：此前两套 deck（静态+放大层）× N 张卡片全部常驻独立合成层，膨胀 GPU 内存与每帧合成成本；短 tween 由浏览器自动提升层，无需常驻。
+- ✂️ 放大 overlay 卡片体改为**仅在真正放大时渲染**（slot div 常驻保持几何 tween 无缝）：静息时 rail 常驻 DOM 减半（热力图等重组件不再双份渲染）。
+- 🔗 与 dsh-better-sidebar / dsh-ui-harmonizer 保持同变量同 duration/easing（`--dsh-sidebar-width` + `--ds-transition-duration-slow` + `--ds-ease-in-out`）；拖动（`body[data-dsh-sidebar-dragging]`）仍即时跟随；`prefers-reduced-motion` 关闭过渡。
+
+**掉帧数值对比（playwright + 本机 Edge 实测，better-sidebar 右面板开合动画窗口）：**
+
+| 场景 | 修复前 | 修复后 |
+| --- | --- | --- |
+| 重会话动画掉帧率（帧间隔 >26ms 占比） | 20–31% | ≈ 0–1.4%（rail 开/关/禁用动画三者无差异，即噪声） |
+| 主线程长任务 | 每动画多达数个、单次 60–210ms | 0 |
+| 组件栏开启 vs 关闭之差 | 明显（打开即卡） | 无差异（开启 = 零额外成本） |
+| 滑动路径 | `right`/`margin` 逐帧 layout（全树 reflow） | transform 合成平移（合成器） |
+| 常驻合成层 | 每卡片 × 双层 deck 全部常驻 | 0（tween 自动提升、结束即释放） |
+
+→ 组件栏开启引入的掉帧从「每动画丢约 1/3 帧 + 数百 ms 长任务」**降到 0**：组件常开下开关右面板与关闭组件时同样丝滑（典型会话全程 60fps）。重会话（数千 DOM 节点）下对话列宽度过渡仍约 ~10% 掉帧——与组件无关（关闭组件同样存在、属 UI 协调层），已列入 Roadmap。
+
+- ✔️ 自包含验证 `scripts/verify-sidebar-anim.cjs`（playwright-core + 本机 Edge，连 3080）：rail `transition-property=transform`；面板开合后 rail 右缘 = 视口宽 − 面板宽；消融测试——禁用 rail / 对话列动画后掉帧 1.4% / 0.6%，证明 rail 侧贡献已归零。
+
+**New — 多 Key 用量联动（配合 dsh-multikey-pool）：**
+
+- 🔑 新 host 端点 `/api/opencode-usage-multi`：解析全部池内 Key（`OPENCODE_GO_API_KEY` 主 + `OPENCODE_GO_POOL_2..9` 备用）逐把拉取用量，并计算「共同用量」total（滚动/周/月各窗口按可用 Key 数量比例取平均，状态与重置跟随用量最高的一把）。
+- 🔄 用量环图 / 用量对比 / 滚动用量 / 每周用量 / 每月用量组件支持**单击整卡循环切换视图**：总 Key → Key 1 → Key 2 → … → 总 Key；当前视图以 legend 形式写在大标题正下方（「总 Key」「Key 1」「Key 2」……），切换选择经 `cardConfigs.<实例>.poolView` 持久化，跨刷新与跨浏览器保留。
+- 🍩 按压弹性动画：可点击组件按下瞬间 scale(0.93) 快进慢出，松开以弹簧曲线回弹（`cubic-bezier(0.34,1.56,0.64,1)`），符合官方按钮手感；`prefers-reduced-motion` 不受影响。
+- 🎯 点击与真实使用联动：切到 Key N 时同步通知多 Key 池把该 Key 设为主力（`/api/multikey` prefer），切回总 Key 自动解除手动优先——「看到的」就是「正在用的」。
+- 🧩 单 Key 环境自动退化为原行为：池内只有主 Key 时组件照常显示主 Key 数据，不出现切换交互。
+
+**New — 全面中英文适配（跟随 设置 → Language 即时切换，无需刷新）：**
+
+- 🌐 接入官方 `locale` 服务（`ctx.get('locale')`）：全部 UI 文案改为字典驱动——设置页（组件配置/组件市场/组件设置）、右侧组件栏（卡片标题/数值/legend/角落按钮/添加钮/aria）、组件市场卡片、configSchema 表单、峰谷定价窗口、任务/上下文/寄语卡片、OpenCode 用量（总 Key/循环/重置）等均有英文译文；`locale` 服务缺席时自动回退内置 zh/en 字典（探测口径与官方一致：localStorage `dsh-language` → `<html lang>` → `navigator.language`）。
+- 🔑 修复：`installLocale` 现在把 zh/en 字典**注册**进官方 `locale` 服务（`register(ns, locale, dict)`）再 `bind`——此前只 bind 未注册，界面会把字典 key 原文（如 `ui.capsule`、`card.contextWater.system`）直接显示出来；注册后按 active locale 正确取词，不再出现裸 key。
+- ♻️ 常驻 UI（右侧栏、页头胶囊）订阅 `locale/change` 立即重渲染；设置页导航名「组件」改为 **label thunk**（`SlotLabel` 契约），语言切换后导航自动更新，无需重新注册。
+- 📖 每个组件的名称/描述/徽标/预览切换标签支持中英双语；`WIDGETS` 的 name/desc/badgeLabel/simToggle/configSchema 改为 thunk，渲染时按当前语言取值。
+- 🧩 零硬依赖：未装载 `locale` 服务的组合自动走内置字典，行为与之前一致。
+- ✔️ 自包含验证 `docs/verify-i18n.mjs`（Node `--experimental-strip-types` 直接跑）：双语切换、无裸 key、卸载回退全绿。
+
 ### v1.2.2
 **New — 峰谷定价 (peak-pricing) widget:**
 
@@ -296,6 +335,7 @@ The widget registry (`WIDGETS` descriptors) already lays the foundation for more
 - **Utility widgets**: one-click compact (needs DSH official compaction) and more;
 - **External integrations**: Feishu / WeChat push & interaction, keys strictly via DSH credentials;
 - **Widget marketplace**: open a third-party widget registration mechanism so community widgets can join like plugins;
+- **More locales**: the dictionary layer now has zh/en for every key — adding `ja`/`ko` etc. is a pure dictionary extension;
 - **Cross-device sync** (optional): today each DSH service keeps its own `dsh-widgets-state.json` — a cloud/account sync layer could share one configuration across machines, but local-first independence is the deliberate default.
 
 ## License

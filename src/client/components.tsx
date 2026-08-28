@@ -9,8 +9,10 @@
 import * as React from 'react'
 import {
   WIDGETS, badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf, fmtShortDate, buildRollingGrid, peakStatusNow,
+  widgetName, widgetDesc, widgetSimToggle, fieldLabel, optionLabel,
   type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize, type WidgetRenderMeta,
 } from './widgets'
+import { t } from './i18n'
 
 /** The base card side all scales derive from. */
 const BASE_SIDE = 150
@@ -43,11 +45,11 @@ const PREVIEW_STATS: WidgetStats = {
   contextTokens: 446_000,
   contextBreakdown: { systemTokens: 6000, toolsTokens: 11700, messageTokens: 428_300 },
   todos: [
-    { content: '计划任务拆分', status: 'in_progress' },
-    { content: '接入上下文数据', status: 'completed' },
-    { content: '编写配置表单', status: 'completed' },
-    { content: '打磨悬浮动画', status: 'pending' },
-    { content: '发布 npm', status: 'pending' },
+    { content: 'Split plan tasks', status: 'in_progress' },
+    { content: 'Feed context data', status: 'completed' },
+    { content: 'Write config form', status: 'completed' },
+    { content: 'Polish hover animation', status: 'pending' },
+    { content: 'Publish npm', status: 'pending' },
   ],
   // Grid built by the SAME path as the real 2×2 calendar (7 week-rows × 13
   // day-columns) — the old preview built it transposed (13×7), which rendered
@@ -322,13 +324,25 @@ function RichBlock({ rich, scale }: { rich: WidgetRich; scale: number }): React.
   return React.createElement(React.Fragment)
 }
 
-export function CardBody({ out, unit, width, onAction }: { out: WidgetRenderOut; unit: number; width?: number; onAction?: (id: string) => void }): React.ReactElement {
+export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetRenderOut; unit: number; width?: number; onAction?: (id: string) => void; onCycle?: (out: WidgetRenderOut) => void }): React.ReactElement {
   const scale = unit / BASE_SIDE
   const boxW = width ?? unit
   const titlePx = Math.round(13 * scale)
   const valuePx = Math.round(20 * scale)
   const radius = Math.round(16 * scale)
   const innerPad = Math.round(12 * scale)
+  // Whole-card cycle (pooled usage widgets): a press plays a short press-down
+  // (scale dip) and, on click, cycles the view; the release springs back.
+  const cyclable = out.cycle !== undefined
+  const [pressed, setPressed] = React.useState(false)
+  const pressTimer = React.useRef<number | undefined>(undefined)
+  React.useEffect(() => () => { if (pressTimer.current !== undefined) window.clearTimeout(pressTimer.current) }, [])
+  const pressDown = (): void => {
+    if (!cyclable) return
+    setPressed(true)
+    if (pressTimer.current !== undefined) window.clearTimeout(pressTimer.current)
+    pressTimer.current = window.setTimeout(() => setPressed(false), 190)
+  }
   const headFlex = React.createElement('div', { key: 't', className: 'dsx-stats-card-title', style: { fontSize: `${titlePx}px`, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6 } },
     React.createElement('span', { style: { display: 'inline-flex', alignItems: 'baseline', gap: 6 } },
       React.createElement('span', null, out.title),
@@ -404,7 +418,13 @@ export function CardBody({ out, unit, width, onAction }: { out: WidgetRenderOut;
   const footStyle: React.CSSProperties = topAligned
     ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: vj ?? 'flex-start' }
     : { marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }
-  return React.createElement('div', { className: 'dsx-stats-card' + (out.alert ? ' dsx-peak-alert' : ''), style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, borderRadius: `${radius}px`, padding: `${innerPad}px` } },
+  return React.createElement('div', {
+    className: 'dsx-stats-card' + (out.alert ? ' dsx-peak-alert' : '') + (cyclable ? (pressed ? ' dsx-cyclable dsx-cycle-pressed' : ' dsx-cyclable') : ''),
+    style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, borderRadius: `${radius}px`, padding: `${innerPad}px` },
+    title: out.cycle?.hint,
+    onClick: cyclable ? () => { pressDown(); if (onCycle) onCycle(out) } : undefined,
+    onPointerDown: cyclable ? pressDown : undefined,
+  },
     corner,
     head,
     React.createElement('div', { key: 'foot', style: footStyle }, body),
@@ -446,10 +466,10 @@ function OrderList({ items, onMove, onRemove, onSelect, selected }: {
         onClick: onSelect ? () => onSelect(id) : undefined,
       },
         React.createElement('span', { className: 'dsx-drag-handle' }, React.createElement(GripIcon)),
-        React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, w.name),
+        React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, widgetName(w)),
         React.createElement('span', { style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', flex: 'none' } }, size === '2x4' ? '2×4' : '2×2'),
         React.createElement('span', { className: 'dsx-badge' }, badgeOf(w)),
-        onRemove ? React.createElement('button', { type: 'button', className: 'dsx-trash', 'aria-label': '移除', title: '从组件栏移除', onClick: () => { if (onSelect && selected === id) onSelect('') ; onRemove(id) } }, React.createElement(TrashIcon)) : null,
+        onRemove ? React.createElement('button', { type: 'button', className: 'dsx-trash', 'aria-label': t('order.removeAria'), title: t('order.removeTitle'), onClick: () => { if (onSelect && selected === id) onSelect('') ; onRemove(id) } }, React.createElement(TrashIcon)) : null,
       )
     }),
   )
@@ -465,21 +485,21 @@ function ConfigFieldControl({ field, value, onChange }: { field: ConfigField; va
       type: isTextarea ? undefined : 'text',
       rows: isTextarea ? 3 : undefined,
       className: 'dsx-search', style: { marginBottom: 0, width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: 13 },
-      placeholder: field.label,
+      placeholder: fieldLabel(field),
       value: typeof value === 'string' ? value : (field.default as string ?? ''),
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value),
     })
   }
   if (field.type === 'toggle') {
     const on = typeof value === 'boolean' ? value : (field.default === true)
-    return React.createElement('label', { className: 'dsx-switch-row', title: field.label },
+    return React.createElement('label', { className: 'dsx-switch-row', title: fieldLabel(field) },
       React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: on, onChange: (e) => onChange(e.target.checked) }),
       React.createElement('span', { className: 'dsx-switch-track', 'aria-hidden': true }, React.createElement('span', { className: 'dsx-switch-thumb' })),
     )
   }
   if (field.type === 'align' || field.type === 'valign') {
     const opts = field.type === 'align' ? ['left', 'center', 'right'] : ['top', 'center', 'bottom']
-    const labels = field.type === 'align' ? ['左', '居中', '右'] : ['上', '居中', '下']
+    const labels = field.type === 'align' ? [t('align.left'), t('align.center'), t('align.right')] : [t('align.top'), t('align.center'), t('align.bottom')]
     const cur = (typeof value === 'string' && opts.indexOf(value) !== -1) ? value : (field.default as string ?? opts[0])
     return React.createElement('div', { style: { display: 'flex', gap: 4 } },
       opts.map((o, i) => {
@@ -496,10 +516,10 @@ function ConfigFieldControl({ field, value, onChange }: { field: ConfigField; va
     return React.createElement('select', {
       className: 'dsx-select',
       value: cur,
-      title: field.label,
+      title: fieldLabel(field),
       onChange: (e: React.ChangeEvent<HTMLSelectElement>) => onChange(e.target.value),
     },
-      opts.map(([o, label]) => React.createElement('option', { key: o, value: o }, label)),
+      opts.map(([o, label]) => React.createElement('option', { key: o, value: o }, optionLabel([o, label]))),
     )
   }
   return React.createElement(React.Fragment)
@@ -516,7 +536,7 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
   const [previewSim, setPreviewSim] = React.useState<Record<string, unknown> | null>(null)
   React.useEffect(() => { setPreviewSim(null) }, [selected])
   const toggleSim = (): void => {
-    if (!selWidget?.simToggle) return
+    if (!selWidget || !widgetSimToggle(selWidget)) return
     const cur = previewSim
     setPreviewSim(cur && typeof cur.peak === 'boolean'
       ? { peak: !cur.peak, window: typeof cur.window === 'number' ? cur.window : 0 }
@@ -581,7 +601,7 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
     // nothing until the user types a text (preview only, never persisted).
     if (selWidget.id === 'quote') {
       const rawText = selConfig.text as string | undefined
-      if (!rawText || !rawText.trim()) (stats as Record<string, unknown>).text = '（填写寄语内容后显示）'
+      if (!rawText || !rawText.trim()) (stats as Record<string, unknown>).text = t('preview.quotePlaceholder')
     }
     return selWidget.render(stats, { size: selSize, ...(previewSim ? { sim: previewSim } : {}) })
   }
@@ -600,17 +620,17 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
   // merges instead of duplicating).
   const out = previewOut()
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } },
-    React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', marginBottom: 4 } }, `已添加 ${installed.length}/${prefs.maxWidgets}（点击组件可预览与配置）`),
+    React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', marginBottom: 4 } }, t('config.addedCount', { added: installed.length, max: prefs.maxWidgets })),
     React.createElement(OrderList, { items: installed, onMove: (next) => setPrefs({ order: next }), onRemove: remove, onSelect: setSelected, selected }),
     selWidget && selConfig ? React.createElement('div', { style: { marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dsw-alias-border-l2)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } },
       // Preview title anchored top-LEFT; the card-size dropdown sits beside it
       // on the right (same dsx-select style as the 窗口对齐方式 field).
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-        React.createElement('div', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, `${selWidget.name} · 预览`),
+        React.createElement('div', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, t('config.preview', { name: widgetName(selWidget) })),
         sizesOf(selWidget).length > 1
           ? React.createElement('select', {
               className: 'dsx-select', style: { fontSize: 11, width: 'auto' },
-              value: selSize, title: '卡片大小',
+              value: selSize, title: t('config.cardSize'),
               onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setPreviewSize(e.target.value as WidgetSize),
             },
               sizesOf(selWidget).map((s) => React.createElement('option', { key: s, value: s }, s === '2x4' ? '2×4' : '2×2')),
@@ -625,23 +645,23 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
           const u = 150
           const isWide = selSize === '2x4'
           const pv = out ? React.createElement(CardBody, { out, unit: u, width: isWide ? 2 * u + 12 : undefined }) : null
-          const simTip = selWidget.simToggle
-            ? React.createElement('div', { key: 'simtip', style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', marginTop: 8, textAlign: 'center' } }, `点击卡片切换：${selWidget.simToggle}`)
+          const simTip = widgetSimToggle(selWidget)
+            ? React.createElement('div', { key: 'simtip', style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', marginTop: 8, textAlign: 'center' } }, t('config.simTip', { label: widgetSimToggle(selWidget) }))
             : null
           return out
             ? React.createElement('div', {
-                style: { display: 'flex', flexDirection: 'column', alignItems: 'center', transform: isWide ? 'scale(0.85)' : undefined, transformOrigin: 'center center', cursor: selWidget.simToggle ? 'pointer' : undefined, userSelect: 'none' },
-                title: selWidget.simToggle ? '点击切换预览状态' : undefined,
-                onClick: selWidget.simToggle ? () => toggleSim() : undefined,
+                style: { display: 'flex', flexDirection: 'column', alignItems: 'center', transform: isWide ? 'scale(0.85)' : undefined, transformOrigin: 'center center', cursor: widgetSimToggle(selWidget) ? 'pointer' : undefined, userSelect: 'none' },
+                title: widgetSimToggle(selWidget) ? t('config.simTitle') : undefined,
+                onClick: widgetSimToggle(selWidget) ? () => toggleSim() : undefined,
               }, pv, simTip)
             : null
         })(),
       ),
       // Per-card schema fields keep their 自定义 heading below the preview.
       selWidget.configSchema && selWidget.configSchema.length > 0 ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 10 } },
-        React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)' } }, '自定义'),
+        React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)' } }, t('config.custom')),
         selWidget.configSchema.map((f) => React.createElement('div', { key: f.key, style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--dsw-alias-border-l1)' } },
-          React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)' } }, f.label),
+          React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)' } }, fieldLabel(f)),
           React.createElement('div', { style: { flex: 'none', minWidth: 0 } }, React.createElement(ConfigFieldControl, { field: f, value: selConfig[f.key], onChange: (v) => setConfig(f, v) })),
         )),
       ) : null,
@@ -664,14 +684,14 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
   // group card (e.g. "context" → 一键压缩 + 上下文水位) is one entry in the rail.
   const seen = new Set<string>()
   const marketCards = WIDGETS.filter((w) => { const g = groupOf(w); if (seen.has(g)) return false; seen.add(g); return true })
-  const list = marketCards.filter((w) => `${w.name} ${w.desc} ${w.id}`.toLowerCase().indexOf(q.toLowerCase()) !== -1)
-  // Group labels shown on the market cards.
-  const GROUP_LABELS: Record<string, string> = {
-    system: '系统',
-    'opencode-go': 'OpenCode Go',
-    'coding-plan': 'Coding Plan 用量',
-    pricing: '峰谷定价',
-    other: '其它',
+  const list = marketCards.filter((w) => `${widgetName(w)} ${widgetDesc(w)} ${w.id}`.toLowerCase().indexOf(q.toLowerCase()) !== -1)
+  // Group labels shown on the market cards (thunks so they follow the locale).
+  const GROUP_LABELS: Record<string, () => string> = {
+    system: () => t('group.system'),
+    'opencode-go': () => 'OpenCode Go',
+    'coding-plan': () => t('group.codingPlan'),
+    pricing: () => t('group.pricing'),
+    other: () => t('group.other'),
   }
 
   if (previewGroup !== null) {
@@ -687,10 +707,10 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     const installed = w ? prefs.installed.indexOf(curKey) !== -1 : false
     // Quote preview shows sample content (the real card renders nothing until
     // the user types a text — preview only, never persisted).
-    const previewStats = w && w.id === 'quote' ? { ...PREVIEW_STATS, text: '预览寄语：写一句你的话' } as WidgetStats : PREVIEW_STATS
+    const previewStats = w && w.id === 'quote' ? { ...PREVIEW_STATS, text: t('market.previewText') } as WidgetStats : PREVIEW_STATS
     const out = w ? w.render(previewStats, { size: curSize, ...(previewSim ? { sim: previewSim } : {}) }) : null
     const toggleSim = (): void => {
-      if (!w?.simToggle) return
+      if (!widgetSimToggle(w)) return
       const cur = previewSim
       setPreviewSim(cur && typeof cur.peak === 'boolean'
         ? { peak: !cur.peak, window: typeof cur.window === 'number' ? cur.window : 0 }
@@ -714,40 +734,40 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     const sizeBlocked = oneCol && curSize === '2x4'
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0, position: 'relative' } },
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-        React.createElement('button', { type: 'button', className: 'dsx-btn', onClick: () => setPreviewGroup(null) }, '← 返回'),
+        React.createElement('button', { type: 'button', className: 'dsx-btn', onClick: () => setPreviewGroup(null) }, t('market.back')),
         React.createElement('div', { style: { flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 } },
-          React.createElement('span', { style: { fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: sizeBlocked ? 'line-through' : undefined, opacity: sizeBlocked ? 0.75 : undefined } }, w ? `${w.name}${curSize === '2x4' ? ' 2×4' : ' 2×2'}` : ''),
-          sizeBlocked ? React.createElement('span', { className: 'dsx-size-warn' }, '1列不可用') : null,
+          React.createElement('span', { style: { fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: sizeBlocked ? 'line-through' : undefined, opacity: sizeBlocked ? 0.75 : undefined } }, w ? `${widgetName(w)}${curSize === '2x4' ? ' 2×4' : ' 2×2'}` : ''),
+          sizeBlocked ? React.createElement('span', { className: 'dsx-size-warn' }, t('market.sizeBlocked')) : null,
         ),
-        React.createElement('button', { type: 'button', disabled: installed || sizeBlocked || prefs.installed.length >= prefs.maxWidgets, className: installed || sizeBlocked ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: add, title: sizeBlocked ? '1 列布局下不显示 2×4 组件' : undefined }, installed ? '已添加' : '添加'),
+        React.createElement('button', { type: 'button', disabled: installed || sizeBlocked || prefs.installed.length >= prefs.maxWidgets, className: installed || sizeBlocked ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: add, title: sizeBlocked ? t('market.sizeBlockedTitle') : undefined }, installed ? t('market.added') : t('market.add')),
       ),
       !installed && prefs.installed.length >= prefs.maxWidgets
-        ? React.createElement('div', { className: 'dsx-limit-tip' }, `已达上限 ${prefs.maxWidgets} 个，先在组件配置中移除再添加`)
+        ? React.createElement('div', { className: 'dsx-limit-tip' }, t('market.limit', { max: prefs.maxWidgets }))
         : null,
       React.createElement('div', { style: { flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '0 4px' } },
-        React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '上一个', onClick: prev }, React.createElement(ChevronLeftIcon)),
+        React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': t('market.prevAria'), onClick: prev }, React.createElement(ChevronLeftIcon)),
         React.createElement('div', { style: { width: 360, flex: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center' } },
           out
             ? React.createElement('div', {
-                style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transform: curSize === '2x4' ? 'scale(0.85)' : undefined, transformOrigin: 'center center', cursor: w?.simToggle ? 'pointer' : undefined, userSelect: 'none' },
-                title: w?.simToggle ? '点击切换预览状态' : undefined,
-                onClick: w?.simToggle ? toggleSim : undefined,
+                style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transform: curSize === '2x4' ? 'scale(0.85)' : undefined, transformOrigin: 'center center', cursor: widgetSimToggle(w) ? 'pointer' : undefined, userSelect: 'none' },
+                title: widgetSimToggle(w) ? t('config.simTitle') : undefined,
+                onClick: widgetSimToggle(w) ? toggleSim : undefined,
               },
                 React.createElement(CardBody, { out, unit: 200, width: curSize === '2x4' ? 412 : undefined }),
-                w && w.simToggle ? React.createElement('div', { style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', whiteSpace: 'nowrap' } }, `点击卡片切换：${w.simToggle}`) : null,
+                w && widgetSimToggle(w) ? React.createElement('div', { style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', whiteSpace: 'nowrap' } }, t('config.simTip', { label: widgetSimToggle(w) })) : null,
               )
             : null,
         ),
-        React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': '下一个', onClick: next }, React.createElement(ChevronRightIcon)),
+        React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': t('market.nextAria'), onClick: next }, React.createElement(ChevronRightIcon)),
       ),
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 } },
-        instances.map((inst, i) => React.createElement('button', { key: inst.w.id + '@' + inst.s, type: 'button', className: i === previewIdx ? 'dsx-dot dsx-dot-active' : 'dsx-dot', 'aria-label': `${inst.w.name} ${inst.s === '2x4' ? '2×4' : '2×2'}`, onClick: () => setPreviewIdx(i) })),
+        instances.map((inst, i) => React.createElement('button', { key: inst.w.id + '@' + inst.s, type: 'button', className: i === previewIdx ? 'dsx-dot dsx-dot-active' : 'dsx-dot', 'aria-label': `${widgetName(inst.w)} ${inst.s === '2x4' ? '2×4' : '2×2'}`, onClick: () => setPreviewIdx(i) })),
       ),
     )
   }
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
-    React.createElement('input', { type: 'search', placeholder: '搜索组件', className: 'dsx-search', value: q, onChange: (e) => setQ(e.target.value) }),
+    React.createElement('input', { type: 'search', placeholder: t('market.search'), className: 'dsx-search', value: q, onChange: (e) => setQ(e.target.value) }),
     React.createElement('div', { className: 'dsx-mlist' },
       list.map((w) => {
         const gw = WIDGETS.filter((x) => groupOf(x) === groupOf(w))
@@ -760,13 +780,13 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
         // first line, one description line, actions — no extra id line.
         return React.createElement('button', { key: w.id, type: 'button', className: 'dsx-mcard', 'aria-pressed': anyInstalled, onClick: () => { setPreviewGroup(groupOf(w)); setPreviewIdx(0) } },
           React.createElement('span', { className: 'dsx-mhead' },
-            React.createElement('span', { className: 'dsx-mname' }, GROUP_LABELS[groupOf(w)] ?? w.name),
+            React.createElement('span', { className: 'dsx-mname' }, GROUP_LABELS[groupOf(w)] ? GROUP_LABELS[groupOf(w)]() : widgetName(w)),
             React.createElement('span', { className: 'dsx-badge' }, String(instanceCount)),
           ),
-          React.createElement('span', { className: 'dsx-mdesc' }, w.desc),
+          React.createElement('span', { className: 'dsx-mdesc' }, widgetDesc(w)),
           React.createElement('span', { className: 'dsx-macts' },
-            React.createElement('span', { className: 'dsx-btn' }, '查看详情'),
-            React.createElement('span', { className: anyInstalled ? 'dsx-btn dsx-btn-primary' : 'dsx-btn' }, anyInstalled ? '已添加' : '添加'),
+            React.createElement('span', { className: 'dsx-btn' }, t('market.details')),
+            React.createElement('span', { className: anyInstalled ? 'dsx-btn dsx-btn-primary' : 'dsx-btn' }, anyInstalled ? t('market.added') : t('market.add')),
           ),
         )
       }),
@@ -780,13 +800,13 @@ export function WidgetsPage({ controller, hideHeader }: { controller: WidgetsCon
   const [tab, setTab] = React.useState('config')
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, minHeight: '100%' } },
     hideHeader ? null : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0 12px', borderBottom: '1px solid var(--dsw-alias-border-l2)' } },
-      React.createElement('div', { style: { fontSize: 18, fontWeight: 600, lineHeight: '26px', color: 'var(--dsw-alias-label-primary)' } }, '组件'),
-      React.createElement('div', { style: { fontSize: 13, lineHeight: '20px', color: 'var(--dsw-alias-label-tertiary)' } }, '管理右侧栏中的小组件。'),
+      React.createElement('div', { style: { fontSize: 18, fontWeight: 600, lineHeight: '26px', color: 'var(--dsw-alias-label-primary)' } }, t('page.title')),
+      React.createElement('div', { style: { fontSize: 13, lineHeight: '20px', color: 'var(--dsw-alias-label-tertiary)' } }, t('page.desc')),
     ),
     React.createElement('div', { className: 'dsx-tabbar' },
-      React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'config', onClick: () => setTab('config') }, '组件配置'),
-      React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'market', onClick: () => setTab('market') }, '组件市场'),
-      React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'settings', onClick: () => setTab('settings') }, '组件设置'),
+      React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'config', onClick: () => setTab('config') }, t('tab.config')),
+      React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'market', onClick: () => setTab('market') }, t('tab.market')),
+      React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'settings', onClick: () => setTab('settings') }, t('tab.settings')),
     ),
     tab === 'config' ? React.createElement(ConfigTab, { controller })
       : tab === 'market' ? React.createElement(MarketTab, { controller, usageData: null })
@@ -820,28 +840,28 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
   const colValue = [1, 2, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
     React.createElement(Row, {
-      title: '列数', desc: '侧边栏卡片排布列数：1 列 = 纵向 Dock；2 列 / 4 列 = 网格布局，并解锁长方形部件能力',
+      title: t('settings.columns.title'), desc: t('settings.columns.desc'),
       children: React.createElement('select', {
         className: 'dsx-select', value: colValue,
         onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setPrefs({ columns: Number(e.target.value) }),
       },
-        [1, 2, 4].map((c) => React.createElement('option', { key: c, value: c }, `${c} 列`)),
+        [1, 2, 4].map((c) => React.createElement('option', { key: c, value: c }, t('settings.columns.option', { n: c }))),
       ),
     }),
     React.createElement(Row, {
-      title: '无极变化（连续跟随）', desc: '开启后放大峰值跟随鼠标实时连续变化（每个动画帧重排），用于对比观察动画节奏；关闭则离散跳变后由过渡动画补间',
+      title: t('settings.realtime.title'), desc: t('settings.realtime.desc'),
       children: React.createElement('label', { className: 'dsx-switch-row' },
         React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: prefs.realTime, onChange: (e) => setPrefs({ realTime: e.target.checked }) }),
         React.createElement('span', { className: 'dsx-switch-track' }, React.createElement('span', { className: 'dsx-switch-thumb' })),
       ),
     }),
-    React.createElement(Row, { title: '放大倍数', desc: '被悬浮组件的峰值放大比例（1.0 = 不放大，1.4 = 1.4 倍）', children: React.createElement(Slider, { min: 1, max: 1.4, step: 0.05, value: prefs.magnify, unit: 'x', onChange: (v) => setPrefs({ magnify: v }) }) }),
-    React.createElement(Row, { title: '组件栏内边距', desc: '栏内四周与卡片间距（两者一致）', children: React.createElement(Slider, { min: 4, max: 40, value: prefs.panelPadding, unit: 'px', onChange: (v) => setPrefs({ panelPadding: v }) }) }),
-    React.createElement(Row, { title: '卡片边长', desc: '所有卡片统一的正方形边长，字体与圆角随比例缩放', children: React.createElement(Slider, { min: 100, max: 220, value: prefs.cardSide, unit: 'px', onChange: (v) => setPrefs({ cardSide: v }) }) }),
-    React.createElement(Row, { title: '添加面板宽度', desc: '右侧“添加组件”面板的宽度，也可拖其左边缘调整', children: React.createElement(Slider, { min: 260, max: 760, value: prefs.panelWidth, unit: 'px', onChange: (v) => setPrefs({ panelWidth: v }) }) }),
-    React.createElement(Row, { title: '最多组件数', desc: '侧边栏最多显示的组件数量，超限后无法再添加', children: React.createElement(Slider, { min: 1, max: 20, value: prefs.maxWidgets, unit: '个', onChange: (v) => setPrefs({ maxWidgets: v }) }) }),
+    React.createElement(Row, { title: t('settings.magnify.title'), desc: t('settings.magnify.desc'), children: React.createElement(Slider, { min: 1, max: 1.4, step: 0.05, value: prefs.magnify, unit: 'x', onChange: (v) => setPrefs({ magnify: v }) }) }),
+    React.createElement(Row, { title: t('settings.padding.title'), desc: t('settings.padding.desc'), children: React.createElement(Slider, { min: 4, max: 40, value: prefs.panelPadding, unit: 'px', onChange: (v) => setPrefs({ panelPadding: v }) }) }),
+    React.createElement(Row, { title: t('settings.cardSide.title'), desc: t('settings.cardSide.desc'), children: React.createElement(Slider, { min: 100, max: 220, value: prefs.cardSide, unit: 'px', onChange: (v) => setPrefs({ cardSide: v }) }) }),
+    React.createElement(Row, { title: t('settings.panelWidth.title'), desc: t('settings.panelWidth.desc'), children: React.createElement(Slider, { min: 260, max: 760, value: prefs.panelWidth, unit: 'px', onChange: (v) => setPrefs({ panelWidth: v }) }) }),
+    React.createElement(Row, { title: t('settings.maxWidgets.title'), desc: t('settings.maxWidgets.desc'), children: React.createElement(Slider, { min: 1, max: 20, value: prefs.maxWidgets, unit: t('settings.maxWidgets.unit'), onChange: (v) => setPrefs({ maxWidgets: v }) }) }),
     React.createElement(Row, {
-      title: '隐藏输入框下方文字条', desc: '隐藏输入框下方状态统计条的文字（保留原空间、不影响布局）；关闭时正常显示',
+      title: t('settings.hideStatsLine.title'), desc: t('settings.hideStatsLine.desc'),
       children: React.createElement('label', { className: 'dsx-switch-row' },
         React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: prefs.hideStatsLine, onChange: (e) => setPrefs({ hideStatsLine: e.target.checked }) }),
         React.createElement('span', { className: 'dsx-switch-track' }, React.createElement('span', { className: 'dsx-switch-thumb' })),

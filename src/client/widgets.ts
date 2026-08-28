@@ -5,7 +5,13 @@
  * description, whether it is a built-in (system) component, and a pure
  * `render` that folds session stats into a small card shape. The rail and the
  * settings surfaces both consume this registry; nothing here touches React.
+ *
+ * All user-facing text goes through `t()` so a Settings → Language switch
+ * re-renders every surface in the active locale without a reload. Name/desc/
+ * labels are thunks re-evaluated at read time (see widgetName/widgetDesc).
  */
+
+import { t } from './i18n'
 
 /** One usage item from the OpenCode Go usage endpoint. */
 export interface UsageItem {
@@ -23,6 +29,20 @@ export interface UsageData {
   }
 }
 
+/** One pooled key's usage snapshot (tail masked, never the full secret). */
+export interface UsageKeyEntry {
+  ref: string
+  label: string
+  tail?: string
+  data: UsageData | null
+}
+
+/** All pooled keys' usage plus a host-computed共同用量 (proportional mean). */
+export interface UsageMulti {
+  total: UsageData | null
+  keys: UsageKeyEntry[]
+}
+
 /** Session stats a widget render can read. */
 export interface WidgetStats {
   turns: number
@@ -35,6 +55,12 @@ export interface WidgetStats {
   decodeTokens: number
   usage: { inputTokens: number; cacheReadTokens: number; outputTokens: number } | null
   usageData: UsageData | null
+  /** Multi-key pool usage (OpenCode Go): every key + host-computed total. */
+  usageMulti?: UsageMulti | null
+  /** Current pooled view selection: 'total' or a `poolModes` entry ('Key 1'…). */
+  poolView?: string
+  /** Selectable pooled views in cycle order; first entry must be 'total'. */
+  poolModes?: string[]
   /** Optional live context pressure 0..1 (from useProjection('contextPressure')). */
   contextPercent?: number | null
   contextWindow?: number | null
@@ -165,38 +191,73 @@ export interface WidgetRenderOut {
   rich?: WidgetRich
   /** Top-right corner capsule/round button (e.g. one-click Compact). */
   corner?: WidgetCorner
+  /** Whole-card tap cycles this card through its pooled key views (usage widgets):
+   *  total → Key 1 → Key 2 → … → total. Pressing plays a springy press-down. */
+  cycle?: { modes: string[]; current: string; hint: string }
   /** Whole-card red inner-glow alert (e.g. peak pricing is live): a red glow
    *  bleeds in from the card edges while the centre stays clean, with a small
    *  breathing animation. Applied as the `dsx-peak-alert` class. */
   alert?: boolean
 }
 
-/** A per-card configuration field rendered in the 组件配置 tab. */
+/** A per-card configuration field rendered in the 组件配置 tab. Text fields
+ *  are thunks so 组件配置 re-localizes on language switches. */
 export interface ConfigField {
   key: string
-  label: string
+  label: string | (() => string)
   type: 'text' | 'textarea' | 'toggle' | 'align' | 'valign' | 'mode'
   default?: string | boolean | 'left' | 'center' | 'right'
   /** For type 'mode': the selectable options as [value, label] pairs. */
-  options?: Array<[string, string]>
+  options?: Array<[string, string | (() => string)]>
 }
 
 /** The card shape a widget render produces. */
 export interface Widget {
   id: string
-  name: string
-  desc: string
+  name: string | (() => string)
+  desc: string | (() => string)
   builtin: boolean
   group?: string
-  badgeLabel?: string
+  badgeLabel?: string | (() => string)
   /** Sizes this widget supports. Defaults to ['2x2'] when omitted. */
   sizes?: WidgetSize[]
   render: (stats: WidgetStats, meta?: WidgetRenderMeta) => WidgetRenderOut | null
   /** When set (label text), the preview surfaces let you click the card to flip
    *  the widget's simulated state (e.g. peak-pricing 高峰/低峰). */
-  simToggle?: string
+  simToggle?: string | (() => string)
   /** Optional per-card customization fields (shown in 组件配置 when chosen). */
   configSchema?: ConfigField[]
+}
+
+/** Resolve a possibly-thunked display label at read time. */
+export function resolveLabel(s: string | (() => string) | undefined): string {
+  return typeof s === 'function' ? s() : s ?? ''
+}
+
+export function widgetName(w: Widget): string {
+  return resolveLabel(w.name)
+}
+
+export function widgetDesc(w: Widget): string {
+  return resolveLabel(w.desc)
+}
+
+export function widgetBadgeLabel(w: Widget): string | undefined {
+  return typeof w.badgeLabel === 'function' ? w.badgeLabel() : w.badgeLabel
+}
+
+export function widgetSimToggle(w: Widget): string | undefined {
+  return typeof w.simToggle === 'function' ? w.simToggle() : w.simToggle
+}
+
+/** Resolve a config field's label (thunk-aware). */
+export function fieldLabel(f: ConfigField): string {
+  return resolveLabel(f.label)
+}
+
+/** Resolve a mode option's [value, label] pair label. */
+export function optionLabel(o: [string, string | (() => string)]): string {
+  return resolveLabel(o[1])
 }
 
 /** Compact duration: 45.2s under a minute, 2m42s from there. */
@@ -302,38 +363,80 @@ export function fmtShortDate(iso: string): string {
   return `${Number(m[2])}.${Number(m[3])}`
 }
 
-function usageRender(key: 'rolling' | 'weekly' | 'monthly', label: string): (stats: WidgetStats) => WidgetRenderOut | null {
+/** Resolve which key's usage a usage widget should currently show. */
+function usageView(stats: WidgetStats): { data: UsageData | null; mode: string } {
+  const multi = stats.usageMulti
+  const modes = stats.poolModes !== undefined && stats.poolModes.length > 0 ? stats.poolModes : ['total']
+  const view = stats.poolView
+  if (view === undefined || !modes.includes(view) || view === 'total') {
+    return { data: multi?.total ?? stats.usageData ?? null, mode: 'total' }
+  }
+  // modes[0] is always 'total'; index 1..N map 1:1 to pooled keys.
+  const idx = modes.indexOf(view) - 1
+  const entry = multi?.keys[idx]
+  return { data: entry?.data ?? null, mode: view }
+}
+
+/** Cycle descriptor for a pooled usage widget, when more than one view exists. */
+function cycleFor(stats: WidgetStats): WidgetRenderOut['cycle'] {
+  const modes = stats.poolModes
+  if (modes === undefined || modes.length < 2) return undefined
+  const current = stats.poolView !== undefined && modes.includes(stats.poolView) ? stats.poolView : 'total'
+  const hint = t('usage.cycleHint', { chain: modes.map((m) => (m === 'total' ? t('usage.totalKey') : m)).join(' → ') + ' → ' + t('usage.totalKey') })
+  return { modes, current, hint }
+}
+
+/** 「总 Key」/「Key N」label for the current view. */
+function modeLabel(mode: string): string {
+  return mode === 'total' ? t('usage.totalKey') : mode
+}
+
+function usageRender(key: 'rolling' | 'weekly' | 'monthly', nameKey: string): (stats: WidgetStats) => WidgetRenderOut | null {
   return (stats) => {
-    const u = stats.usageData?.usage?.[key]
-    if (!u) return { title: label, value: '—' }
-    return { title: label, value: `${u.percent}%`, sub: `重置 ${String(u.resetsAt || '').slice(0, 10)}` }
+    const { data, mode } = usageView(stats)
+    const u = data?.usage?.[key]
+    const cycle = cycleFor(stats)
+    if (!u) return { title: t(nameKey), value: '—', legend: modeLabel(mode), cycle }
+    return {
+      title: t(nameKey),
+      value: `${u.percent}%`,
+      legend: modeLabel(mode),
+      sub: t('usage.resets', { date: String(u.resetsAt || '').slice(0, 10) }),
+      cycle,
+    }
   }
 }
 
 /** OpenCode Go dosage as one bar chart across the three windows. */
 function usageBarsRender(stats: WidgetStats): WidgetRenderOut | null {
-  const u = stats.usageData?.usage
-  if (!u) return { title: 'OpenCode 用量', value: '—' }
+  const { data, mode } = usageView(stats)
+  const u = data?.usage
+  const cycle = cycleFor(stats)
+  if (!u) return { title: t('usage.title'), value: '—', legend: modeLabel(mode), cycle }
   const tone = (p: number): BarDatum['tone'] => (p >= 95 ? 'danger' : p >= 75 ? 'warn' : 'success')
   const bars: BarDatum[] = [
-    { label: '滚动', value: u.rolling.percent, ratio: u.rolling.percent / 100, tone: tone(u.rolling.percent) },
-    { label: '周', value: u.weekly.percent, ratio: u.weekly.percent / 100, tone: tone(u.weekly.percent) },
-    { label: '月', value: u.monthly.percent, ratio: u.monthly.percent / 100, tone: tone(u.monthly.percent) },
+    { label: t('usage.rolling'), value: u.rolling.percent, ratio: u.rolling.percent / 100, tone: tone(u.rolling.percent) },
+    { label: t('usage.week'), value: u.weekly.percent, ratio: u.weekly.percent / 100, tone: tone(u.weekly.percent) },
+    { label: t('usage.month'), value: u.monthly.percent, ratio: u.monthly.percent / 100, tone: tone(u.monthly.percent) },
   ]
-  return { title: 'OpenCode 用量', chart: { kind: 'bars', bars } }
+  return { title: t('usage.title'), legend: modeLabel(mode), chart: { kind: 'bars', bars }, cycle }
 }
 
 /** OpenCode Go dosage as three small donuts (one per window) — same data as the
  *  bars chart, circle form. Each ring shows its percent in the centre and the
  *  window label under it, coloured by the same urgency scale. */
 function usageRingsRender(stats: WidgetStats): WidgetRenderOut | null {
-  const u = stats.usageData?.usage
-  if (!u) return { title: 'OpenCode 用量', value: '—' }
+  const { data, mode } = usageView(stats)
+  const u = data?.usage
+  const cycle = cycleFor(stats)
+  if (!u) return { title: t('usage.title'), value: '—', legend: modeLabel(mode), cycle }
   const tone = (p: number): 'success' | 'warn' | 'danger' => (p >= 95 ? 'danger' : p >= 75 ? 'warn' : 'success')
   const mk = (label: string, p: number) => ({ label, value: p, ratio: p / 100, tone: tone(p) })
   return {
-    title: 'OpenCode 用量',
-    chart: { kind: 'rings', rings: [mk('滚动', u.rolling.percent), mk('周', u.weekly.percent), mk('月', u.monthly.percent)] },
+    title: t('usage.title'),
+    legend: modeLabel(mode),
+    chart: { kind: 'rings', rings: [mk(t('usage.rolling'), u.rolling.percent), mk(t('usage.week'), u.weekly.percent), mk(t('usage.month'), u.monthly.percent)] },
+    cycle,
   }
 }
 
@@ -342,20 +445,20 @@ function usageRingsRender(stats: WidgetStats): WidgetRenderOut | null {
  *  which is 09:00–12:00 and 14:00–18:00 Beijing. Every other time — including
  *  weekends — is off-peak. Hard-coded for now; a custom-schedule setting is
  *  planned (README Roadmap). */
-const PEAK_WINDOWS_BJ: Array<{ label: string; start: number; end: number }> = [
-  { label: '上午 09:00–12:00', start: 9 * 60, end: 12 * 60 },
-  { label: '下午 14:00–18:00', start: 14 * 60, end: 18 * 60 },
+const PEAK_WINDOWS_BJ: Array<{ key: string; start: number; end: number }> = [
+  { key: 'card.peak.window1', start: 9 * 60, end: 12 * 60 },
+  { key: 'card.peak.window2', start: 14 * 60, end: 18 * 60 },
 ]
 
 /** Is right now inside a peak window (Beijing local clock)? Returns the active
- *  window label too, so the meter can light the matching row. Exported so the
+ *  window key too, so the meter can light the matching row. Exported so the
  *  preview surfaces can flip the simulated state relative to the real one. */
-export function peakStatusNow(now = new Date()): { peak: boolean; activeLabel?: string } {
+export function peakStatusNow(now = new Date()): { peak: boolean; activeKey?: string } {
   const dow = now.getDay() // 0 = Sunday
   if (dow === 0 || dow === 6) return { peak: false }
   const mins = now.getHours() * 60 + now.getMinutes()
   for (const w of PEAK_WINDOWS_BJ) {
-    if (mins >= w.start && mins < w.end) return { peak: true, activeLabel: w.label }
+    if (mins >= w.start && mins < w.end) return { peak: true, activeKey: w.key }
   }
   return { peak: false }
 }
@@ -370,12 +473,12 @@ function peakPricingRender(_stats: WidgetStats, meta?: WidgetRenderMeta): Widget
   const simPeak = sim && typeof sim.peak === 'boolean' ? sim.peak : null
   const live = peakStatusNow()
   const peak = simPeak !== null ? simPeak : live.peak
-  const activeLabel = simPeak !== null
-    ? (simPeak ? (PEAK_WINDOWS_BJ[(sim && typeof sim.window === 'number' ? sim.window : 0)] ?? PEAK_WINDOWS_BJ[0]).label : undefined)
-    : live.activeLabel
+  const activeKey = simPeak !== null
+    ? PEAK_WINDOWS_BJ[(sim && typeof sim.window === 'number' ? sim.window : 0)]?.key
+    : live.activeKey
   return {
-    title: '峰谷定价',
-    meter: PEAK_WINDOWS_BJ.map((w) => ({ label: w.label, active: w.label === activeLabel })),
+    title: t('card.peak.title'),
+    meter: PEAK_WINDOWS_BJ.map((w) => ({ label: t(w.key), active: w.key === activeKey })),
     value: peak ? 'EXPENSIVE' : 'CHEAP',
     valueTone: peak ? 'danger' : undefined,
     alert: peak,
@@ -402,23 +505,23 @@ function contextWaterRender(stats: WidgetStats, meta?: WidgetRenderMeta): Widget
   const used = win ? fmt(total) : null
   const capacity = win ? fmt(win) : null
   const segments = [
-    { label: '系统提示词', tokens: sys, tone: 'muted' as const },
-    { label: '工具', tokens: tools, tone: 'success' as const },
-    { label: '对话消息', tokens: msg, tone: 'primary' as const },
+    { label: t('card.contextWater.system'), tokens: sys, tone: 'muted' as const },
+    { label: t('card.contextWater.tools'), tokens: tools, tone: 'success' as const },
+    { label: t('card.contextWater.messages'), tokens: msg, tone: 'primary' as const },
   ]
   if (meta?.size === '2x4') {
     // 2×4 variant: the percent + concrete figures move up into the top-right
     // header row (value + headRight), and the segmented bar stretches across the
     // full extended width below. Everything else matches the 2×2 version.
     return {
-      title: '上下文已用',
+      title: t('card.contextWater.title'),
       value: `${Math.round(pct * 100)}%`,
       headRight: used && capacity ? `${used} / ${capacity}` : undefined,
       chart: total > 0 ? { kind: 'segments', segments, totalTokens: total } : undefined,
     }
   }
   return {
-    title: '上下文已用',
+    title: t('card.contextWater.title'),
     // Percent + concrete figures sit on their own row below the title
     // (user preference over the inline header).
     headAfter: {
@@ -436,10 +539,10 @@ function contextRender(stats: WidgetStats): WidgetRenderOut | null {
   const pct = p == null ? null : Math.round(p * 100)
   const armed = stats.armedAction === 'contextCompact'
   return {
-    title: '一键压缩',
+    title: t('card.context.title'),
     value: pct == null ? undefined : `${pct}%`,
-    sub: pct == null ? '等待上下文数据' : undefined,
-    corner: { id: 'contextCompact', label: '压缩', armedLabel: '确认', armed, pos: 'bottom' },
+    sub: pct == null ? t('card.context.waiting') : undefined,
+    corner: { id: 'contextCompact', label: t('card.context.compact'), armedLabel: t('card.context.confirm'), armed, pos: 'bottom' },
   }
 }
 
@@ -452,9 +555,9 @@ function taskRender(stats: WidgetStats): WidgetRenderOut {
   const done = todos ? todos.filter((t) => t.status === 'completed').length : 0
   const total = todos ? todos.length : 0
   return {
-    title: '任务',
-    value: total > 0 ? `${done} 已完成` : '暂无任务',
-    sub: `${doing} 进行中 · ${pending} 待办`,
+    title: t('widget.task.name'),
+    value: total > 0 ? t('card.task.done', { n: done }) : t('card.task.none'),
+    sub: t('card.task.sub', { doing, pending }),
   }
 }
 
@@ -480,7 +583,7 @@ function heatmapRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRende
   // drawn on the chart's bottom-left/right corners by the renderer.
   const figures = todayVal > 0 || total > 0 ? `${fmtTokens(todayVal)}  ${fmtTokens(total)}` : undefined
   return {
-    title: 'Token 用量',
+    title: t('card.heatmap.title'),
     // 2×4: figures sit at the right end of the title row; the grid centres.
     ...(wide ? { headRight: figures } : { legend: figures }),
     chart: { kind: 'heatmap', heatmap: grid },
@@ -505,7 +608,7 @@ function heatmapBarsRender(stats: WidgetStats): WidgetRenderOut | null {
   const weekTotal = bars.reduce((a, b) => a + b.value, 0)
   const legend = today > 0 || weekTotal > 0 ? `${fmtTokens(today)}  ${fmtTokens(weekTotal)}` : undefined
   return {
-    title: 'Token 用量',
+    title: t('card.heatmap.title'),
     legend,
     chart: { kind: 'barsV', bars },
   }
@@ -523,7 +626,7 @@ function quoteRender(stats: WidgetStats): WidgetRenderOut | null {
   const trimmed = text && text.trim()
   if (!trimmed) return null
   return {
-    title: showTitle === false ? '' : '今日寄语',
+    title: showTitle === false ? '' : t('card.quote.title'),
     rich: { type: 'quote', text: trimmed, align, valign, wrap },
   }
 }
@@ -536,36 +639,36 @@ function quoteRender(stats: WidgetStats): WidgetRenderOut | null {
  *  - 'opencode-go' : OpenCode Go usage quota cards.
  *  - 'coding-plan' : Token-usage heatmap + last-7-days bars. */
 export const WIDGETS: Widget[] = [
-  { id: 'counts', group: 'system', name: '轮次·步数', desc: '本轮会话的轮次与步骤计数', builtin: true, render: (s) => ({ title: '轮次·步数', value: `${s.turns}轮 ${s.steps}步` }) },
-  { id: 'llm', group: 'system', name: 'LLM 时长', desc: '模型推理累计耗时', builtin: true, render: (s) => (s.llmMs > 0 ? { title: 'LLM 时长', value: fmtDuration(s.llmMs) } : null) },
-  { id: 'tool', group: 'system', name: '工具调用', desc: '工具调用累计耗时', builtin: true, render: (s) => (s.toolMs > 0 ? { title: '工具调用', value: fmtDuration(s.toolMs) } : null) },
-  { id: 'ttft', group: 'system', name: '首 token 平均', desc: '平均首 token 延迟', builtin: true, render: (s) => (s.ttftSteps > 0 ? { title: '首 token 平均', value: fmtDuration(s.ttftMs / s.ttftSteps) } : null) },
-  { id: 'tps', group: 'system', name: '速率', desc: '解码吞吐速度', builtin: true, render: (s) => (s.decodeMs > 0 ? { title: '速率', value: `${fmtTps(s.decodeTokens / (s.decodeMs / 1000))} tok/s` } : null) },
-  { id: 'cache', group: 'system', name: '缓存命中', desc: '输入缓存的命中比例', builtin: true, render: (s) => (s.usage && s.usage.inputTokens > 0 && s.usage.cacheReadTokens > 0 ? { title: '缓存命中', value: `${Math.round((s.usage.cacheReadTokens / s.usage.inputTokens) * 100)}%` } : null) },
-  { id: 'tokens', group: 'system', name: 'Tokens', desc: '输入与输出 token 计数', builtin: true, render: (s) => (s.usage && s.usage.inputTokens > 0 ? { title: 'Tokens', value: `${fmtTokens(s.usage.inputTokens)} ${fmtTokens(s.usage.outputTokens || 0)}` } : null) },
-  { id: 'context', group: 'system', name: '一键压缩', desc: '上下文占用百分比，右上按钮两次点击执行压缩', builtin: true, render: contextRender },
-  { id: 'context-water', group: 'system', name: '上下文水位', desc: '上下文系统/工具/消息占比分段条', builtin: true, sizes: ['2x2', '2x4'], render: contextWaterRender },
-  { id: 'task', group: 'system', name: '任务', desc: '当前任务的进行中/已完成/待办计数', builtin: true, render: taskRender },
-  { id: 'quote', group: 'other', name: '今日寄语', desc: '显示你自定义的一句话（未填写文本时不显示内容）', builtin: true, render: quoteRender, configSchema: [
-    { key: 'text', label: '寄语内容', type: 'text' },
-    { key: 'showTitle', label: '显示标题', type: 'toggle', default: true },
-    { key: 'align', label: '水平对齐', type: 'align', default: 'left' },
-    { key: 'valign', label: '垂直位置', type: 'valign', default: 'top' },
-    { key: 'wrap', label: '允许换行', type: 'toggle', default: true },
+  { id: 'counts', group: 'system', name: () => t('widget.counts.name'), desc: () => t('widget.counts.desc'), builtin: true, render: (s) => ({ title: t('widget.counts.name'), value: t('card.counts.value', { turns: s.turns, steps: s.steps }) }) },
+  { id: 'llm', group: 'system', name: () => t('widget.llm.name'), desc: () => t('widget.llm.desc'), builtin: true, render: (s) => (s.llmMs > 0 ? { title: t('widget.llm.name'), value: fmtDuration(s.llmMs) } : null) },
+  { id: 'tool', group: 'system', name: () => t('widget.tool.name'), desc: () => t('widget.tool.desc'), builtin: true, render: (s) => (s.toolMs > 0 ? { title: t('widget.tool.name'), value: fmtDuration(s.toolMs) } : null) },
+  { id: 'ttft', group: 'system', name: () => t('widget.ttft.name'), desc: () => t('widget.ttft.desc'), builtin: true, render: (s) => (s.ttftSteps > 0 ? { title: t('widget.ttft.name'), value: fmtDuration(s.ttftMs / s.ttftSteps) } : null) },
+  { id: 'tps', group: 'system', name: () => t('widget.tps.name'), desc: () => t('widget.tps.desc'), builtin: true, render: (s) => (s.decodeMs > 0 ? { title: t('widget.tps.name'), value: `${fmtTps(s.decodeTokens / (s.decodeMs / 1000))} tok/s` } : null) },
+  { id: 'cache', group: 'system', name: () => t('widget.cache.name'), desc: () => t('widget.cache.desc'), builtin: true, render: (s) => (s.usage && s.usage.inputTokens > 0 && s.usage.cacheReadTokens > 0 ? { title: t('widget.cache.name'), value: `${Math.round((s.usage.cacheReadTokens / s.usage.inputTokens) * 100)}%` } : null) },
+  { id: 'tokens', group: 'system', name: () => t('widget.tokens.name'), desc: () => t('widget.tokens.desc'), builtin: true, render: (s) => (s.usage && s.usage.inputTokens > 0 ? { title: t('widget.tokens.name'), value: `${fmtTokens(s.usage.inputTokens)} ${fmtTokens(s.usage.outputTokens || 0)}` } : null) },
+  { id: 'context', group: 'system', name: () => t('widget.context.name'), desc: () => t('widget.context.desc'), builtin: true, render: contextRender },
+  { id: 'context-water', group: 'system', name: () => t('widget.context-water.name'), desc: () => t('widget.context-water.desc'), builtin: true, sizes: ['2x2', '2x4'], render: contextWaterRender },
+  { id: 'task', group: 'system', name: () => t('widget.task.name'), desc: () => t('widget.task.desc'), builtin: true, render: taskRender },
+  { id: 'quote', group: 'other', name: () => t('widget.quote.name'), desc: () => t('widget.quote.desc'), builtin: true, render: quoteRender, configSchema: [
+    { key: 'text', label: () => t('config.quoteText'), type: 'text' },
+    { key: 'showTitle', label: () => t('config.showTitle'), type: 'toggle', default: true },
+    { key: 'align', label: () => t('config.align'), type: 'align', default: 'left' },
+    { key: 'valign', label: () => t('config.valign'), type: 'valign', default: 'top' },
+    { key: 'wrap', label: () => t('config.wrap'), type: 'toggle', default: true },
   ] },
-  { id: 'heatmap', group: 'coding-plan', name: '用量热度图', desc: '每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；大小可在市场左右切换', builtin: true, sizes: ['2x2', '2x4'], render: heatmapRender, configSchema: [
-    { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(今天最右)'], ['quarter', '季度对齐']] },
-    { key: 'timeZone', label: '记账时区', type: 'mode', default: 'Asia/Shanghai', options: [['Asia/Shanghai', '北京 (UTC+8)'], ['local', '跟随系统'], ['UTC', 'UTC']] },
+  { id: 'heatmap', group: 'coding-plan', name: () => t('widget.heatmap.name'), desc: () => t('widget.heatmap.desc'), builtin: true, sizes: ['2x2', '2x4'], render: heatmapRender, configSchema: [
+    { key: 'monthMode', label: () => t('config.monthMode'), type: 'mode', default: 'rolling', options: [['rolling', () => t('config.monthMode.rolling')], ['quarter', () => t('config.monthMode.quarter')]] },
+    { key: 'timeZone', label: () => t('config.timeZone'), type: 'mode', default: 'Asia/Shanghai', options: [['Asia/Shanghai', () => t('config.timeZone.beijing')], ['local', () => t('config.timeZone.local')], ['UTC', 'UTC']] },
   ] },
-  { id: 'heatmap-bars', group: 'coding-plan', name: '用量柱状图', desc: '最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致', builtin: true, render: heatmapBarsRender, configSchema: [
-    { key: 'monthMode', label: '窗口对齐方式', type: 'mode', default: 'rolling', options: [['rolling', '滚动(最近7天)'], ['weekly', '每周对齐']] },
+  { id: 'heatmap-bars', group: 'coding-plan', name: () => t('widget.heatmap-bars.name'), desc: () => t('widget.heatmap-bars.desc'), builtin: true, render: heatmapBarsRender, configSchema: [
+    { key: 'monthMode', label: () => t('config.monthMode'), type: 'mode', default: 'rolling', options: [['rolling', () => t('config.monthMode.rolling7')], ['weekly', () => t('config.monthMode.weekly')]] },
   ] },
-  { id: 'usage-bars', group: 'opencode-go', name: '用量对比', desc: 'OpenCode 滚动/周/月三窗口用量柱状图', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageBarsRender },
-  { id: 'usage-rings', group: 'opencode-go', name: '用量环图', desc: 'OpenCode 滚动/周/月三窗口用量环形图', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRingsRender },
-  { id: 'usage-rolling', group: 'opencode-go', name: '滚动用量', desc: 'OpenCode Go 滚动窗口用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('rolling', '滚动用量') },
-  { id: 'usage-weekly', group: 'opencode-go', name: '每周用量', desc: 'OpenCode Go 每周用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('weekly', '每周用量') },
-  { id: 'usage-monthly', group: 'opencode-go', name: '每月用量', desc: 'OpenCode Go 每月用量配额', builtin: false, badgeLabel: 'OpenCode Go 用量配额', render: usageRender('monthly', '每月用量') },
-  { id: 'peak-pricing', group: 'pricing', name: '峰谷定价', desc: 'DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰）', builtin: false, badgeLabel: '峰谷定价', simToggle: '高峰/低峰', render: peakPricingRender },
+  { id: 'usage-bars', group: 'opencode-go', name: () => t('widget.usage-bars.name'), desc: () => t('widget.usage-bars.desc'), builtin: false, badgeLabel: () => t('badge.opencode'), render: usageBarsRender },
+  { id: 'usage-rings', group: 'opencode-go', name: () => t('widget.usage-rings.name'), desc: () => t('widget.usage-rings.desc'), builtin: false, badgeLabel: () => t('badge.opencode'), render: usageRingsRender },
+  { id: 'usage-rolling', group: 'opencode-go', name: () => t('widget.usage-rolling.name'), desc: () => t('widget.usage-rolling.desc'), builtin: false, badgeLabel: () => t('badge.opencode'), render: usageRender('rolling', 'widget.usage-rolling.name') },
+  { id: 'usage-weekly', group: 'opencode-go', name: () => t('widget.usage-weekly.name'), desc: () => t('widget.usage-weekly.desc'), builtin: false, badgeLabel: () => t('badge.opencode'), render: usageRender('weekly', 'widget.usage-weekly.name') },
+  { id: 'usage-monthly', group: 'opencode-go', name: () => t('widget.usage-monthly.name'), desc: () => t('widget.usage-monthly.desc'), builtin: false, badgeLabel: () => t('badge.opencode'), render: usageRender('monthly', 'widget.usage-monthly.name') },
+  { id: 'peak-pricing', group: 'pricing', name: () => t('widget.peak-pricing.name'), desc: () => t('widget.peak-pricing.desc'), builtin: false, badgeLabel: () => t('widget.peak-pricing.name'), simToggle: () => t('sim.peak'), render: peakPricingRender },
 ]
 
 /** All widget ids. */
@@ -584,7 +687,7 @@ export const DEFAULT_INSTALLED: string[] = STATS_WIDGET_IDS.map((id) => instance
 
 /** Badge text for a widget. */
 export function badgeOf(w: Widget): string {
-  return w.badgeLabel ?? (w.builtin ? '系统' : '外部')
+  return widgetBadgeLabel(w) ?? (w.builtin ? t('badge.system') : t('badge.external'))
 }
 
 /** The group key for a widget (its own id when it is not grouped). */

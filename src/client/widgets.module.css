@@ -33,6 +33,17 @@
   overflow: hidden;
 }
 
+/* Whole-card cycle (pooled usage): press dips the card, release springs back
+   with a slight bounce — the button feel the shell uses for its own pills. */
+.dsx-stats-card.dsx-cyclable {
+  cursor: pointer;
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.dsx-stats-card.dsx-cyclable.dsx-cycle-pressed {
+  transform: scale(0.93);
+  transition: transform 0.08s ease-out;
+}
+
 .dsx-stats-card-title {
   color: var(--dsw-alias-state-business-primary);
   line-height: 1.2;
@@ -101,11 +112,24 @@
    `#root`'s margin-right, so the rail carries the SAME transition to glide in
    lockstep; without it the rail snaps while the conversation column glides. */
 .dsx-stats-rail {
-  transition:
-    right var(--ds-transition-duration-slow) var(--ds-ease-in-out),
-    transform 0.24s var(--ds-ease-in-out);
+  /* Panel open/close glide = compositor-only. The rail sits flush against the
+     viewport right edge (right:0, set inline) and follows dsh-better-sidebar's
+     shared `--dsh-sidebar-width` via translateX * -1, so the WHOLE rail subtree
+     (cards, heatmaps, add button) translates on the compositor — zero per-frame
+     layout — instead of tweening `right`, which reflows every rail child on
+     every animation frame. Same duration/easing as the conversation column's
+     margin-right, so both glide in lockstep. body[data-dsh-sidebar-dragging]
+     disables this transition below, so dragging tracks the pointer instantly. */
+  transform: translateX(calc(var(--dsh-sidebar-width, 0px) * -1));
+  transition: transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);
   /* Legacy IE / old Edge scrollbar hide. */
   -ms-overflow-style: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dsx-stats-rail {
+    transition: none;
+  }
 }
 
 /* Hide the rail's scrollbar while keeping it scrollable. Chromium, Edge, and
@@ -181,7 +205,11 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
    reflow properties (top/width/height) and paints the brand-blue hover edge. 鈹€鈹€ */
 .dsx-stats-card-slot {
   transition: top 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out);
-  will-change: top, width, height;
+  /* No persistent will-change: every card slot used to hold a permanent
+     compositing layer (two decks × N cards), inflating GPU memory and the
+     per-frame composite cost while the right sidebar animates. Browsers
+     promote a layer automatically while the short tween runs and release it
+     afterwards — the persistent promotion had no benefit. */
 }
 .dsx-stats-card-slot .dsx-stats-card {
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
