@@ -108,20 +108,21 @@
 }
 
 /* The rail tracks `--dsh-sidebar-width` (set by dsh-better-sidebar when its
-   right panel opens/closes). The shell animates that variable's effect on
-   `#root`'s margin-right, so the rail carries the SAME transition to glide in
-   lockstep; without it the rail snaps while the conversation column glides. */
+   right panel opens/closes) on the MAIN THREAD, on the same animation path as
+   the conversation column's margin-right (dsh-ui-harmonizer). */
 .dsx-stats-rail {
-  /* Panel open/close glide = compositor-only. The rail sits flush against the
-     viewport right edge (right:0, set inline) and follows dsh-better-sidebar's
-     shared `--dsh-sidebar-width` via translateX * -1, so the WHOLE rail subtree
-     (cards, heatmaps, add button) translates on the compositor — zero per-frame
-     layout — instead of tweening `right`, which reflows every rail child on
-     every animation frame. Same duration/easing as the conversation column's
-     margin-right, so both glide in lockstep. body[data-dsh-sidebar-dragging]
-     disables this transition below, so dragging tracks the pointer instantly. */
-  transform: translateX(calc(var(--dsh-sidebar-width, 0px) * -1));
-  transition: transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+  /* Panel open/close glide must share the conversation column's animation
+     PATH. v1.2.3 moved this to a compositor transform: it never drops frames,
+     but when the column's per-frame reflow overran a frame the rail kept
+     gliding while the column stalled — the two visibly split ("rail first,
+     conversation later"). Same-path animation cannot split: both surfaces
+     advance in the same style→layout pass every frame, so a busy frame slows
+     BOTH together instead of separating them. The rail subtree is cheap now
+     (lazy overlay deck, no persistent will-change), so the per-frame cost is
+     negligible. `right` is set inline on the element; this rule only carries
+     the transition. body[data-dsh-sidebar-dragging] disables it below so
+     dragging tracks the pointer instantly. */
+  transition: right var(--ds-transition-duration-slow) var(--ds-ease-in-out);
   /* Legacy IE / old Edge scrollbar hide. */
   -ms-overflow-style: none;
 }

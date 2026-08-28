@@ -36,7 +36,7 @@ DeepSeek-Harness Widgets is a **persistent DSH bundle plugin** built on the Cord
 
 ### Continuous Magnification
 
-macOS-Dock-style hover magnification with two modes (toggle in **Settings → 组件 → 无极变化**):
+macOS-Dock-style hover magnification with two modes (toggle in **Settings → Components → Realtime follow**):
 
 - **Stepless (continuous follow)**: truly stepless — every card's scale is driven by its own continuous Euclidean distance to the pointer, so the peak glides smoothly between cards on any pointer movement. It snaps to its steady right-anchored geometry every frame (`transition: none`), so a card's right edge stays flush with the rail even mid-motion — no width/right desync while the pointer moves.
 - **Discrete (default)**: reuses the same continuous geometry but snaps the pointer onto a quantized grid (row/column centres + the midpoints between adjacent ones: 2·rows−1 Y points, 2·cols−1 X points), with a 0.2s tween gliding the peak between grid points.
@@ -68,11 +68,11 @@ In both modes the magnified deck is painted by a fixed overlay **outside** the r
 
 ### OpenCode Go Usage
 
-Rolling / weekly / monthly usage windows + percentage + reset time. The host half registers a same-origin route proxying `opencode.ai`; the browser makes no cross-origin requests, and keys go through DSH credentials. Two presentations: **用量对比** (three-window bars) and **用量环图** (three-window donut rings — percent in each ring centre, exact value on hover, same urgency colouring).
+Rolling / weekly / monthly usage windows + percentage + reset time. The host half registers a same-origin route proxying `opencode.ai`; the browser makes no cross-origin requests, and keys go through DSH credentials. Two presentations: **usage-bars** (three-window bars) and **usage-rings** (three-window donut rings — percent in each ring centre, exact value on hover, same urgency colouring).
 
 ### Peak Pricing (market widget)
 
-A 2×2-only 峰谷定价 card showing whether the current moment is inside a DeepSeek peak-pricing window. Peak hours (Beijing time, UTC+8): Mon–Fri **09:00–12:00** and **14:00–18:00** — everything else, including weekends, is off-peak. Off-peak shows **CHEAP**; during a peak window the whole card glows with a breathing red inner glow (never a solid fill — the centre stays fully readable) and shows **EXPENSIVE**, while the corresponding window row under the title lights up brand-blue and scales up slightly. The schedule is hard-coded for now; a custom-schedule setting is on the roadmap.
+A 2×2-only peak-pricing card showing whether the current moment is inside a DeepSeek peak-pricing window. Peak hours (Beijing time, UTC+8): Mon–Fri **09:00–12:00** and **14:00–18:00** — everything else, including weekends, is off-peak. Off-peak shows **CHEAP**; during a peak window the whole card glows with a breathing red inner glow (never a solid fill — the centre stays fully readable) and shows **EXPENSIVE**, while the corresponding window row under the title lights up brand-blue and scales up slightly. The schedule is hard-coded for now; a custom-schedule setting is on the roadmap.
 
 ---
 
@@ -94,7 +94,7 @@ dsh plugin --profile web add dsh-widgets
 dsh plugin --profile web add link:D:/dsh-home/plugins/harness-widgets
 ```
 
-After installing, **hard-refresh the browser** (Ctrl+Shift+R) and click the "组件" (widgets) capsule in the session header to expand the rail. The OpenCode Go widget needs `OPENCODE_GO_API_KEY` configured in the Models settings.
+After installing, **hard-refresh the browser** (Ctrl+Shift+R) and click the "Components" (widgets) capsule in the session header to expand the rail. The OpenCode Go widget needs `OPENCODE_GO_API_KEY` configured in the Models settings.
 
 ## Development
 
@@ -115,49 +115,57 @@ pnpm run check      # typecheck + tests + build
 
 ## Changelog
 
+### v1.2.4
+**Fix — rail open/close glide returns to main-thread `right` transition for perfect lockstep (with dsh-ui-harmonizer v0.8.3):**
+
+- 🤝 v1.2.3 moved the rail glide to a compositor transform (zero dropped frames), but when the conversation column's per-frame margin reflow overran a frame the rail kept gliding while the column stalled — the two surfaces **visibly split** ("rail glides first, conversation lags"). This is not a performance issue but a fundamental difference in animation paths: compositor and main-thread animations will always diverge on busy frames.
+- 🔁 The fix puts the rail back on the **same animation path** as the conversation column (`transition: right`, same variable / duration / easing): same-path animations cannot split by definition — both surfaces advance in the same style→layout pass every frame, so a busy frame slows **both** together and they never separate. v1.2.3's other two optimizations are preserved (overlay card lazy rendering, no persistent `will-change`); the rail subtree is already cheap enough that per-frame reflow cost is negligible.
+- 📐 Measured (playwright + local Edge, heavy session, widget rail open + panel toggle): rail↔conversation right-edge per-frame offset **std = 0 (perfect lockstep)**; dropped frames 0%; left-edge drift 0; steps more uniform (largest single-frame step 220px→71px — that 220px jump in v1.2.3 was the telltale sign of the two paths splitting).
+- ✔️ Verified via `../harness-ui-enhancer/scripts/verify-glide.cjs` (lockstep / drops / left-edge / scroll convergence).
+
 ### v1.2.3
-**Perf — 右面板开合动画掉帧修复（与 dsh-better-sidebar / dsh-ui-harmonizer 协同）：**
+**Perf — right-panel open/close animation jank fix (coordinated with dsh-better-sidebar / dsh-ui-harmonizer):**
 
-- 🧊 rail 与放大 overlay 的侧移从 `right` 属性动画改为**合成器 transform 平移**（`translateX(calc(var(--dsh-sidebar-width) * -1))`，`right:0`）：better-sidebar 面板开合时 rail 整树在合成层平移，卡片/热力图零逐帧 reflow；之前 `transition: right` 每帧重排整个 rail 子树，与对话列的 margin 动画叠加后随对话 DOM 规模掉帧，且两过渡相互不同步。
-- 🗑️ 移除卡片 slot 常驻 `will-change: top,width,height`：此前两套 deck（静态+放大层）× N 张卡片全部常驻独立合成层，膨胀 GPU 内存与每帧合成成本；短 tween 由浏览器自动提升层，无需常驻。
-- ✂️ 放大 overlay 卡片体改为**仅在真正放大时渲染**（slot div 常驻保持几何 tween 无缝）：静息时 rail 常驻 DOM 减半（热力图等重组件不再双份渲染）。
-- 🔗 与 dsh-better-sidebar / dsh-ui-harmonizer 保持同变量同 duration/easing（`--dsh-sidebar-width` + `--ds-transition-duration-slow` + `--ds-ease-in-out`）；拖动（`body[data-dsh-sidebar-dragging]`）仍即时跟随；`prefers-reduced-motion` 关闭过渡。
+- 🧊 rail and magnify-overlay shift changed from `right` property animation to **compositor transform glide** (`translateX(calc(var(--dsh-sidebar-width) * -1))`, `right:0`): when better-sidebar's panel opens/closes the entire rail subtree translates on the compositor — cards and heatmap incur zero per-frame reflow; the old `transition: right` reflowed the whole rail subtree every animation frame, stacking with the conversation column's margin animation to produce frame drops proportional to conversation DOM size, plus visual desync.
+- 🗑️ Removed persistent `will-change: top,width,height` from card slots: previously two deck sets (static + magnify overlay) × N cards all held individual compositing layers, inflating GPU memory and per-frame compositing cost; short tweens are auto-promoted by the browser.
+- ✂️ Magnify-overlay card body now renders **only while actually magnifying** (slot div stays mounted for seamless geometry tween): at rest the rail's resident DOM is halved (heavy widgets like heatmaps no longer rendered twice).
+- 🔗 Shares the same variable / duration / easing as dsh-better-sidebar and dsh-ui-harmonizer (`--dsh-sidebar-width` + `--ds-transition-duration-slow` + `--ds-ease-in-out`); dragging (`body[data-dsh-sidebar-dragging]`) still tracks instantly; `prefers-reduced-motion` disables transitions.
 
-**掉帧数值对比（playwright + 本机 Edge 实测，better-sidebar 右面板开合动画窗口）：**
+**Dropped-frame comparison (playwright + local Edge, better-sidebar right-panel open/close window):**
 
-| 场景 | 修复前 | 修复后 |
+| Scenario | Before | After |
 | --- | --- | --- |
-| 重会话动画掉帧率（帧间隔 >26ms 占比） | 20–31% | ≈ 0–1.4%（rail 开/关/禁用动画三者无差异，即噪声） |
-| 主线程长任务 | 每动画多达数个、单次 60–210ms | 0 |
-| 组件栏开启 vs 关闭之差 | 明显（打开即卡） | 无差异（开启 = 零额外成本） |
-| 滑动路径 | `right`/`margin` 逐帧 layout（全树 reflow） | transform 合成平移（合成器） |
-| 常驻合成层 | 每卡片 × 双层 deck 全部常驻 | 0（tween 自动提升、结束即释放） |
+| Heavy-session animation dropped-frame rate (frame interval >26ms) | 20–31% | ≈ 0–1.4% (rail open / closed / animation disabled — no meaningful difference, i.e. noise) |
+| Main-thread long tasks | up to several per animation, 60–210ms each | 0 |
+| Widget rail open vs closed delta | noticeable (jank when open) | none (open = zero extra cost) |
+| Glide path | `right` / `margin` per-frame layout (full-tree reflow) | transform compositor glide |
+| Persistent compositing layers | every card × two deck sets permanently held | 0 (tween auto-promoted, released on completion) |
 
-→ 组件栏开启引入的掉帧从「每动画丢约 1/3 帧 + 数百 ms 长任务」**降到 0**：组件常开下开关右面板与关闭组件时同样丝滑（典型会话全程 60fps）。重会话（数千 DOM 节点）下对话列宽度过渡仍约 ~10% 掉帧——与组件无关（关闭组件同样存在、属 UI 协调层），已列入 Roadmap。
+→ The widget rail added no more frames dropped: with the rail always open, toggling the right panel is just as smooth as with the rail closed (typical sessions 60 fps throughout). Heavy sessions (thousands of DOM nodes) still show ~10% frame drops from the conversation-column width transition — this is unrelated to the widgets (present even with the rail closed) and belongs to the UI coordination layer; listed on the Roadmap.
 
-- ✔️ 自包含验证 `scripts/verify-sidebar-anim.cjs`（playwright-core + 本机 Edge，连 3080）：rail `transition-property=transform`；面板开合后 rail 右缘 = 视口宽 − 面板宽；消融测试——禁用 rail / 对话列动画后掉帧 1.4% / 0.6%，证明 rail 侧贡献已归零。
+- ✔️ Self-contained verification: `scripts/verify-sidebar-anim.cjs` (playwright-core + local Edge, connected to 3080): rail `transition-property=transform`; after panel open, rail right edge = viewport width − panel width; ablation test — disabling rail / conversation-column animation drops 1.4% / 0.6%, confirming the rail contribution is zero.
 
-**New — 多 Key 用量联动（配合 dsh-multikey-pool）：**
+**New — multi-key usage linkage (pairs with dsh-multikey-pool):**
 
-- 🔑 新 host 端点 `/api/opencode-usage-multi`：解析全部池内 Key（`OPENCODE_GO_API_KEY` 主 + `OPENCODE_GO_POOL_2..9` 备用）逐把拉取用量，并计算「共同用量」total（滚动/周/月各窗口按可用 Key 数量比例取平均，状态与重置跟随用量最高的一把）。
-- 🔄 用量环图 / 用量对比 / 滚动用量 / 每周用量 / 每月用量组件支持**单击整卡循环切换视图**：总 Key → Key 1 → Key 2 → … → 总 Key；当前视图以 legend 形式写在大标题正下方（「总 Key」「Key 1」「Key 2」……），切换选择经 `cardConfigs.<实例>.poolView` 持久化，跨刷新与跨浏览器保留。
-- 🍩 按压弹性动画：可点击组件按下瞬间 scale(0.93) 快进慢出，松开以弹簧曲线回弹（`cubic-bezier(0.34,1.56,0.64,1)`），符合官方按钮手感；`prefers-reduced-motion` 不受影响。
-- 🎯 点击与真实使用联动：切到 Key N 时同步通知多 Key 池把该 Key 设为主力（`/api/multikey` prefer），切回总 Key 自动解除手动优先——「看到的」就是「正在用的」。
-- 🧩 单 Key 环境自动退化为原行为：池内只有主 Key 时组件照常显示主 Key 数据，不出现切换交互。
+- 🔑 New host endpoint `/api/opencode-usage-multi`: parses all pool keys (`OPENCODE_GO_API_KEY` primary + `OPENCODE_GO_POOL_2..9` backups), pulls per-key usage, and computes a "pooled total" (rolling / weekly / monthly windows averaged by available-key ratio; status and reset follow the most-used key).
+- 🔄 Usage rings / usage bars / rolling usage / weekly usage / monthly usage widgets support **single-click card cycling**: total key → key 1 → key 2 → … → total key; the current view renders as a legend right under the heading ("All keys", "Key 1", "Key 2", …), and the selection is persisted to `cardConfigs.<instance>.poolView` — survives refresh and cross-browser.
+- 🍩 Press spring animation: clicking a clickable widget gives a momentary `scale(0.93)` ease-in, then springs back on a bounce curve (`cubic-bezier(0.34,1.56,0.64,1)`), matching the native button feel; `prefers-reduced-motion` is respected.
+- 🎯 Click syncs to real usage: switching to key N sends a prefer request to the multi-key pool to make that key primary (`/api/multikey`); switching back to "All keys" clears the preference — what you see is what you use.
+- 🧩 Single-key environments degrade automatically: when the pool holds only the primary key the widgets display primary-key data normally with no switching UI.
 
-**New — 全面中英文适配（跟随 设置 → Language 即时切换，无需刷新）：**
+**New — full Chinese / English locale adaptation (follows Settings → Language, instant, no reload):**
 
-- 🌐 接入官方 `locale` 服务（`ctx.get('locale')`）：全部 UI 文案改为字典驱动——设置页（组件配置/组件市场/组件设置）、右侧组件栏（卡片标题/数值/legend/角落按钮/添加钮/aria）、组件市场卡片、configSchema 表单、峰谷定价窗口、任务/上下文/寄语卡片、OpenCode 用量（总 Key/循环/重置）等均有英文译文；`locale` 服务缺席时自动回退内置 zh/en 字典（探测口径与官方一致：localStorage `dsh-language` → `<html lang>` → `navigator.language`）。
-- 🔑 修复：`installLocale` 现在把 zh/en 字典**注册**进官方 `locale` 服务（`register(ns, locale, dict)`）再 `bind`——此前只 bind 未注册，界面会把字典 key 原文（如 `ui.capsule`、`card.contextWater.system`）直接显示出来；注册后按 active locale 正确取词，不再出现裸 key。
-- ♻️ 常驻 UI（右侧栏、页头胶囊）订阅 `locale/change` 立即重渲染；设置页导航名「组件」改为 **label thunk**（`SlotLabel` 契约），语言切换后导航自动更新，无需重新注册。
-- 📖 每个组件的名称/描述/徽标/预览切换标签支持中英双语；`WIDGETS` 的 name/desc/badgeLabel/simToggle/configSchema 改为 thunk，渲染时按当前语言取值。
-- 🧩 零硬依赖：未装载 `locale` 服务的组合自动走内置字典，行为与之前一致。
-- ✔️ 自包含验证 `docs/verify-i18n.mjs`（Node `--experimental-strip-types` 直接跑）：双语切换、无裸 key、卸载回退全绿。
+- 🌐 Hooks into the official `locale` service (`ctx.get('locale')`): all user-facing strings are now dictionary-driven — Settings pages (component settings / component market / component configuration), the right-hand widget rail (card titles / values / legends / corner buttons / add button / aria), market cards, configSchema forms, peak-pricing window, task / context / quote cards, OpenCode usage (all-keys / per-key / reset) and more; when the `locale` service is absent, a built-in zh/en dictionary is used automatically (detection matches the official pipeline: `localStorage('dsh-language')` → `<html lang>` → `navigator.language` fallback).
+- 🔑 Fix: `installLocale` now **registers** the zh/en dictionaries with the official `locale` service (`register(ns, locale, dict)`) before `bind` — previously only `bind` was called, so the UI showed raw key strings (e.g. `ui.capsule`, `card.contextWater.system`); after registration the active locale selects the correct translation with no raw keys.
+- ♻️ The persistent UI (widget rail, header capsule) subscribes to `locale/change` and re-renders immediately; the Settings page nav label "Components" becomes a **label thunk** (`SlotLabel` contract) that updates when the language changes, with no re-registration needed.
+- 📖 Every widget's name / description / badge / preview-toggle labels support both Chinese and English; `WIDGETS` name/desc/badgeLabel/simToggle/configSchema are thunks resolved at render time.
+- 🧩 Zero hard dependency: if the `locale` service is not installed the built-in dictionaries apply, matching prior behavior.
+- ✔️ Self-contained verification `docs/verify-i18n.mjs` (runs under Node `--experimental-strip-types`): bilingual switching, no raw keys, unload fallback all green.
 
 ### v1.2.2
-**New — 峰谷定价 (peak-pricing) widget:**
+**New — peak-pricing (market widget):**
 
-- ⏱️ New market widget 峰谷定价 (2×2 only): shows whether right now is inside a DeepSeek V4 peak-pricing window. Hard-coded to Beijing time (Mon–Fri **09:00–12:00** & **14:00–18:00**, the UTC 01:00–04:00 / 06:00–10:00 windows); a custom-schedule setting is on the roadmap.
+- ⏱️ New market widget peak-pricing (2×2 only): shows whether right now is inside a DeepSeek V4 peak-pricing window. Hard-coded to Beijing time (Mon–Fri **09:00–12:00** & **14:00–18:00**, the UTC 01:00–04:00 / 06:00–10:00 windows); a custom-schedule setting is on the roadmap.
 - 💰 Bottom-left big label mirrors the cache/tokens card (same font, size, position): red **EXPENSIVE** inside a peak window, **CHEAP** otherwise.
 - 🟥 During a peak window the whole card glows with a gentle breathing red inner glow (scheme B — bleeds in from the edges, centre stays readable, never a solid fill; 2.2s, modest swing, pure urgency, no click bait); `prefers-reduced-motion` users get the static steady glow.
 - 🔵 The two window rows under the title reuse the token-bar legend font: the live row lights up brand-blue and scales up slightly (10px→12px, 500→600), the other stays faint.
@@ -165,24 +173,24 @@ pnpm run check      # typecheck + tests + build
 
 **New — OpenCode usage rings widget:**
 
-- 🍩 New market widget 用量环图 (usage-rings, OpenCode Go group): one donut per window (rolling / weekly / monthly) side by side — the same data as the 用量对比 bars chart, in circle form.
+- 🍩 New market widget usage-rings (OpenCode Go group): one donut per window (rolling / weekly / monthly) side by side — the same data as the usage-bars bars chart, in circle form.
 - ⭕ The ring centres stay clean (no in-ring text), so the rings can be drawn thick and full (5px stroke, maximised diameter); each percent sits directly under its ring in a larger weight, and the window name + exact value surface on hover via the title tooltip (same urgency colours as the bars chart: ≥95 red, ≥75 amber, else green). Ring-to-ring spacing equals the card inner padding (12px on a 2×2) — the rings tighten to keep the three-across footprint — and the number-to-ring gap is slightly wider than snug (4px) so the layout carries over cleanly to planned 2×1 wide cards.
-- 🧭 The existing 用量对比 bars widget is untouched — both presentations coexist and install independently.
+- 🧭 The existing usage-bars bars widget is untouched — both presentations coexist and install independently.
 
 **Changed — the OpenCode usage bars are now proportioned like a proper data-viz bar chart:**
 
-- 📊 The 用量对比 (usage-bars) component's three bars no longer use a fixed ~12px width spread by `space-around`. Each bar's column now flexes to an equal share of the card width (the same elastic columns as the 用量柱状图 daily token bars) with the same 4px gutter, and each bar fills ~60% of its column — ≈24px on a 2×2 card, proportionate to its 56px height (a full-width 100% version read as fat blocks).
+- 📊 The usage-bars component's three bars no longer use a fixed ~12px width spread by `space-around`. Each bar's column now flexes to an equal share of the card width (the same elastic columns as the usage-bars daily token bars) with the same 4px gutter, and each bar fills ~60% of its column — ≈24px on a 2×2 card, proportionate to its 56px height (a full-width 100% version read as fat blocks).
 - 🟣 Bars are fully rounded (5px corners) — without a baseline track underneath, square bottoms read as overly sharp.
 - 📏 No value labels on the bars (small-chart convention — labels on a 3-bar mini chart read as chartjunk); the exact percent surfaces on hover via the native title tooltip, and faint dashed 25/50/75% reference lines behind the bars let each bar's height be eyeballed against a quarter scale at a glance.
 
 **Improved — preview state toggling + dark-mode select arrow fix:**
 
-- 🖱️ Stateful widgets (currently 峰谷定价) now let you **click the preview card to flip its state** (peak/off-peak) in both the 组件配置 and 组件市场 previews — no need to wait for the real window to review the EXPENSIVE red glow and the CHEAP look; a "点击卡片切换：高峰/低峰" hint shows under the card. Declared per-widget via the `simToggle` descriptor, so future stateful widgets just add one line.
+- 🖱️ Stateful widgets (currently peak-pricing) now let you **click the preview card to flip its state** (peak/off-peak) in both the Component Settings and Component Market previews — no need to wait for the real window to review the EXPENSIVE red glow and the CHEAP look; a "Click to flip: Peak / Off-peak" hint shows under the card. Declared per-widget via the `simToggle` descriptor, so future stateful widgets just add one line.
 - 🔽 Fixed `.dsx-select` chevron not rendering/not following the dark theme: `fill='currentColor'` in a background-image data-URI SVG draws nothing (SVG-as-background-image resolves in an isolated image context), so the arrow now uses explicit fills — mid-grey in light mode, near-white under `body[data-ds-dark-theme]`.
 
 **Fixed — filled action buttons are readable in dark mode again:**
 
-- 🌗 Filled primary buttons (`dsx-btn-primary` — 已添加 / 添加 / 查看详情), the pressed state of the 组件 stats capsule, and widget-card action buttons (primary/danger kinds) painted `var(--dsw-alias-brand-primary)` behind hard-coded white text. In dark mode the brand token renders near-white, so the label merged into the fill and became invisible. Primary now fills with `var(--dsw-alias-state-business-primary)` and danger with `var(--dsw-alias-state-error-primary)` — the same token pair the official UI uses for filled action buttons — so the white label stays legible in both light and dark themes.
+- 🌗 Filled primary buttons (`dsx-btn-primary` — Added / Add / View Details), the pressed state of the Components stats capsule, and widget-card action buttons (primary/danger kinds) painted `var(--dsw-alias-brand-primary)` behind hard-coded white text. In dark mode the brand token renders near-white, so the label merged into the fill and became invisible. Primary now fills with `var(--dsw-alias-state-business-primary)` and danger with `var(--dsw-alias-state-error-primary)` — the same token pair the official UI uses for filled action buttons — so the white label stays legible in both light and dark themes.
 
 **Fixed — the add-panel height no longer collapses when dsh-better-sidebar's right panel is open:**
 
@@ -190,7 +198,7 @@ pnpm run check      # typecheck + tests + build
 
 **Fixed — 2×4 tiles are correctly masked in a 1-column layout:**
 
-- 🧱 In 1-column mode a 2×4 tile (two cells wide) has nowhere to sit. The rail now hides installed 2×4 instances (temporarily — switching back to 2/4 columns restores them as-is), and the market says so: the 2×4 entry's title is struck through with a yellow "1列不可用" capsule beside it and its add button disabled. The `right` offset still follows the sidebar width; only height no longer does.
+- 🧱 In 1-column mode a 2×4 tile (two cells wide) has nowhere to sit. The rail now hides installed 2×4 instances (temporarily — switching back to 2/4 columns restores them as-is), and the market says so: the 2×4 entry's title is struck through with a yellow "Unavailable" capsule beside it and its add button disabled. The `right` offset still follows the sidebar width; only height no longer does.
 - 🧪 Headless end-to-end: added heatmap@2×4 on a 2-column rail (324px slot), switched to 1 column → title struck through + capsule shown + add disabled + wide slot gone (150px only); user state restored afterwards.
 
 ### v1.2.1
@@ -204,7 +212,7 @@ pnpm run check      # typecheck + tests + build
 ### v1.2.0
 **Fixed**
 - 🗓️ Heatmap no longer over-credits today with a previous session's whole history. The fallback anchor now tracks the per-step-credited cumulative, and the fallback only diffs growth when the active session actually has a step that began today. Reopening yesterday's session (or the projection lag right after a new-session switch) used to diff the entire prior total — e.g. 106M — into today's cell.
-- 🌐 Heatmap day attribution now honors a configurable timezone (**记账时区** in the heatmap card config), defaulting to Beijing UTC+8 (the day rolls at 08:00 UTC). Options: 北京 (UTC+8) / 跟随系统 / UTC. Previously attribution followed the browser clock, so the day boundary shifted whenever the system timezone was not UTC+8.
+- 🌐 Heatmap day attribution now honors a configurable timezone (**accounting timezone** in the heatmap card config), defaulting to Beijing UTC+8 (the day rolls at 08:00 UTC). Options: Beijing (UTC+8) / System / UTC. Previously attribution followed the browser clock, so the day boundary shifted whenever the system timezone was not UTC+8.
 - 🧹 One-shot cleanup drops an already-polluted today value so the live collector rebuilds it cleanly.
 - 📊 Token-usage bar chart now normalizes bar heights to the **max within the shown 7-day window** (rolling and weekly) instead of the whole history: the tallest bar of the week always reaches full height and the rest scale proportionally, so the chart stays full even when an older day (e.g. the 1.2G outlier) would otherwise flatten the window.
 
@@ -216,22 +224,22 @@ pnpm run check      # typecheck + tests + build
 - **Right edge stays aligned; gaps stay exact.** Overlay card positions (`top`/`right`) are INSTANT and, in the realtime FOLLOW phase, the size transition is disabled entirely — every frame lands directly on the steady-state right-anchored geometry, so fast pointer movement never lingers in a non-steady intermediate pose (the historic cause of a drifting right edge AND uneven inter-card gaps). The enter/exit phases (and the discrete style's grid gliding, which changes targets at grid frequency) keep a 0.15 s width/height tween for smooth grow/shrink.
 - **Smooth enter/exit.** The overlay is always mounted (hidden by opacity), so entering/leaving magnifies via the CSS size tween instead of popping in at the target size — no flicker; exiting shrinks back to the resting size the same way.
 - 🧪 Headless-verified (playwright, both modes): visibility flips only on card hit / gap-cross / rail-leave as specified; overlay rightmost == static rightmost (diff 0); gap movement keeps the wave changing; the add button sits below the resting position (702 → 753 px) and grows to 166 px under the wave; control console clean.
-- 🧰 **Market/config rework — add-only, no install/uninstall zone.** Every widget ships bundled, so the market no longer has "download/uninstall": opening a group lets you pick the concrete widget, choose its size with left/right arrows (no dropdown — e.g. the Coding-Plan heatmap/bars flip 2×2 ↔ 2×4 that way), and hit **添加** to append `widget@size` straight into the rail (already-added instances show a disabled 已添加). The config tab lost the "已卸载（点击恢复）" zone: removing a row deletes the instance entirely (installed + order + its config). Market groups are **系统** (all built-ins), **OpenCode Go** (rolling/weekly/monthly quota), **Coding Plan 用量** (heatmap + bars) and **其它** (quote of the day, to be re-classified later).
+- 🧰 **Market/config rework — add-only, no install/uninstall zone.** Every widget ships bundled, so the market no longer has "download/uninstall": opening a group lets you pick the concrete widget, choose its size with left/right arrows (no dropdown — e.g. the Coding-Plan heatmap/bars flip 2×2 ↔ 2×4 that way), and hit **Add** to append `widget@size` straight into the rail (already-added instances show a disabled Added). The config tab lost the "Uninstalled (click to restore)" zone: removing a row deletes the instance entirely (installed + order + its config). Market groups are **Built-in** (all built-ins), OpenCode Go (rolling/weekly/monthly quota), Coding Plan usage (heatmap + bars) and **Misc** (quote of the day, to be re-classified later).
 - 🧩 **Market cards** show the group name (bold) + widget count (capsule badge) on one line, a single description line, then actions — no id line.
 - 🧮 **Every size is its own market instance.** Multi-size widgets (heatmap 2×2 / 2×4, context-waterline 2×2 / 2×4, …) appear as independent selectable entries — first the 2×2, then the 2×4 — instead of a size switcher; the count badge counts instances, not widgets.
 - 🎨 **Preview now matches the real render.** The preview stats build the heatmap through the same `buildRollingGrid` path the live collector uses (7 week-rows × 13 day-columns — the old preview built it transposed, swapping width and height), so the 2×2 preview is a square card again, and the quote preview shows sample content (never persisted) so it isn't blank. All previews are fed concrete values (never blank).
 - 📐 **2×4 previews scale to fit.** Wide cards preview at `scale(0.85)` centred in a fixed-width stage, so the right-edge buttons stay visible and the prev/next arrows never shift.
-- 🗂️ **Config preview uses free space.** The selected widget's preview fills the remaining panel height below a top-LEFT title (extra room becomes vertical padding), and the preview size control is a dropdown beside the title — same `dsx-select` format as the 窗口对齐方式 field.
+- 🗂️ **Config preview uses free space.** The selected widget's preview fills the remaining panel height below a top-LEFT title (extra room becomes vertical padding), and the preview size control is a dropdown beside the title — same `dsx-select` format as the Window alignment field.
 - 🙈 **Stats-line switch hides text only.** Enabling it keeps the official bar's space and layout untouched and makes just its labels transparent — matching manual "hide the text" setups; off shows the bar normally.
-- 📊 **Usage bars align per week.** The 用量柱状图 window option is now 滚动(最近7天) / **每周对齐** (Sunday-aligned current week), instead of the misplaced quarter mode.
-- ✅ **Tasks never vanish.** Without a todos projection the task card shows **暂无任务 · 0 进行中 · 0 待办** instead of disappearing.
-- ✂️ Removed the divider line above the 自定义 (per-card schema) block in the config preview.
-- 🔧 **Capsule button styling restored.** The CSS file carried a UTF-8 BOM that leaked into the first rule's selector at build time (a junk prefix before `.dsx-stats-capsule{…}`), silently killing the 组件 capsule's base style (border-radius, padding, background, height). Rewrote the file as BOM-free UTF-8; verified the capsule computes `border-radius:14px / height:28px / background / padding / 1px border` again.
+- 📊 **Usage bars align per week.** The usage-bars window option is now Rolling (last 7 days) / **Weekly aligned** (Sunday-aligned current week), instead of the misplaced quarter mode.
+- ✅ **Tasks never vanish.** Without a todos projection the task card shows **No tasks · 0 in progress · 0 pending** instead of disappearing.
+- ✂️ Removed the divider line above the Custom section (per-card schema) block in the config preview.
+- 🔧 **Capsule button styling restored.** The CSS file carried a UTF-8 BOM that leaked into the first rule's selector at build time (a junk prefix before `.dsx-stats-capsule{…}`), silently killing the Components capsule's base style (border-radius, padding, background, height). Rewrote the file as BOM-free UTF-8; verified the capsule computes `border-radius:14px / height:28px / background / padding / 1px border` again.
 - 📐 **4-column add button no longer overlaps cards.** Row-band packing leaves the last row's gap at the LEFT edge (right-anchored), but the add button was anchored off the LAST item — on a left-packed 4-column row that dropped the button into the row's own cards. Placement now anchors the row's LEFTMOST card and falls back below the deck when the leftover gap is narrower than the button. The fit decision uses the STATIC widths, so hovering (which widens that row's cards) never flips the button to the deck bottom-right — it stays in its gap slot, gliding with the row.
 - 🏠 **Fresh installs pre-load only the stats-line family** (turns · LLM/tool time · TTFT · rate · cache · tokens — mirroring the official composer stats bar); everything else is a market add. Existing users' arrangements are untouched by design.
-- 🙈 **New personal-preference switch** in 组件设置: "隐藏输入框下方文字条" hides the official composer stats bar under the input box (the rail shows the same data). Default OFF so other users keep their bar.
-- 💬 **Quote card renders nothing without a custom text** (no default filler that used to rotate on every render), and it lives in its own 其它 group for now.
-- ⚠️ The "已达上限" warning is now a floating centered pill that never consumes layout height.
+- 🙈 **New personal-preference switch** in Component Settings: "Hide the stats line below input box" hides the official composer stats bar under the input box (the rail shows the same data). Default OFF so other users keep their bar.
+- 💬 **Quote card renders nothing without a custom text** (no default filler that used to rotate on every render), and it lives in its own Misc group for now.
+- ⚠️ The "limit reached" warning is now a floating centered pill that never consumes layout height.
 - 🧪 Upgrade-fidelity regression (`docs/state-fidelity.cjs`): a hand-arranged legacy config (custom installed/order/cardSide/quote text, no new fields) loads with everything preserved — nothing reset, nothing re-added, `hideStatsLine` defaulted off; quote with no text renders zero cards. Tests snapshot the real host state and restore it, so they never touch a user's saved arrangement.
 
 ### v1.1.5
@@ -273,15 +281,15 @@ pnpm run check      # typecheck + tests + build
 - New **last-7-days bar chart** widget (`heatmap-bars`, 2×2): vertical bars for the past 7 days, whose bar area height exactly matches the 2×2 calendar grid's content height (so the bars occupy the same vertical footprint as the day-rows they replace).
 
 **Changed**
-- Bar chart axis labels are now short month.day dates (e.g. `8.28`) instead of weekday chars; bars are ~1.5× wider with a fuller corner radius; the legend is two plain figures (today / 7-day total, no "今日/近7天" words); only the first and last date labels are drawn on the bottom corners (no x-axis baseline). The widget is now named **用量柱状图** (was 近7日柱状).
-- Heatmap legend drops the "今日" prefix (two figures: today / window total), and the chart's bottom-left/right corners show the window's earliest date and today's date.
+- Bar chart axis labels are now short month.day dates (e.g. `8.28`) instead of weekday chars; bars are ~1.5× wider with a fuller corner radius; the legend is two plain figures (today / 7-day total, no "today / 7-day total" words); only the first and last date labels are drawn on the bottom corners (no x-axis baseline). The widget is now named **usage-bars** (was "7-day bars").
+- Heatmap legend drops the "today" prefix (two figures: today / window total), and the chart's bottom-left/right corners show the window's earliest date and today's date.
 - The 2×4 heatmap grid is wider (30 weeks) and horizontally centred; its figures move to the title row's right end.
 - The 2×4 **token heatmap** and **context waterline** charts are now bottom-aligned (a title-row headRight figure no longer forces top alignment).
 - The rail's top padding grows 2px → 4px so the first card keeps clear of the enhancer rounded-card's top shadow; the magnify overlay mirrors it. No header rules live here anymore — the header's opaque rectangle (masking the rail's top) is harness-ui-enhancer's job.
 
 ### v1.0.0
 **New**
-- Settings → 组件: add a "无极变化（连续跟随）" switch exposing the real-time continuous magnification mode (peak follows the pointer every animation frame).
+- Settings → Components: add a "Realtime follow (continuous)" switch exposing the real-time continuous magnification mode (peak follows the pointer every animation frame).
 - Truly stepless magnification: every card's scale is driven by its own continuous Euclidean distance to the pointer (rail-content coords) instead of a discrete nearest-card anchor, so the peak glides smoothly between cards on any pointer movement.
 - Discrete mode now REUSES the same stepless geometry: the live pointer coordinates are snapped onto a discrete grid of row/column centres plus the midpoints between adjacent ones (rows → 2·rows−1 Y points, cols → 2·cols−1 X points), and the 0.2s tween glides the peak between those grid points. Both modes therefore share one right-edge-anchored posture.
 
@@ -331,7 +339,7 @@ The widget registry (`WIDGETS` descriptors) already lays the foundation for more
 
 - **Heatmap range/period controls**: let the 2×4 heatmap and bars pick custom ranges (weekly/monthly/etc.) beyond the current half-year / 7-day defaults;
 - **Multi-platform usage widgets**: Z.ai, DeepSeek balance, etc., reusing the host same-origin proxy + credentials pattern;
-- **Custom peak-pricing schedules**: expose window customization for the 峰谷定价 widget (currently hard-coded Beijing weekdays 09:00–12:00 / 14:00–18:00) — custom start/end times, weekday sets, and timezone;
+- **Custom peak-pricing schedules**: expose window customization for the peak-pricing widget (currently hard-coded Beijing weekdays 09:00–12:00 / 14:00–18:00) — custom start/end times, weekday sets, and timezone;
 - **Utility widgets**: one-click compact (needs DSH official compaction) and more;
 - **External integrations**: Feishu / WeChat push & interaction, keys strictly via DSH credentials;
 - **Widget marketplace**: open a third-party widget registration mechanism so community widgets can join like plugins;

@@ -973,16 +973,18 @@ export function apply(ctx: ClientContext): void {
         .filter((it) => !(columns === 1 && it.size === '2x4'))
       // The rail is a fixed viewport panel anchored to the right edge. The
       // dsh-better-sidebar bundle occupies the same edge with its own
-      // fixed right panel (z-index 50) and pushes the app shell via
+      // fixed right panel (z-index 40) and pushes the app shell via
       // `#root { margin-right: var(--dsh-sidebar-width) }` (neutralized by
       // dsh-ui-harmonizer to the conversation column's margin-right). The rail
-      // sits flush to the viewport right edge (right:0) and its CSS carries
-      // `transform: translateX(calc(var(--dsh-sidebar-width, 0px) * -1))`, so
-      // expanding/collapsing the sidebar translates the rail on the
-      // COMPOSITOR — the rail subtree (cards, heatmaps) never reflows per
-      // frame. transform uses the same shared variable, duration and easing as
-      // the conversation column's margin-right, so both glide in lockstep
-      // (the shell animates the shared variable's effect via a CSS transition).
+      // anchors its right edge to that SAME variable inline (0 while absent)
+      // and its CSS carries `transition: right` — deliberately on the MAIN
+      // THREAD, the same animation path as the conversation column's
+      // margin-right. A compositor transform (v1.2.3) never dropped frames,
+      // but when the column's per-frame reflow overran a frame the rail kept
+      // gliding while the column stalled — the two visibly split. Same-path
+      // animation cannot split: both surfaces advance in the same style→layout
+      // pass every frame. The rail subtree is cheap (lazy overlay deck, no
+      // persistent will-change), so the per-frame cost is negligible.
       // Padding is `0 pad pad pad`: no top inset so the first card aligns with
       // the session header's bottom edge; right/left keep the resize handle
       // room, bottom keeps the last card off the viewport floor.
@@ -1247,7 +1249,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
         ),
       ]
       const rail = React.createElement('div', {
-        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: '0px', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
+        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
         onMouseLeave: () => {
           armedRef.current = false
           setFocusY(null); setFocusX(null)
@@ -1280,7 +1282,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       const overlayTransition = tweenSize
         ? 'top 0s, right 0s, width 0.15s var(--ds-ease-in-out), height 0.15s var(--ds-ease-in-out)'
         : 'none'
-      const magnifyLayer = React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: '0px', width: `${railW}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent', opacity: magnifying ? 1 : 0, transition: 'opacity 0.15s ease', transform: 'translateX(calc(var(--dsh-sidebar-width, 0px) * -1))' } },
+      const magnifyLayer = React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent', opacity: magnifying ? 1 : 0, transition: 'opacity 0.15s ease' } },
         React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${stackHeight}px` } },
           // Positions (top/right) are INSTANT always — right-anchored geometry
           // keeps the right edge on the rail's right line. The size tween
