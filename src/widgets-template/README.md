@@ -4,6 +4,10 @@
 > `src/widgets/*/`，因此本模板不会被注册、不会被市场列出、不会进入任何构建产物。
 > 它唯一的作用是：**Agent 或开发者创建新 Widget 时的标准起点与契约参照。**
 
+> **正式生产流程请先读 `docs/workflow/README.md`（ARCH-002 Widget Production Workflow）**：
+> 需求表 → Completeness Check → 技术分析 → Architecture Decision → Specification →
+> Worker → Review → Validation → Registry。本目录只承载 Contract / Template 本身。
+
 ## 新建一个 Widget 的标准流程
 
 1. `mkdir src/widgets/<your-widget-id>`（kebab-case，例如 `my-widget`）

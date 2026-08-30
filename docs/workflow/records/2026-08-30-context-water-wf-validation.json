@@ -1,0 +1,106 @@
+{
+  "schema": "dsh-widgets/widget-record/v1",
+  "widgetId": "wf-context-water",
+  "source": "human",
+  "status": "COMPLETED",
+  "createdAt": "2026-08-30T00:00:00+08:00",
+  "requirement": {
+    "name": "上下文水位（Context Level）",
+    "purpose": "展示当前会话上下文占用比例以及构成（系统提示词/工具/对话消息），帮助判断上下文压力",
+    "size": ["2x2", "2x4"],
+    "title": "上下文已用",
+    "coreContent": "上下文占用百分比 + 已用/窗口容量 + 系统/工具/消息三段构成",
+    "displayedData": ["contextPercent", "contextWindow", "contextBreakdown{systemTokens,toolsTokens,messageTokens}"],
+    "visualReference": "官方 ContextMeter (JObwrW) 模板风格：标题行下方大号百分比为主视觉，右端显示 已用/窗口容量；下方一条三段横条（system=中性蓝灰 / tools=紫色 / messages=品牌蓝）加每段一行 label+数值。2x4 宽版：主百分比与容量数字移到标题行右端，横条横向拉伸。",
+    "interaction": "无",
+    "category": "system",
+    "categoryDecision": "existing",
+    "priority": "medium",
+    "confirmedByHuman": true,
+    "_sourceBasis": "name/size/视觉模板来自 README 公开描述与共享 ChartBlock 注释；title/颜色角色/间距由模拟 Human 输入补充；刻意未引用 src/widgets/context-water 实现的任何实现细节（headAfter 字段、~K/M 前缀、2x4 具体布局决策）"
+  },
+  "technicalAnalysis": {
+    "existingCapability": "共享 WidgetStats 已含 contextPercent/contextWindow/contextBreakdown；共享 ChartBlock 已有 segments 原语（system/tools/messages 三段横条 + 逐段行）",
+    "requiredData": ["contextPercent(0..1)", "contextWindow", "contextBreakdown{systemTokens,toolsTokens,messageTokens}"],
+    "dataSource": "现有会话 stats 投影（shell collector 已喂 contextPressure + contextBreakdown 到 WidgetStats）",
+    "requiredProvider": null,
+    "externalDependency": null,
+    "complexity": "Low",
+    "risks": ["投影缺失时 render 必须返回 null（卡片隐藏）", "2x4 布局与 2x2 差异需分别处理", "容量数字格式（K/M 缩写）由 Agent 决定，可能与正式实现存在格式差异"]
+  },
+  "architectureDecision": "Widget-only",
+  "specification": {
+    "schema": "dsh-widgets/widget-spec/v1",
+    "widgetId": "wf-context-water",
+    "name": "上下文水位",
+    "purpose": "展示上下文占用与构成",
+    "size": ["2x2", "2x4"],
+    "title": "上下文已用",
+    "coreContent": "占用百分比 + 已用/窗口容量 + 构成分段",
+    "displayedData": ["contextPercent", "contextWindow", "contextBreakdown{systemTokens,toolsTokens,messageTokens}"],
+    "category": "system",
+    "titleZh": "上下文已用",
+    "titleEn": "Context Used",
+    "visualRequirements": {
+      "reference": "官方 ContextMeter JObwrW 模板",
+      "layout": "2x2：标题下大百分比，右端可见 已用/窗口容量（紧凑 K/M 缩写）；下方三段横条 + 每段一行 label+数值。2x4：主百分比与容量移到标题行右端，横条横向拉伸",
+      "focus": "百分比为主数字优先",
+      "styleTokens": "system=中性蓝灰 / tools=紫 / messages=品牌蓝",
+      "dataFormat": "百分比取整；容量用紧凑缩写（K/M）；具体前缀/精度由实现决定"
+    },
+    "technicalStrategy": {
+      "architecture": "Widget-only",
+      "dataSource": "现有 stats 投影（contextPressure + contextBreakdown）",
+      "requiredProvider": null,
+      "sharedUtility": null,
+      "complexity": "Low",
+      "risks": "数据缺失返回 null",
+      "contractHints": { "chartKinds": ["segments"], "widthForSize": "2x4 = 2*unit+gap" }
+    },
+    "acceptanceCriteria": [
+      "2x2 与 2x4 都可渲染",
+      "百分比为主数字，容量以紧凑缩写显示",
+      "segments 三色与参考一致，底部三行 label+数值",
+      "contextPercent/contextBreakdown 缺失时返回 null",
+      "market 分类 system，文案 zh/en 齐全（widget.<id>.name/desc/card.<id>.*)）",
+      "node scripts/validate-widget-unit.mjs 通过"
+    ],
+    "forbiddenChanges": [
+      "不得创建/修改 src/widgets/<其他目录>/、src/client/、scripts/、package.json、generated.registry.ts",
+      "不得运行 pnpm build / gen-registry / tsc",
+      "不得读取 src/widgets/context-water/ 的实现",
+      "不得修改 Human-owned 需求字段"
+    ]
+  },
+  "history": [
+    { "status": "REQUIREMENT_READY", "at": "2026-08-30T00:00:00+08:00", "note": "Requirement Form 由 README 公开描述 + 模拟 Human 输入构成，confirmedByHuman=true（主 Agent 代行确认角色）" },
+    { "status": "TECH_ANALYSIS", "at": "2026-08-30T00:00:00+08:00", "note": "现有 stats 投影 + segments 原语足够，无需新增 Provider" },
+    { "status": "ARCHITECTURE_READY", "at": "2026-08-30T00:00:00+08:00", "note": "Architecture Decision = Widget-only" },
+    { "status": "IMPLEMENTING", "at": "2026-08-30T00:00:00+08:00", "note": "Worker Agent 按 Specification 独立实现 src/widgets/wf-context-water/（未读取正式实现）" },
+    { "status": "SELF_REVIEW", "at": "2026-08-30T00:00:00+08:00", "note": "validate-widget-unit.mjs：0 failure / 0 warning" },
+    { "status": "REVIEW", "at": "2026-08-30T00:00:00+08:00", "note": "独立 Review（主 Agent 代行）对 05-review-checklist 逐项核对，PASS（含发现口径差异见 validation）", "result": "PASS" },
+    { "status": "VALIDATION", "at": "2026-08-30T00:00:00+08:00", "note": "reg-discover=OK(20 units)；build=PASS；live probe=wf-context-water 在 bundle" },
+    { "status": "INTEGRATION", "at": "2026-08-30T00:00:00+08:00", "note": "进入临时 Registry（复测结束即移除副本）" }
+  ],
+  "parity": {
+    "against": "context-water",
+    "method": "Spec 仅来源 README 公开描述 + 共享 API + 模拟 Human 输入；对比时双方源码均已存在，逐维核对",
+    "matched": ["尺寸 2x2+2x4", "2x2 headAfter 大百分比+容量", "segments 三色视觉（ChartBlock index 着色）", "locale/group/Contract 结构", "缺失数据返回 null"],
+    "differed": [
+      "标题：副本用 name 键渲染卡片标题（上下文水位），正式用独立 card.*.title（上下文已用）→ 与 Human Title 不符",
+      "数据源优先级：副本 used = contextTokens ?? 段和；正式 used = 段和",
+      "2x4 主数字槽位：副本百分比并入 headRight 小字；正式 value 大号槽 + headRight 容量",
+      "window 缺失边界：副本 capacity=''（空串渲染空位）；正式 null/undefined（不渲染）"
+    ],
+    "verdict": "仅凭 Workflow 信息未能 100% 复现正式 Widget；差异全部可定位到 Workflow 信息缺口（已据此修正 02/03/05/06）"
+  },
+  "validation": {
+    "validateUnit": "PASS",
+    "registrySync": "PASS (20 units)",
+    "build": "PASS",
+    "discoveryProbe": "PASS",
+    "regression": "19/19 built-ins + wf-context-water"
+  },
+  "result": "COMPLETED",
+  "cleanup": { "note": "wf-context-water 副本为回归测试产物，验证后已删除；Registry 回归 19 units" }
+}

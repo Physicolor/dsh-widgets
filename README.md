@@ -105,6 +105,7 @@ pnpm install
 pnpm run build      # gen-registry (discovery) + tsdown builds lib/
 pnpm run check      # registry up-to-date guard + tsc --noEmit
 pnpm check:registry # discovery guard only
+node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (Worker self-check / review)
 ```
 
 > Note: `tsc --noEmit` still reports pre-existing strict-mode errors on UNTOUCHED code — the peer slot types (`@deepseek-ai/dsh-client-ui-slots`) only know the `root` slot name while the runtime accepts arbitrary slot ids (live plugin works; the v1.3.0 refactor went from 24 to 18 such errors, all outside the changed files), and the host half lacks `@types/node`. The project gate is `pnpm build` + `pnpm check:registry` (both green) plus the live-bundle discovery probe (`docs/verify-discovery.cjs`).
@@ -119,6 +120,41 @@ pnpm check:registry # discovery guard only
 - Coordinates explicitly with `dsh-better-sidebar`'s right rail (shares `--dsh-sidebar-width`); no residue after uninstall.
 
 ## Changelog
+
+### v1.3.1
+**Workflow — Widget Production Workflow 固化（ARCH-002: 人定需求 / Agent 定技术 / 系统验证「做得对不对」）:**
+
+- 📋 **正式生产流程**固化于 `docs/workflow/`（README 总览 + 9 个环节文档 + `record.schema.json` + `records/` 档案）：
+  Requirement Form → Completeness Check（缺失产品项 STOP 问人）→ Technical Feasibility Analysis →
+  Architecture Decision（Widget-only / +Shared / +Provider / +Host / +External，最小必要修改原则）→
+  Widget Specification（Worker 标准输入）→ Worker Agent → Self Check → Independent Review Agent → Validation → Registry；
+- 👤 **Human-owned 与 Agent-owned 分离**：Purpose/Size/Title/Core Content/Displayed Information/Category 必须人确认；
+  数据源/Provider/Credential/缓存等技术项由 Agent 分析，不阻塞不返问用户；凭据类需求一律走 host Credentials；
+- 🧭 **状态机 + STOP/Escalation**：DRAFT→…→COMPLETED，仅 REWORK 回明确源状态（不向后传播）；需求不明确/冲突/
+  重大架构影响/数据源未确认/安全风险 → STOP；
+- 📦 **Production Record**（`docs/workflow/records/<date>-<widget-id>.json`）：每次生产一个 append-only 机器可读记录；
+- 🔌 **未来输入适配位置**（`docs/workflow/09-future-input-adapters.md`）：Screenshot / GitHub Issue·PR / External Code
+  统一转 Widget Candidate → 必须经 Human Requirement Review 转正（License/Provenance + Security + Architecture 三关预留，本次不实现自动导入）；
+- 🛠️ **自动校验器** `scripts/validate-widget-unit.mjs`：Worker 自检 / Review 门禁（manifest schema、id 三元一致、
+  locale 覆盖 index.ts 全部 widget-local t() 键）；对既有 19 单元全量 PASS；
+- 🧪 **真实回归测试**：选正式 Widget `context-water`，只凭 README 公开描述 + 共享 API 构建 Requirement/Spec，
+  由独立 Worker 从零生产 Validation Copy（`wf-context-water`），经 validate/build/发现探测后与原实现对比 parity，
+  差异反哺修正 Workflow。
+
+**回归测试结论（v1.3.1）**：选择正式 **context-water**（2x2+2x4 多尺寸 + segments 构成条）作为测试对象。Requirement
+Form 仅由 README 公开描述（「Context waterline：system/tool/message segment bars + breakdown; 2×2 and 2×4 supported」）
++ 模拟 Human 输入构成，未读取正式实现。独立 Worker 按 Specification 生产出 `wf-context-water`（id 三元一致、validate
+0 failure、发现 20 单元、build 通过、live bundle 探测 PASS）。
+
+**Parity 结果**：尺寸/2x2 布局（headAfter 大百分比+容量）/segments 视觉/Contract 结构 ✅ 一致；**4 处差异**——
+① 卡片标题：副本用 name 键（上下文水位），正式用独立 `card.*.title`（上下文已用）→ 与 Human Title 不符；
+② 数据源优先级：副本 used=`contextTokens ?? 段和`，正式=段和；
+③ 2x4 主数字槽位：副本百分比并入 headRight 小字，正式 value 大号槽+headRight；
+④ window 缺失边界：副本空串渲染，正式 undefined 省略。
+→ **判断：仅凭 Workflow 信息不能 100% 复现正式 Widget**；差异全部定位为 Workflow 信息缺口，已据此修正：
+`03-specification.md` 增加 `titleKeys`（标题独立键）、`visualRequirements.numberHierarchy`（主数字槽位）、
+`dataFieldPriority`（主/备数据源），acceptance 增加「标题===Human Title」「缺失用 undefined 省略」；
+`02/05/06` 同步补充对应分析与 Review/Acceptance 检查项。测试副本已删除，Registry 回归 19 units。
 
 ### v1.3.0
 **Architecture — widget units + build-time discovery (ARCH-001: widget unitization, contract, low-conflict registry, multi-agent isolation):**

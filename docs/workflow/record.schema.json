@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dsh-widgets/widget-record/v1",
+  "title": "dsh-widgets Widget Production Record",
+  "type": "object",
+  "required": ["widgetId", "status", "requirement", "architectureDecision", "result"],
+  "properties": {
+    "schema": { "const": "dsh-widgets/widget-record/v1" },
+    "widgetId": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "source": { "enum": ["human", "agent-proposal", "github", "screenshot", "external-code"] },
+    "status": {
+      "enum": ["DRAFT", "REQUIREMENT_READY", "TECH_ANALYSIS", "ARCHITECTURE_READY", "IMPLEMENTING", "SELF_REVIEW", "REVIEW", "VALIDATION", "INTEGRATION", "COMPLETED", "FAILED", "HUMAN_REVIEW", "REWORK"]
+    },
+    "createdAt": { "type": "string" },
+    "requirement": {
+      "type": "object",
+      "required": ["name", "purpose", "size", "title", "coreContent", "displayedData", "category", "confirmedByHuman"],
+      "properties": {
+        "name": { "type": "string" },
+        "purpose": { "type": "string" },
+        "size": { "type": "array", "items": { "enum": ["2x2", "2x4"] } },
+        "title": { "type": "string" },
+        "coreContent": { "type": "string" },
+        "displayedData": { "type": "array", "items": { "type": "string" } },
+        "visualReference": { "type": "string" },
+        "interaction": { "type": "string" },
+        "category": { "type": "string" },
+        "categoryDecision": { "enum": ["existing", "new"] },
+        "priority": { "enum": ["high", "medium", "low"] },
+        "confirmedByHuman": { "type": "boolean" }
+      }
+    },
+    "technicalAnalysis": {
+      "type": "object",
+      "properties": {
+        "existingCapability": { "type": "string" },
+        "requiredData": { "type": "array", "items": { "type": "string" } },
+        "dataSource": { "type": "string" },
+        "requiredProvider": { "type": ["string", "null"] },
+        "externalDependency": { "type": ["string", "null"] },
+        "complexity": { "enum": ["Low", "Medium", "High", "Experimental"] },
+        "risks": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "architectureDecision": {
+      "enum": ["Widget-only", "Widget + Shared Utility", "Widget + Data Provider", "Widget + Host Capability", "Widget + External Service"]
+    },
+    "specification": { "type": "object" },
+    "review": {
+      "type": "object",
+      "properties": {
+        "reviewer": { "type": "string" },
+        "result": { "enum": ["PASS", "FAIL"] },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "validateUnit": { "type": "string" },
+        "registrySync": { "type": "string" },
+        "build": { "type": "string" },
+        "discoveryProbe": { "type": "string" },
+        "regression": { "type": "string" }
+      }
+    },
+    "result": { "enum": ["COMPLETED", "REJECTED", "ABANDONED", "INCONCLUSIVE"] },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["status", "at"],
+        "properties": {
+          "status": { "type": "string" },
+          "at": { "type": "string" },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  }
+}
