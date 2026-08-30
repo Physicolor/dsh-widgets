@@ -45,6 +45,7 @@ B. Agent Notes（Agent 可填，但不得覆盖 A）
 | --- | --- | --- |
 | Human Requirement Confirmation | Completeness Check 之后 | 用户确认 Requirement Form 的 Human-owned 字段（尤其 Purpose/Size/Title/Content/Category） |
 | Technical Decision Confirmation | 仅当技术方案涉及重大影响 | 新增 Host API / Credential / 外部服务 / Core 修改时，把方案与影响告知用户请求确认；纯实现细节不打扰用户 |
+| Human Review（正常流程） | 每次 REWORK 之后 | 用户查看产物并给出修改意见（视觉/内容/数据展示）；可多轮循环（见 05 Layer2 三种结果） |
 | Final Product Boundary | Integration 完成后 | 产物与需求一致性最终确认，之后才进入 Marketplace |
 
-理想分工：产品问题 → Human；技术问题 → Agent；最终产品边界 → Human；实现细节 → Agent。
+理想分工：产品问题 → Human；技术问题 → Agent；系统规范问题 → Agent 自查（真实实现 → Contract → Validator）后仍不定才升级；最终产品边界 → Human；实现细节 → Agent。

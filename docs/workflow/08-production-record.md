@@ -2,27 +2,39 @@
 
 每个 Widget 的生产全程留下一个机器可读 Record。**记录是 restart / 并行 / 审计的唯一事实源。**
 
-## 状态机（与 README 总览一致）
+## 状态机（ARCH-003 校准版）
 
 ```text
 DRAFT
   → REQUIREMENT_READY      # Requirement Form + Human Confirmation
   → TECH_ANALYSIS          # Technical Analysis 完成
   → ARCHITECTURE_READY     # Architecture Decision 落定
-  → IMPLEMENTING           # Worker 执行中
+  → IMPLEMENTING           # Worker 执行中（含每次 REWORK 后的修改）
   → SELF_REVIEW            # Worker 自检（validate 脚本）
-  → REVIEW                 # 独立 Review Agent
+  → REVIEW                 # 独立 Review Agent（PASS / REWORK / BLOCKED）
   → VALIDATION             # 构建 + 探测 + 验收清单
   → INTEGRATION            # 进 Registry / Marketplace 数据就绪
-  → COMPLETED              # Human Final Confirmation 通过
+  → COMPLETED              # PASS 且 Human Final Confirmation 通过
 
-失败边（可恢复、不向后传播）：
-  FAILED ─► HUMAN_REVIEW ─► REWORK ─► REQUIRED_状态（REQUIREMENT_READY/TECH_ANALYSIS/ARCHITECTURE_READY/IMPLEMENTING）
+迭代边（正常开发，可循环任意轮）：HUMAN_REVIEW ⇒ REWORK ⇒ IMPLEMENTING
+  # 系统完整（MVW 达成）但产品表现需修改 → REWORK 是常态，不是异常
+
+失败边（唯一 Workflow Failure）：
+  BLOCKED / FAILED ⇒ HUMAN_REVIEW ⇒ REWORK ⇒ 显式源状态
+  # 仅修系统问题后重跑校验；目标状态必须显式记录
 ```
 
-- `REWORK` 目标状态必须显式记录（回到哪个源状态）。
-- Review FAIL 只回 `REWORK`，**永不**回 `DRAFT`。
+- `REWORK` 目标状态必须显式记录（回到哪个源状态；产品迭代回 IMPLEMENTING，系统修复回对应阶段）。
+- Review 判定 REWORK/BLOCKED 永不回 `DRAFT`。
 - 状态推进/回溯逐条追加 history（append-only），不覆盖。
+
+## 三种结果（写入 review.result 与 status）
+
+| 值 | 含义 |
+| --- | --- |
+| `PASS` | 系统完整 + 产品质量达标 → VALIDATION → COMPLETED |
+| `REWORK` | 系统完整（MVW 达成）但产品需修改 → IMPLEMENTING（正常迭代） |
+| `BLOCKED` | 系统阻塞 → STOP/Escalation → 修复后重跑校验 |
 
 ## Record 文件
 

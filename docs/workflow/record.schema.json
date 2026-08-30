@@ -9,7 +9,7 @@
     "widgetId": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
     "source": { "enum": ["human", "agent-proposal", "github", "screenshot", "external-code"] },
     "status": {
-      "enum": ["DRAFT", "REQUIREMENT_READY", "TECH_ANALYSIS", "ARCHITECTURE_READY", "IMPLEMENTING", "SELF_REVIEW", "REVIEW", "VALIDATION", "INTEGRATION", "COMPLETED", "FAILED", "HUMAN_REVIEW", "REWORK"]
+      "enum": ["DRAFT", "REQUIREMENT_READY", "TECH_ANALYSIS", "ARCHITECTURE_READY", "IMPLEMENTING", "SELF_REVIEW", "REVIEW", "VALIDATION", "INTEGRATION", "COMPLETED", "FAILED", "BLOCKED", "HUMAN_REVIEW", "REWORK"]
     },
     "createdAt": { "type": "string" },
     "requirement": {
@@ -50,8 +50,23 @@
       "type": "object",
       "properties": {
         "reviewer": { "type": "string" },
-        "result": { "enum": ["PASS", "FAIL"] },
+        "result": { "enum": ["PASS", "REWORK", "BLOCKED"] },
         "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "mvw": {
+      "type": "object",
+      "description": "ARCH-003 Minimum Viable Widget system-integrity gate results",
+      "properties": {
+        "validUnit": { "type": "boolean" },
+        "contract": { "type": "boolean" },
+        "discovery": { "type": "boolean" },
+        "registryAuto": { "type": "boolean" },
+        "build": { "type": "boolean" },
+        "marketplace": { "type": "boolean" },
+        "isolation": { "type": "boolean" },
+        "iterable": { "type": "boolean" },
+        "verdict": { "enum": ["MVW_OK", "MVW_BLOCKED"] }
       }
     },
     "validation": {

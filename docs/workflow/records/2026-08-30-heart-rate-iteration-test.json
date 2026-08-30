@@ -1,0 +1,110 @@
+{
+  "schema": "dsh-widgets/widget-record/v1",
+  "widgetId": "wf-heart-rate",
+  "source": "human",
+  "status": "COMPLETED",
+  "createdAt": "2026-08-30T00:00:00+08:00",
+  "requirement": {
+    "name": "今日心率",
+    "purpose": "显示当前心率（未来接健康数据 Bridge；本次先建立可迭代的 MVW）",
+    "size": ["2x2"],
+    "title": "今日心率",
+    "coreContent": "当前心率数值 + 单位 + 状态",
+    "displayedData": ["heartrateBpm(未来 Bridge 注入; v1 无真实源)"],
+    "visualReference": "典型健康卡片：大号主数字 + 单位；可附加小数据行",
+    "interaction": "无",
+    "category": "health",
+    "categoryDecision": "new",
+    "priority": "medium",
+    "confirmedByHuman": true,
+    "_note": "故意选择数据源未定的场景（未来外部 Bridge），验证 MVW 可以先进市场再迭代"
+  },
+  "technicalAnalysis": {
+    "existingCapability": "共享 WidgetStats 有 index signature，可承载未来投影; render 缺失返回 null 即可安全隐藏",
+    "requiredData": ["heartrateBpm(主, 外部 Bridge 未来提供; v1 无真实源)", "heartrateStats{min,avg,max}(可选, v2)"],
+    "dataSource": "暂无真实数据源 → v1 以 example mock 支撑预览，真实数据标记 未来 Bridge（Host 路由 + Credential）",
+    "requiredProvider": null,
+    "externalDependency": "未来心率 Bridge（本任务不实现）",
+    "complexity": "Low",
+    "risks": ["真实数据未接入前卡片无数据即返回 null（合规）", "分类为新分类 health，需要 group 标签保证市场可识别"]
+  },
+  "architectureDecision": "Widget-only",
+  "specification": {
+    "schema": "dsh-widgets/widget-spec/v1",
+    "widgetId": "wf-heart-rate",
+    "name": "今日心率",
+    "purpose": "显示当前心率（未来接健康数据 Bridge；本次先建立可迭代的 MVW）",
+    "size": ["2x2"],
+    "title": "今日心率",
+    "coreContent": "当前心率数值 + 单位",
+    "displayedData": ["heartrateBpm(optional)"],
+    "category": "health",
+    "categoryDecision": "new",
+    "titleZh": "今日心率",
+    "titleEn": "Heart Rate",
+    "titleKeys": { "key": "card.wf-heart-rate.title" },
+    "visualRequirements": {
+      "reference": "典型健康卡片",
+      "layout": "标题 + 大号主数字（heartrateBpm）+ 单位 bpm",
+      "focus": "主数字优先",
+      "numberHierarchy": { "2x2": "percent/数值=大字独立行 headAfter.big，单位=同旁小字" }
+    },
+    "technicalStrategy": {
+      "architecture": "Widget-only",
+      "dataSource": "stats.heartrateBpm（未来 Bridge；v1 仅 example 注入）",
+      "dataFieldPriority": ["heartrateBpm(主) 缺失时 render 返回 null"],
+      "requiredProvider": null,
+      "sharedUtility": null,
+      "complexity": "Low",
+      "risks": "v1 无真实数据源",
+      "contractHints": { "chartKinds": [] }
+    },
+    "acceptanceCriteria": [
+      "MVW 硬门槛：validate 全绿（含市场 name/desc zh+en）",
+      "新分类 health 可识别：manifest.group=health + locale 提供 group.health 标签",
+      "标题用独立 card.wf-heart-rate.title 键",
+      "Bpm 缺失时 render 返回 null",
+      "example.stats 注入 heartrateBpm 使预览可渲染",
+      "不得修改任何其他文件"
+    ],
+    "forbiddenChanges": [
+      "不得创建/修改 src/widgets/<其他目录>/、src/client/、scripts/、package.json、generated.registry.ts",
+      "不得运行 pnpm build / gen-registry / tsc",
+      "不得修改 Human-owned 需求字段"
+    ]
+  },
+  "history": [
+    { "status": "REQUIREMENT_READY", "at": "2026-08-30T00:00:00+08:00", "note": "Human：2x2 心率卡片；新分类 health 经 Human 确认（Agent 建议）" },
+    { "status": "TECH_ANALYSIS", "at": "2026-08-30T00:00:00+08:00", "note": "无真实数据源 → 标记 未来 Bridge；v1 以 example 支撑预览；复杂度 Low" },
+    { "status": "ARCHITECTURE_READY", "at": "2026-08-30T00:00:00+08:00", "note": "Architecture Decision = Widget-only（未来接 Bridge 时升为 +Host Capability）" },
+    { "status": "IMPLEMENTING", "at": "2026-08-30T00:00:00+08:00", "note": "Worker #1 生产 v1（heartrateBpm + 单位；缺失返回 null）" },
+    { "status": "SELF_REVIEW", "at": "2026-08-30T00:00:00+08:00", "note": "validate 0 failure / 0 warning（含市场 name/desc zh+en 硬门槛）" },
+    { "status": "REVIEW", "at": "2026-08-30T00:00:00+08:00", "result": "REWORK", "note": "Layer1 System Integrity 全绿（validate/gen 20 units/build/probe）；Layer2 产品未达标 → REWORK（正常迭代）" },
+    { "status": "HUMAN_REVIEW", "at": "2026-08-30T00:00:00+08:00", "note": "Human 意见 3 条：①内容-卡片标题改「当前心率」；②视觉-加状态词 legend（偏低/正常/偏高）；③数据展示-加 min/avg/max（缺失 —）" },
+    { "status": "IMPLEMENTING", "at": "2026-08-30T00:00:00+08:00", "note": "Worker（同一 Agent 作者）按意见迭代 v2：title 值改、status legend、heartrateStats min/avg/max、example 同步" },
+    { "status": "SELF_REVIEW", "at": "2026-08-30T00:00:00+08:00", "note": "validate 0 failure / 0 warning；7 本地键 zh/en 覆盖" },
+    { "status": "VALIDATION", "at": "2026-08-30T00:00:00+08:00", "note": "gen=20 units；build=PASS；probe=全部 19 既有 id + wf-heart-rate 均在 bundle（回归 0）" },
+    { "status": "REVIEW", "at": "2026-08-30T00:00:00+08:00", "result": "REWORK", "note": "半成品状态检查：功能正确但视觉未达最终理想（状态词未着色/统计数据为单行文本）→ 仍保持 MVW_OK、可继续迭代——证明确认『允许不完美』成立" }
+  ],
+  "mvw": {
+    "validUnit": true,
+    "contract": true,
+    "discovery": true,
+    "registryAuto": true,
+    "build": true,
+    "marketplace": true,
+    "isolation": true,
+    "iterable": true,
+    "verdict": "MVW_OK"
+  },
+  "iterationProof": {
+    "rounds": 2,
+    "v1": "创建 → System Integrity 全绿（MVW_OK）",
+    "humanFeedback": ["内容-标题", "视觉-状态词", "数据展示-min/avg/max"],
+    "v2": "按 3 条意见修改 → System Integrity 复检全绿 + 既有 19 零回归",
+    "halfFinishedState": "有意停留在『功能正确、视觉未达理想』→ 仍可发现/注册/入市场/继续修改/不污染其他 Widget",
+    "conclusion": "多轮迭代不会把 Widget 变成孤魂野鬼：每次修改后系统身份与生态完整性保持"
+  },
+  "result": "COMPLETED",
+  "cleanup": { "note": "wf-heart-rate 为迭代测试产物，验证后已删除；Registry 回归 19 units" }
+}

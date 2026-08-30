@@ -2,6 +2,9 @@
 
 主 Agent 生成、传给 Worker Agent 的唯一输入。**Worker 只按 Specification 实现，不得自行扩大范围。**
 
+> **Worker 的目标是产出 Minimum Viable Widget（MVW）**：合法进入生态、可继续迭代的第一版
+> （ARCH-003）。不是「一次完美」。产品表现不足 = REWORK（正常）；系统不合法 = BLOCKED（唯一失败）。
+
 ```jsonc
 {
   "schema": "dsh-widgets/widget-spec/v1",

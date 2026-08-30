@@ -97,8 +97,22 @@ function validateDir(name, dir) {
     else if (idM[1] !== name) bad(`index.ts id "${idM[1]}" !== dir name`)
     else ok('index.ts id literal === dir name')
 
-    // Locale completeness for widget-local keys.
+    // ── MVW marketplace hard gate (ARCH-003) ──
     const m2 = readJson(manifestFile)
+    // name + desc MUST exist in BOTH locales, or the widget cannot be listed /
+    // searched / understood in the Marketplace (MarketTab reads widgetName +
+    // widgetDesc + id). This is a System Integrity requirement, not a style one.
+    const mName = `widget.${name}.name`
+    const mDesc = `widget.${name}.desc`
+    if (m2.__error) { /* manifest broken — already flagged above */ }
+    else {
+      for (const loc of ['zh', 'en']) {
+        const dict = m2.locale?.[loc]
+        if (!dict || dict[mName] === undefined) bad(`locale.${loc} missing marketplace key "${mName}" (market name)`)
+        if (!dict || dict[mDesc] === undefined) bad(`locale.${loc} missing marketplace key "${mDesc}" (market desc)`)
+      }
+    }
+    // Locale completeness for widget-local keys referenced by index.ts.
     const keys = tKeys(src)
     const localKeys = keys.filter((k) => k.startsWith(`widget.${name}.`) || k.startsWith(`card.${name}.`))
     if (localKeys.length > 0) {
@@ -109,9 +123,7 @@ function validateDir(name, dir) {
       if (missingEn.length) bad(`locale.en missing keys: ${missingEn.join(', ')}`)
       else ok(`locale.en covers ${localKeys.length} local t() key(s)`)
     } else {
-      warn('no widget-local t() keys found (ok for pure-stats widgets with no strings)')
-      if (!m2.__error && !m2.locale?.zh?.[`widget.${name}.name`]) warn('no widget.<id>.name in locale.zh (market will show the raw key)')
-      if (!m2.__error && !m2.locale?.en?.[`widget.${name}.name`]) warn('no widget.<id>.name in locale.en')
+      warn('no widget-local t() keys found in index.ts (ok: strings resolved via market keys)')
     }
     const external = keys.filter((k) => !k.startsWith(`widget.${name}.`) && !k.startsWith(`card.${name}.`))
     if (external.length) warn(`references non-local t() keys (shell/family — resolved at runtime): ${[...new Set(external)].join(', ')}`)

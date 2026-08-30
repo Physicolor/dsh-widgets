@@ -92,7 +92,21 @@
       "2x4 主数字槽位：副本百分比并入 headRight 小字；正式 value 大号槽 + headRight 容量",
       "window 缺失边界：副本 capacity=''（空串渲染空位）；正式 null/undefined（不渲染）"
     ],
-    "verdict": "仅凭 Workflow 信息未能 100% 复现正式 Widget；差异全部可定位到 Workflow 信息缺口（已据此修正 02/03/05/06）"
+    "verdict": "仅凭 Workflow 信息未能 100% 复现正式 Widget；差异全部可定位到 Workflow 信息缺口（已据此修正 02/03/05/06）",
+    "rejudged_arch003": {
+      "at": "2026-08-30T00:00:00+08:00",
+      "against": "ARCH-003 迭代安全标准",
+      "systemIntegrity": {
+        "validUnit": true,
+        "contract": true,
+        "discovery": true,
+        "registryAuto": true,
+        "build": true,
+        "marketplace": true,
+        "iterable": true
+      },
+      "conclusion": "逐项均为 YES → 4 处差异（标题键/数据源优先级/2x4 主数字槽位/缺失边界）判定为 Product Iteration Difference，非 Workflow Failure；ARCH-002 回归测试证明 Workflow 允许正常迭代"
+    }
   },
   "validation": {
     "validateUnit": "PASS",

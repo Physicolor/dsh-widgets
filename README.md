@@ -121,6 +121,18 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ## Changelog
 
+### v1.3.2
+**Workflow 校准 — 迭代安全验证（ARCH-003: 允许不完美，不允许「孤魂野鬼」）：**
+
+- 🎯 **重新定义目标**：Workflow 不保证一次生成完美 Widget，只保证 **无论经历多少轮创建/修改/人工反馈，Widget 始终是合法、可发现、可注册、可入 Marketplace、不破坏其他组件、可继续安全修改的组件**。
+- 🧩 **引入 Minimum Viable Widget（MVW）**：合法进入生态、可继续迭代的最小完整 Widget（Structural / Discovery / Registry / Runtime / Marketplace / Iteration 六项硬门槛）；产品表现不足 ≠ 失败。
+- 🛡️ **双层 Review 分离**：Layer1 System Integrity（Contract/Discovery/Registry/Build/Runtime/Marketplace/Isolation 硬门槛）+ Layer2 Product Quality（UI/视觉/文案/层级…可迭代）；Review 结果升级为三态 **PASS / REWORK / BLOCKED**——REWORK 是正常开发（可多轮 HUMAN_REVIEW 循环），BLOCKED 才是唯一 Workflow Failure。
+- 🚫 **BLOCKED 定义**：Contract 非法 / Registry 失败 / Build 失败 / Marketplace 无法识别或添加 / 需修改其他 Widget / 造成回归 → STOP/Escalation。
+- ✅ **重新判定 ARCH-002 回归**：context-water 的 4 处差异（标题键/数据源优先级/2x4 主数字槽位/缺失边界）经逐项核查均为 Product Iteration Difference（合法单元+可发现+可注册+可构建+可入市场+可迭代），**非 Workflow Failure**。
+- 🔁 **真实迭代测试**：v1.3.2 新增 `wf-heart-rate`（模拟「今天心率 2x2」、新分类 health、无真实数据源）走完整循环：v1 创建 → System Integrity 全绿（MVW_OK）→ Human Review 3 条意见（内容-标题 / 视觉-状态词 / 数据-min·avg·max）→ 同一 Worker 迭代 v2 → 复检全绿 + 既有 19 零回归；**有意停留在半成品状态**验证其仍可发现/注册/入市场/继续修改/不污染。测试单元已删除，Registry 回归 19。
+- 🛠️ **validator 升级**：`scripts/validate-widget-unit.mjs` 增加 MVW 市场硬门槛——`widget.<id>.name/desc` 必须在 locale.zh **与** locale.en 都存在（市场可识别是 error 级，不再只是 warning）；19 单元复检 0 failure。
+- 📄 `docs/workflow/` 全量校准（README/01/03/05/06/07/08 + `record.schema.json` 增加 `BLOCKED` 状态与 `mvw` 字段）。
+
 ### v1.3.1
 **Workflow — Widget Production Workflow 固化（ARCH-002: 人定需求 / Agent 定技术 / 系统验证「做得对不对」）:**
 
