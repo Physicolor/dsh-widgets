@@ -7,11 +7,13 @@
  */
 
 import * as React from 'react'
+import { WIDGETS } from './generated.registry'
 import {
-  WIDGETS, badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf, fmtShortDate, buildRollingGrid, peakStatusNow,
+  badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf,
   widgetName, widgetDesc, widgetSimToggle, fieldLabel, optionLabel,
   type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize, type WidgetRenderMeta,
-} from './widgets'
+} from './lib/contract'
+import { fmtShortDate, buildRollingGrid } from './lib/format'
 import { t } from './i18n'
 
 /** The base card side all scales derive from. */
@@ -350,7 +352,7 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
       out.headRight ? React.createElement('span', { style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, out.headRight) : null,
     ),
   )
-  const headEls = [
+  const headEls: Array<React.ReactElement> = [
     headFlex,
   ]
   if (out.headAfter) {
@@ -532,15 +534,17 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
   // size in the preview without changing the added instance.
   const [previewSize, setPreviewSize] = React.useState<WidgetSize>('2x2')
   // Simulated state for widgets with states (e.g. peak-pricing): clicking the
-  // preview card flips it, so both states can be reviewed live.
+  // preview card flips it, so both states can be reviewed live. The BASE state
+  // comes from the widget's OWN example.sim (deterministic — never the live
+  // clock); flipping toggles its single boolean field.
   const [previewSim, setPreviewSim] = React.useState<Record<string, unknown> | null>(null)
   React.useEffect(() => { setPreviewSim(null) }, [selected])
   const toggleSim = (): void => {
     if (!selWidget || !widgetSimToggle(selWidget)) return
-    const cur = previewSim
-    setPreviewSim(cur && typeof cur.peak === 'boolean'
-      ? { peak: !cur.peak, window: typeof cur.window === 'number' ? cur.window : 0 }
-      : { peak: !peakStatusNow().peak })
+    const base = previewSim ?? selWidget.example?.sim ?? {}
+    const boolKey = Object.keys(base).find((k) => typeof base[k] === 'boolean')
+    if (!boolKey) { setPreviewSim({ ...base }); return }
+    setPreviewSim({ ...base, [boolKey]: !base[boolKey] })
   }
   // There is no separate "uninstalled" zone any more: everything ships bundled
   // and the market only ADDS instances. Removing a row deletes it entirely
@@ -562,48 +566,21 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
   // else falls back to the installed instance's size.
   const selSize = (selWidget && sizesOf(selWidget).includes(previewSize)) ? previewSize : (selKey?.size ?? '2x2')
   const selConfig = selWidget ? (prefs.cardConfigs[selected] ?? {}) : null
+  // Effective simulated state: the user's flipped state, else the widget's own
+  // example.sim baseline (deterministic — never the live clock). Defined after
+  // selWidget so the render reads it safely on every pass.
+  const effSim = previewSim ?? selWidget?.example?.sim ?? null
   const previewOut = (): WidgetRenderOut | null => {
     if (!selWidget || !selConfig) return null
-    // For the heatmap, rebuild the preview grid honoring the window-alignment
-    // mode (rolling: today on the right / quarter: aligned to calendar quarter)
-    // so the config edit is visible in the preview.
-    let stats = { ...PREVIEW_STATS, ...selConfig } as unknown as Parameters<typeof selWidget.render>[0]
-    if (selWidget.id === 'heatmap') {
-      const mode = (selConfig.monthMode as 'rolling' | 'quarter') === 'quarter' ? 'quarter' : 'rolling'
-      const now = new Date()
-      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
-      const base = new Date(mode === 'quarter'
-        ? (() => { const q = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1); return new Date(q.getFullYear(), q.getMonth(), q.getDate() - q.getDay()) })()
-        : (() => { const b = new Date(startOfWeek); b.setDate(b.getDate() - 12 * 7); return b })())
-      const grid: Array<Array<{ value: number; date: string }>> = []
-      const day = (r: number, c: number): Date => { const d = new Date(base); d.setDate(base.getDate() + c * 7 + r); return d }
-      // Mirror the real seed so preview ≈ actual: the three used days carry their
-      // known absolute values (total 3203M), the rest stay small markers.
-      const realSeed: Record<string, number> = {
-        '2026-08-14': 244_188_000,
-        '2026-08-15': 1_639_548_000,
-        '2026-08-16': 1_319_264_000,
-      }
-      for (let r = 0; r < 7; r++) {
-        const row: Array<{ value: number; date: string }> = []
-        for (let c = 0; c < 13; c++) {
-          const d = day(r, c)
-          const dk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-          const off = Math.round((d.getTime() - startOfWeek.getTime()) / 86400000)
-          const v = (dk in realSeed) ? realSeed[dk] : ((off < 0) ? (Math.abs(off) % 5 === 0 ? 600 : 0) : (off % 4 === 0 ? 1400 : (off % 3 === 0 ? 700 : 0)))
-          row.push({ value: v, date: dk })
-        }
-        grid.push(row)
-      }
-      stats = { ...stats, heatmapGrid: grid } as unknown as Parameters<typeof selWidget.render>[0]
-    }
-    // Quote preview needs sample content — the real card deliberately renders
-    // nothing until the user types a text (preview only, never persisted).
-    if (selWidget.id === 'quote') {
-      const rawText = selConfig.text as string | undefined
-      if (!rawText || !rawText.trim()) (stats as Record<string, unknown>).text = t('preview.quotePlaceholder')
-    }
-    return selWidget.render(stats, { size: selSize, ...(previewSim ? { sim: previewSim } : {}) })
+    // Widget-owned example stats (a plain object, or a function of the current
+    // per-instance config — the heatmap rebuilds its preview grid honoring the
+    // window-alignment mode, the quote seeds a sample text). Merged over the
+    // shared preview stats; preview logic lives in the widget unit, not here.
+    const ex = selWidget.example
+    const exStats = ex?.stats ? (typeof ex.stats === 'function' ? ex.stats(selConfig) : ex.stats) : {}
+    const stats = { ...PREVIEW_STATS, ...exStats, ...selConfig } as Parameters<typeof selWidget.render>[0]
+    const sim = effSim && Object.keys(effSim).length > 0 ? effSim : undefined
+    return selWidget.render(stats, { size: selSize, ...(sim ? { sim } : {}) })
   }
   const setConfig = (field: ConfigField, value: unknown): void => {
     const next = { ...(prefs.cardConfigs[selected] ?? {}) }
@@ -685,13 +662,13 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
   const seen = new Set<string>()
   const marketCards = WIDGETS.filter((w) => { const g = groupOf(w); if (seen.has(g)) return false; seen.add(g); return true })
   const list = marketCards.filter((w) => `${widgetName(w)} ${widgetDesc(w)} ${w.id}`.toLowerCase().indexOf(q.toLowerCase()) !== -1)
-  // Group labels shown on the market cards (thunks so they follow the locale).
-  const GROUP_LABELS: Record<string, () => string> = {
-    system: () => t('group.system'),
-    'opencode-go': () => 'OpenCode Go',
-    'coding-plan': () => t('group.codingPlan'),
-    pricing: () => t('group.pricing'),
-    other: () => t('group.other'),
+  // Group labels come from the dictionaries (`group.<group-id>`); a group
+  // without a label falls back to the first widget's name. Widget units can
+  // ship their own group label lazily via their manifest locale.
+  const groupLabel = (w: (typeof WIDGETS)[number]): string => {
+    const key = `group.${groupOf(w)}`
+    const label = t(key)
+    return label === key ? widgetName(w) : label
   }
 
   if (previewGroup !== null) {
@@ -705,16 +682,20 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     const curSize = cur?.s ?? '2x2'
     const curKey = w ? instanceKey(w.id, curSize) : ''
     const installed = w ? prefs.installed.indexOf(curKey) !== -1 : false
-    // Quote preview shows sample content (the real card renders nothing until
-    // the user types a text — preview only, never persisted).
-    const previewStats = w && w.id === 'quote' ? { ...PREVIEW_STATS, text: t('market.previewText') } as WidgetStats : PREVIEW_STATS
-    const out = w ? w.render(previewStats, { size: curSize, ...(previewSim ? { sim: previewSim } : {}) }) : null
+    // Widget-owned example stats: preview mode uses the unit's example (quote
+    // seeds a sample text, heatmap builds a config-aware rolling grid, …)
+    // merged over the shared preview stats — no central special-casing here.
+    const ex = w?.example
+    const exStats = ex?.stats ? (typeof ex.stats === 'function' ? ex.stats(prefs.cardConfigs?.[curKey] ?? {}) : ex.stats) : {}
+    const previewStats = { ...PREVIEW_STATS, ...exStats } as WidgetStats
+    const effSim = previewSim ?? ex?.sim ?? null
+    const out = w ? w.render(previewStats, { size: curSize, ...(effSim && Object.keys(effSim).length > 0 ? { sim: effSim } : {}) }) : null
     const toggleSim = (): void => {
       if (!widgetSimToggle(w)) return
-      const cur = previewSim
-      setPreviewSim(cur && typeof cur.peak === 'boolean'
-        ? { peak: !cur.peak, window: typeof cur.window === 'number' ? cur.window : 0 }
-        : { peak: !peakStatusNow().peak })
+      const base = previewSim ?? ex?.sim ?? {}
+      const boolKey = Object.keys(base).find((k) => typeof base[k] === 'boolean')
+      if (!boolKey) { setPreviewSim({ ...base }); return }
+      setPreviewSim({ ...base, [boolKey]: !base[boolKey] })
     }
     // Everything ships bundled: the market only ADDS the selected instance
     // (widget@size) to the rail. Already-added instances show as disabled.
@@ -780,7 +761,7 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
         // first line, one description line, actions — no extra id line.
         return React.createElement('button', { key: w.id, type: 'button', className: 'dsx-mcard', 'aria-pressed': anyInstalled, onClick: () => { setPreviewGroup(groupOf(w)); setPreviewIdx(0) } },
           React.createElement('span', { className: 'dsx-mhead' },
-            React.createElement('span', { className: 'dsx-mname' }, GROUP_LABELS[groupOf(w)] ? GROUP_LABELS[groupOf(w)]() : widgetName(w)),
+            React.createElement('span', { className: 'dsx-mname' }, groupLabel(w)),
             React.createElement('span', { className: 'dsx-badge' }, String(instanceCount)),
           ),
           React.createElement('span', { className: 'dsx-mdesc' }, widgetDesc(w)),

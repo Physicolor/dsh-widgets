@@ -1,0 +1,22 @@
+{
+  "zh": {
+    "badge.opencode": "OpenCode Go 用量配额",
+    "usage.title": "OpenCode 用量",
+    "usage.totalKey": "总 Key",
+    "usage.cycleHint": "单击循环：{chain}",
+    "usage.resets": "重置 {date}",
+    "usage.rolling": "滚动",
+    "usage.week": "周",
+    "usage.month": "月"
+  },
+  "en": {
+    "badge.opencode": "OpenCode Go Usage Quota",
+    "usage.title": "OpenCode Usage",
+    "usage.totalKey": "All Keys",
+    "usage.cycleHint": "Click to cycle: {chain}",
+    "usage.resets": "Resets {date}",
+    "usage.rolling": "Rolling",
+    "usage.week": "Week",
+    "usage.month": "Month"
+  }
+}

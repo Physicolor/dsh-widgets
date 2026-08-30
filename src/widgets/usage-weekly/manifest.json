@@ -1,0 +1,17 @@
+{
+  "id": "usage-weekly",
+  "order": 53,
+  "group": "opencode-go",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.usage-weekly.name": "每周用量",
+      "widget.usage-weekly.desc": "OpenCode Go 每周用量配额"
+    },
+    "en": {
+      "widget.usage-weekly.name": "Weekly Usage",
+      "widget.usage-weekly.desc": "OpenCode Go weekly usage quota"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "context-water",
+  "order": 21,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2", "2x4"],
+  "locale": {
+    "zh": {
+      "widget.context-water.name": "上下文水位",
+      "widget.context-water.desc": "上下文系统/工具/消息占比分段条",
+      "card.contextWater.title": "上下文已用",
+      "card.contextWater.system": "系统提示词",
+      "card.contextWater.tools": "工具",
+      "card.contextWater.messages": "对话消息"
+    },
+    "en": {
+      "widget.context-water.name": "Context Level",
+      "widget.context-water.desc": "System/tools/messages share as a segmented bar",
+      "card.contextWater.title": "Context Used",
+      "card.contextWater.system": "System prompt",
+      "card.contextWater.tools": "Tools",
+      "card.contextWater.messages": "Messages"
+    }
+  }
+}

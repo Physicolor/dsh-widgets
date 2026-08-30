@@ -1,0 +1,23 @@
+{
+  "id": "task",
+  "order": 22,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.task.name": "任务",
+      "widget.task.desc": "当前任务的进行中/已完成/待办计数",
+      "card.task.done": "{n} 已完成",
+      "card.task.none": "暂无任务",
+      "card.task.sub": "{doing} 进行中 · {pending} 待办"
+    },
+    "en": {
+      "widget.task.name": "Tasks",
+      "widget.task.desc": "Counts of in-progress / completed / pending tasks",
+      "card.task.done": "{n} done",
+      "card.task.none": "No tasks",
+      "card.task.sub": "{doing} in progress · {pending} pending"
+    }
+  }
+}

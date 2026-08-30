@@ -1,0 +1,18 @@
+{
+  "id": "cache",
+  "order": 15,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": true,
+  "locale": {
+    "zh": {
+      "widget.cache.name": "缓存命中",
+      "widget.cache.desc": "输入缓存的命中比例"
+    },
+    "en": {
+      "widget.cache.name": "Cache Hit",
+      "widget.cache.desc": "Input cache hit ratio"
+    }
+  }
+}

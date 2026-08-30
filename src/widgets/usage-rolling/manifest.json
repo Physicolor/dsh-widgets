@@ -1,0 +1,17 @@
+{
+  "id": "usage-rolling",
+  "order": 52,
+  "group": "opencode-go",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.usage-rolling.name": "滚动用量",
+      "widget.usage-rolling.desc": "OpenCode Go 滚动窗口用量配额"
+    },
+    "en": {
+      "widget.usage-rolling.name": "Rolling Usage",
+      "widget.usage-rolling.desc": "OpenCode Go rolling-window usage quota"
+    }
+  }
+}

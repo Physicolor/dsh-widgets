@@ -1,0 +1,17 @@
+{
+  "id": "template-widget",
+  "order": 200,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.template-widget.name": "模板组件",
+      "widget.template-widget.desc": "从模板复制创建新 Widget 的骨架示例（不会被注册）"
+    },
+    "en": {
+      "widget.template-widget.name": "Template Widget",
+      "widget.template-widget.desc": "Skeleton example for copying into a new widget unit (never registered)"
+    }
+  }
+}

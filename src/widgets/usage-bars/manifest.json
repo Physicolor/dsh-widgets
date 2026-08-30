@@ -1,0 +1,17 @@
+{
+  "id": "usage-bars",
+  "order": 50,
+  "group": "opencode-go",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.usage-bars.name": "用量对比",
+      "widget.usage-bars.desc": "OpenCode 滚动/周/月三窗口用量柱状图"
+    },
+    "en": {
+      "widget.usage-bars.name": "Usage Bars",
+      "widget.usage-bars.desc": "OpenCode rolling/weekly/monthly usage bars"
+    }
+  }
+}

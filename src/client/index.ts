@@ -1,8 +1,8 @@
 /**
- * Harness Widgets — browser half entry.
+ * Harness Widgets 鈥?browser half entry.
  *
  * Registers the right-hand widget rail, the header capsule toggle, and the
- * two settings surfaces (General rows + the "组件" section). One shared bridge
+ * two settings surfaces (General rows + the "缁勪欢" section). One shared bridge
  * holds the persisted prefs, the folded session stats, and the OpenCode usage
  * payload fetched from the Host's same-origin `/api/opencode-usage` route.
  */
@@ -10,7 +10,9 @@
 import * as React from 'react'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import './widgets.module.css'
-import { ALL_IDS, ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, instanceKey, parseInstanceKey, sizesOf, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './widgets'
+import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES } from './generated.registry'
+import { instanceKey, parseInstanceKey, sizesOf, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
+import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadSeen, migrateHeatmapV2, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
 import { CardBody, WidgetsPage, type Prefs } from './components'
 import { t, installLocale, onLocaleChange } from './i18n'
 
@@ -28,200 +30,6 @@ const ACTION_COMMANDS: Record<string, string> = {
   contextCompact: '/compact',
 }
 
-// ── Daily token-usage heatmap (self-accounted to localStorage). ──
-const HEATMAP_KEY = 'harness-widgets.heatmap'
-
-function loadHeatmap(): Record<string, number> {
-  try { const raw = localStorage.getItem(HEATMAP_KEY); return raw ? JSON.parse(raw) as Record<string, number> : {} } catch { return {} }
-}
-function saveHeatmap(m: Record<string, number>): void {
-  try { localStorage.setItem(HEATMAP_KEY, JSON.stringify(m)) } catch { /* storage unavailable */ }
-}
-/** Default heatmap accounting timezone: Beijing (UTC+8). Configurable per
- *  heatmap card (cardConfigs.heatmap.timeZone); 'local' = browser clock. */
-const DEFAULT_TZ = 'Asia/Shanghai'
-function dateKey(d: Date, tz?: string): string {
-  const tzName = tz || DEFAULT_TZ
-  if (tzName !== 'local') {
-    try {
-      // en-CA formats as YYYY-MM-DD in the requested timezone — the calendar
-      // day boundary follows the timezone, not the browser clock.
-      return new Intl.DateTimeFormat('en-CA', { timeZone: tzName }).format(d)
-    } catch { /* unknown tz → fall through to local calendar day */ }
-  }
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-/** Build a horizontal (GitHub-style) heatmap grid: 7 rows (Sun..Sat) × weeks
- *  as columns (~13 wide). Two window-alignment modes:
- *   - 'rolling' : classic rolling window — the last 13 weeks ending today,
- *     so today is always pinned to the right edge (future is unknowable).
- *   - 'quarter' : align to the current calendar quarter (1–3, 4–6, 7–9,
- *     10–12月) that contains today; today then lands wherever it naturally
- *     falls within the quarter (e.g. mid-quarter dates sit toward the middle).
- *  Future columns render empty (value 0), shown faint. */
-function buildHeatmapGrid(m: Record<string, number>, mode: 'rolling' | 'quarter' = 'rolling', tz?: string): Array<Array<{ value: number; date: string }>> {
-  const weeks = 13
-  const now = new Date()
-  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay()) // this week's Sunday
-  let base: Date
-  if (mode === 'quarter') {
-    // Current calendar quarter start (month 0-based → floored to 0/3/6/9, day 1).
-    const qStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)
-    // Anchor on the Sunday on/before the quarter start, then span `weeks` columns.
-    base = new Date(qStart.getFullYear(), qStart.getMonth(), qStart.getDate() - qStart.getDay())
-  } else {
-    // Rolling: today's week pinned to the last column.
-    base = new Date(startOfWeek)
-    base.setDate(base.getDate() - (weeks - 1) * 7)
-  }
-  const grid: Array<Array<{ value: number; date: string }>> = []
-  for (let r = 0; r < 7; r++) {
-    const row: Array<{ value: number; date: string }> = []
-    for (let c = 0; c < weeks; c++) {
-      const d = new Date(base)
-      d.setDate(base.getDate() + c * 7 + r)
-      const k = dateKey(d, tz)
-      row.push({ value: m[k] ?? 0, date: k })
-    }
-    grid.push(row)
-  }
-  return grid
-}
-
-/** Add newly observed tokens to today; returns the running grid for the card. */
-function accumulateHeatmap(m: Record<string, number>, dayKey: string, delta: number): Record<string, number> {
-  if (delta <= 0) return m
-  const next = { ...m, [dayKey]: (m[dayKey] ?? 0) + delta }
-  saveHeatmap(next)
-  return next
-}
-
-// Heatmap self-accounting: primary = per-step crediting (v2) when settled
-// nodes carry per-node `usage` (exact day attribution by step start time);
-// fallback = cumulative-delta with a session anchor (v1) when nodes lack
-// `usage` (host may not project it into the folded surface). v1's known
-// cross-midnight over-credit is avoided by anchoring on observed total growth
-// and RESET, never a bare "new day → 0" (the anchor is only rebuilt on a
-// cumulative fallback, i.e. a genuinely new session/log).
-const HEATMAP_SEEN = 'harness-widgets.heatmap.seen'
-const HEATMAP_SEEN_STRONGEST = 'harness-widgets.heatmap.strongest'
-const HEATMAP_ANCHOR = 'harness-widgets.heatmap.anchor'
-const HEATMAP_LOG_KEY = 'harness-widgets.heatmap.log-v2'
-function loadSeen(): { keys: Set<string>; strongest: number } {
-  try {
-    const keys = new Set<string>()
-    const raw = localStorage.getItem(HEATMAP_SEEN)
-    if (raw) for (const k of JSON.parse(raw) as string[]) if (typeof k === 'string') keys.add(k)
-    const sRaw = localStorage.getItem(HEATMAP_SEEN_STRONGEST)
-    const strongest = Number.isFinite(+(sRaw ?? '')) ? +(sRaw ?? '') : 0
-    return { keys, strongest }
-  } catch { return { keys: new Set<string>(), strongest: 0 } }
-}
-function saveSeen(keys: Set<string>, strongest: number): void {
-  try {
-    localStorage.setItem(HEATMAP_SEEN, JSON.stringify([...keys]))
-    localStorage.setItem(HEATMAP_SEEN_STRONGEST, String(strongest))
-  } catch { /* storage unavailable */ }
-}
-function loadHeatmapAnchor(): number {
-  try {
-    const n = +(localStorage.getItem(HEATMAP_ANCHOR) ?? '')
-    return Number.isFinite(n) && n >= 0 ? n : 0
-  } catch { return 0 }
-}
-function saveHeatmapAnchor(n: number): void {
-  try { localStorage.setItem(HEATMAP_ANCHOR, String(n)) } catch { /* storage unavailable */ }
-}
-/** V2 migration: NEVER drop existing heatmap history. The previous migration
- *  rebuilt the table with only the demo seed (8/14–16), discarding the real
- *  credits the user accumulated on the other days (e.g. 8/17–21) — a data-
- *  losing bug. Migration now:
- *  - cold install (no log key AND empty table): seed the three demo days;
- *  - upgrade: PRESERVE every existing date value, then BACKFILL any of the
- *    lost 8/14–21 days from host-session-cache derived constants (the real
- *    daily totals rebuilt from DSH's session_projcache.json), so devices that
- *    already had history cleared by the buggy migration get it restored.
- *  - cross-day over-credit fix comes from the accounting CHANGE itself, not
- *    from wiping the table.
- */
-/** Daily totals rebuilt from the authoritative per-event session logs
- *  (D:/dsh-home/sessions/.../session.jsonl.zstd, decoded via ZSTD frame scan +
- *  the official tokenUsageOf delta algorithm, attributed by each usage
- *  EVENT's `time` in LOCAL time — not by session createdAt, because a session
- *  can span midnight. Sum is conserved: equals the all-session official total.
- *  IMPORTANT: non-live past days (8/14–8/21) are backfilled here — their
- *  sessions have ended, so the live collector will never re-credit them.
- *  8/22 must NOT be seeded: the live per-step accounting accumulates it in
- *  real time, and a fixed seed on top double-counts (8/22 was once 145M–181M). */
-const HEATMAP_RECOVERED: Record<string, number> = {
-  '2026-08-14': 74_315_859,
-  '2026-08-15': 367_790_777,
-  '2026-08-16': 1_195_700_475,
-  '2026-08-17': 161_488_382,
-  '2026-08-18': 292_337_504,
-  '2026-08-19': 352_355_694,
-  '2026-08-20': 214_853_935,
-  '2026-08-21': 44_552_871,
-  /* 8/22 intentionally absent — live-accumulated */
-}
-function migrateHeatmapV2(): Record<string, number> {
-  const m = loadHeatmap()
-  try {
-    // Ensure the recovered history is present REGARDLESS of the v2-log flag:
-    // earlier builds may have run the buggy migration (flag set) but been left
-    // with an empty/incomplete table, so the flag alone must not block the
-    // backfill. Preserve any user value; only fill zeros.
-    const next = { ...m }
-    let patched = false
-    for (const [k, v] of Object.entries(HEATMAP_RECOVERED)) {
-      if ((next[k] ?? 0) === 0) { next[k] = v; patched = true }
-    }
-    // Repair double-counted live days: 8/21 & 8/22 are accumulated by the
-    // real-time per-step accounting; a leftover fixed seed or an inflated
-    // value (e.g. 145M/181M from the V2.0 double-write) must be removed so the
-    // live path rebuilds them from the authoritative session events. Clear the
-    // seen-set too, so those steps get re-credited once. Runs ONCE (guarded by
-    // a marker) so it never wipes the live values on subsequent renders.
-    const repairedKey = 'harness-widgets.heatmap.live-fixed'
-    let repaired = false
-    if (!localStorage.getItem(repairedKey)) {
-      // Only the CURRENT live day may be cleared for re-accumulation — past
-      // days are closed history and must never be wiped (the old hard-coded
-      // 8/21+8/22 list would delete a finished day's value on a fresh browser).
-      const liveDays = [dateKey(new Date())]
-      for (const k of liveDays) {
-        if ((next[k] ?? 0) > 0) { delete next[k]; repaired = true }
-      }
-      if (repaired) {
-        saveHeatmap(next)
-        saveSeen(new Set<string>(), 0)
-      }
-      localStorage.setItem(repairedKey, '1')
-    }
-    // One-shot: clear TODAY's cell so any polluted value from the pre-fix
-    // accounting (cross-day over-credit that diffed a whole session history
-    // into today) is dropped; the live collector rebuilds it from here on.
-    const tzResetKey = 'harness-widgets.heatmap.today-reset-v1'
-    if (!localStorage.getItem(tzResetKey)) {
-      const tk = dateKey(new Date())
-      if ((next[tk] ?? 0) > 0) { delete next[tk]; patched = true }
-      localStorage.setItem(tzResetKey, '1')
-    }
-    // Re-backfill after the one-shot repair: clearing 8/21 dropped its value,
-    // so restore the authoritative history for non-live days again.
-    let refill = false
-    for (const [k, v] of Object.entries(HEATMAP_RECOVERED)) {
-      if ((next[k] ?? 0) === 0) { next[k] = v; refill = true }
-    }
-    if (refill) saveHeatmap(next)
-    if (patched) saveHeatmap(next)
-    if (!localStorage.getItem(HEATMAP_LOG_KEY)) {
-      localStorage.setItem(HEATMAP_LOG_KEY, '1')
-      saveSeen(new Set<string>(), 0)
-    }
-    return next
-  } catch { return m }
-}
 
 
 const DEFAULTS: Prefs = {
@@ -251,14 +59,14 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
   if (!Number.isFinite(s.panelPadding) || s.panelPadding < 4 || s.panelPadding > 40) s.panelPadding = DEFAULTS.panelPadding
   if (!Number.isFinite(s.cardSide) || s.cardSide < 100 || s.cardSide > 220) s.cardSide = DEFAULTS.cardSide
   // Normalize one persisted entry to a valid instance key. Legacy bare widget
-  // ids (pre-2×4) migrate to their 2×2 instance; unknown entries are dropped.
+  // ids (pre-2脳4) migrate to their 2脳2 instance; unknown entries are dropped.
   const normalizeInstance = (key: string): string => {
     const { widgetId, size } = parseInstanceKey(key)
     const w = WIDGETS.find((x) => x.id === widgetId)
     if (!w) return ''
     return sizesOf(w).includes(size) ? instanceKey(widgetId, size) : ''
   }
-  // Respect the user's installed set exactly — do NOT force-append built-ins
+  // Respect the user's installed set exactly 鈥?do NOT force-append built-ins
   // back on every load (that kept overflowing the max-widgets cap after the
   // user uninstalled system widgets). Only the first-run path seeds defaults.
   if (!Array.isArray(s.installed)) s.installed = []
@@ -335,7 +143,7 @@ function saveState(s: Prefs): void {
  * being torn down (window/tab close, navigation, desktop-app quit). The
  * 400 ms debounce means the last edit before a quick close is usually still
  * pending here; a normal fetch would be cancelled with the page, but
- * `sendBeacon` is delivered by the browser even as the page is destroyed —
+ * `sendBeacon` is delivered by the browser even as the page is destroyed 鈥?
  * which is what keeps the write inside desktop shells that spawn a fresh
  * random loopback origin on every launch (their localStorage is a new realm
  * each boot, so the host file is the only channel that survives).
@@ -359,7 +167,7 @@ function flushPendingState(): void {
         keepalive: true,
       })
     }
-  } catch { /* page is going away; nothing more can be done — the boot sync on the next launch converges */ }
+  } catch { /* page is going away; nothing more can be done 鈥?the boot sync on the next launch converges */ }
 }
 
 /** Session stats shape collected by the dock collector. */
@@ -413,7 +221,7 @@ export function apply(ctx: ClientContext): void {
   // time); fall back to the built-in dictionaries when it is absent. Locale
   // switches re-render every always-mounted surface via the bridge.
   ctx.effect(() => {
-    const disposeLocale = installLocale(ctx.get('locale') as { bind?: (ns: string) => (key: string, params?: Record<string, unknown>) => string; subscribe?: (fn: () => void) => () => void } | undefined)
+    const disposeLocale = installLocale(ctx.get('locale') as { bind?: (ns: string) => (key: string, params?: Record<string, unknown>) => string; subscribe?: (fn: () => void) => () => void } | undefined, WIDGET_LOCALES)
     const disposeListener = onLocaleChange(() => { emit() })
     return () => { disposeLocale(); disposeListener() }
   })
@@ -445,7 +253,7 @@ export function apply(ctx: ClientContext): void {
       const hostState = data.state !== null && typeof data.state === 'object' ? data.state : null
       const localAt = loadSavedAt()
       if (hostState && hostAt > localAt) {
-        // Host is newer (another origin/browser saved it) → adopt + mirror locally.
+        // Host is newer (another origin/browser saved it) 鈫?adopt + mirror locally.
         prefs = normalizePrefs(hostState)
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
@@ -453,7 +261,7 @@ export function apply(ctx: ClientContext): void {
         } catch { /* ignore */ }
         emit()
       } else if (hostAt < localAt && localAt > 0) {
-        // Local is newer (host file absent/stale — e.g. first run after upgrade).
+        // Local is newer (host file absent/stale 鈥?e.g. first run after upgrade).
         try { await putState(prefs, localAt) } catch { /* best-effort */ }
       }
     } catch { /* host unavailable; stay on localStorage only */ }
@@ -465,7 +273,7 @@ export function apply(ctx: ClientContext): void {
   }
   // Cross-tab + visibility re-sync, so "every change takes effect immediately"
   // also holds when the same DSH service is open in several tabs/windows:
-  //  - `storage` events fire in OTHER tabs of the SAME origin when one saves →
+  //  - `storage` events fire in OTHER tabs of the SAME origin when one saves 鈫?
   //    re-read + emit instead of waiting for a reload;
   //  - `visibilitychange` re-pulls the host store, so switching back to a tab
   //    whose origin differs (localhost vs 127.0.0.1) still converges to the
@@ -520,8 +328,8 @@ export function apply(ctx: ClientContext): void {
     // overlay share this variable so both stay aligned.
     document.documentElement.style.setProperty('--dsx-rail-top', `${top + 12}px`)
     // Composer bottom gap: one "breathing" band under everything in the input
-    // column — the composer dock stats bar (`.FJxK*_root` inside
-    // `conversation.composer.dock`) plus its own bottom padding — so a fixed
+    // column 鈥?the composer dock stats bar (`.FJxK*_root` inside
+    // `conversation.composer.dock`) plus its own bottom padding 鈥?so a fixed
     // overlay can sit flush below it. Prefer the dock (the lowest visible row);
     // then the composer seat; then the scroll body as a last resort.
     const dock = document.querySelector('[data-slot="conversation.composer.dock"]')
@@ -601,7 +409,7 @@ export function apply(ctx: ClientContext): void {
           .then((r) => r.json())
           .then((data: UsageData) => setState({ usageData: data }))
           .catch(() => { /* keep last known usage */ })
-        // Multi-key pool usage (总 Key 视图 + 每把 Key 独立视图).
+        // Multi-key pool usage (鎬?Key 瑙嗗浘 + 姣忔妸 Key 鐙珛瑙嗗浘).
         fetch('/api/opencode-usage-multi')
           .then((r) => r.json())
           .then((data: UsageMulti) => setState({ usageMulti: data }))
@@ -616,7 +424,7 @@ export function apply(ctx: ClientContext): void {
         const id = window.setInterval(() => setNow(Date.now()), 1000)
         return () => window.clearInterval(id)
       }, [running])
-      // Time-sensitive cards (e.g. 峰谷定价 peak-pricing windows) must re-read
+      // Time-sensitive cards (e.g. 宄拌胺瀹氫环 peak-pricing windows) must re-read
       // the clock even with no turn running: a 30s tick rebuilds stats so the
       // window check stays fresh across a peak/off-peak boundary.
       React.useEffect(() => {
@@ -636,14 +444,14 @@ export function apply(ctx: ClientContext): void {
         }
         // Heatmap accounting, two-layer:
         //  (a) per-step (v2): if settled assistant nodes carry `usage`, credit
-        //      each step ONCE to the day its `stepStartTime` began — exact
+        //      each step ONCE to the day its `stepStartTime` began 鈥?exact
         //      per-conversation attribution, immune to cross-midnight sessions,
         //      session switches, remounts, compaction.
         //  (b) anchor fallback (v1): if nodes lack `usage` (host did not
         //      project it into the folded surface), fall back to diffing the
         //      cumulative `tokenUsage` projection against an anchor that is
-        //      rebuilt ONLY on a cumulative RESET (new session) — never on a
-        //      bare "new day" — so continuing a session across midnight still
+        //      rebuilt ONLY on a cumulative RESET (new session) 鈥?never on a
+        //      bare "new day" 鈥?so continuing a session across midnight still
         //      credits only the newly observed growth to today.
         const seenState = loadSeen()
         // Heatmap timezone: per-card config (default Beijing UTC+8), 'local' =
@@ -676,10 +484,10 @@ export function apply(ctx: ClientContext): void {
           saveSeen(seenState.keys, seenState.strongest)
           setHeatmap(heatmapRef.current)
         }
-        // (b) anchor fallback — only when per-step nodes carried no usage.
+        // (b) anchor fallback 鈥?only when per-step nodes carried no usage.
         // Anchor discipline (the cross-day over-credit fix):
         //   * while per-step crediting is active, keep the anchor parked at the
-        //     observed cumulative — a later fallback takeover then diffs only
+        //     observed cumulative 鈥?a later fallback takeover then diffs only
         //     what per-step did NOT already credit (never the whole history);
         //   * the fallback credits growth ONLY when the active session shows a
         //     step that actually began today (todayActivity). Without it, an
@@ -787,7 +595,7 @@ export function apply(ctx: ClientContext): void {
       // poolView along its cycle and persist it via cardConfigs so the choice
       // survives reloads and other browser origins. The pool plugin is told
       // about the selection too: landing on Key N actually makes the pool use
-      // that key (prefer), returning to 总 Key clears the pin.
+      // that key (prefer), returning to 鎬?Key clears the pin.
       const cyclePool = (key: string) => (out: WidgetRenderOut): void => {
         const modes = out.cycle?.modes ?? []
         if (modes.length === 0) return
@@ -816,7 +624,7 @@ export function apply(ctx: ClientContext): void {
       // Animation phase for the overlay's CSS size tween. Entering/leaving the
       // wave uses a short tween (smooth grow/shrink, no pop); while FOLLOWING
       // the pointer the transition is disabled so every frame lands directly on
-      // the steady-state right-anchored geometry — that keeps the right edge on
+      // the steady-state right-anchored geometry 鈥?that keeps the right edge on
       // the rail's right line and the inter-card gaps exactly `pad` even under
       // fast pointer movement (a live width tween would linger in non-steady
       // intermediate geometry: misaligned right edges and uneven gaps).
@@ -885,7 +693,7 @@ export function apply(ctx: ClientContext): void {
           // tween so the wave scales up smoothly; once the tween settles we
           // switch to "follow" (no transition) so fast pointer movement lands
           // instantly on steady-state geometry. Only the realtime style needs
-          // the follow mode — discrete keeps its tween for grid gliding.
+          // the follow mode 鈥?discrete keeps its tween for grid gliding.
           if (prefs.realTime && animPhaseRef.current !== 'follow' && animPhaseRef.current !== 'grow') {
             schedulePhase('grow', 0)
             schedulePhase('follow', 170)
@@ -922,7 +730,7 @@ export function apply(ctx: ClientContext): void {
       const pad = prefs.panelPadding
       const columns = [1, 2, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
       const multi = columns > 1
-      // Rail width is the STATIC grid width — NO magnification overshoot. The
+      // Rail width is the STATIC grid width 鈥?NO magnification overshoot. The
       // rail no longer reserves left room for the bell-curve overshoot (which
       // used to widen both the rail and --dsx-rail-w, pushing the conversation
       // column right). A magnified card's left growth is instead painted by a
@@ -947,7 +755,7 @@ export function apply(ctx: ClientContext): void {
         ...(statsHeat?.heatmapGrid ? {} : { heatmapGrid: buildHeatmapGrid(fallbackRaw, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling', (prefs.cardConfigs?.heatmap?.timeZone as string) || DEFAULT_TZ) }),
       }
       interface RailItem { key: string; size: WidgetSize; w: (typeof WIDGETS)[number]; out: NonNullable<ReturnType<(typeof WIDGETS)[number]['render']>>; baseW: number }
-      // Pooled usage views: ['total', 'Key 1', 'Key 2', …] when the pool has
+      // Pooled usage views: ['total', 'Key 1', 'Key 2', 鈥 when the pool has
       // more than one key; otherwise usage cards fall back to single-key data.
       const poolModes = (snap.usageMulti?.keys.length ?? 0) > 1
         ? ['total', ...snap.usageMulti!.keys.map((entry, i) => entry.label || `Key ${i + 1}`)]
@@ -960,13 +768,13 @@ export function apply(ctx: ClientContext): void {
           if (!w || sizesOf(w).indexOf(size) === -1) return null
           const out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
           if (!out) return null
-          // 2×4 is exactly two 2×2 widths plus one inter-card gap.
+          // 2脳4 is exactly two 2脳2 widths plus one inter-card gap.
           const baseW = size === '2x4' ? 2 * side + pad : side
           return { key, size, w, out, baseW }
         })
         .filter((it): it is RailItem => it !== null)
-        // In a 1-column layout a 2×4 tile (two cells wide) cannot fit the single
-        // rail column, so its instances are hidden — TEMPORARILY blocklisted,
+        // In a 1-column layout a 2脳4 tile (two cells wide) cannot fit the single
+        // rail column, so its instances are hidden 鈥?TEMPORARILY blocklisted,
         // not removed: switching back to 2/4 columns restores them from
         // installed/order as-is. The market marks those entries in the same state
         // (struck-through title + yellow capsule + disabled add).
@@ -977,12 +785,12 @@ export function apply(ctx: ClientContext): void {
       // `#root { margin-right: var(--dsh-sidebar-width) }` (neutralized by
       // dsh-ui-harmonizer to the conversation column's margin-right). The rail
       // anchors its right edge to that SAME variable inline (0 while absent)
-      // and its CSS carries `transition: right` — deliberately on the MAIN
+      // and its CSS carries `transition: right` 鈥?deliberately on the MAIN
       // THREAD, the same animation path as the conversation column's
       // margin-right. A compositor transform (v1.2.3) never dropped frames,
       // but when the column's per-frame reflow overran a frame the rail kept
-      // gliding while the column stalled — the two visibly split. Same-path
-      // animation cannot split: both surfaces advance in the same style→layout
+      // gliding while the column stalled 鈥?the two visibly split. Same-path
+      // animation cannot split: both surfaces advance in the same style鈫抣ayout
       // pass every frame. The rail subtree is cheap (lazy overlay deck, no
       // persistent will-change), so the per-frame cost is negligible.
       // Padding is `0 pad pad pad`: no top inset so the first card aligns with
@@ -997,11 +805,11 @@ export function apply(ctx: ClientContext): void {
       // Dock-style magnification, following the authoritative macOS Dock
       // algorithm (see LikhithSP/MacOS-Web-Simulator Dock.jsx):
       //   - scale is a DISCRETE STEP of the distance from the hovered card
-      //     {d0: peak, d1, d2, ≥d3 none} — a steep bell, NOT a flat gaussian, so
+      //     {d0: peak, d1, d2, 鈮3 none} 鈥?a steep bell, NOT a flat gaussian, so
       //     neighbours barely grow while the hovered card is clearly the peak.
       //   - the hovered card is HARD-MAX by construction (d=0 returns the peak).
       //   - cards are sized through LAYOUT (width/height change, neighbours make
-      //     room via cumulative top), not transform — so the right edge stays
+      //     room via cumulative top), not transform 鈥?so the right edge stays
       //     pinned to the rail right and the gap between cards is constant.
       const restCenter = (i: number): number => i * (side + pad) + side / 2
       const peakScale = prefs.magnify
@@ -1020,10 +828,10 @@ export function apply(ctx: ClientContext): void {
       }
       const active = prefs.realTime
       // Row-band packing (P2, no gaps): every card is one grid-unit tall
-      // (2×2 and 2×4 share the same height). A 2×4 spans two cells in width, a
-      // 2×2 spans one. Cards pack left-to-right through the row's cell budget;
-      // when the current row cannot fit a card (e.g. a 2×4 with only one cell
-      // left), it moves to the next row, so a later 2×2 always back-fills the gap.
+      // (2脳2 and 2脳4 share the same height). A 2脳4 spans two cells in width, a
+      // 2脳2 spans one. Cards pack left-to-right through the row's cell budget;
+      // when the current row cannot fit a card (e.g. a 2脳4 with only one cell
+      // left), it moves to the next row, so a later 2脳2 always back-fills the gap.
       const spanOf = (i: number): number => (items[i].size === '2x4' ? 2 : 1)
       const baseWOf = (i: number): number => items[i].baseW
       const rowIndexOf: number[] = []
@@ -1033,9 +841,9 @@ export function apply(ctx: ClientContext): void {
       if (n > 0) {
         if (multi) {
           // Greedy best-fit packing: each item lands in the EARLIEST row that has
-          // room for its span, opening a new row only when none fits. A 2×4 (span
+          // room for its span, opening a new row only when none fits. A 2脳4 (span
           // 2) that would leave a single-cell gap is therefore back-filled by a
-          // later 2×2, so no row ever shows a hole regardless of drag order.
+          // later 2脳2, so no row ever shows a hole regardless of drag order.
           const rowUsed: number[] = [0]
           for (let i = 0; i < n; i++) {
             const sp = spanOf(i)
@@ -1060,8 +868,8 @@ export function apply(ctx: ClientContext): void {
       // flush with the rail regardless of mode.
       //  - Stepless (`active`):   focus = the pointer's live coordinates.
       //  - Discrete (`!active`):  focus = the pointer coordinates SNAPPED onto a
-      //    discrete grid — the row/column centres plus the midpoints between each
-      //    adjacent pair (rows → 2·rows-1 Y points, cols → 2·cols-1 X points).
+      //    discrete grid 鈥?the row/column centres plus the midpoints between each
+      //    adjacent pair (rows 鈫?2路rows-1 Y points, cols 鈫?2路cols-1 X points).
       //    The 0.2s tween then glides the peak between those grid points.
       const cellW = side + pad
       const rowH = side + pad
@@ -1110,8 +918,8 @@ export function apply(ctx: ClientContext): void {
         scaleArr = active ? scaleFor(rawX, rawY) : scaleFor(nearest(rawX, xPts), nearest(rawY, yPts))
       }
       // --- build actual reflow (right-edge anchored) for a given scale array.
-      //   Each card is one grid-unit tall (2×2 and 2×4 share the same height =
-      //   side × scale); only the width differs (2×4 is two units plus the gap).
+      //   Each card is one grid-unit tall (2脳2 and 2脳4 share the same height =
+      //   side 脳 scale); only the width differs (2脳4 is two units plus the gap).
       //   Within each row cards place right-to-left (rightmost at right:0, each
       //   next pushed left by prev width + pad); row top accumulates by the
       //   tallest scaled height in the row (+pad), so a magnified row pushes the
@@ -1139,7 +947,7 @@ export function apply(ctx: ClientContext): void {
               }
             }
           } else {
-            // Single column, right-anchored (2×4 collapses to 2×2 width here since
+            // Single column, right-anchored (2脳4 collapses to 2脳2 width here since
             // a single column has no room for a two-cell-wide card).
             let acc = 2
             for (let i = 0; i < n; i++) { const h = side * sc[i]; place[i] = { s: sc[i], top: acc, right: 0, w: h, h }; acc += h + pad }
@@ -1157,18 +965,18 @@ export function apply(ctx: ClientContext): void {
       // target size; its opacity hides it while resting.
       const focusLayout = placeCards(engaged ? scaleArr : new Array(n).fill(1))
       // Deck height is the STATIC reflow bottom (the rail content never grows
-      // while magnifying — growth is painted by the fixed overlay), so the add
+      // while magnifying 鈥?growth is painted by the fixed overlay), so the add
       // button and scroll height stay fixed at the resting grid.
       const deckBottom = staticLayout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
       // Add button placement, shared by the static deck and the focus overlay.
 // Rows are right-anchored, so the leftover cell(s) of a short last row sit at
 // the row's LEFT edge. The button parks in that gap ONLY when the STATIC gap
-// is actually wide enough (leftGap >= side) — the fit decision must not
+// is actually wide enough (leftGap >= side) 鈥?the fit decision must not
 // flip under magnification (a focused row's wider cards would shrink the gap
 // below `side` and jump the button to the deck bottom-right mid-hover).
 // Placement itself rides the passed `layout` (static or scaled), so while
 // hovering the button stays in its gap slot, gliding with the row.
-// The leftmost placed card, not the last item, anchors the gap — the old code
+// The leftmost placed card, not the last item, anchors the gap 鈥?the old code
 // anchored off the last item, which for a left-packed 4-col row put the button
 // on top of the row's own cards.
 const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: number; h: number }>): { top: number; right: number } => {
@@ -1207,7 +1015,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       const addRight = staticAdd.right
       const addBottom = addTop + side
       const stackHeight = (nItems > 0 ? Math.max(deckBottom, addBottom) : addBottom) + pad
-      // The add button participates in the magnification wave like a card — and its
+      // The add button participates in the magnification wave like a card 鈥?and its
       // PLACEMENT rides the wave layout too: top/right are recomputed from the
       // focused (scaled) rows, so when cards above it grow taller the button
       // moves down with the magnified deck bottom / last-row gap, exactly like
@@ -1263,7 +1071,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       }, railChildren)
       // Magnify overlay: a FIXED layer rendered OUTSIDE the rail's scroll-clip
       // box (a sibling of the rail, so no ancestor overflow clips it). When a
-      // card is magnifying it paints the live reflow here — its leftward growth
+      // card is magnifying it paints the live reflow here 鈥?its leftward growth
       // is visible over the conversation edge instead of being cut off at the
       // rail's left boundary, and the rail width (hence the conversation column)
       // never changes. It is pointer-events:none (interaction stays on the rail)
@@ -1272,7 +1080,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       // ALWAYS mounted: entering/exiting updates only scale, and the CSS
       // width/height transition below animates the growth/shrink smoothly
       // (mounting at the target size would pop). Opacity hides it while rest.
-      // Positions (top/right) are INSTANT always — right-anchored geometry
+      // Positions (top/right) are INSTANT always 鈥?right-anchored geometry
       // keeps the right edge on the rail's right line. The size tween applies
       // to the enter/exit phases (grow/shrink) and to the discrete style's
       // grid gliding; the realtime FOLLOW phase has no transition so every
@@ -1284,7 +1092,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
         : 'none'
       const magnifyLayer = React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent', opacity: magnifying ? 1 : 0, transition: 'opacity 0.15s ease' } },
         React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${stackHeight}px` } },
-          // Positions (top/right) are INSTANT always — right-anchored geometry
+          // Positions (top/right) are INSTANT always 鈥?right-anchored geometry
           // keeps the right edge on the rail's right line. The size tween
           // applies to the enter/exit phases (grow/shrink) and to the discrete
           // style's grid gliding; the realtime FOLLOW phase has no transition
@@ -1298,7 +1106,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
               // Lazy body: cards render ONLY while actually magnifying. The slot
               // div stays mounted (its geometry tween continues seamlessly on
               // enter/exit), but the heavy card DOM (heatmaps, charts) is
-              // absent at rest — halving the rail's resident DOM and its
+              // absent at rest 鈥?halving the rail's resident DOM and its
               // layout cost while the right sidebar animates. At rest the
               // overlay is invisible (opacity 0) anyway, and on engage the
               // body mounts at rest geometry BEFORE the size tween starts, so
@@ -1307,7 +1115,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
             )
           }),
           // Mirror the add button at its WAVE position (focusedAdd), scaled by
-          // its own wave factor — it displaces with the magnified deck like a
+          // its own wave factor 鈥?it displaces with the magnified deck like a
           // card, and its size follows the same bell curve.
           React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), tabIndex: -1, style: { position: 'absolute', top: `${focusedAdd.top.toFixed(2)}px`, right: `${focusedAdd.right.toFixed(2)}px`, width: `${(side * addScale).toFixed(2)}px`, height: `${(side * addScale).toFixed(2)}px`, borderRadius: `${Math.round(addRadius * addScale)}px`, transition: overlayTransition, zIndex: 30 } },
               React.createElement('span', { className: 'dsx-stats-add-icon' },
@@ -1317,7 +1125,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
             ),
           ),
         )
-      // Temporary right-side add panel: reuses the settings 组件市场 + 拖动排序
+      // Temporary right-side add panel: reuses the settings 缁勪欢甯傚満 + 鎷栧姩鎺掑簭
       // (WidgetsPage) wholesale, floats over content, never affects layout.
       // Width is configurable (prefs.panelWidth) and draggable via the left edge.
       const pw = prefs.panelWidth
@@ -1345,7 +1153,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
     },
   ))
 
-  // ---- Settings section ("组件" page). ----
+  // ---- Settings section ("缁勪欢" page). ----
   ctx.slots.inject('settings.section', () => ctx.slots.register(
     { name: 'settings.section', id: 'widgets', order: 30, label: () => t('ui.section.label') },
     () => {

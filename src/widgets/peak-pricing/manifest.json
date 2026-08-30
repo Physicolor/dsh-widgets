@@ -1,0 +1,25 @@
+{
+  "id": "peak-pricing",
+  "order": 60,
+  "group": "pricing",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.peak-pricing.name": "峰谷定价",
+      "widget.peak-pricing.desc": "DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰）",
+      "card.peak.title": "峰谷定价",
+      "card.peak.window1": "上午 09:00–12:00",
+      "card.peak.window2": "下午 14:00–18:00",
+      "sim.peak": "高峰/低峰"
+    },
+    "en": {
+      "widget.peak-pricing.name": "Peak Pricing",
+      "widget.peak-pricing.desc": "DeepSeek V4 peak pricing: whether now is a peak window (Beijing time, weekdays 09:00–12:00 & 14:00–18:00 are peak)",
+      "card.peak.title": "Peak Pricing",
+      "card.peak.window1": "Morning 09:00–12:00",
+      "card.peak.window2": "Afternoon 14:00–18:00",
+      "sim.peak": "Peak/Off-Peak"
+    }
+  }
+}

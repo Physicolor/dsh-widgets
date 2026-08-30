@@ -1,0 +1,17 @@
+{
+  "id": "usage-rings",
+  "order": 51,
+  "group": "opencode-go",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.usage-rings.name": "用量环图",
+      "widget.usage-rings.desc": "OpenCode 滚动/周/月三窗口用量环形图"
+    },
+    "en": {
+      "widget.usage-rings.name": "Usage Rings",
+      "widget.usage-rings.desc": "OpenCode rolling/weekly/monthly usage rings"
+    }
+  }
+}

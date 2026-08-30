@@ -1,0 +1,18 @@
+{
+  "id": "tokens",
+  "order": 16,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": true,
+  "locale": {
+    "zh": {
+      "widget.tokens.name": "Tokens",
+      "widget.tokens.desc": "输入与输出 token 计数"
+    },
+    "en": {
+      "widget.tokens.name": "Tokens",
+      "widget.tokens.desc": "Input & output token counts"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "context",
+  "order": 20,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.context.name": "一键压缩",
+      "widget.context.desc": "上下文占用百分比，右上按钮两次点击执行压缩",
+      "card.context.title": "一键压缩",
+      "card.context.waiting": "等待上下文数据",
+      "card.context.compact": "压缩",
+      "card.context.confirm": "确认"
+    },
+    "en": {
+      "widget.context.name": "Compact",
+      "widget.context.desc": "Context usage percent; top-right button compacts after two taps",
+      "card.context.title": "Compact",
+      "card.context.waiting": "Waiting for context data",
+      "card.context.compact": "Compact",
+      "card.context.confirm": "Confirm"
+    }
+  }
+}

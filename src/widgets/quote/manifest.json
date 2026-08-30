@@ -1,0 +1,31 @@
+{
+  "id": "quote",
+  "order": 30,
+  "group": "other",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.quote.name": "今日寄语",
+      "widget.quote.desc": "显示你自定义的一句话（未填写文本时不显示内容）",
+      "card.quote.title": "今日寄语",
+      "config.quoteText": "寄语内容",
+      "config.showTitle": "显示标题",
+      "config.align": "水平对齐",
+      "config.valign": "垂直位置",
+      "config.wrap": "允许换行",
+      "quote.previewPlaceholder": "（填写寄语内容后显示）"
+    },
+    "en": {
+      "widget.quote.name": "Daily Quote",
+      "widget.quote.desc": "Shows a custom sentence you typed (hidden while empty)",
+      "card.quote.title": "Daily Quote",
+      "config.quoteText": "Quote Text",
+      "config.showTitle": "Show Title",
+      "config.align": "Horizontal Align",
+      "config.valign": "Vertical Position",
+      "config.wrap": "Allow Wrap",
+      "quote.previewPlaceholder": "(shown after you type a quote)"
+    }
+  }
+}

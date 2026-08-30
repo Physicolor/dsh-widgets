@@ -1,0 +1,18 @@
+{
+  "id": "ttft",
+  "order": 13,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": true,
+  "locale": {
+    "zh": {
+      "widget.ttft.name": "首 token 平均",
+      "widget.ttft.desc": "平均首 token 延迟"
+    },
+    "en": {
+      "widget.ttft.name": "Avg TTFT",
+      "widget.ttft.desc": "Average first-token latency"
+    }
+  }
+}

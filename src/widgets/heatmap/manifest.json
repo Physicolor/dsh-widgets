@@ -1,0 +1,31 @@
+{
+  "id": "heatmap",
+  "order": 40,
+  "group": "coding-plan",
+  "builtin": true,
+  "sizes": ["2x2", "2x4"],
+  "locale": {
+    "zh": {
+      "widget.heatmap.name": "用量热度图",
+      "widget.heatmap.desc": "每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；大小可在市场左右切换",
+      "card.heatmap.title": "Token 用量",
+      "config.monthMode": "窗口对齐方式",
+      "config.monthMode.rolling": "滚动(今天最右)",
+      "config.monthMode.quarter": "季度对齐",
+      "config.timeZone": "记账时区",
+      "config.timeZone.beijing": "北京 (UTC+8)",
+      "config.timeZone.local": "跟随系统"
+    },
+    "en": {
+      "widget.heatmap.name": "Token Heatmap",
+      "widget.heatmap.desc": "Daily token usage heatmap (self-accounted). 2×2 shows a ~3-month calendar, 2×4 the ~half-year history; switch size in the market",
+      "card.heatmap.title": "Token Usage",
+      "config.monthMode": "Window Alignment",
+      "config.monthMode.rolling": "Rolling (today right)",
+      "config.monthMode.quarter": "Quarter-aligned",
+      "config.timeZone": "Accounting Timezone",
+      "config.timeZone.beijing": "Beijing (UTC+8)",
+      "config.timeZone.local": "Follow system"
+    }
+  }
+}

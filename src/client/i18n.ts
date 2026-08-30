@@ -1,5 +1,12 @@
 /**
- * dsh-widgets i18n.
+ * dsh-widgets i18n — SHELL dictionary + locale-service wiring.
+ *
+ * Architecture (ARCH-001): this file owns ONLY the shell/UI strings (rails,
+ * settings pages, market chrome, generic labels). Per-widget strings live in
+ * each widget unit's `manifest.json` (merged by the registry generator into
+ * `generated.registry.ts` → `WIDGET_LOCALES`) and are handed in at apply()
+ * time via `installLocale(api, WIDGET_LOCALES)` / `setExtraLocales(...)`.
+ * A widget unit NEVER edits this file — it ships its own locale.
  *
  * Preferred channel is the official `locale` service (`ctx.get('locale')`,
  * provided by @deepseek-ai/dsh-client-locale): its `bind(ns)` returns a
@@ -26,8 +33,14 @@ export type T = (key: string, params?: Record<string, unknown>) => string
 
 const NS = 'dsh-widgets'
 
+/** Per-widget merged dictionaries (from the registry generator). */
+export interface WidgetLocales {
+  zh?: Record<string, string>
+  en?: Record<string, string>
+}
+
 /* ------------------------------------------------------------------ */
-/*  Dictionaries (default fallback; zh/en share the same key set)      */
+/*  Shell dictionaries (zh/en share the same key set)                  */
 /* ------------------------------------------------------------------ */
 
 const ZH: Record<string, string> = {
@@ -71,15 +84,16 @@ const ZH: Record<string, string> = {
   'market.prevAria': '上一个',
   'market.nextAria': '下一个',
   'market.sizeBlockedTitle': '1 列布局下不显示 2×4 组件',
-  'market.previewText': '预览寄语：写一句你的话',
 
-  // Market group labels
+  // Market group labels (keyed by the widget's group id; a group without a
+  // label falls back to the first widget's name)
   'group.system': '系统',
-  'group.codingPlan': 'Coding Plan 用量',
+  'group.opencode-go': 'OpenCode Go',
+  'group.coding-plan': 'Coding Plan 用量',
   'group.pricing': '峰谷定价',
   'group.other': '其它',
 
-  // Badges
+  // Badges (generic)
   'badge.system': '系统',
   'badge.external': '外部',
 
@@ -103,100 +117,12 @@ const ZH: Record<string, string> = {
   'settings.hideStatsLine.title': '隐藏输入框下方文字条',
   'settings.hideStatsLine.desc': '隐藏输入框下方状态统计条的文字（保留原空间、不影响布局）；关闭时正常显示',
 
-  // Align/valign labels
+  // Align/valign labels (generic control labels)
   'align.left': '左',
   'align.center': '居中',
   'align.right': '右',
   'align.top': '上',
   'align.bottom': '下',
-
-  // Widget registry names + descriptions
-  'widget.counts.name': '轮次·步数',
-  'widget.counts.desc': '本轮会话的轮次与步骤计数',
-  'widget.llm.name': 'LLM 时长',
-  'widget.llm.desc': '模型推理累计耗时',
-  'widget.tool.name': '工具调用',
-  'widget.tool.desc': '工具调用累计耗时',
-  'widget.ttft.name': '首 token 平均',
-  'widget.ttft.desc': '平均首 token 延迟',
-  'widget.tps.name': '速率',
-  'widget.tps.desc': '解码吞吐速度',
-  'widget.cache.name': '缓存命中',
-  'widget.cache.desc': '输入缓存的命中比例',
-  'widget.tokens.name': 'Tokens',
-  'widget.tokens.desc': '输入与输出 token 计数',
-  'widget.context.name': '一键压缩',
-  'widget.context.desc': '上下文占用百分比，右上按钮两次点击执行压缩',
-  'widget.context-water.name': '上下文水位',
-  'widget.context-water.desc': '上下文系统/工具/消息占比分段条',
-  'widget.task.name': '任务',
-  'widget.task.desc': '当前任务的进行中/已完成/待办计数',
-  'widget.quote.name': '今日寄语',
-  'widget.quote.desc': '显示你自定义的一句话（未填写文本时不显示内容）',
-  'widget.heatmap.name': '用量热度图',
-  'widget.heatmap.desc': '每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；大小可在市场左右切换',
-  'widget.heatmap-bars.name': '用量柱状图',
-  'widget.heatmap-bars.desc': '最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致',
-  'widget.usage-bars.name': '用量对比',
-  'widget.usage-bars.desc': 'OpenCode 滚动/周/月三窗口用量柱状图',
-  'widget.usage-rings.name': '用量环图',
-  'widget.usage-rings.desc': 'OpenCode 滚动/周/月三窗口用量环形图',
-  'widget.usage-rolling.name': '滚动用量',
-  'widget.usage-rolling.desc': 'OpenCode Go 滚动窗口用量配额',
-  'widget.usage-weekly.name': '每周用量',
-  'widget.usage-weekly.desc': 'OpenCode Go 每周用量配额',
-  'widget.usage-monthly.name': '每月用量',
-  'widget.usage-monthly.desc': 'OpenCode Go 每月用量配额',
-  'widget.peak-pricing.name': '峰谷定价',
-  'widget.peak-pricing.desc': 'DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰）',
-
-  'badge.opencode': 'OpenCode Go 用量配额',
-  'sim.peak': '高峰/低峰',
-
-  // Card render texts
-  'card.counts.value': '{turns}轮 {steps}步',
-  'card.context.title': '一键压缩',
-  'card.context.waiting': '等待上下文数据',
-  'card.context.compact': '压缩',
-  'card.context.confirm': '确认',
-  'card.contextWater.title': '上下文已用',
-  'card.contextWater.system': '系统提示词',
-  'card.contextWater.tools': '工具',
-  'card.contextWater.messages': '对话消息',
-  'card.task.done': '{n} 已完成',
-  'card.task.none': '暂无任务',
-  'card.task.sub': '{doing} 进行中 · {pending} 待办',
-  'card.quote.title': '今日寄语',
-  'card.peak.title': '峰谷定价',
-  'card.peak.window1': '上午 09:00–12:00',
-  'card.peak.window2': '下午 14:00–18:00',
-  'card.heatmap.title': 'Token 用量',
-
-  // Usage (OpenCode) cards
-  'usage.title': 'OpenCode 用量',
-  'usage.totalKey': '总 Key',
-  'usage.cycleHint': '单击循环：{chain}',
-  'usage.resets': '重置 {date}',
-  'usage.rolling': '滚动',
-  'usage.week': '周',
-  'usage.month': '月',
-
-  // Per-card config schema
-  'config.quoteText': '寄语内容',
-  'config.showTitle': '显示标题',
-  'config.align': '水平对齐',
-  'config.valign': '垂直位置',
-  'config.wrap': '允许换行',
-  'config.monthMode': '窗口对齐方式',
-  'config.monthMode.rolling': '滚动(今天最右)',
-  'config.monthMode.quarter': '季度对齐',
-  'config.monthMode.rolling7': '滚动(最近7天)',
-  'config.monthMode.weekly': '每周对齐',
-  'config.timeZone': '记账时区',
-  'config.timeZone.beijing': '北京 (UTC+8)',
-  'config.timeZone.local': '跟随系统',
-
-  'preview.quotePlaceholder': '（填写寄语内容后显示）',
 }
 
 const EN: Record<string, string> = {
@@ -235,10 +161,10 @@ const EN: Record<string, string> = {
   'market.prevAria': 'Previous',
   'market.nextAria': 'Next',
   'market.sizeBlockedTitle': '2×4 is not shown in a 1-column layout',
-  'market.previewText': 'Preview quote: write your own words',
 
   'group.system': 'System',
-  'group.codingPlan': 'Coding Plan Usage',
+  'group.opencode-go': 'OpenCode Go',
+  'group.coding-plan': 'Coding Plan Usage',
   'group.pricing': 'Peak Pricing',
   'group.other': 'Others',
 
@@ -269,90 +195,6 @@ const EN: Record<string, string> = {
   'align.right': 'Right',
   'align.top': 'Top',
   'align.bottom': 'Bottom',
-
-  'widget.counts.name': 'Turns · Steps',
-  'widget.counts.desc': 'Turns and steps of the current session',
-  'widget.llm.name': 'LLM Time',
-  'widget.llm.desc': 'Cumulative model inference time',
-  'widget.tool.name': 'Tool Calls',
-  'widget.tool.desc': 'Cumulative tool call time',
-  'widget.ttft.name': 'Avg TTFT',
-  'widget.ttft.desc': 'Average first-token latency',
-  'widget.tps.name': 'Rate',
-  'widget.tps.desc': 'Decode throughput speed',
-  'widget.cache.name': 'Cache Hit',
-  'widget.cache.desc': 'Input cache hit ratio',
-  'widget.tokens.name': 'Tokens',
-  'widget.tokens.desc': 'Input & output token counts',
-  'widget.context.name': 'Compact',
-  'widget.context.desc': 'Context usage percent; top-right button compacts after two taps',
-  'widget.context-water.name': 'Context Level',
-  'widget.context-water.desc': 'System/tools/messages share as a segmented bar',
-  'widget.task.name': 'Tasks',
-  'widget.task.desc': 'Counts of in-progress / completed / pending tasks',
-  'widget.quote.name': 'Daily Quote',
-  'widget.quote.desc': 'Shows a custom sentence you typed (hidden while empty)',
-  'widget.heatmap.name': 'Token Heatmap',
-  'widget.heatmap.desc': 'Daily token usage heatmap (self-accounted). 2×2 shows a ~3-month calendar, 2×4 the ~half-year history; switch size in the market',
-  'widget.heatmap-bars.name': 'Token Bars',
-  'widget.heatmap-bars.desc': 'Vertical bars of the last 7 days of token usage; same height as the calendar view',
-  'widget.usage-bars.name': 'Usage Bars',
-  'widget.usage-bars.desc': 'OpenCode rolling/weekly/monthly usage bars',
-  'widget.usage-rings.name': 'Usage Rings',
-  'widget.usage-rings.desc': 'OpenCode rolling/weekly/monthly usage rings',
-  'widget.usage-rolling.name': 'Rolling Usage',
-  'widget.usage-rolling.desc': 'OpenCode Go rolling-window usage quota',
-  'widget.usage-weekly.name': 'Weekly Usage',
-  'widget.usage-weekly.desc': 'OpenCode Go weekly usage quota',
-  'widget.usage-monthly.name': 'Monthly Usage',
-  'widget.usage-monthly.desc': 'OpenCode Go monthly usage quota',
-  'widget.peak-pricing.name': 'Peak Pricing',
-  'widget.peak-pricing.desc': 'DeepSeek V4 peak pricing: whether now is a peak window (Beijing time, weekdays 09:00–12:00 & 14:00–18:00 are peak)',
-
-  'badge.opencode': 'OpenCode Go Usage Quota',
-  'sim.peak': 'Peak/Off-Peak',
-
-  'card.counts.value': '{turns} turns · {steps} steps',
-  'card.context.title': 'Compact',
-  'card.context.waiting': 'Waiting for context data',
-  'card.context.compact': 'Compact',
-  'card.context.confirm': 'Confirm',
-  'card.contextWater.title': 'Context Used',
-  'card.contextWater.system': 'System prompt',
-  'card.contextWater.tools': 'Tools',
-  'card.contextWater.messages': 'Messages',
-  'card.task.done': '{n} done',
-  'card.task.none': 'No tasks',
-  'card.task.sub': '{doing} in progress · {pending} pending',
-  'card.quote.title': 'Daily Quote',
-  'card.peak.title': 'Peak Pricing',
-  'card.peak.window1': 'Morning 09:00–12:00',
-  'card.peak.window2': 'Afternoon 14:00–18:00',
-  'card.heatmap.title': 'Token Usage',
-
-  'usage.title': 'OpenCode Usage',
-  'usage.totalKey': 'All Keys',
-  'usage.cycleHint': 'Click to cycle: {chain}',
-  'usage.resets': 'Resets {date}',
-  'usage.rolling': 'Rolling',
-  'usage.week': 'Week',
-  'usage.month': 'Month',
-
-  'config.quoteText': 'Quote Text',
-  'config.showTitle': 'Show Title',
-  'config.align': 'Horizontal Align',
-  'config.valign': 'Vertical Position',
-  'config.wrap': 'Allow Wrap',
-  'config.monthMode': 'Window Alignment',
-  'config.monthMode.rolling': 'Rolling (today right)',
-  'config.monthMode.quarter': 'Quarter-aligned',
-  'config.monthMode.rolling7': 'Rolling (last 7 days)',
-  'config.monthMode.weekly': 'Weekly aligned',
-  'config.timeZone': 'Accounting Timezone',
-  'config.timeZone.beijing': 'Beijing (UTC+8)',
-  'config.timeZone.local': 'Follow system',
-
-  'preview.quotePlaceholder': '(shown after you type a quote)',
 }
 
 /* ------------------------------------------------------------------ */
@@ -363,19 +205,40 @@ let bound: ((key: string, params?: Record<string, unknown>) => string) | null = 
 let localeSubscribed = false
 const localeListeners = new Set<() => void>()
 
-/** Feed the official locale service (called from apply). Registers both zh and
- *  en dictionaries for this namespace, then binds the translate function so
+/** Per-widget dictionaries merged over the shell dicts (set at apply()). */
+let extraLocales: WidgetLocales = {}
+
+/** Feed the per-widget locale maps into the translation path (called once at
+ *  apply() with `WIDGET_LOCALES` from the generated registry). The widget
+ *  dictionaries are merged over the shell dictionaries at READ time, so both
+ *  the official-service registration and the built-in fallback see them. */
+export function setExtraLocales(extra: WidgetLocales): void {
+  extraLocales = extra ?? {}
+}
+
+/** The effective dictionary for a locale: shell + per-widget extras. */
+function dictFor(locale: 'zh' | 'en'): Record<string, string> {
+  const base = locale === 'zh' ? ZH : EN
+  const extra = locale === 'zh' ? (extraLocales.zh ?? {}) : (extraLocales.en ?? {})
+  const merged: Record<string, string> = { ...base }
+  for (const [k, v] of Object.entries(extra)) merged[k] = v
+  return merged
+}
+
+/** Feed the official locale service (called from apply). Registers the merged
+ *  zh/en dictionaries for this namespace, then binds the translate function so
  *  `t()` resolves through the runtime's ACTIVE locale on every call. Returns a
  *  disposer that unregisters everything. */
-export function installLocale(api: LocaleApi | undefined): () => void {
+export function installLocale(api: LocaleApi | undefined, widgetLocales?: WidgetLocales): () => void {
+  if (widgetLocales) setExtraLocales(widgetLocales)
   const prev = bound
   bound = null
   const disposers: Array<() => void> = []
   let unsub: (() => void) | undefined
   if (api) {
     if (api.register) {
-      try { disposers.push(api.register(NS, 'zh', ZH)) } catch { /* duplicate ns/locale from an earlier registration */ }
-      try { disposers.push(api.register(NS, 'en', EN)) } catch { /* duplicate ns/locale from an earlier registration */ }
+      try { disposers.push(api.register(NS, 'zh', dictFor('zh'))) } catch { /* duplicate ns/locale from an earlier registration */ }
+      try { disposers.push(api.register(NS, 'en', dictFor('en'))) } catch { /* duplicate ns/locale from an earlier registration */ }
     }
     if (api.bind) bound = api.bind(NS)
     if (api.subscribe && !localeSubscribed) {
@@ -421,7 +284,7 @@ function interpolate(s: string, params?: Record<string, unknown>): string {
 /** Translate a dictionary key; prefers the official locale translation. */
 export function t(key: string, params?: Record<string, unknown>): string {
   if (bound) return bound(key, params)
-  const d = detectLocale() === 'zh' ? ZH : EN
+  const d = dictFor(detectLocale())
   const s = d[key] ?? EN[key] ?? key
   return interpolate(s, params)
 }

@@ -1,0 +1,20 @@
+{
+  "id": "counts",
+  "order": 10,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": true,
+  "locale": {
+    "zh": {
+      "widget.counts.name": "轮次·步数",
+      "widget.counts.desc": "本轮会话的轮次与步骤计数",
+      "card.counts.value": "{turns}轮 {steps}步"
+    },
+    "en": {
+      "widget.counts.name": "Turns · Steps",
+      "widget.counts.desc": "Turns and steps of the current session",
+      "card.counts.value": "{turns} turns · {steps} steps"
+    }
+  }
+}

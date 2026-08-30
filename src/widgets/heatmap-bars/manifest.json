@@ -1,0 +1,23 @@
+{
+  "id": "heatmap-bars",
+  "order": 41,
+  "group": "coding-plan",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.heatmap-bars.name": "用量柱状图",
+      "widget.heatmap-bars.desc": "最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致",
+      "config.monthMode": "窗口对齐方式",
+      "config.monthMode.rolling7": "滚动(最近7天)",
+      "config.monthMode.weekly": "每周对齐"
+    },
+    "en": {
+      "widget.heatmap-bars.name": "Token Bars",
+      "widget.heatmap-bars.desc": "Vertical bars of the last 7 days of token usage; same height as the calendar view",
+      "config.monthMode": "Window Alignment",
+      "config.monthMode.rolling7": "Rolling (last 7 days)",
+      "config.monthMode.weekly": "Weekly aligned"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "usage-monthly",
+  "order": 54,
+  "group": "opencode-go",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.usage-monthly.name": "每月用量",
+      "widget.usage-monthly.desc": "OpenCode Go 每月用量配额"
+    },
+    "en": {
+      "widget.usage-monthly.name": "Monthly Usage",
+      "widget.usage-monthly.desc": "OpenCode Go monthly usage quota"
+    }
+  }
+}

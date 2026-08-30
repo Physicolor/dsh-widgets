@@ -1,0 +1,18 @@
+{
+  "id": "tps",
+  "order": 14,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": true,
+  "locale": {
+    "zh": {
+      "widget.tps.name": "速率",
+      "widget.tps.desc": "解码吞吐速度"
+    },
+    "en": {
+      "widget.tps.name": "Rate",
+      "widget.tps.desc": "Decode throughput speed"
+    }
+  }
+}

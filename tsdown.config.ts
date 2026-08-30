@@ -96,7 +96,14 @@ const clientConfig: UserConfig = {
         })
         const classMap: Record<string, string> = {}
         for (const [local, exp] of Object.entries(cssExports ?? {})) classMap[local] = exp.name
-        const tagId = `${PLUGIN_ID}/${basename(fileId)}`
+        // tagId must be unique per SOURCE path, never per basename: two widget
+        // units both shipping an `index.module.css` would otherwise collide on
+        // the same <style data-plugin-css> id (the loader dedupes on it). Use
+        // the src-relative path (e.g. `dsh-widgets/widgets/peak-pricing/index.module.css`)
+        // so per-widget styles stay isolated.
+        const rel = fileId.split(sep).join('/')
+        const at = rel.indexOf('/src/')
+        const tagId = `${PLUGIN_ID}/${at >= 0 ? rel.slice(at + 1) : basename(fileId)}`
         return [
           `const css = ${JSON.stringify(code.toString())};`,
           `const tagId = ${JSON.stringify(tagId)};`,

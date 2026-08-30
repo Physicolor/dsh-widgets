@@ -1,0 +1,18 @@
+{
+  "id": "llm",
+  "order": 11,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": true,
+  "locale": {
+    "zh": {
+      "widget.llm.name": "LLM 时长",
+      "widget.llm.desc": "模型推理累计耗时"
+    },
+    "en": {
+      "widget.llm.name": "LLM Time",
+      "widget.llm.desc": "Cumulative model inference time"
+    }
+  }
+}
