@@ -124,3 +124,4 @@ Enable once in the repo:
 Because every path is relative (`css/…`, `js/…`, `assets/…`), the site renders
 correctly at both `https://physicolor.github.io/dsh-widgets/` and any mirror or
 a local `file://` open.
+<!-- deploy trigger -->
