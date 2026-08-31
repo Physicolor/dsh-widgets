@@ -21,6 +21,10 @@
 
 DeepSeek-Harness Widgets is a **persistent DSH bundle plugin** built on the Cordis composition model. It provides a customizable multi-column widget rail on the right side of the conversation page — real-time session insights, usage monitoring, and quick actions — with an extensible declarative registry.
 
+## Website / Showcase
+
+A self-contained showcase site lives in [`website/`](website/) and is ready for GitHub Pages at **https://physicolor.github.io/dsh-widgets/** — what dsh-widgets is, why it exists, every real widget (galleries + a live playground), the widget-unit architecture, the production workflow, and a requirement-form → widget-spec generator. Plain HTML/CSS/JS, no build step, all paths relative for the project Pages base path. `node website/verify.mjs` self-verifies (static checks + Edge-headless browser checks). Deploy: see `website/README.md`.
+
 ---
 
 ## Features
@@ -120,6 +124,33 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 - Coordinates explicitly with `dsh-better-sidebar`'s right rail (shares `--dsh-sidebar-width`); no residue after uninstall.
 
 ## Changelog
+
+### v1.3.3 (website + plugin — OpenCode usage live refresh)
+
+- 🌐 **Project website / widget showcase** added in [`website/`](website/) (static HTML/CSS/JS, GitHub Pages ready at the Project Pages path): hero with a 3-row widget-rail animation, one-command install terminal with copy, Why cards, gallery of **all 19 real widgets** (filter by the 5 real categories, name/id/category/size/builtin-vs-market/description + CSS-drawn preview per widget), design-philosophy good-vs-bad comparison, how-a-widget-is-born pipeline (ARCH-002/003), **Human defines what / Agent decides how** split, widget-unit structure, live playground (4 decks, 2×2↔2×4, Components hide capsule), requirement form → widget-spec generator (mirrors `docs/workflow/01` + `03`), “Preview in dsh” demo modal, workflow/MVW/contribution/roadmap sections.
+- ✅ Self-contained verification [`website/verify.mjs`](website/verify.mjs): JS/CSS/HTML static checks + Edge-headless CDP render — 30/30 checks green (theme/nav/copy/filter/playground/spec/modal/reveal/mobile/console/network).
+- 🔄 **Round 2 (visual + i18n)**:
+  - First visit now defaults to **Light** (subtle blue-tinted) with **Chinese** as the default language; a nav `中/EN` toggle switches the whole site through one unified dictionary (`js/i18n.js`, zh + en, persisted). Dark theme stays opt-in.
+  - **Widget previews now reuse the real widget rendering path** — `website/js/previews.js` ports the plugin's own `PREVIEW_STATS`, `format.ts` helpers, per-unit `render()` and the `CardBody`/`ChartBlock` scale formula 1:1; colors are the REAL DSH tokens extracted from the live UI (`deepseek-500` light / `deepseek-400` dark, card `#fff` / `#2c2c2e`, official ContextMeter segment colors). No invented “looks-like-a-widget” design system, no plugin code touched.
+  - Hero rebuilt: left story column + right **real-card showcase** + dimmed 3-row rails; the install terminal is attached directly under the hero (Hero → Installation is one continuous visual). “How a widget is born” and contribution steps became compact horizontal flows with the REWORK loop highlighted.
+  - Refined sun icon (24×24, stroke-based rays with rounded caps, matches the moon’s visual weight).
+  - Verification extended to 38/38 checks (default theme/lang, language toggle full re-render, dual-theme real token checks, i18n key completeness, responsive, console/network).
+- 🔗 No plugin code touched — zero build/registry impact; version bump deferred to the next real release.
+
+- 🔄 **Round 3 / WEBSITE-002 (整体视觉重构)**:
+  - **Hero = 完整首屏**（`min-height: 100svh`，桌面 ≥760px）：左侧项目叙事（标题/双行简介/CTA/统计），右侧是**真实插件布局规则的组件网格**——`cardSide 150 · panelPadding 24`（间距与内边距同为 24），2 列 rail 宽 372、2×4 宽 324；「一条命令安装」终端回归为 Hero 的页脚，不再是突兀独立区。
+  - **真正 Liquid Glass 导航**：backdrop blur+saturate + 内高光 + 深度阴影 + `::before` 折射高光 + `::after` 液态流光（`nav-sheen` 11s 缓动）；只有装饰层运动，导航文字/图标零变形；双主题适配，`prefers-reduced-motion` 冻结。
+  - **信息架构重命名为**：首页 / 组件 / 设计 / 演示 / 创建 / 贡献。删除「为什么」区（并入设计）、长说明文字、五项原则卡、Human/Agent 双卡、完整目录树、「组件是如何诞生的」重载；「创建」区简化为 提出想法→填写需求→Agent 实现→验证→提交 五行 + 一句话 + CTA，需求表单与 Spec 生成器并入其中；「贡献」区精简为六道硬门槛 + 五步条 + 文档/Issue 链接 + 短 Roadmap（MVW/Layer/多 Agent 细节移至 docs/workflow 继续阅读）。
+  - **统一 Preview Adapter**：Hero showcase / Gallery / Playground 全部只经 `DASH_PREVIEWS.render()` 一个入口；`previews.js` 导出 `GRID {unit:150, gap:24}` 真实网格元数据；2×4 宽度按真实公式 `2·unit + gap(24)`。
+  - 验证扩展至 **47/47**（新增：首屏高度、安装位于 Hero 内、真实网格像素断言、液态流光动画、设计区 GOOD 卡为真实组件、旧区移除、创建/贡献结构、1920×1080 视口）。
+- 🧹 **Round 4 / 精简（砍掉 Demo 与 Playground）**：
+  - 删除整条「在线演示区 Live Playground」Section 及其专属 JS（`js/playground.js` 移除）、CSS（`.pg-*`、`.capsule`、`.btn-demo`）、导航「演示」入口；删除 Hero 的“模拟”小徽标、Gallery 预览“模拟预览”角标、「Preview in dsh」Demo 弹窗（modal 与其 JS/CSS 全清）。Gallery 与 Hero 的真实 Widget 阵列原样保留——二者本就用同一套 `DASH_PREVIEWS.render()` 真实渲染。
+  - **Hero 首屏目标高度提升至约 1150px**（`min-height: max(1150px, 100vh)`，移动端自动延展为内容高度）；左侧扩大标题/简介/CTA/统计，右侧真实组件阵列扩到 7 卡（2 列 + 2×4 宽行，grid 顶部对齐、非漂浮），安装终端仍为 Hero 页脚。
+  - 删除“不需要你回答”“与 docs/workflow/01… 一致”等操作手册式文案与内部工程名（formSub/rHint/specGen/outPlaceholder 重写为自然表述）；需求表副句改为「描述你想要的组件，生成一份可以直接交给 AI Agent 的组件规格」。
+  - 导航最终为 **首页 / 组件 / 设计 / 创建 / 贡献**（加 GitHub、语言、主题）。
+  - 验证 44/44（新增无 Playground/Demo 残留断言；i18n 键完整性在删键后仍全绿）。
+
+- 🔄 **Plugin — OpenCode usage live refresh**：the usage family (usage-bars / usage-rings / usage-rolling / usage-weekly / usage-monthly) used to fetch **once per collector mount**, but the `conversation.composer.dock` component is *reused* across sessions — only a reload/new-session remount re-fetched, so continuing a conversation or switching sessions left the quota stale. The collector now re-pulls `/api/opencode-usage` **and** `/api/opencode-usage-multi` (multi-key pool) **whenever a turn settles (`running` flips true → false)**, so each finished conversation immediately shows the fresh quota drawdown without a reload; an in-flight turn does not refetch.
 
 ### v1.3.2
 **Workflow 校准 — 迭代安全验证（ARCH-003: 允许不完美，不允许「孤魂野鬼」）：**

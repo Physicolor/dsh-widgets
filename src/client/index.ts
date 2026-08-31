@@ -403,9 +403,15 @@ export function apply(ctx: ClientContext): void {
         setState({ hasSession: true })
         return () => { setState({ hasSession: false }) }
       }, [])
-      // OpenCode usage is account-wide and slow-moving: refresh once per mount.
+      // OpenCode usage is account-wide but changes with every finished turn
+      // (each conversation draws from the same pool), so the collector pulls it
+      // on mount AND whenever a turn settles (`running` flips true → false).
+      // The `conversation.composer.dock` component is reused across sessions, so
+      // a mount-only fetch leaves the quota stale until a reload/new session.
+      const prevRunningRef = React.useRef(running)
       React.useEffect(() => {
-        fetch('/api/opencode-usage')
+        const refresh = (): void => {
+          fetch('/api/opencode-usage')
           .then((r) => r.json())
           .then((data: UsageData) => setState({ usageData: data }))
           .catch(() => { /* keep last known usage */ })
@@ -414,7 +420,13 @@ export function apply(ctx: ClientContext): void {
           .then((r) => r.json())
           .then((data: UsageMulti) => setState({ usageMulti: data }))
           .catch(() => { /* pool endpoint optional: cards fall back to single-key */ })
-      }, [])
+        }
+        // Pull on mount (both false — first render); afterwards only a
+        // completed turn (true → false) refetches, an in-flight turn does not.
+        if (running === prevRunningRef.current) refresh()
+        else if (!running) refresh()
+        prevRunningRef.current = running
+      }, [running])
       // One-second tick while a turn is running, so the in-flight LLM and tool
       // durations advance between settle boundaries instead of freezing.
       const [now, setNow] = React.useState(() => Date.now())

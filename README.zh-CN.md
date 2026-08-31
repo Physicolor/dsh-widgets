@@ -21,6 +21,10 @@
 
 DeepSeek-Harness Widgets 是一个基于 Cordis 的 DeepSeek Harness **持久 bundle 插件**。它在会话页右侧提供一套可定制的多列组件面板，实时展示对话洞察、用量监控与快捷工具，并通过声明式注册表支持无限扩展。
 
+## 官网 / Showcase
+
+项目官网位于 [`website/`](website/)（纯 HTML/CSS/JS，无构建步骤，全部相对路径，可直接发布到 GitHub Pages **https://physicolor.github.io/dsh-widgets/**）：介绍 dsh-widgets 是什么、为什么要做、全部 19 个正式 Widget 的真实展示与 Live Playground、Widget 单元化架构、生产 Workflow，以及「需求表 → Widget Specification」生成器。自包含验证脚本 `node website/verify.mjs`（静态检查 + Edge 无头浏览器验证）。部署方式见 `website/README.md`。
+
 ---
 
 ## 当前功能
@@ -113,6 +117,10 @@ pnpm run check      # 类型检查 + 测试 + 构建
 - 与 `dsh-better-sidebar` 右栏显式协调（共用 `--dsh-sidebar-width`），卸载后无残留。
 
 ## 变更日志
+
+### v1.3.3（插件 — OpenCode 用量实时刷新）
+
+- 🔄 **OpenCode 用量不再「仅挂载拉一次」**：用量组件族（用量对比 / 环形 / 滚动 / 每周 / 每月）此前只在 collector 挂载时 fetch 一次，而 `conversation.composer.dock` 在会话间被组件复用——刷新或新建会话才会重新挂载，导致继续对话/切换会话后用量停留在旧值。现在 collector 在**每次对话完成（`running` true → false）时重新拉取** `/api/opencode-usage` 与 `/api/opencode-usage-multi`（多 Key 池），回合结束后配额扣减即时上卡，无需刷新；进行中的回合不会重复请求。
 
 ### v1.2.3
 **性能 — 右面板开合动画掉帧修复（与 dsh-better-sidebar / dsh-ui-harmonizer 协同）：**
