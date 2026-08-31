@@ -1,0 +1,139 @@
+/* dsh-widgets showcase — design tokens.
+ *
+ * Two independent layers:
+ *  1. SITE theme (this file): first visit defaults to LIGHT; dark is opt-in.
+ *     Both keep the DeepSeek blue + deep-blue/dark-blue direction.
+ *  2. WIDGET theme (--dsw-* group): the REAL DeepSeek-Harness widget tokens,
+ *     extracted from the live DSH UI (light = body default, dark =
+ *     body[data-ds-dark-theme]). Widget cards must user these, not the site
+ *     palette, so previews match the actual product. */
+
+:root {
+  color-scheme: light;
+
+  /* ── SITE palette — deep-blue-tinted light, never plain white ── */
+  --bg-0: #f4f8fc;
+  --bg-1: #eef5fb;
+  --bg-2: #e6f0fa;
+  --bg-card: rgba(255, 255, 255, 0.82);
+  --bg-card-solid: #ffffff;
+  --bg-elev: #ffffff;
+  --bg-terminal: #0f1115;
+
+  /* DeepSeek brand family (real: deepseek-500 / deepseek-600) */
+  --brand: #4176e6;
+  --brand-strong: #2f63d8;
+  --brand-soft: rgba(65, 118, 230, 0.1);
+  --brand-line: rgba(65, 118, 230, 0.32);
+  --brand-glow: rgba(65, 118, 230, 0.2);
+
+  /* Site text (real DSH light labels) */
+  --text-1: #0f1115;
+  --text-2: #61666b;
+  --text-3: #81858c;
+
+  --line: rgba(31, 58, 108, 0.13);
+  --line-strong: rgba(31, 58, 108, 0.24);
+
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --danger: #ec1313;
+
+  --glass-bg: rgba(255, 255, 255, 0.68);
+  --glass-border: rgba(31, 58, 108, 0.14);
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 24px;
+  --shadow-1: 0 10px 30px rgba(30, 60, 120, 0.1);
+  --shadow-2: 0 24px 60px rgba(30, 60, 120, 0.16);
+
+  /* ── REAL WIDGET tokens — light (DSH body default) ── */
+  --dsw-card-bg: #ffffff;
+  --dsw-card-border: #0000001a;
+  --dsw-card-shadow: 0 4px 12px 0 #00000005, 0 2px 8px 0 #0000000a;
+  --dsw-title: #4176e6;          /* state-business-primary (deepseek-500) */
+  --dsw-label-pri: #0f1115;      /* label-primary (bluish-1000) */
+  --dsw-label-sec: #61666b;      /* label-secondary (bluish-700) */
+  --dsw-label-ter: #81858c;      /* label-tertiary (bluish-600) */
+  --dsw-label-cap: #adb2b8;      /* label-caption (bluish-400) */
+  --dsw-hover: #2631480f;        /* interactive-bg-hover */
+  --dsw-ok: #22c55e;             /* state-success-primary */
+  --dsw-warn: #f59e0b;           /* state-warn-primary */
+  --dsw-err: #ec1313;            /* state-error-primary (red-600) */
+  --dsw-seg-system: #adb2b8;     /* static-neutral-bluish-400 */
+  --dsw-seg-tools: rgb(167, 139, 250);
+  --dsw-seg-messages: #4d93f8;   /* static-blue-450 */
+
+  --font-sans: "HarmonyOS Sans SC", "HarmonyOS Sans", "HarmonyOS Sans Hans",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono",
+    Menlo, Consolas, "Liberation Mono", monospace;
+
+  --nav-top: 10px;
+}
+
+/* ── Dark (opt-in, persisted) — deep blue / blue-black ── */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg-0: #050b18;
+  --bg-1: #071226;
+  --bg-2: #0a1730;
+  --bg-card: rgba(15, 30, 60, 0.55);
+  --bg-card-solid: #0d1c38;
+  --bg-elev: #10224a;
+  --bg-terminal: #040912;
+
+  --brand: #679efe;              /* deepseek-400 — the real dark-mode accent */
+  --brand-strong: #8ab3ff;
+  --brand-soft: rgba(103, 158, 254, 0.14);
+  --brand-line: rgba(103, 158, 254, 0.36);
+  --brand-glow: rgba(103, 158, 254, 0.3);
+
+  --text-1: #f9fafb;
+  --text-2: #adb2b8;
+  --text-3: #81858c;
+
+  --line: rgba(148, 170, 214, 0.16);
+  --line-strong: rgba(148, 170, 214, 0.28);
+
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --danger: #f25a5a;
+
+  --glass-bg: rgba(7, 18, 38, 0.62);
+  --glass-border: rgba(148, 170, 214, 0.18);
+
+  --shadow-1: 0 10px 30px rgba(2, 6, 18, 0.45);
+  --shadow-2: 0 24px 60px rgba(2, 6, 18, 0.6);
+
+  /* ── REAL WIDGET tokens — dark (DSH body[data-ds-dark-theme]) ── */
+  --dsw-card-bg: #2c2c2e;        /* input-major (bluish-850) */
+  --dsw-card-border: #ffffff1f;
+  --dsw-card-shadow: 0 4px 12px 0 #00000005, 0 2px 8px 0 #0000000a;
+  --dsw-title: #679efe;          /* state-business-primary (deepseek-400) */
+  --dsw-label-pri: #f9fafb;      /* label-primary (bluish-50) */
+  --dsw-label-sec: #cfd3d6;      /* label-secondary (bluish-300) */
+  --dsw-label-ter: #adb2b8;      /* label-tertiary (bluish-400) */
+  --dsw-label-cap: #81858c;      /* label-caption (bluish-600) */
+  --dsw-hover: #ffffff14;
+  --dsw-ok: #22c55e;
+  --dsw-warn: #f59e0b;
+  --dsw-err: #f25a5a;            /* red-400 */
+  --dsw-seg-system: #adb2b8;
+  --dsw-seg-tools: rgb(167, 139, 250);
+  --dsw-seg-messages: #4d93f8;
+}
+
+/* ── REAL widget grid rules (plugin src/client/index.ts DEFAULTS) ──
+   cardSide 150 · panelPadding 24 (padding AND inter-card gap) ·
+   rail(2-col) = 2·side + 3·pad = 372 · 2×4 wide = 2·side + pad = 324 */
+:root {
+  --wg-unit: 150px;
+  --wg-pad: 24px;
+  --wg-gap: 24px;
+  --wg-rail-w: calc(2 * var(--wg-unit) + 3 * var(--wg-gap));
+  --wg-wide: calc(2 * var(--wg-unit) + var(--wg-gap));
+}

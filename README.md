@@ -125,7 +125,9 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ## Changelog
 
-### v1.3.3 (website + plugin — OpenCode usage live refresh)
+### v1.4.0 (project website — first public release)
+
+- 🚀 **发布**：`dsh-widgets@1.4.0` 已发布到 GitHub 与 npm；官网通过 GitHub Pages 公开（`https://physicolor.github.io/dsh-widgets/`，部署 workflow `.github/workflows/pages.yml`）。插件代码无改动，版本 1.3.3 → 1.4.0 仅同步官网发布。
 
 - 🌐 **Project website / widget showcase** added in [`website/`](website/) (static HTML/CSS/JS, GitHub Pages ready at the Project Pages path): hero with a 3-row widget-rail animation, one-command install terminal with copy, Why cards, gallery of **all 19 real widgets** (filter by the 5 real categories, name/id/category/size/builtin-vs-market/description + CSS-drawn preview per widget), design-philosophy good-vs-bad comparison, how-a-widget-is-born pipeline (ARCH-002/003), **Human defines what / Agent decides how** split, widget-unit structure, live playground (4 decks, 2×2↔2×4, Components hide capsule), requirement form → widget-spec generator (mirrors `docs/workflow/01` + `03`), “Preview in dsh” demo modal, workflow/MVW/contribution/roadmap sections.
 - ✅ Self-contained verification [`website/verify.mjs`](website/verify.mjs): JS/CSS/HTML static checks + Edge-headless CDP render — 30/30 checks green (theme/nav/copy/filter/playground/spec/modal/reveal/mobile/console/network).
@@ -149,6 +151,10 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
   - 删除“不需要你回答”“与 docs/workflow/01… 一致”等操作手册式文案与内部工程名（formSub/rHint/specGen/outPlaceholder 重写为自然表述）；需求表副句改为「描述你想要的组件，生成一份可以直接交给 AI Agent 的组件规格」。
   - 导航最终为 **首页 / 组件 / 设计 / 创建 / 贡献**（加 GitHub、语言、主题）。
   - 验证 44/44（新增无 Playground/Demo 残留断言；i18n 键完整性在删键后仍全绿）。
+
+- 🔧 **Round 5 (release polish)**：Hero 统计数字字体回归 HarmonyOS Sans（tabular-nums 保留）；底部栏删除说明行、单行两元素；usage-bars 柱图标签溢出修复（图表容器随内容自包含，与真实 `ChartBlock` 一致）。验证 44/44。
+
+### v1.3.3
 
 - 🔄 **Plugin — OpenCode usage live refresh**：the usage family (usage-bars / usage-rings / usage-rolling / usage-weekly / usage-monthly) used to fetch **once per collector mount**, but the `conversation.composer.dock` component is *reused* across sessions — only a reload/new-session remount re-fetched, so continuing a conversation or switching sessions left the quota stale. The collector now re-pulls `/api/opencode-usage` **and** `/api/opencode-usage-multi` (multi-key pool) **whenever a turn settles (`running` flips true → false)**, so each finished conversation immediately shows the fresh quota drawdown without a reload; an in-flight turn does not refetch.
 

@@ -1,0 +1,325 @@
+/* dsh-widgets showcase — REAL widget card language.
+ *
+ * Ported 1:1 from the actual plugin:
+ *   - container: src/client/widgets.module.css `.dsx-stats-card*`
+ *   - internals: src/client/components.tsx `CardBody` / `ChartBlock`
+ *     (titlePx = 13·s, valuePx = 20·s, radius = 16·s, pad = 12·s, s = unit/150)
+ *   - colors: the REAL DSH tokens (see tokens.css --dsw-* group), extracted
+ *     from the live UI (light = deepseek-500 titles on white cards;
+ *     dark = deepseek-400 titles on #2c2c2e cards).
+ * Sizes are set inline by JS (the real scale formula) — this file only carries
+ * the structural + color rules, exactly like the plugin's stylesheet. */
+
+.wg-card {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+  border: 1px solid var(--dsw-card-border);
+  background: var(--dsw-card-bg);
+  box-shadow: var(--dsw-card-shadow);
+}
+
+/* Real slot hover: brand-blue edge + glow ring (dsx-stats-card-slot:hover) */
+.wg-slot:hover .wg-card {
+  border-color: var(--dsw-title);
+  box-shadow:
+    0 0 0 1px var(--dsw-title),
+    0 10px 28px color-mix(in srgb, var(--dsw-title) 26%, transparent);
+}
+
+.wg-card-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.wg-title-row {
+  color: var(--dsw-title);
+  line-height: 1.2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.wg-title-group {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wg-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wg-headafter {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.wg-legend {
+  color: var(--dsw-label-ter);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.wg-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.wg-meter-row {
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--dsw-label-ter);
+  transition: color 0.25s ease, font-size 0.25s ease, font-weight 0.25s ease;
+}
+
+.wg-meter-row.on {
+  color: var(--dsw-title);
+  font-weight: 600;
+}
+
+.wg-value {
+  font-weight: 600;
+  color: var(--dsw-label-pri);
+  word-break: break-word;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+.wg-value.danger {
+  color: var(--dsw-err);
+}
+
+.wg-sub {
+  color: var(--dsw-label-cap);
+  font-size: 10px;
+}
+
+.wg-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Corner action button (one-click Compact) ── */
+.wg-corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  border: none;
+  background: var(--dsw-title);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--dsw-card-shadow);
+  z-index: 2;
+}
+
+.wg-corner.armed {
+  width: 56px;
+  font-weight: 600;
+}
+
+/* ── Segmented bar (Context Level) — official ContextMeter colors ── */
+.wg-segbar {
+  display: flex;
+  gap: 1px;
+  background: var(--dsw-hover);
+  overflow: hidden;
+  border-radius: 0;
+  flex: none;
+}
+
+.wg-seg {
+  height: 100%;
+  flex: none;
+  min-width: 2px;
+}
+
+.wg-segrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+
+.wg-segrow-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.wg-segrow-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dsw-label-sec);
+}
+
+.wg-segrow-value {
+  color: var(--dsw-label-pri);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Bars (usage three-window chart) ── */
+.wg-bars-wrap {
+  position: relative;
+}
+
+.wg-bars-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--dsw-label-ter);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.wg-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  position: relative;
+}
+
+.wg-bars-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.wg-bars-track {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.wg-bars-fill {
+  width: 60%;
+  border-radius: 5px;
+  min-height: 2px;
+}
+
+.wg-bars-label {
+  color: var(--dsw-label-ter);
+  white-space: nowrap;
+}
+
+/* ── Rings (usage-rings) ── */
+.wg-rings {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.wg-ring {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.wg-ring-track {
+  fill: none;
+  stroke: var(--dsw-hover);
+}
+
+.wg-ring-value {
+  color: var(--dsw-label-pri);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Heatmap ── */
+.wg-heat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  width: 100%;
+}
+
+.wg-heat-row {
+  display: flex;
+  gap: 2px;
+}
+
+.wg-heat-cell {
+  border-radius: 2px;
+}
+
+.wg-heat-cell.off {
+  background: var(--dsw-hover);
+  opacity: 0.5;
+}
+
+.wg-heat-corners {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  color: var(--dsw-label-ter);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* ── Quote (rich block) ── */
+.wg-quote {
+  color: var(--dsw-label-sec);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* ── Peak-pricing red inner glow (REAL dsx-peak-alert) ── */
+.wg-card.wg-alert {
+  box-shadow:
+    inset 0 0 22px color-mix(in srgb, var(--dsw-err) 32%, transparent),
+    inset 0 0 5px color-mix(in srgb, var(--dsw-err) 20%, transparent),
+    var(--dsw-card-shadow);
+  animation: wg-peak-breathe 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes wg-peak-breathe {
+  from {
+    box-shadow:
+      inset 0 0 15px color-mix(in srgb, var(--dsw-err) 20%, transparent),
+      inset 0 0 4px color-mix(in srgb, var(--dsw-err) 12%, transparent),
+      var(--dsw-card-shadow);
+  }
+  to {
+    box-shadow:
+      inset 0 0 30px color-mix(in srgb, var(--dsw-err) 42%, transparent),
+      inset 0 0 7px color-mix(in srgb, var(--dsw-err) 28%, transparent),
+      var(--dsw-card-shadow);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wg-card.wg-alert {
+    animation: none;
+  }
+}
