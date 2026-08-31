@@ -127,83 +127,18 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ### v1.4.0 (project website — first public release)
 
-- 🚀 **发布**：`dsh-widgets@1.4.0` 已发布到 GitHub 与 npm；官网通过 GitHub Pages 公开（`https://physicolor.github.io/dsh-widgets/`，部署 workflow `.github/workflows/pages.yml`）。插件代码无改动，版本 1.3.3 → 1.4.0 仅同步官网发布。
-
-- 🌐 **Project website / widget showcase** added in [`website/`](website/) (static HTML/CSS/JS, GitHub Pages ready at the Project Pages path): hero with a 3-row widget-rail animation, one-command install terminal with copy, Why cards, gallery of **all 19 real widgets** (filter by the 5 real categories, name/id/category/size/builtin-vs-market/description + CSS-drawn preview per widget), design-philosophy good-vs-bad comparison, how-a-widget-is-born pipeline (ARCH-002/003), **Human defines what / Agent decides how** split, widget-unit structure, live playground (4 decks, 2×2↔2×4, Components hide capsule), requirement form → widget-spec generator (mirrors `docs/workflow/01` + `03`), “Preview in dsh” demo modal, workflow/MVW/contribution/roadmap sections.
-- ✅ Self-contained verification [`website/verify.mjs`](website/verify.mjs): JS/CSS/HTML static checks + Edge-headless CDP render — 30/30 checks green (theme/nav/copy/filter/playground/spec/modal/reveal/mobile/console/network).
-- 🔄 **Round 2 (visual + i18n)**:
-  - First visit now defaults to **Light** (subtle blue-tinted) with **Chinese** as the default language; a nav `中/EN` toggle switches the whole site through one unified dictionary (`js/i18n.js`, zh + en, persisted). Dark theme stays opt-in.
-  - **Widget previews now reuse the real widget rendering path** — `website/js/previews.js` ports the plugin's own `PREVIEW_STATS`, `format.ts` helpers, per-unit `render()` and the `CardBody`/`ChartBlock` scale formula 1:1; colors are the REAL DSH tokens extracted from the live UI (`deepseek-500` light / `deepseek-400` dark, card `#fff` / `#2c2c2e`, official ContextMeter segment colors). No invented “looks-like-a-widget” design system, no plugin code touched.
-  - Hero rebuilt: left story column + right **real-card showcase** + dimmed 3-row rails; the install terminal is attached directly under the hero (Hero → Installation is one continuous visual). “How a widget is born” and contribution steps became compact horizontal flows with the REWORK loop highlighted.
-  - Refined sun icon (24×24, stroke-based rays with rounded caps, matches the moon’s visual weight).
-  - Verification extended to 38/38 checks (default theme/lang, language toggle full re-render, dual-theme real token checks, i18n key completeness, responsive, console/network).
-- 🔗 No plugin code touched — zero build/registry impact; version bump deferred to the next real release.
-
-- 🔄 **Round 3 / WEBSITE-002 (整体视觉重构)**:
-  - **Hero = 完整首屏**（`min-height: 100svh`，桌面 ≥760px）：左侧项目叙事（标题/双行简介/CTA/统计），右侧是**真实插件布局规则的组件网格**——`cardSide 150 · panelPadding 24`（间距与内边距同为 24），2 列 rail 宽 372、2×4 宽 324；「一条命令安装」终端回归为 Hero 的页脚，不再是突兀独立区。
-  - **真正 Liquid Glass 导航**：backdrop blur+saturate + 内高光 + 深度阴影 + `::before` 折射高光 + `::after` 液态流光（`nav-sheen` 11s 缓动）；只有装饰层运动，导航文字/图标零变形；双主题适配，`prefers-reduced-motion` 冻结。
-  - **信息架构重命名为**：首页 / 组件 / 设计 / 演示 / 创建 / 贡献。删除「为什么」区（并入设计）、长说明文字、五项原则卡、Human/Agent 双卡、完整目录树、「组件是如何诞生的」重载；「创建」区简化为 提出想法→填写需求→Agent 实现→验证→提交 五行 + 一句话 + CTA，需求表单与 Spec 生成器并入其中；「贡献」区精简为六道硬门槛 + 五步条 + 文档/Issue 链接 + 短 Roadmap（MVW/Layer/多 Agent 细节移至 docs/workflow 继续阅读）。
-  - **统一 Preview Adapter**：Hero showcase / Gallery / Playground 全部只经 `DASH_PREVIEWS.render()` 一个入口；`previews.js` 导出 `GRID {unit:150, gap:24}` 真实网格元数据；2×4 宽度按真实公式 `2·unit + gap(24)`。
-  - 验证扩展至 **47/47**（新增：首屏高度、安装位于 Hero 内、真实网格像素断言、液态流光动画、设计区 GOOD 卡为真实组件、旧区移除、创建/贡献结构、1920×1080 视口）。
-- 🧹 **Round 4 / 精简（砍掉 Demo 与 Playground）**：
-  - 删除整条「在线演示区 Live Playground」Section 及其专属 JS（`js/playground.js` 移除）、CSS（`.pg-*`、`.capsule`、`.btn-demo`）、导航「演示」入口；删除 Hero 的“模拟”小徽标、Gallery 预览“模拟预览”角标、「Preview in dsh」Demo 弹窗（modal 与其 JS/CSS 全清）。Gallery 与 Hero 的真实 Widget 阵列原样保留——二者本就用同一套 `DASH_PREVIEWS.render()` 真实渲染。
-  - **Hero 首屏目标高度提升至约 1150px**（`min-height: max(1150px, 100vh)`，移动端自动延展为内容高度）；左侧扩大标题/简介/CTA/统计，右侧真实组件阵列扩到 7 卡（2 列 + 2×4 宽行，grid 顶部对齐、非漂浮），安装终端仍为 Hero 页脚。
-  - 删除“不需要你回答”“与 docs/workflow/01… 一致”等操作手册式文案与内部工程名（formSub/rHint/specGen/outPlaceholder 重写为自然表述）；需求表副句改为「描述你想要的组件，生成一份可以直接交给 AI Agent 的组件规格」。
-  - 导航最终为 **首页 / 组件 / 设计 / 创建 / 贡献**（加 GitHub、语言、主题）。
-  - 验证 44/44（新增无 Playground/Demo 残留断言；i18n 键完整性在删键后仍全绿）。
-
-- 🔧 **Round 5 (release polish)**：Hero 统计数字字体回归 HarmonyOS Sans（tabular-nums 保留）；底部栏删除说明行、单行两元素；usage-bars 柱图标签溢出修复（图表容器随内容自包含，与真实 `ChartBlock` 一致）。验证 44/44。
-
-### v1.3.3
-
-- 🔄 **Plugin — OpenCode usage live refresh**：the usage family (usage-bars / usage-rings / usage-rolling / usage-weekly / usage-monthly) used to fetch **once per collector mount**, but the `conversation.composer.dock` component is *reused* across sessions — only a reload/new-session remount re-fetched, so continuing a conversation or switching sessions left the quota stale. The collector now re-pulls `/api/opencode-usage` **and** `/api/opencode-usage-multi` (multi-key pool) **whenever a turn settles (`running` flips true → false)**, so each finished conversation immediately shows the fresh quota drawdown without a reload; an in-flight turn does not refetch.
-
-### v1.3.2
-**Workflow 校准 — 迭代安全验证（ARCH-003: 允许不完美，不允许「孤魂野鬼」）：**
-
-- 🎯 **重新定义目标**：Workflow 不保证一次生成完美 Widget，只保证 **无论经历多少轮创建/修改/人工反馈，Widget 始终是合法、可发现、可注册、可入 Marketplace、不破坏其他组件、可继续安全修改的组件**。
-- 🧩 **引入 Minimum Viable Widget（MVW）**：合法进入生态、可继续迭代的最小完整 Widget（Structural / Discovery / Registry / Runtime / Marketplace / Iteration 六项硬门槛）；产品表现不足 ≠ 失败。
-- 🛡️ **双层 Review 分离**：Layer1 System Integrity（Contract/Discovery/Registry/Build/Runtime/Marketplace/Isolation 硬门槛）+ Layer2 Product Quality（UI/视觉/文案/层级…可迭代）；Review 结果升级为三态 **PASS / REWORK / BLOCKED**——REWORK 是正常开发（可多轮 HUMAN_REVIEW 循环），BLOCKED 才是唯一 Workflow Failure。
-- 🚫 **BLOCKED 定义**：Contract 非法 / Registry 失败 / Build 失败 / Marketplace 无法识别或添加 / 需修改其他 Widget / 造成回归 → STOP/Escalation。
-- ✅ **重新判定 ARCH-002 回归**：context-water 的 4 处差异（标题键/数据源优先级/2x4 主数字槽位/缺失边界）经逐项核查均为 Product Iteration Difference（合法单元+可发现+可注册+可构建+可入市场+可迭代），**非 Workflow Failure**。
-- 🔁 **真实迭代测试**：v1.3.2 新增 `wf-heart-rate`（模拟「今天心率 2x2」、新分类 health、无真实数据源）走完整循环：v1 创建 → System Integrity 全绿（MVW_OK）→ Human Review 3 条意见（内容-标题 / 视觉-状态词 / 数据-min·avg·max）→ 同一 Worker 迭代 v2 → 复检全绿 + 既有 19 零回归；**有意停留在半成品状态**验证其仍可发现/注册/入市场/继续修改/不污染。测试单元已删除，Registry 回归 19。
-- 🛠️ **validator 升级**：`scripts/validate-widget-unit.mjs` 增加 MVW 市场硬门槛——`widget.<id>.name/desc` 必须在 locale.zh **与** locale.en 都存在（市场可识别是 error 级，不再只是 warning）；19 单元复检 0 failure。
-- 📄 `docs/workflow/` 全量校准（README/01/03/05/06/07/08 + `record.schema.json` 增加 `BLOCKED` 状态与 `mvw` 字段）。
-
-### v1.3.1
-**Workflow — Widget Production Workflow 固化（ARCH-002: 人定需求 / Agent 定技术 / 系统验证「做得对不对」）:**
-
-- 📋 **正式生产流程**固化于 `docs/workflow/`（README 总览 + 9 个环节文档 + `record.schema.json` + `records/` 档案）：
-  Requirement Form → Completeness Check（缺失产品项 STOP 问人）→ Technical Feasibility Analysis →
-  Architecture Decision（Widget-only / +Shared / +Provider / +Host / +External，最小必要修改原则）→
-  Widget Specification（Worker 标准输入）→ Worker Agent → Self Check → Independent Review Agent → Validation → Registry；
-- 👤 **Human-owned 与 Agent-owned 分离**：Purpose/Size/Title/Core Content/Displayed Information/Category 必须人确认；
-  数据源/Provider/Credential/缓存等技术项由 Agent 分析，不阻塞不返问用户；凭据类需求一律走 host Credentials；
-- 🧭 **状态机 + STOP/Escalation**：DRAFT→…→COMPLETED，仅 REWORK 回明确源状态（不向后传播）；需求不明确/冲突/
-  重大架构影响/数据源未确认/安全风险 → STOP；
-- 📦 **Production Record**（`docs/workflow/records/<date>-<widget-id>.json`）：每次生产一个 append-only 机器可读记录；
-- 🔌 **未来输入适配位置**（`docs/workflow/09-future-input-adapters.md`）：Screenshot / GitHub Issue·PR / External Code
-  统一转 Widget Candidate → 必须经 Human Requirement Review 转正（License/Provenance + Security + Architecture 三关预留，本次不实现自动导入）；
-- 🛠️ **自动校验器** `scripts/validate-widget-unit.mjs`：Worker 自检 / Review 门禁（manifest schema、id 三元一致、
-  locale 覆盖 index.ts 全部 widget-local t() 键）；对既有 19 单元全量 PASS；
-- 🧪 **真实回归测试**：选正式 Widget `context-water`，只凭 README 公开描述 + 共享 API 构建 Requirement/Spec，
-  由独立 Worker 从零生产 Validation Copy（`wf-context-water`），经 validate/build/发现探测后与原实现对比 parity，
-  差异反哺修正 Workflow。
-
-**回归测试结论（v1.3.1）**：选择正式 **context-water**（2x2+2x4 多尺寸 + segments 构成条）作为测试对象。Requirement
-Form 仅由 README 公开描述（「Context waterline：system/tool/message segment bars + breakdown; 2×2 and 2×4 supported」）
-+ 模拟 Human 输入构成，未读取正式实现。独立 Worker 按 Specification 生产出 `wf-context-water`（id 三元一致、validate
-0 failure、发现 20 单元、build 通过、live bundle 探测 PASS）。
-
-**Parity 结果**：尺寸/2x2 布局（headAfter 大百分比+容量）/segments 视觉/Contract 结构 ✅ 一致；**4 处差异**——
-① 卡片标题：副本用 name 键（上下文水位），正式用独立 `card.*.title`（上下文已用）→ 与 Human Title 不符；
-② 数据源优先级：副本 used=`contextTokens ?? 段和`，正式=段和；
-③ 2x4 主数字槽位：副本百分比并入 headRight 小字，正式 value 大号槽+headRight；
-④ window 缺失边界：副本空串渲染，正式 undefined 省略。
-→ **判断：仅凭 Workflow 信息不能 100% 复现正式 Widget**；差异全部定位为 Workflow 信息缺口，已据此修正：
-`03-specification.md` 增加 `titleKeys`（标题独立键）、`visualRequirements.numberHierarchy`（主数字槽位）、
-`dataFieldPriority`（主/备数据源），acceptance 增加「标题===Human Title」「缺失用 undefined 省略」；
-`02/05/06` 同步补充对应分析与 Review/Acceptance 检查项。测试副本已删除，Registry 回归 19 units。
+- 🚀 **Published as v1.4.0** — `dsh-widgets@1.4.0` is live on GitHub and npm. The project website is now public at `https://physicolor.github.io/dsh-widgets/` via GitHub Pages. No plugin code changes; version bumped solely to ship the website.
+- 🌐 **Project website / widget showcase** added in [`website/`](website/) — a single-page static site (HTML + CSS + vanilla JS, no framework): hero with a 3-row widget-rail animation, one-command install terminal with copy, gallery of **all 19 real widgets** (filter by 5 real categories), design-philosophy good-vs-bad comparison, five-step how-to-create section + requirement form to widget-spec generator, and a slim contribution section with docs/issues links.
+- ✅ **Self-contained verification** [`website/verify.mjs`](website/verify.mjs): JS/CSS/HTML syntax checks + Edge-headless CDP render — 44/44 checks green across desktop (1440/1920), tablet, and mobile viewports, including default light theme, default Chinese language, full zh↔EN toggle, dark theme persistence, real-widget token checks, i18n key completeness, liquid-glass sheen, and console/network monitoring.
+- 🎨 **Widget previews are the real widget rendering** — `previews.js` ports the plugin's own `PREVIEW_STATS`, `format.ts` helpers, per-unit `render()`, and the `CardBody` / `ChartBlock` scale formula 1:1; colors are the real DSH tokens extracted from the live UI (`deepseek-500` light / `deepseek-400` dark). No invented design system; no plugin code touched.
+- 🖼️ **Hero = a ~1150px first screen**: left story column (title / bilingual description / CTA / stats), right = a real widget array (plugin grid rules: `cardSide 150`, `panelPadding 24`, 2-col rail width 372px, 2×4 wide = 324px); install terminal as the hero's footer.
+- 🪷 **Liquid-glass navigation** — real refraction + sheen: `backdrop-filter` blur+saturate + diagonal highlight (`::before`) + slowly drifting light band (`::after`, `nav-sheen` 11s). Only decorative layers move; text and icons stay stable.
+- 🧹 **Playground and Demo removed** — the website now has five sections (Hero, Widgets, Design, Create, Contribute). All widget display is unified through the single `DASH_PREVIEWS.render()` adapter; no "simulated" labels remain.
+- 🌏 **Full Chinese / English bilingual** — first visit defaults to Chinese + Light; a nav toggle switches the entire site through one dictionary (`i18n.js`). Dark stays opt-in and persisted.
+- 🧮 **Hero stat numbers** use HarmonyOS Sans (not monospace); `tabular-nums` kept for alignment.
+- 🧾 **Footer simplified** to a single row (brand + links only).
+- 🔧 **Bug fix**: usage-bars chart labels (x-axis) no longer overflow the chart container — chart wrapper now sizes to content, matching the real `ChartBlock`.
+- 🔗 Zero plugin code touched — no build/registry impact.
 
 ### v1.3.0
 **Architecture — widget units + build-time discovery (ARCH-001: widget unitization, contract, low-conflict registry, multi-agent isolation):**
