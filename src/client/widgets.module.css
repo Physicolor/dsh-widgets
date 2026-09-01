@@ -270,6 +270,10 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
    visibility still flips so the closed overlay never intercepts pointer events. 鈹€鈹€ */
 .dsx-stats-addpanel {
   position: fixed;
+  /* The rail drawer wrapper is pointer-events:none (it only slides); every
+     interactive child must opt back in explicitly. Without this the whole
+     add panel was unhit-testable — clicks fell through to the rail's cards. */
+  pointer-events: auto;
   right: calc(var(--dsh-sidebar-width, 0px) + var(--dsx-rail-pad, 14px));
   width: auto;
   /* Bottom = input-box breathing gap (--dsx-input-bottom) -- NEVER track

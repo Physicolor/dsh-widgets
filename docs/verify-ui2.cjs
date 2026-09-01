@@ -20,8 +20,8 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
     await fetch('/api/widgets-state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ savedAt: typeof orig.savedAt === 'number' ? orig.savedAt : 0, state: orig.state || {} }) }).catch(() => {})
   }, originalState)
 
-  const sess = page.getByText('组件状态保存问题排查').first()
-  if (await sess.count()) { await sess.click(); await page.waitForTimeout(4000) }
+  const sess = page.locator('.YDXeBa_sessionRow').filter({ hasNotText: '新会话' }).first()
+  if (await sess.count()) { await sess.click(); await page.waitForTimeout(4500) }
   const cap = page.locator('button.dsx-stats-capsule').first()
   if (await cap.count()) { await cap.click(); await page.waitForTimeout(1200) }
 

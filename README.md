@@ -125,6 +125,16 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ## Changelog
 
+### v1.4.2 (working tree, unreleased)
+
+**New — rail drawer open/close animation (matching dsh-better-sidebar's slide language):**
+
+- 🎬 Opening now glides the widget rail in from the **left** (`translateX(-railW)` → 0); closing slides it out to the **right** (0 → `translateX(railW)`), using the same `--ds-transition-duration-slow` + `--ds-ease-in-out` tokens as the sidebar panels. The rail, the magnify overlay, and the add panel move as **one surface** via a `position:fixed inset:0` wrapper (a transformed fixed ancestor becomes the children's containing block, but the wrapper spans the viewport so every child's coordinates stay identical).
+- 🔁 CSS transitions interrupt natively: a rapid open→close→open re-toggle animates from the current intermediate geometry straight to the new target — no snap, no desync. The rail unmounts only after the closing slide finishes (`prefers-reduced-motion` closes instantly).
+- 🎯 Travel distance is the rail's own pixel width (+24px margin), **not** a percentage — `translateX(%)` on a full-viewport wrapper resolves against the whole viewport width and would slide a screen-width over the same 0.3s (far too fast).
+- 🖱️ The add panel (market / config / settings overlay) explicitly re-enables `pointer-events: auto`: the drawer wrapper is click-transparent, and without the opt-in the panel was unhit-testable — clicks fell through to the rail's cards.
+- ✅ New self-contained verification `docs/verify-rail-drawer.cjs` (playwright-core + headless Chromium against the live host): open glides left with 60+ intermediate frames, close slides past the viewport then unmounts, interrupt (rapid open→close→open) never unmounts and has zero hard step jumps, plus add-panel / card-render / hover smoke and a mid-slide screenshot; `docs/verify-ui2.cjs` and `docs/smoke-widgets.cjs` regressions stay green.
+
 ### v1.4.1
 
 - **Fix** — 滚动用量 / 每周用量 / 每月用量卡片的百分比保留一位小数（如 42% → 42.5%），与 OpenCode 官网一致；用量柱状图、用量环图数字格式不变。

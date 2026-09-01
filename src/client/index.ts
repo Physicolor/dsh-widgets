@@ -737,7 +737,47 @@ export function apply(ctx: ClientContext): void {
           if (phaseTimer.current !== undefined) { window.clearTimeout(phaseTimer.current); phaseTimer.current = undefined }
         }
       }, [snap.open, snap.hasSession])
-      if (!snap.open || !snap.hasSession) return null
+      // ── Drawer open/close animation, matching dsh-better-sidebar's right
+      //    panel: a translateX slide with --ds-transition-duration-slow +
+      //    --ds-ease-in-out, applied to a position:fixed inset:0 wrapper so the
+      //    rail + magnify overlay + add panel move as ONE surface. Opening
+      //    glides in from the LEFT (translateX(-100%) → 0), closing slides OUT
+      //    to the RIGHT (0 → translateX(100%)). CSS transitions interrupt
+      //    natively: a rapid re-toggle animates from the current intermediate
+      //    geometry straight to the new target — no snap, no desync. The
+      //    wrapper is pointer-events:none so it never blocks the page.
+      const shouldOpen = snap.open && snap.hasSession
+      const [drawerPhase, setDrawerPhase] = React.useState<'closed' | 'enter' | 'open' | 'leave'>(shouldOpen ? 'open' : 'closed')
+      const reduceMotion = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && !!window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      // Leave timeout: the CSS slide is 0.3s (--ds-transition-duration-slow);
+      // unmount 350ms later so the element is gone only after the slide ends.
+      const DRAWER_LEAVE_MS = 350
+      React.useEffect(() => {
+        setDrawerPhase((p) => {
+          if (shouldOpen) return p === 'closed' ? 'enter' : p === 'leave' ? 'open' : p
+          return p === 'closed' ? 'closed' : 'leave'
+        })
+      }, [shouldOpen])
+      // Enter: the first painted frame MUST sit at translateX(-100%) before the
+      // transition target flips to 0, or the browser has no start value to
+      // animate from (the rail would just pop in). Two rAFs guarantee that
+      // -100% frame has been laid out and painted before raising to 0.
+      React.useEffect(() => {
+        if (drawerPhase !== 'enter') return
+        let raf2 = 0
+        const raf1 = requestAnimationFrame(() => {
+          raf2 = requestAnimationFrame(() => setDrawerPhase((p) => (p === 'enter' ? 'open' : p)))
+        })
+        return () => { cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2) }
+      }, [drawerPhase])
+      // Leave: unmount once the slide finishes (instant for reduced-motion).
+      React.useEffect(() => {
+        if (drawerPhase !== 'leave') return
+        if (reduceMotion) { setDrawerPhase('closed'); return }
+        const t = window.setTimeout(() => setDrawerPhase((p) => (p === 'leave' ? 'closed' : p)), DRAWER_LEAVE_MS)
+        return () => window.clearTimeout(t)
+      }, [drawerPhase, reduceMotion])
+      if (drawerPhase === 'closed') return null
       const side = prefs.cardSide
       const pad = prefs.panelPadding
       const columns = [1, 2, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
@@ -1161,7 +1201,24 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       // Always render the panel too so closing slides it out (`.open` toggles
       // visibility/transform); when closed it is hidden (visibility + opacity)
       // and never intercepts pointer events over the rail.
-      return React.createElement(React.Fragment, null, rail, magnifyLayer, addPanel)
+      //
+      // Drawer wrapper: the ONE surface that slides. position:fixed inset:0
+      // keeps every fixed child (rail / magnify overlay / add panel) positioned
+      // exactly as before — a transformed fixed ancestor becomes their
+      // containing block, but this wrapper spans the viewport so the
+      // coordinates are identical — while the wrapper's own translateX carries
+      // the whole group left→right on open, right→off-screen on close.
+      // pointer-events:none: interaction stays on the children that opt in.
+      // Travel distance is the rail's own width (+24px margin), NOT a
+      // percentage: translateX(%) on this wrapper would resolve against the
+      // VIEWPORT width (inset:0), sliding a whole screen-width instead of one
+      // rail width (far too fast over the same 0.3s).
+      const drawerTravel = Math.round(railW + 24)
+      const drawerTransform = drawerPhase === 'enter' ? `translateX(-${drawerTravel}px)` : drawerPhase === 'leave' ? `translateX(${drawerTravel}px)` : 'none'
+      const drawerTransition = reduceMotion ? 'none' : 'transform var(--ds-transition-duration-slow) var(--ds-ease-in-out)'
+      return React.createElement('div', { key: '__drawer', style: { position: 'fixed', inset: 0, pointerEvents: 'none', transform: drawerTransform, transition: drawerTransition } },
+        rail, magnifyLayer, addPanel,
+      )
     },
   ))
 
