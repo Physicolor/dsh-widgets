@@ -51,7 +51,7 @@ export function usageRender(key: 'rolling' | 'weekly' | 'monthly', nameKey: stri
     if (!u) return { title: t(nameKey), value: '—', legend: modeLabel(mode), cycle }
     return {
       title: t(nameKey),
-      value: `${u.percent}%`,
+      value: `${Number(u.percent).toFixed(1)}%`,
       legend: modeLabel(mode),
       sub: t('usage.resets', { date: String(u.resetsAt || '').slice(0, 10) }),
       cycle,

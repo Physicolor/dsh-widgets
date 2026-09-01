@@ -125,6 +125,10 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ## Changelog
 
+### v1.4.1
+
+- **Fix** — 滚动用量 / 每周用量 / 每月用量卡片的百分比保留一位小数（如 42% → 42.5%），与 OpenCode 官网一致；用量柱状图、用量环图数字格式不变。
+
 ### v1.4.0 (project website — first public release)
 
 - 🚀 **Published as v1.4.0** — `dsh-widgets@1.4.0` is live on GitHub and npm. The project website is now public at `https://physicolor.github.io/dsh-widgets/` via GitHub Pages. No plugin code changes; version bumped solely to ship the website.
