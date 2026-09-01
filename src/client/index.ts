@@ -741,11 +741,13 @@ export function apply(ctx: ClientContext): void {
       //    panel: a translateX slide with --ds-transition-duration-slow +
       //    --ds-ease-in-out, applied to a position:fixed inset:0 wrapper so the
       //    rail + magnify overlay + add panel move as ONE surface. Opening
-      //    glides in from the LEFT (translateX(-100%) → 0), closing slides OUT
-      //    to the RIGHT (0 → translateX(100%)). CSS transitions interrupt
-      //    natively: a rapid re-toggle animates from the current intermediate
-      //    geometry straight to the new target — no snap, no desync. The
-      //    wrapper is pointer-events:none so it never blocks the page.
+      //    glides in from the RIGHT (translateX(+travel) → 0, moving leftwards
+      //    into the resting slot), closing is the reverse (0 →
+      //    translateX(+travel), sliding out to the right). CSS transitions
+      //    interrupt natively: a rapid re-toggle animates from the current
+      //    intermediate geometry straight to the new target — no snap, no
+      //    desync. The wrapper is pointer-events:none so it never blocks the
+      //    page.
       const shouldOpen = snap.open && snap.hasSession
       const [drawerPhase, setDrawerPhase] = React.useState<'closed' | 'enter' | 'open' | 'leave'>(shouldOpen ? 'open' : 'closed')
       const reduceMotion = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && !!window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -1207,14 +1209,16 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       // exactly as before — a transformed fixed ancestor becomes their
       // containing block, but this wrapper spans the viewport so the
       // coordinates are identical — while the wrapper's own translateX carries
-      // the whole group left→right on open, right→off-screen on close.
-      // pointer-events:none: interaction stays on the children that opt in.
+      // the whole group. Opening glides in from the RIGHT (translateX(+travel)
+      // → 0, leftwards into its resting slot); closing is the reverse (0 →
+      // translateX(+travel), sliding out to the right). pointer-events:none:
+      // interaction stays on the children that opt in.
       // Travel distance is the rail's own width (+24px margin), NOT a
       // percentage: translateX(%) on this wrapper would resolve against the
       // VIEWPORT width (inset:0), sliding a whole screen-width instead of one
       // rail width (far too fast over the same 0.3s).
       const drawerTravel = Math.round(railW + 24)
-      const drawerTransform = drawerPhase === 'enter' ? `translateX(-${drawerTravel}px)` : drawerPhase === 'leave' ? `translateX(${drawerTravel}px)` : 'none'
+      const drawerTransform = drawerPhase === 'enter' || drawerPhase === 'leave' ? `translateX(${drawerTravel}px)` : 'none'
       const drawerTransition = reduceMotion ? 'none' : 'transform var(--ds-transition-duration-slow) var(--ds-ease-in-out)'
       return React.createElement('div', { key: '__drawer', style: { position: 'fixed', inset: 0, pointerEvents: 'none', transform: drawerTransform, transition: drawerTransition } },
         rail, magnifyLayer, addPanel,

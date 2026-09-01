@@ -61,12 +61,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   }, 420)
   const openRest = openSeq.length ? openSeq[openSeq.length - 1].left : null
   const openMovedFrames = openSeq.filter((f) => f.left !== null && f.left !== openRest)
+  const openFirstNonNull = openSeq.find((f) => f.left !== null)
   RESULTS.open = {
     frames: openSeq.length,
-    startLeft: openSeq.length ? openSeq[0].left : null,
+    startLeft: openFirstNonNull ? openFirstNonNull.left : null,
     restLeft: openRest,
     intermediateFrames: openMovedFrames.length,
-    movedLeftwards: openMovedFrames.length > 0 && openMovedFrames.every((f) => f.left < openRest),
+    // Opening must come FROM THE RIGHT (start > rest) and glide down onto the
+    // resting slot: every intermediate sample sits to the right of rest.
+    cameFromRight: openFirstNonNull !== undefined && openFirstNonNull.left > openRest
+      && openMovedFrames.length > 0 && openMovedFrames.every((f) => f.left > openRest),
   }
 
   await page.waitForTimeout(500) // settle
@@ -169,7 +173,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   await browser.close()
 
   const pass = RESULTS.open.intermediateFrames >= 3
-    && RESULTS.open.movedLeftwards
+    && RESULTS.open.cameFromRight
     && RESULTS.close.movedRightwards
     && RESULTS.close.unmountedAfterWait
     && RESULTS.interrupt.neverUnmounted
