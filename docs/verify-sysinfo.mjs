@@ -76,11 +76,18 @@ if (s1.gpu !== null) {
 const s2 = await invoke()
 check('~1s cache hit (same ts)', s2.ts === s1.ts, `ts=${s2.ts} === ${s1.ts}`)
 
-// ---- Sample 2 after the cache window: delta util appears ----
+// ---- Sample 2 after the cache window: delta util appears + history grows ----
 await sleep(1100)
 const s3 = await invoke()
 check('fresh sample after cache (new ts)', s3.ts > s1.ts, `ts=${s3.ts} > ${s1.ts}`)
 check('cpu.util numeric on delta sample', typeof s3.cpu.util === 'number' && s3.cpu.util >= 0 && s3.cpu.util <= 100, `util=${s3.cpu.util}`)
+// Sparkline history: parallel arrays, each sample pushes one entry (first is
+// null cpu), capped at HISTORY_CAP (120).
+const h = s3.history
+check('history present + parallel arrays', h && Array.isArray(h.ts) && Array.isArray(h.cpu) && Array.isArray(h.gpu)
+  && h.ts.length === h.cpu.length && h.cpu.length === h.gpu.length, `samples=${h ? h.cpu.length : 0}`)
+check('history first cpu sample null, delta numeric/num', h.cpu[0] === null && (h.cpu[1] === null || (typeof h.cpu[1] === 'number' && h.cpu[1] >= 0 && h.cpu[1] <= 100)), `cpu[0]=${h.cpu[0]} cpu[1]=${h.cpu[1]}`)
+check('history gpu entries numeric-or-null', h.gpu.every((v) => v === null || (typeof v === 'number' && v >= 0 && v <= 100)), `gpu sample[last]=${h.gpu[h.gpu.length - 1]}`)
 
 // ---- Disposer works (route removed, no leak) ----
 for (const d of disposers) { const fn = d; if (typeof fn === 'function') fn() }

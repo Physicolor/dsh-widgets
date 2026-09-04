@@ -220,6 +220,9 @@ export function apply(ctx: {
   ctx.effect(() => {
     let lastCpu: { idle: number; total: number } | null = null
     let cache: { ts: number; payload: unknown } | null = null
+    /** Utilization sample history for the sparklines (newest last). */
+    const history: Array<{ t: number; cpu: number | null; gpu: number | null }> = []
+    const HISTORY_CAP = 120
     return ctx.webServer.register({
       kind: 'exact',
       path: '/api/sysinfo',
@@ -273,6 +276,8 @@ export function apply(ctx: {
           }
         } catch { gpu = null }
         const memUsed = totalBytes - freeBytes
+        history.push({ t: now, cpu: util, gpu: gpu?.util ?? null })
+        if (history.length > HISTORY_CAP) history.splice(0, history.length - HISTORY_CAP)
         const payload = {
           ts: now,
           cpu: { util },
@@ -282,6 +287,11 @@ export function apply(ctx: {
             percent: totalBytes > 0 ? Math.round((memUsed / totalBytes) * 1000) / 10 : 0,
           },
           gpu,
+          history: {
+            ts: history.map((h) => h.t),
+            cpu: history.map((h) => h.cpu),
+            gpu: history.map((h) => h.gpu),
+          },
         }
         cache = { ts: now, payload }
         res.writeHead(200, { 'Content-Type': 'application/json' })

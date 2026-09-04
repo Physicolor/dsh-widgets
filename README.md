@@ -128,6 +128,14 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ### v1.5.0 (working tree, unreleased)
 
+**Polish — system widgets round 3 (layouts, big-figure switch, sparkline):**
+
+- 🧹 **sys-board**: the `0/0 GB` sub line is gone (ambiguous); the GPU model + temperature stay at the title row's right end. Ring labels now share ONE row with their percent (`43% CPU`) — the 2×4 board has room for names horizontally.
+- 🚫 **usage-rings**: the rolling/week/month label line under the rings is removed (user preference) — rings show just the percent again, names surface on hover.
+- 🔄 **sys-gpu / sys-cpu big-figure switch**: clicking the card cycles the big number (GPU: VRAM → temp → utilization; CPU: utilization → used memory) and the same selection is available as a config dropdown (「大数值显示」). The cycle persists per-instance via a new `cycle.store` field (`bigMetric`), so sys cycles never collide with the usage pool view nor fire multikey `prefer` calls.
+- 📈 **New `sys-gpu-line` widget** (2×2): Windows-task-manager style GPU utilization sparkline — filled area + polyline, same 7-row footprint/paddings as the barsV chart, time labels on the bottom corners. The host `/api/sysinfo` now returns a rolling `history` ring buffer (≤120 samples of cpu/gpu utilization).
+- ✅ Verification grew to 12 checks (history arrays parallel, first cpu sample null, gpu entries bounded); live probe unaffected.
+
 **Fix — sys-board rendered as 2×2 (sizes double-source mismatch):**
 
 - 🐛 `sys-board` declared `2×4` in its `manifest.json`, but the runtime reads the DESCRIPTOR's `sizes` — which was missing, so `sizesOf()` fell back to `['2x2']`; the market listed and the rail rendered a bogus 2×2 instance. Fixed by adding `sizes: ['2x4']` to the descriptor; persisted `sys-board@2x2` instances auto-migrate to `sys-board@2x4` on load.

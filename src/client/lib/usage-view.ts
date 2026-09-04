@@ -75,18 +75,20 @@ export function usageBarsRender(stats: WidgetStats): WidgetRenderOut | null {
 }
 
 /** OpenCode Go dosage as three small donuts — same data as the bars chart,
- *  circle form. Each ring shows its percent in the centre... (usage-rings). */
+ *  circle form. Each ring shows its percent in the centre... (usage-rings).
+ *  Labels stay OFF (user preference: no rolling/week/month text under the
+ *  rings — the window names surface on hover via the title tooltip). */
 export function usageRingsRender(stats: WidgetStats): WidgetRenderOut | null {
   const { data, mode } = usageView(stats)
   const u = data?.usage
   const cycle = cycleFor(stats)
   if (!u) return { title: t('usage.title'), value: '—', legend: modeLabel(mode), cycle }
   const tone = (p: number): 'success' | 'warn' | 'danger' => (p >= 95 ? 'danger' : p >= 75 ? 'warn' : 'success')
-  const mk = (label: string, p: number) => ({ label, value: p, ratio: p / 100, tone: tone(p) })
+  const mk = (p: number) => ({ label: '', value: p, ratio: p / 100, tone: tone(p) })
   return {
     title: t('usage.title'),
     legend: modeLabel(mode),
-    chart: { kind: 'rings', rings: [mk(t('usage.rolling'), u.rolling.percent), mk(t('usage.week'), u.weekly.percent), mk(t('usage.month'), u.monthly.percent)] },
+    chart: { kind: 'rings', rings: [mk(u.rolling.percent), mk(u.week.percent), mk(u.month.percent)] },
     cycle,
   }
 }

@@ -33,6 +33,7 @@ import w_sys_cpu from '../widgets/sys-cpu'
 import w_sys_gpu from '../widgets/sys-gpu'
 import w_sys_rings from '../widgets/sys-rings'
 import w_sys_board from '../widgets/sys-board'
+import w_sys_gpu_line from '../widgets/sys-gpu-line'
 
 /** Every discovered widget, in manifest display order (then by id). */
 export const WIDGETS: import('./lib/contract').Widget[] = [
@@ -59,6 +60,7 @@ export const WIDGETS: import('./lib/contract').Widget[] = [
   w_sys_gpu,
   w_sys_rings,
   w_sys_board,
+  w_sys_gpu_line,
 ]
 
 /** All widget ids, in registry order. */
@@ -86,6 +88,7 @@ export const ALL_IDS: string[] = [
   'sys-gpu',
   'sys-rings',
   'sys-board',
+  'sys-gpu-line',
 ]
 
 /** Every valid instance key (each widget at each of its supported sizes). */
@@ -115,6 +118,7 @@ export const ALL_INSTANCES: string[] = [
   `sys-gpu@2x2`,
   `sys-rings@2x2`,
   `sys-board@2x4`,
+  `sys-gpu-line@2x2`,
 ]
 
 /** The stats-line family (fresh installs pre-load ONLY these). */
@@ -161,6 +165,12 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "sysinfo.intervalCustomValue": "自定义间隔（秒）",
     "sysinfo.noGpu": "未检测到 NVIDIA GPU",
     "sysinfo.waiting": "等待设备数据…",
+    "sysinfo.bigMetric": "大数值显示",
+    "sysinfo.bigVram": "显存 (GB)",
+    "sysinfo.bigTemp": "温度 (°C)",
+    "sysinfo.bigUtil": "利用率 (%)",
+    "sysinfo.bigMem": "内存 (GB)",
+    "sysinfo.bigHint": "点击切换大数值：{chain}",
     "widget.counts.name": "轮次·步数",
     "widget.counts.desc": "本轮会话的轮次与步骤计数",
     "card.counts.value": "{turns}轮 {steps}步",
@@ -239,6 +249,8 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "widget.sys-rings.desc": "CPU / GPU 利用率双环形图",
     "widget.sys-board.name": "系统监控",
     "widget.sys-board.desc": "CPU/内存/GPU 显存与利用率全指标环形看板",
+    "widget.sys-gpu-line.name": "GPU 利用率",
+    "widget.sys-gpu-line.desc": "GPU 利用率折线（最近约 20 分钟）",
   },
   en: {
     "badge.opencode": "OpenCode Go Usage Quota",
@@ -259,6 +271,12 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "sysinfo.intervalCustomValue": "Custom interval (s)",
     "sysinfo.noGpu": "No NVIDIA GPU detected",
     "sysinfo.waiting": "Waiting for device data…",
+    "sysinfo.bigMetric": "Big figure",
+    "sysinfo.bigVram": "VRAM (GB)",
+    "sysinfo.bigTemp": "Temp (°C)",
+    "sysinfo.bigUtil": "Utilization (%)",
+    "sysinfo.bigMem": "Memory (GB)",
+    "sysinfo.bigHint": "Click to cycle the big figure: {chain}",
     "widget.counts.name": "Turns · Steps",
     "widget.counts.desc": "Turns and steps of the current session",
     "card.counts.value": "{turns} turns · {steps} steps",
@@ -337,5 +355,7 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "widget.sys-rings.desc": "CPU / GPU utilization twin rings",
     "widget.sys-board.name": "System Monitor",
     "widget.sys-board.desc": "CPU / memory / GPU VRAM and utilization dashboard rings",
+    "widget.sys-gpu-line.name": "GPU Utilization",
+    "widget.sys-gpu-line.desc": "GPU utilization sparkline (last ~20 min)",
   },
 }

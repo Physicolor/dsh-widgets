@@ -1,0 +1,17 @@
+{
+  "id": "sys-gpu-line",
+  "order": 64,
+  "group": "device",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.sys-gpu-line.name": "GPU 利用率",
+      "widget.sys-gpu-line.desc": "GPU 利用率折线（最近约 20 分钟）"
+    },
+    "en": {
+      "widget.sys-gpu-line.name": "GPU Utilization",
+      "widget.sys-gpu-line.desc": "GPU utilization sparkline (last ~20 min)"
+    }
+  }
+}

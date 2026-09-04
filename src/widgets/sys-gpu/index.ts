@@ -1,6 +1,6 @@
 ﻿import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { intervalSchema, sysGpuRender } from '../../client/lib/sys-view'
+import { gpuMetricOptions, intervalSchema, bigMetricSchema, sysGpuRender } from '../../client/lib/sys-view'
 
 /** GPU VRAM as a big number with utilization/temperature line (title + number
  *  card). */
@@ -10,6 +10,6 @@ export default defineWidget({
   desc: () => t('widget.sys-gpu.desc'),
   builtin: false,
   group: 'device',
-  configSchema: intervalSchema(),
+  configSchema: [ ...intervalSchema(), bigMetricSchema(gpuMetricOptions()) ],
   render: sysGpuRender,
 })

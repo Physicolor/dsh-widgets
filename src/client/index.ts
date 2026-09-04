@@ -631,18 +631,21 @@ export function apply(ctx: ClientContext): void {
         setArmedAction(null)
         runCommand(command)
       }
-      // Whole-card cycle (pooled usage widgets): advance the instance's
-      // poolView along its cycle and persist it via cardConfigs so the choice
-      // survives reloads and other browser origins. The pool plugin is told
-      // about the selection too: landing on Key N actually makes the pool use
-      // that key (prefer), returning to 鎬?Key clears the pin.
+      // Whole-card cycle (pooled usage widgets + sys big-figure cards): advance the
+      // instance's selection along its cycle and persist it via cardConfigs so
+      // the choice survives reloads and other browser origins. The persisted
+      // field defaults to 'poolView' (usage pool); sys cards pass `store:
+      // 'bigMetric'` so their cycle never collides with the pool view. The
+      // multikey `prefer` call only fires for usage cycles (storeless).
       const cyclePool = (key: string) => (out: WidgetRenderOut): void => {
         const modes = out.cycle?.modes ?? []
         if (modes.length === 0) return
-        const current = out.cycle?.current ?? 'total'
+        const current = out.cycle?.current ?? modes[0]
         const idx = modes.indexOf(current)
-        const next = modes[(idx < 0 ? -1 : idx) + 1] ?? modes[0] ?? 'total'
-        setPrefs({ cardConfigs: { ...prefs.cardConfigs, [key]: { ...(prefs.cardConfigs[key] ?? {}), poolView: next } } })
+        const next = modes[(idx < 0 ? -1 : idx) + 1] ?? modes[0]
+        const store = out.cycle?.store ?? 'poolView'
+        setPrefs({ cardConfigs: { ...prefs.cardConfigs, [key]: { ...(prefs.cardConfigs[key] ?? {}), [store]: next } } })
+        if (out.cycle?.store) return
         const entry = snap.usageMulti?.keys.find((k) => k.label === next)
         void fetch('/api/multikey', {
           method: 'POST',

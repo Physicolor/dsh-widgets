@@ -66,6 +66,13 @@ export interface SysInfo {
     memTotal: number
     memPercent: number
   } | null
+  /** Rolling sample history (host ring buffer, newest last, ≤120 samples) for
+   *  the utilization sparklines. `null` = no baseline yet at that sample. */
+  history?: {
+    ts: number[]
+    cpu: Array<number | null>
+    gpu: Array<number | null>
+  }
 }
 
 /** Session stats a widget render can read. */
@@ -126,6 +133,15 @@ export interface WidgetChart {
   value?: number
   valueLabel?: string
   max?: number
+  /** Utilization sparkline (Windows-task-manager style): a filled area under
+   *  a polyline. `null` entries break the line (no baseline at that sample). */
+  line?: {
+    values: Array<number | null>
+    /** Y-scale maximum (default 100: percentages). */
+    max?: number
+    /** Endpoint labels: [earliest, latest] short times ("14:02" / "14:22"). */
+    labels?: [string, string]
+  }
   /** Segmented bar (system/tools/messages). Each segment has a token share. */
   segments?: Array<{ label: string; tokens: number; tone: 'primary' | 'success' | 'muted' | 'warn' }>
   totalTokens?: number
@@ -220,8 +236,11 @@ export interface WidgetRenderOut {
   /** Top-right corner capsule/round button (e.g. one-click Compact). */
   corner?: WidgetCorner
   /** Whole-card tap cycles this card through its pooled key views (usage widgets):
-   *  total → Key 1 → Key 2 → … → total. Pressing plays a springy press-down. */
-  cycle?: { modes: string[]; current: string; hint: string }
+   *  total → Key 1 → Key 2 → … → total. Pressing plays a springy press-down.
+   *  `store` names the cardConfigs field the selection persists to (default
+   *  'poolView'); sys widgets use their own field (e.g. 'bigMetric') so their
+   *  cycle never collides with the usage pool view nor fires multikey calls. */
+  cycle?: { modes: string[]; current: string; hint: string; store?: string }
   /** Whole-card red inner-glow alert (e.g. peak pricing is live): a red glow
    *  bleeds in from the card edges while the centre stays clean, with a small
    *  breathing animation. Applied as the `dsx-peak-alert` class. */

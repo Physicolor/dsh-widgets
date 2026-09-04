@@ -17,7 +17,13 @@
     "sysinfo.intervalCustom": "自定义",
     "sysinfo.intervalCustomValue": "自定义间隔（秒）",
     "sysinfo.noGpu": "未检测到 NVIDIA GPU",
-    "sysinfo.waiting": "等待设备数据…"
+    "sysinfo.waiting": "等待设备数据…",
+    "sysinfo.bigMetric": "大数值显示",
+    "sysinfo.bigVram": "显存 (GB)",
+    "sysinfo.bigTemp": "温度 (°C)",
+    "sysinfo.bigUtil": "利用率 (%)",
+    "sysinfo.bigMem": "内存 (GB)",
+    "sysinfo.bigHint": "点击切换大数值：{chain}"
   },
   "en": {
     "badge.opencode": "OpenCode Go Usage Quota",
@@ -37,6 +43,12 @@
     "sysinfo.intervalCustom": "Custom",
     "sysinfo.intervalCustomValue": "Custom interval (s)",
     "sysinfo.noGpu": "No NVIDIA GPU detected",
-    "sysinfo.waiting": "Waiting for device data…"
+    "sysinfo.waiting": "Waiting for device data…",
+    "sysinfo.bigMetric": "Big figure",
+    "sysinfo.bigVram": "VRAM (GB)",
+    "sysinfo.bigTemp": "Temp (°C)",
+    "sysinfo.bigUtil": "Utilization (%)",
+    "sysinfo.bigMem": "Memory (GB)",
+    "sysinfo.bigHint": "Click to cycle the big figure: {chain}"
   }
 }

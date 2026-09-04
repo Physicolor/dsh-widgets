@@ -66,6 +66,20 @@ const PREVIEW_STATS: WidgetStats = {
     cpu: { util: 43 },
     mem: { used: 17.4 * 1024 ** 3, total: 34.2 * 1024 ** 3, percent: 51 },
     gpu: { name: 'NVIDIA GeForce RTX 5070 Ti Laptop GPU', temp: 58, util: 8, memUsed: 4815 * 1024 ** 2, memTotal: 12227 * 1024 ** 2, memPercent: 39 },
+    // 30 samples @10s (~5 min) of plausible utilization drift for the
+    // sparkline preview: GPU idles low with a burst, CPU wanders mid-load.
+    history: (() => {
+      const now = Date.now()
+      const ts: number[] = []
+      const cpu: Array<number | null> = []
+      const gpu: Array<number | null> = []
+      for (let i = 0; i < 30; i++) {
+        ts.push(now - (29 - i) * 10000)
+        cpu.push(Math.max(5, Math.min(85, Math.round(43 + Math.sin(i / 3) * 18 + (i % 5) * 2))))
+        gpu.push(Math.max(0, Math.min(70, Math.round(i >= 20 ? 38 + Math.cos(i) * 12 : 6 + Math.sin(i / 2) * 4))))
+      }
+      return { ts, cpu, gpu }
+    })(),
   },
 }
 
@@ -225,10 +239,10 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
   if (chart.kind === 'rings' && chart.rings && chart.rings.length) {
     // Several donuts side by side (e.g. OpenCode rolling/weekly/monthly usage,
     // or the CPU/GPU system rings). The centre stays clean — no in-ring text —
-    // so each ring can be drawn thick and full; the percent sits under its
-    // ring, its label beneath that (9px tertiary, ellipsized), and the exact
-    // value surfaces on hover via the title tooltip. Ring-to-ring spacing
-    // equals the card inner padding itself (12px on a 2×2).
+    // so each ring can be drawn thick and full. Below the ring: the percent;
+    // when the ring carries a label the percent and label share ONE row
+    // ("43% CPU") — the 2×4 board has room for names horizontally, and
+    // label-less rings (usage-rings) keep just the percent.
     const pad = Math.round(8 * scale)
     const mg = Math.round(12 * scale) // inter-ring gap = the card inner padding itself
     const avail = (width ?? side) - 2 * pad
@@ -238,16 +252,69 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
       const p = Math.max(0, Math.min(1, rg.ratio ?? rg.value / (chart.max ?? 100)))
       const c = 2 * Math.PI * (r - sw / 2)
       const tone = CHART_TONES[rg.tone ?? 'primary'] ?? CHART_TONES.primary
+      const hasLabel = typeof rg.label === 'string' && rg.label.length > 0
+      const labelRow = hasLabel
+        ? React.createElement('div', { style: { display: 'flex', alignItems: 'baseline', gap: 3, whiteSpace: 'nowrap', maxWidth: '100%' } },
+            React.createElement('span', { style: { fontSize: `${Math.round(11 * scale)}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 } }, `${Math.round(rg.value)}%`),
+            React.createElement('span', { style: { fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis' } }, rg.label),
+          )
+        : React.createElement('div', { style: { fontSize: `${Math.round(11 * scale)}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 } }, `${Math.round(rg.value)}%`)
       return React.createElement('div', { key: i, title: `${rg.label} ${Math.round(rg.value)}%`, style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.round(2 * scale) } },
         React.createElement('svg', { width: Math.round(r * 2), height: Math.round(r * 2), viewBox: `0 0 ${Math.round(r * 2)} ${Math.round(r * 2)}`, 'aria-hidden': true },
           React.createElement('circle', { cx: r, cy: r, r: r - sw / 2, fill: 'none', stroke: 'var(--dsw-alias-interactive-bg-hover)', strokeWidth: sw }),
           React.createElement('circle', { cx: r, cy: r, r: r - sw / 2, fill: 'none', stroke: tone, strokeWidth: sw, strokeDasharray: `${c * p} ${c}`, transform: `rotate(-90 ${r} ${r})`, strokeLinecap: 'round' }),
         ),
-        React.createElement('div', { style: { fontSize: `${Math.round(11 * scale)}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 } }, `${Math.round(rg.value)}%`),
-        React.createElement('div', { style: { fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1.2, textAlign: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, rg.label),
+        labelRow,
       )
     })
     return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-end', gap: mg } }, items)
+  }
+  if (chart.kind === 'line' && chart.line) {
+    // Windows-task-manager style utilization sparkline: a filled area under a
+    // polyline. Same footprint/paddings as the barsV chart (7-row calendar
+    // height); a proportional 100×100 viewBox stretches via preserveAspectRatio
+    // none, so the stroke uses vector-effect non-scaling-stroke to stay
+    // crisp. Null samples break the line into independent segments.
+    const cell = Math.round((6 + 2) * scale)
+    const barAreaH = 7 * cell + 6 * 2
+    const labelH = Math.round(10 * scale)
+    const max = Math.max(1, chart.line.max ?? 100)
+    const vals = chart.line.values
+    const W = Math.max(1, vals.length - 1)
+    const X = (i: number): number => (W === 0 ? 0 : (i / W) * 100)
+    const Y = (v: number): number => 100 - (Math.max(0, Math.min(max, v)) / max) * 100
+    const segs: Array<Array<[number, number]>> = []
+    let cur: Array<[number, number]> = []
+    vals.forEach((v, i) => {
+      if (v === null || v === undefined || !Number.isFinite(v)) {
+        if (cur.length > 1) { segs.push(cur); cur = [] }
+        return
+      }
+      cur.push([X(i), Y(v)])
+    })
+    if (cur.length > 1) segs.push(cur)
+    const tone = 'var(--dsw-alias-state-business-primary)'
+    const fill = 'color-mix(in srgb, var(--dsw-alias-state-business-primary) 18%, transparent)'
+    const areaPaths = segs.map((seg, si) => {
+      const d = seg.map(([x, y], pi) => `${pi === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`).join(' ')
+        + ` L${seg[seg.length - 1][0].toFixed(2)} 100 L${seg[0][0].toFixed(2)} 100 Z`
+      return React.createElement('path', { key: `a${si}`, d, fill, stroke: 'none' })
+    })
+    const polylines = segs.map((seg, si) =>
+      React.createElement('polyline', { key: `p${si}`, points: seg.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' '), fill: 'none', stroke: tone, strokeWidth: Math.max(1, Math.round(1.6 * scale)), strokeLinejoin: 'round', strokeLinecap: 'round', vectorEffect: 'non-scaling-stroke' }),
+    )
+    const labels = chart.line.labels ?? ['', '']
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', marginTop: `${Math.round(4 * scale)}px` } },
+      React.createElement('div', { style: { height: `${barAreaH}px`, overflow: 'hidden' } },
+        React.createElement('svg', { width: '100%', height: '100%', viewBox: '0 0 100 100', preserveAspectRatio: 'none', 'aria-hidden': true },
+          ...areaPaths, ...polylines,
+        ),
+      ),
+      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', minHeight: labelH, fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1 } },
+        React.createElement('span', null, labels[0]),
+        React.createElement('span', null, labels[1]),
+      ),
+    )
   }
   if (chart.kind === 'ring') {
     const p = Math.max(0, Math.min(1, (chart.value ?? 0) / (chart.max ?? 100)))

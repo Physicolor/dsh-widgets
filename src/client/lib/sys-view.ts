@@ -1,9 +1,10 @@
 /**
  * dsh-widgets — Machine/system (SysInfo) shared render layer (widget-family
- * shared). The four system widgets (sys-cpu / sys-gpu / sys-rings / sys-board)
- * share the snapshot resolution, the refresh-interval config schema and the
- * formatting helpers. They live here — NOT copied into each unit — so the
- * family stays consistent and a new system widget imports the same machinery.
+ * shared). The five system widgets (sys-cpu / sys-gpu / sys-rings / sys-board
+ * / sys-gpu-line) share the snapshot resolution, the refresh-interval config
+ * schema, the big-figure cycle and the formatting helpers. They live here —
+ * NOT copied into each unit — so the family stays consistent and a new system
+ * widget imports the same machinery.
  *
  * All strings come from the per-widget dictionaries (merged by the registry
  * generator from each unit's manifest; family-shared keys live in
@@ -13,9 +14,9 @@
 import { t } from '../i18n'
 import type { ConfigField, SysInfo, WidgetRenderOut, WidgetStats } from './contract'
 
-/** The four system (hardware) widget ids — the client collector uses this list
+/** The five system (hardware) widget ids — the client collector uses this list
  *  to find which installed instances drive the `/api/sysinfo` polling cadence. */
-export const SYS_WIDGET_IDS = ['sys-cpu', 'sys-gpu', 'sys-rings', 'sys-board']
+export const SYS_WIDGET_IDS = ['sys-cpu', 'sys-gpu', 'sys-rings', 'sys-board', 'sys-gpu-line']
 
 /** Read the machine snapshot from the stats passed to a widget render. */
 export function sysInfo(stats: WidgetStats): SysInfo | null {
@@ -54,6 +55,41 @@ export function resolveInterval(config: Record<string, unknown> | undefined): nu
   return Math.max(5, Math.min(60, Math.round(secs)))
 }
 
+/** Big-figure selectors. GPU: VRAM / temperature / utilization; CPU: the
+ *  utilization / used memory. The selection drives BOTH the whole-card click
+ *  cycle (store: 'bigMetric') and the config dropdown (same key). */
+const GPU_METRIC_OPTS: Array<[string, string | (() => string)]> = [
+  ['vram', () => t('sysinfo.bigVram')],
+  ['temp', () => t('sysinfo.bigTemp')],
+  ['util', () => t('sysinfo.bigUtil')],
+]
+const CPU_METRIC_OPTS: Array<[string, string | (() => string)]> = [
+  ['util', () => t('sysinfo.bigUtil')],
+  ['mem', () => t('sysinfo.bigMem')],
+]
+
+/** Config dropdown for the big-figure mode (per-widget option lists). */
+export function bigMetricSchema(opts: Array<[string, string | (() => string)]>): ConfigField {
+  return { key: 'bigMetric', label: () => t('sysinfo.bigMetric'), type: 'mode', options: opts, default: opts[0][0] }
+}
+
+/** Cycle hint: "VRAM (GB) → Temp (°C) → Utilization (%) → …" closing the loop. */
+function bigHint(opts: Array<[string, string | (() => string)]>): string {
+  const labels = opts.map(([_v, l]) => (typeof l === 'function' ? l() : l))
+  return t('sysinfo.bigHint', { chain: labels.concat(labels[0]).join(' → ') })
+}
+
+/** GPU big-figure options for the widget descriptors. */
+export function gpuMetricOptions(): Array<[string, string | (() => string)]> { return GPU_METRIC_OPTS }
+/** CPU big-figure options for the widget descriptors. */
+export function cpuMetricOptions(): Array<[string, string | (() => string)]> { return CPU_METRIC_OPTS }
+
+/** Read an instance's bigMetric mode, falling back to the option-list default. */
+function bigMetricOf(stats: WidgetStats, opts: Array<[string, string | (() => string)]>): string {
+  const m = stats.bigMetric
+  return typeof m === 'string' && opts.some(([v]) => v === m) ? m : opts[0][0]
+}
+
 /** Bytes → human GB ("17.4 GB"), one decimal below 10 GB, integer above. */
 export function fmtGb(bytes: number): string {
   const gb = bytes / 1024 ** 3
@@ -77,33 +113,40 @@ export function sysUnavailable(titleKey: string): WidgetRenderOut {
   return { title: t(titleKey), value: '—', legend: t('sysinfo.waiting') }
 }
 
-/** sys-cpu: big utilization number + memory line. */
+/** sys-cpu: big utilization (or used memory, clickable/dropdown) + mem line. */
 export function sysCpuRender(stats: WidgetStats): WidgetRenderOut | null {
   const s = sysInfo(stats)
   if (s === null) return sysUnavailable('widget.sys-cpu.name')
+  const metric = bigMetricOf(stats, CPU_METRIC_OPTS)
+  const value = metric === 'mem' ? fmtGb(s.mem.used) : s.cpu.util === null ? '—' : `${s.cpu.util}%`
   return {
     title: t('widget.sys-cpu.name'),
-    value: s.cpu.util === null ? '—' : `${s.cpu.util}%`,
+    value,
     sub: t('sysinfo.memSub', { used: fmtGb(s.mem.used), total: fmtGb(s.mem.total) }),
+    cycle: { modes: CPU_METRIC_OPTS.map(([v]) => v), current: metric, hint: bigHint(CPU_METRIC_OPTS), store: 'bigMetric' },
   }
 }
 
-/** sys-gpu: big VRAM number + utilization/temperature line. No GPU model name
- *  on the card — the value must sit bottom-left as the large figure (a
- *  headRight would pull it into the title row). */
+/** sys-gpu: big VRAM (or temp / utilization, clickable/dropdown) + util/temp
+ *  line. No GPU model name on the card — the value must sit bottom-left as the
+ *  large figure (a headRight would pull it into the title row). */
 export function sysGpuRender(stats: WidgetStats): WidgetRenderOut | null {
   const s = sysInfo(stats)
   if (s === null) return sysUnavailable('widget.sys-gpu.name')
   if (s.gpu === null) return { title: t('widget.sys-gpu.name'), value: '—', legend: t('sysinfo.noGpu') }
+  const metric = bigMetricOf(stats, GPU_METRIC_OPTS)
+  const g = s.gpu
+  const value = metric === 'temp' ? `${Math.round(g.temp)}°C` : metric === 'util' ? `${Math.round(g.util)}%` : fmtGb(g.memUsed)
   return {
     title: t('widget.sys-gpu.name'),
-    value: fmtGb(s.gpu.memUsed),
-    sub: `${s.gpu.util}% · ${s.gpu.temp}°C · ${fmtGb(s.gpu.memTotal)}`,
+    value,
+    sub: `${g.util}% · ${g.temp}°C · ${fmtGb(g.memTotal)}`,
+    cycle: { modes: GPU_METRIC_OPTS.map(([v]) => v), current: metric, hint: bigHint(GPU_METRIC_OPTS), store: 'bigMetric' },
   }
 }
 
 /** sys-rings: CPU utilization ring + GPU utilization ring (GPU ring absent
- *  while no NVIDIA GPU is detected). */
+ *  while no NVIDIA GPU is detected). Values and names share one row per ring. */
 export function sysRingsRender(stats: WidgetStats): WidgetRenderOut | null {
   const s = sysInfo(stats)
   if (s === null) return sysUnavailable('widget.sys-rings.name')
@@ -119,8 +162,8 @@ export function sysRingsRender(stats: WidgetStats): WidgetRenderOut | null {
 
 /** sys-board: the 2×4 monitoring dashboard — every metric as a ring (CPU
  *  utilization, memory, GPU utilization, VRAM). The GPU model (short form)
- *  sits at the RIGHT END of the title row as headRight (2×4 title space is
- *  wide enough); the body carries the VRAM figures and the ring row. */
+ *  and temperature sit at the RIGHT END of the title row; no extra volume row
+ *  (the 0/0 GB line was removed — the rings + names carry the information). */
 export function sysBoardRender(stats: WidgetStats): WidgetRenderOut | null {
   const s = sysInfo(stats)
   if (s === null) return sysUnavailable('widget.sys-board.name')
@@ -138,7 +181,31 @@ export function sysBoardRender(stats: WidgetStats): WidgetRenderOut | null {
     title: t('widget.sys-board.name'),
     headRight: gpu !== null ? `${gpu.temp}°C · ${shortGpuName(gpu.name)}` : undefined,
     legend: gpu === null ? t('sysinfo.noGpu') : undefined,
-    sub: gpu !== null ? `${fmtGb(gpu.memUsed)} / ${fmtGb(gpu.memTotal)}` : undefined,
     chart: { kind: 'rings', rings },
+  }
+}
+
+/** sys-gpu-line: GPU utilization sparkline (Windows-task-manager style) with
+ *  the current utilization as the big figure. History from the host ring
+ *  buffer; earliest/latest sample times on the chart's bottom corners. */
+export function sysGpuLineRender(stats: WidgetStats): WidgetRenderOut | null {
+  const s = sysInfo(stats)
+  if (s === null) return sysUnavailable('widget.sys-gpu-line.name')
+  if (s.gpu === null) return { title: t('widget.sys-gpu-line.name'), value: '—', legend: t('sysinfo.noGpu') }
+  const hist = s.history
+  const vals = hist && Array.isArray(hist.gpu) ? hist.gpu : []
+  const ts = hist && Array.isArray(hist.ts) ? hist.ts : []
+  if (vals.length < 2) {
+    return { title: t('widget.sys-gpu-line.name'), value: `${Math.round(s.gpu.util)}%`, legend: t('sysinfo.waiting') }
+  }
+  const fmtT = (tms: number): string => {
+    const d = new Date(tms)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+  return {
+    title: t('widget.sys-gpu-line.name'),
+    value: `${Math.round(s.gpu.util)}%`,
+    sub: `${s.gpu.temp}°C · ${fmtGb(s.gpu.memUsed)}`,
+    chart: { kind: 'line', line: { values: vals, max: 100, labels: [fmtT(ts[0]), fmtT(ts[ts.length - 1])] } },
   }
 }
