@@ -128,6 +128,13 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ### v1.5.0 (working tree, unreleased)
 
+**Hotfix — one crashing widget took the WHOLE rail down (P1):**
+
+- 🐛 A malformed OpenCode usage payload (one window missing/null, e.g. an upstream partial response) made `usage-rings`/`usage-bars` throw on `u.rolling.percent`; the uncaught render error killed the entire `shell.overlay` slot entry — every widget disappeared until the next hard refresh ("only visible briefly after refresh").
+- 🛡️ **Defense 1 — data layer**: every usage window now reads through `winPct()` (missing / null / non-numeric → the card degrades to a `—` placeholder, never throws); `usageRender` got the same guard.
+- 🛡️ **Defense 2 — render layer**: the rail wraps EVERY card render in try/catch — a crashing widget renders as a `渲染异常` placeholder card while the rest of the rail stays alive; the same isolation covers the config/market previews. A single bad widget can no longer hide the rail, ever.
+- ✅ New regression probe `docs/verify-usage-guard.mjs` asserts both defenses exist in the built bundle (5/5); `verify-sysinfo.mjs` stays 12/12.
+
 **Polish — system widgets round 3 (layouts, big-figure switch, sparkline):**
 
 - 🧹 **sys-board**: the `0/0 GB` sub line is gone (ambiguous); the GPU model + temperature stay at the title row's right end. Ring labels now share ONE row with their percent (`43% CPU`) — the 2×4 board has room for names horizontally.

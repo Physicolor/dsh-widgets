@@ -42,18 +42,32 @@ function modeLabel(mode: string): string {
   return mode === 'total' ? t('usage.totalKey') : mode
 }
 
+/** Read one usage window's percent DEFENSIVELY: any malformed window (missing,
+ *  null, non-object, non-numeric percent — e.g. an upstream partial/error
+ *  response) yields null, so the multi-window charts degrade to a placeholder
+ *  instead of throwing and taking the whole rail down with them. */
+function winPct(u: UsageData['usage'] | undefined, key: 'rolling' | 'weekly' | 'monthly'): number | null {
+  const it = u?.[key]
+  return it !== null && typeof it === 'object' && typeof (it as { percent?: unknown }).percent === 'number'
+    ? (it as { percent: number }).percent
+    : null
+}
+
 /** Single-window percent card (usage-rolling / usage-weekly / usage-monthly). */
 export function usageRender(key: 'rolling' | 'weekly' | 'monthly', nameKey: string): (stats: WidgetStats) => WidgetRenderOut | null {
   return (stats) => {
     const { data, mode } = usageView(stats)
     const u = data?.usage?.[key]
     const cycle = cycleFor(stats)
-    if (!u) return { title: t(nameKey), value: '—', legend: modeLabel(mode), cycle }
+    if (u === null || u === undefined || typeof u !== 'object' || typeof (u as { percent?: unknown }).percent !== 'number') {
+      return { title: t(nameKey), value: '—', legend: modeLabel(mode), cycle }
+    }
+    const item = u as { percent: number; resetsAt?: string }
     return {
       title: t(nameKey),
-      value: `${Number(u.percent).toFixed(1)}%`,
+      value: `${Number(item.percent).toFixed(1)}%`,
       legend: modeLabel(mode),
-      sub: t('usage.resets', { date: String(u.resetsAt || '').slice(0, 10) }),
+      sub: t('usage.resets', { date: String(item.resetsAt || '').slice(0, 10) }),
       cycle,
     }
   }
@@ -64,12 +78,17 @@ export function usageBarsRender(stats: WidgetStats): WidgetRenderOut | null {
   const { data, mode } = usageView(stats)
   const u = data?.usage
   const cycle = cycleFor(stats)
-  if (!u) return { title: t('usage.title'), value: '—', legend: modeLabel(mode), cycle }
+  const r = winPct(u, 'rolling')
+  const w = winPct(u, 'weekly')
+  const m = winPct(u, 'monthly')
+  if (r === null || w === null || m === null) {
+    return { title: t('usage.title'), value: '—', legend: modeLabel(mode), cycle }
+  }
   const tone = (p: number): BarDatum['tone'] => (p >= 95 ? 'danger' : p >= 75 ? 'warn' : 'success')
   const bars: BarDatum[] = [
-    { label: t('usage.rolling'), value: u.rolling.percent, ratio: u.rolling.percent / 100, tone: tone(u.rolling.percent) },
-    { label: t('usage.week'), value: u.weekly.percent, ratio: u.weekly.percent / 100, tone: tone(u.weekly.percent) },
-    { label: t('usage.month'), value: u.monthly.percent, ratio: u.monthly.percent / 100, tone: tone(u.monthly.percent) },
+    { label: t('usage.rolling'), value: r, ratio: r / 100, tone: tone(r) },
+    { label: t('usage.week'), value: w, ratio: w / 100, tone: tone(w) },
+    { label: t('usage.month'), value: m, ratio: m / 100, tone: tone(m) },
   ]
   return { title: t('usage.title'), legend: modeLabel(mode), chart: { kind: 'bars', bars }, cycle }
 }
@@ -82,13 +101,18 @@ export function usageRingsRender(stats: WidgetStats): WidgetRenderOut | null {
   const { data, mode } = usageView(stats)
   const u = data?.usage
   const cycle = cycleFor(stats)
-  if (!u) return { title: t('usage.title'), value: '—', legend: modeLabel(mode), cycle }
+  const r = winPct(u, 'rolling')
+  const w = winPct(u, 'weekly')
+  const m = winPct(u, 'monthly')
+  if (r === null || w === null || m === null) {
+    return { title: t('usage.title'), value: '—', legend: modeLabel(mode), cycle }
+  }
   const tone = (p: number): 'success' | 'warn' | 'danger' => (p >= 95 ? 'danger' : p >= 75 ? 'warn' : 'success')
   const mk = (p: number) => ({ label: '', value: p, ratio: p / 100, tone: tone(p) })
   return {
     title: t('usage.title'),
     legend: modeLabel(mode),
-    chart: { kind: 'rings', rings: [mk(u.rolling.percent), mk(u.week.percent), mk(u.month.percent)] },
+    chart: { kind: 'rings', rings: [mk(r), mk(w), mk(m)] },
     cycle,
   }
 }

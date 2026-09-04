@@ -53,6 +53,7 @@ const ZH: Record<string, string> = {
   'ui.rail.resizeAria': '调整大小',
   'ui.rail.addAria': '添加组件',
   'ui.rail.addLabel': '添加',
+  'ui.renderError': '渲染异常，请刷新查看日志',
 
   // Widgets page (settings section)
   'page.title': '组件',
@@ -135,6 +136,7 @@ const EN: Record<string, string> = {
   'ui.rail.resizeAria': 'Resize',
   'ui.rail.addAria': 'Add widget',
   'ui.rail.addLabel': 'Add',
+  'ui.renderError': 'Render error — see console',
 
   'page.title': 'Widgets',
   'page.desc': 'Manage the mini-widgets in the right rail.',

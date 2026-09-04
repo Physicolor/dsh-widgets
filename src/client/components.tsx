@@ -655,7 +655,14 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
     const exStats = ex?.stats ? (typeof ex.stats === 'function' ? ex.stats(selConfig) : ex.stats) : {}
     const stats = { ...PREVIEW_STATS, ...exStats, ...selConfig } as Parameters<typeof selWidget.render>[0]
     const sim = effSim && Object.keys(effSim).length > 0 ? effSim : undefined
-    return selWidget.render(stats, { size: selSize, ...(sim ? { sim } : {}) })
+    // Preview isolation: a crashing widget render must not take the settings
+    // surface down with it (mirrors the rail's per-card try/catch).
+    try {
+      return selWidget.render(stats, { size: selSize, ...(sim ? { sim } : {}) })
+    } catch (error) {
+      console.error(`[dsh-widgets] preview render crashed for ${selWidget.id}:`, error)
+      return null
+    }
   }
   const setConfig = (field: ConfigField, value: unknown): void => {
     const next = { ...(prefs.cardConfigs[selected] ?? {}) }
@@ -764,7 +771,17 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     const exStats = ex?.stats ? (typeof ex.stats === 'function' ? ex.stats(prefs.cardConfigs?.[curKey] ?? {}) : ex.stats) : {}
     const previewStats = { ...PREVIEW_STATS, ...exStats } as WidgetStats
     const effSim = previewSim ?? ex?.sim ?? null
-    const out = w ? w.render(previewStats, { size: curSize, ...(effSim && Object.keys(effSim).length > 0 ? { sim: effSim } : {}) }) : null
+    // Market-preview isolation: a crashing render shows an empty stage rather
+    // than taking the market panel down (mirrors rail + config preview guards).
+    let out: ReturnType<NonNullable<typeof w>['render']> | null = null
+    if (w) {
+      try {
+        out = w.render(previewStats, { size: curSize, ...(effSim && Object.keys(effSim).length > 0 ? { sim: effSim } : {}) })
+      } catch (error) {
+        console.error(`[dsh-widgets] market preview render crashed for ${w.id}:`, error)
+        out = null
+      }
+    }
     const toggleSim = (): void => {
       if (!widgetSimToggle(w)) return
       const base = previewSim ?? ex?.sim ?? {}

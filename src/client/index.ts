@@ -11,7 +11,7 @@ import * as React from 'react'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import './widgets.module.css'
 import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES } from './generated.registry'
-import { instanceKey, parseInstanceKey, sizesOf, type SysInfo, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
+import { instanceKey, parseInstanceKey, sizesOf, widgetName, type SysInfo, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
 import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadSeen, migrateHeatmapV2, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
 import { SYS_WIDGET_IDS, resolveInterval } from './lib/sys-view'
 import { CardBody, WidgetsPage, type Prefs } from './components'
@@ -851,7 +851,18 @@ export function apply(ctx: ClientContext): void {
           const { widgetId, size } = parseInstanceKey(key)
           const w = WIDGETS.find((x) => x.id === widgetId)
           if (!w || sizesOf(w).indexOf(size) === -1) return null
-          const out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, sysinfo: snap.sysinfo, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
+          // Per-card render isolation: ONE crashing widget (e.g. a malformed
+          // usage payload) must never take down the whole rail — a render
+          // exception used to kill the entire shell.overlay slot entry, hiding
+          // every widget until the next hard refresh. The bad card degrades to
+          // a placeholder instead; the error stays visible in the console.
+          let out: ReturnType<typeof w.render>
+          try {
+            out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, sysinfo: snap.sysinfo, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
+          } catch (error) {
+            console.error(`[dsh-widgets] widget ${widgetId}@${size} render crashed:`, error)
+            out = { title: widgetName(w), value: '—', legend: t('ui.renderError') }
+          }
           if (!out) return null
           // 2脳4 is exactly two 2脳2 widths plus one inter-card gap.
           const baseW = size === '2x4' ? 2 * side + pad : side
