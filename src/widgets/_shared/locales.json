@@ -23,7 +23,8 @@
     "sysinfo.bigTemp": "温度 (°C)",
     "sysinfo.bigUtil": "利用率 (%)",
     "sysinfo.bigMem": "内存 (GB)",
-    "sysinfo.bigHint": "点击切换大数值：{chain}"
+    "sysinfo.bigHint": "点击切换大数值：{chain}",
+    "sysinfo.points": "折线采样数"
   },
   "en": {
     "badge.opencode": "OpenCode Go Usage Quota",
@@ -49,6 +50,7 @@
     "sysinfo.bigTemp": "Temp (°C)",
     "sysinfo.bigUtil": "Utilization (%)",
     "sysinfo.bigMem": "Memory (GB)",
-    "sysinfo.bigHint": "Click to cycle the big figure: {chain}"
+    "sysinfo.bigHint": "Click to cycle the big figure: {chain}",
+    "sysinfo.points": "Sparkline samples"
   }
 }

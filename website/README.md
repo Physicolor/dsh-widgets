@@ -1,4 +1,4 @@
-﻿# dsh-widgets — project website / widget showcase
+# dsh-widgets — project website / widget showcase
 
 A single-page, static showcase for **dsh-widgets**: what it is, the real
 widgets, why the design works, how to make and contribute one, and a
@@ -10,7 +10,7 @@ requirement-form → specification generator.
 - **Deployment:** GitHub Pages Project Pages (`https://physicolor.github.io/dsh-widgets/`).
   All asset URLs are relative, so the site works at the project base path.
 - **Data source:** every widget shown comes from the real unit manifests
-  `src/widgets/<id>/manifest.json` (see `js/data.js`, v1.4.0, 19 widgets) and
+  `src/widgets/<id>/manifest.json` (see `js/data.js`, v1.4.1, 24 widgets) and
   the previews reuse the real widget render path (see "Widget preview fidelity").
   Test units (`test-a`, `test-b`, `wf-*`) are not shown anywhere.
 
@@ -32,7 +32,7 @@ website/
 │   └── sections.css      # widgets / design (slim) / create (how-to + form) /
 │                         # contribute (slim)
 ├── js/
-│   ├── data.js           # real widget data (mirror of the manifests; 19 units)
+│   ├── data.js           # real widget data (mirror of the manifests; 24 units)
 │   ├── i18n.js           # full zh/en dictionary + engine (default zh, persisted)
 │   ├── previews.js       # the UNIFIED Preview Adapter: every widget preview —
 │   │                     # hero showcase and gallery — goes through
@@ -41,7 +41,7 @@ website/
 │   │                     # also exports GRID = the real grid rules (150/24).
 │   ├── theme.js          # theme toggle (FIRST VISIT = LIGHT by default, persisted)
 │   ├── rails.js          # hero 3-row rails + right array + design GOOD card
-│   ├── gallery.js        # filter + 19 real-widget cards
+│   ├── gallery.js        # filter + 24 real-widget cards
 │   ├── spec.js           # requirement form → widget-spec generator (bilingual)
 │   └── main.js           # lang init, nav, reveal-on-scroll, copy, toast
 └── assets/
@@ -71,7 +71,7 @@ One page, five sections, no documentation-shelf feel:
    `src/client/index.ts` DEFAULTS: `cardSide 150` · `panelPadding 24` used as
    padding AND inter-card gap → 2-col rail width 372, 2×4 wide = 324),
    install terminal as the hero's footer.
-2. **Widgets** — all 19 real widgets, one real card each + one line of info.
+2. **Widgets** — all 24 real widgets, one real card each + one line of info.
 3. **Design** — one sentence + 3 chips (有用 / 紧凑 / 清晰) + real GOOD widget
    vs overloaded BAD widget.
 4. **Create** — five-step how-to + one line (Human/Agent/system) + requirement

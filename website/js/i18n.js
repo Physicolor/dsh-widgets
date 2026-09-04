@@ -1,4 +1,4 @@
-﻿/**
+/**
  * dsh-widgets showcase — bilingual i18n (Chinese default, English opt-in).
  *
  * One dictionary per language; every user-facing string of the site (nav,
@@ -20,7 +20,7 @@ window.DASH_I18N = (function () {
 
     /* WEBSITE-002: slimmed copy */
     p1b: 'Useful', p3b: 'Compact', p5b: 'Clear',
-    gSub: '全部 19 个正式组件。',
+    gSub: '全部 24 个正式组件。',
     gbGoodP: '一个主数字领衔，其余信息映衬——有限空间的正确打开方式。',
     gbBadP: '一次性塞满所有信息——读者看不出什么重要，于是什么都不重要。',
     makeTitle: '如何制作一个组件',
@@ -77,7 +77,7 @@ window.DASH_I18N = (function () {
 
     /* gallery */
     gTitle: '组件画廊',
-    gSub: '全部 19 个正式组件——每一个都是 src/widgets/<id>/ 下独立、契约驱动的单元。',
+    gSub: '全部 24 个正式组件——每一个都是 src/widgets/<id>/ 下独立、契约驱动的单元。',
     gAll: '全部', gSystem: '系统', gCodingPlan: '用量热度', gOpenCodeGo: 'OpenCode Go', gPricing: '峰谷定价', gOther: '其它',
     gEmpty: '该分类下暂无组件。',
     badgeBuiltin: '内置', badgeMarket: '市场', badgePre: '预装',
@@ -128,7 +128,7 @@ window.DASH_I18N = (function () {
     fSize: '期望尺寸', fSize2: '2×2', fSize4: '2×4', fSizeBoth: '两者 2×2 与 2×4',
     fCategory: '市场分类',
     catSystem: 'system · 系统', catCodingPlan: 'coding-plan · 用量热度', catOpenCodeGo: 'opencode-go · OpenCode Go',
-    catPricing: 'pricing · 峰谷定价', catOther: 'other · 其它', catNew: '新分类（在下方注明）',
+    catPricing: 'pricing · 峰谷定价', catDevice: 'device · 设备状态', catOther: 'other · 其它', catNew: '新分类（在下方注明）',
     fTitle: '标题', fTitlePh: '用户期望看到的卡片标题，例如：今日运动',
     fContent: '核心内容', fContentPh: '核心信息内容，例如：当前步数 + 最低/平均/最高',
     fDisplay: '展示信息', fDisplayPh: '要展示的数据，例如：今日步数 / tok 每秒 / CPU 百分比',
@@ -209,6 +209,13 @@ window.DASH_I18N = (function () {
     'usage.resets': '重置 {date}',
     'card.peak.title': '峰谷定价', 'card.peak.window1': '上午 09:00–12:00', 'card.peak.window2': '下午 14:00–18:00',
     'widget.peak-pricing.name': '峰谷定价', 'widget.peak-pricing.desc': 'DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰）',
+    'widget.sys-cpu.name': 'CPU 状态', 'widget.sys-cpu.desc': '本机 CPU 利用率与内存占用',
+    'widget.sys-gpu.name': 'GPU 状态', 'widget.sys-gpu.desc': '本机 NVIDIA GPU 显存、利用率与温度',
+    'widget.sys-rings.name': 'CPU·GPU 环图', 'widget.sys-rings.desc': 'CPU / GPU 利用率双环形图',
+    'widget.sys-board.name': '系统监控', 'widget.sys-board.desc': 'CPU/内存/GPU 显存与利用率全指标环形看板',
+    'widget.sys-gpu-line.name': 'GPU 利用率', 'widget.sys-gpu-line.desc': 'GPU 利用率折线（最近约 20 分钟）',
+    'sysinfo.cpu': 'CPU', 'sysinfo.gpu': 'GPU', 'sysinfo.mem': '内存', 'sysinfo.vram': '显存',
+    'sysinfo.memSub': '内存 {used} / {total}',
     'badge.system': '内置', 'badge.external': '市场',
     specGen: 'dsh-widgets/widget-spec/v1 · 遵循 docs/workflow/03-specification.md（ARCH-002）',
     copyFailed: '复制失败——请手动选择复制',
@@ -221,7 +228,7 @@ window.DASH_I18N = (function () {
 
     /* WEBSITE-002: slimmed copy */
     p1b: 'Useful', p3b: 'Compact', p5b: 'Clear',
-    gSub: 'All 19 current widgets.',
+    gSub: 'All 24 current widgets.',
     gbGoodP: 'One primary number leads; everything else supports it — the right way to use a small space.',
     gbBadP: 'Everything crammed in at once — the reader cannot tell what matters, so nothing matters.',
     makeTitle: 'How to make a widget',
@@ -274,7 +281,7 @@ window.DASH_I18N = (function () {
     why3Title: 'Optional', why3Body: 'An auxiliary layer that never blocks a conversation — the “Components” capsule in the session header hides the whole rail at any time.',
 
     gTitle: 'Widget Gallery',
-    gSub: 'All 19 current widgets — each one an independent, contract-driven unit under src/widgets/<id>/.',
+    gSub: 'All 24 current widgets — each one an independent, contract-driven unit under src/widgets/<id>/.',
     gAll: 'All', gSystem: 'System', gCodingPlan: 'Coding Plan', gOpenCodeGo: 'OpenCode Go', gPricing: 'Pricing', gOther: 'Other',
     gEmpty: 'No widgets in this category.',
     badgeBuiltin: 'Built-in', badgeMarket: 'Market', badgePre: 'Pre-installed',
@@ -321,7 +328,7 @@ window.DASH_I18N = (function () {
     fSize: 'Desired Size', fSize2: '2×2', fSize4: '2×4', fSizeBoth: 'Both 2×2 & 2×4',
     fCategory: 'Marketplace Category',
     catSystem: 'system · System', catCodingPlan: 'coding-plan · Coding Plan usage', catOpenCodeGo: 'opencode-go · OpenCode Go',
-    catPricing: 'pricing · Peak Pricing', catOther: 'other · Others', catNew: 'New category (describe below)',
+    catPricing: 'pricing · Peak Pricing', catDevice: 'device · Device', catOther: 'other · Others', catNew: 'New category (describe below)',
     fTitle: 'Title', fTitlePh: 'Card title the user expects, e.g. Today’s heart rate',
     fContent: 'Core Content', fContentPh: 'The core information, e.g. current bpm + min/avg/max',
     fDisplay: 'Displayed Information', fDisplayPh: 'Data to show, e.g. today steps / tok per second / CPU percent',
@@ -402,6 +409,13 @@ window.DASH_I18N = (function () {
     'usage.resets': 'Resets {date}',
     'card.peak.title': 'Peak Pricing', 'card.peak.window1': 'Morning 09:00–12:00', 'card.peak.window2': 'Afternoon 14:00–18:00',
     'widget.peak-pricing.name': 'Peak Pricing', 'widget.peak-pricing.desc': 'DeepSeek V4 peak pricing: whether now is a peak window (Beijing time, weekdays 09:00–12:00 & 14:00–18:00 are peak)',
+    'widget.sys-cpu.name': 'CPU Status', 'widget.sys-cpu.desc': 'Local CPU utilization and memory usage',
+    'widget.sys-gpu.name': 'GPU Status', 'widget.sys-gpu.desc': 'Local NVIDIA GPU VRAM, utilization and temperature',
+    'widget.sys-rings.name': 'CPU · GPU Rings', 'widget.sys-rings.desc': 'CPU / GPU utilization twin rings',
+    'widget.sys-board.name': 'System Monitor', 'widget.sys-board.desc': 'CPU / memory / GPU VRAM and utilization dashboard rings',
+    'widget.sys-gpu-line.name': 'GPU Utilization', 'widget.sys-gpu-line.desc': 'GPU utilization sparkline (last ~20 min)',
+    'sysinfo.cpu': 'CPU', 'sysinfo.gpu': 'GPU', 'sysinfo.mem': 'Memory', 'sysinfo.vram': 'VRAM',
+    'sysinfo.memSub': 'Mem {used} / {total}',
     'badge.system': 'Built-in', 'badge.external': 'Market',
     specGen: 'dsh-widgets/widget-spec/v1 · per docs/workflow/03-specification.md (ARCH-002)',
     copyFailed: 'Copy failed — select and copy manually',

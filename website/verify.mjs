@@ -237,7 +237,7 @@ async function openPage(url) {
   await cdp.send('Network.enable');
   await cdp.send('Log.enable');
   await cdp.send('Page.navigate', { url });
-  await waitFor(cdp, `document.readyState === 'complete' && document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 19`);
+  await waitFor(cdp, `document.readyState === 'complete' && document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 24`);
   await new Promise((r) => setTimeout(r, 400));
   return { edge, cdp };
 }
@@ -314,7 +314,7 @@ try {
     'All sections present': `['home','widgets','design','create','contribute'].every(id => !!document.getElementById(id))`,
     'Old sentence-sections removed': `!document.getElementById('why') && !document.getElementById('philosophy') && !document.getElementById('workflow')`,
     'No Playground/Demo residue': `!document.getElementById('playground') && !document.getElementById('deploy-modal') && !document.querySelector('.pg-deck') && !document.querySelector('.hs-sim') && !document.querySelector('.badge-demo')`,
-    '19 gallery cards': `document.getElementById('gallery-grid').children.length === 19`,
+    '19 gallery cards': `document.getElementById('gallery-grid').children.length === 24`,
     'Rails + hero showcase populated': `['rail-a','rail-b','rail-c'].every(id => document.getElementById(id).children.length >= 6) && document.getElementById('hs-cards').children.length === 7`
   };
   for (const [name, expr] of Object.entries(checks)) {
@@ -348,7 +348,7 @@ try {
     document.documentElement.getAttribute('lang') === 'en' &&
     document.getElementById('nav-links').querySelector('a').textContent === 'Home' &&
     document.querySelector('.filter[data-filter="all"]').textContent === 'All' &&
-    document.getElementById('gallery-grid').children.length === 19
+    document.getElementById('gallery-grid').children.length === 24
   `);
   check('Language toggle → English (nav/gallery/filter)', enState === true);
   await screenshot(cdp, join(OUT, 'light-en.png'));
@@ -461,7 +461,7 @@ try {
   /* mobile */
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await cdp.send('Page.navigate', { url });
-  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 19`);
+  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 24`);
   await new Promise((r) => setTimeout(r, 500));
   const burgerVisible = await evalJs(cdp, `getComputedStyle(document.getElementById('nav-burger')).display !== 'none'`);
   check('Mobile: burger visible', burgerVisible === true);
@@ -478,7 +478,7 @@ try {
   /* desktop 1920×1080 viewport */
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
   await cdp.send('Page.navigate', { url });
-  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 19`);
+  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 24`);
   await new Promise((r) => setTimeout(r, 500));
   const wideOk = await evalJs(cdp, `
     document.documentElement.scrollWidth <= window.innerWidth + 1 &&

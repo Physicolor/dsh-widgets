@@ -118,13 +118,19 @@ pnpm run check      # 类型检查 + 测试 + 构建
 
 ## 变更日志
 
-### v1.5.0（插件 — 系统监控组件族）
+### v1.4.1
 
-- 🖥️ **新增 4 个设备信息组件**（市场「设备状态」分组——与 DeepSeek Harness 自身的「系统」分组区分）与 host 路由 `/api/sysinfo`（CPU 利用率 = 两次轮询间 `os.cpus()` 增量采样、内存 = `os.totalmem/freemem`、GPU = 单次 `nvidia-smi` 查询，1 秒缓存）：`sys-cpu`（CPU 利用率大数字 + 内存占用行）、`sys-gpu`（显存大数字 + 利用率/温度，不显示型号，大数值保持左下角）、`sys-rings`（CPU/GPU 利用率双环形图）、`sys-board`（2×4 综合看板：CPU/内存/GPU 利用率/显存四环，GPU 短型号置标题行右端）。共享逻辑收在 `src/client/lib/sys-view.ts`。
+> 本次发布包含整棵工作树：**系统监控组件族**（下）、**侧栏抽屉动画**、**用量一位小数修复**（此前未发布的 v1.4.2 / v1.5.0 工作记录）。
+
+**系统监控组件族（本机设备信息）：**
+
+- 🖥️ **新增 5 个设备信息组件**（市场「设备状态」分组——与 DeepSeek Harness 自身的「系统」分组区分）与 host 路由 `/api/sysinfo`（CPU 利用率 = 两次轮询间 `os.cpus()` 增量采样、内存 = `os.totalmem/freemem`、GPU = 单次 `nvidia-smi` 查询，~1 秒缓存 + 120 点采样历史）：`sys-cpu`（CPU 利用率大数字 + 内存占用行）、`sys-gpu`（显存大数字 + 利用率/温度，不显示型号，大数值保持左下角）、`sys-rings`（CPU/GPU 利用率双环形图）、`sys-board`（2×4 综合看板：CPU/内存/GPU 利用率/显存四环 + 标题行右端 GPU 短型号与温度，无 0/0 GB 冗余行，环下数值与名称同行如「43% CPU」）、`sys-gpu-line`（GPU 利用率折线：Windows 任务管理器风格面积折线，底角首尾时间标签；**采样窗口 10–30 点可选、默认 20**（组件配置下拉），只画最近 N 点避免折线无限压缩；client 侧自积累历史回退——旧 host 也能画线，host 重启后自动切回长历史）。共享逻辑收在 `src/client/lib/sys-view.ts`。
 - ⏱️ **每组件可设刷新间隔**（组件配置）：5 / 10 / 30 / 60 秒预设 + 自定义秒数，默认 10 秒；collector 按已装 sys-* 实例的**最短间隔**轮询（钳制 5–60 秒），host 侧 ~1 秒缓存保证同一时刻多个组件只 spawn 一次 `nvidia-smi`。
 - 🚫 **CPU 温度刻意不做**（先调研后舍弃）：Windows 无免特权稳定 CPU 温度源（WMI 热区在多数主板不可用——本机已实测读不到；LibreHardwareMonitor 属外部运行时依赖）。GPU 温度经 `nvidia-smi` 开箱即用；无 NVIDIA GPU 时组件优雅降级（「未检测到 NVIDIA GPU」）。
-- 🎨 环形图在百分比下方新增标签行（9px 三级文字，溢出省略）——用量环图（滚动/周/月）同步获得窗口名。
-- ✅ 新增自包含验证 `docs/verify-sysinfo.mjs`：以 mock webServer 直驱真实 host 路由（无需运行 DSH）校验负载形状、首采样 `cpu.util:null`、~1 秒缓存命中、第二窗口增量利用率、disposer 清理——本机 9/9 通过。
+- 🔄 **sys-gpu / sys-cpu 大数字切换**：整卡点击循环（GPU：显存 → 温度 → 利用率；CPU：利用率 → 内存），组件配置下拉「大数值显示」同步；`cycle.store` 字段使系统组件的循环与用量池视图互不干扰。
+- 🎨 排版：用量环图环下仅百分比（不再显示 滚动/周/月 文字）；环形图环与下方文字 4px 间距（柱状图节奏）；折线图与底角时间标签 3px 间距。
+- 🛡️ **P1 崩溃修复**：usage 窗口裸访问（`u.rolling.percent`）遇畸形负载即抛错、整条 rail 消失——现已双层防护（窗口级 `winPct()` 降级 + 每卡渲染 try/catch 隔离），任何单卡异常不再隐藏其他组件。
+- ✅ 新增自包含验证：`docs/verify-sysinfo.mjs`（host 路由形状/缓存/增量/历史，12 项）、`docs/verify-usage-guard.mjs`（崩溃防线回归，5 项）、`docs/probe-sysinfo-live.cjs`（运行中服务探测）。
 
 ### v1.3.3（插件 — OpenCode 用量实时刷新）
 

@@ -126,9 +126,11 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ## Changelog
 
-### v1.5.0 (working tree, unreleased)
+### v1.4.1
 
-**Polish — sparkline↔time-label spacing:**
+> This release ships the whole working tree: the **System monitor family** (below), the **rail drawer animation**, and the **usage decimal fix** — all previously unreleased work (logs under the old `v1.4.2` / `v1.5.0 working tree` headers).
+
+**Fix — sparkline↔time-label spacing:**
 
 - 📏 The GPU utilization sparkline now keeps a **3px** gap between the chart area and its bottom time labels — identical to the barsV bar→date-label spacing (outer 4px lead-in unchanged).
 
@@ -136,6 +138,7 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 - 🐛 The sparkline read the host's `history` ring buffer — a field only the NEWEST host build serves. A host that was restarted before that field landed (or not restarted since) never returns it, so the card waited forever.
 - 🩹 The collector now ingests every successful poll into a **client-side fallback history** (module ring buffer, ≤120 samples): the sparkline works on ANY host from the moment the page loads — curve appears after the second poll. When the host is restarted, its (longer, reload-surviving) history takes precedence automatically.
+- 📏 **Sparkline sample window** (组件配置): 10 / 15 / 20 / 25 / 30 points, default **20** — only the most recent N samples are drawn, so the line never compresses into a blob no matter how long the host has been sampling.
 - ✅ `verify-sysinfo.mjs` (12/12) + `verify-usage-guard.mjs` (5/5) stay green.
 
 **Polish — ring-to-caption spacing:**
@@ -173,9 +176,7 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 - ✅ Self-contained verification `docs/verify-sysinfo.mjs` drives the REAL host route with a mocked webServer (no running DSH needed): payload shape, first-sample `cpu.util: null`, ~1 s cache hit, delta utilization on the second window, disposer cleanliness — 9/9 green on the dev machine.
 - 🔌 `docs/probe-sysinfo-live.cjs` checks the RUNNING DSH service instead (bundle coherence + live `/api/sysinfo` 200 + delta utilization). While the old host process is still up it fails with 404 — the expected "restart the web host" evidence when cards stay on 「等待设备数据」.
 
-### v1.4.2 (working tree, unreleased)
-
-**New — rail drawer open/close animation (matching dsh-better-sidebar's slide language):**
+**Also in v1.4.1 — rail drawer open/close animation (matching dsh-better-sidebar's slide language):**
 
 - 🎬 Opening glides the widget rail in from the **right** (`translateX(+railW)` → 0, moving leftwards into its resting slot); closing is the reverse (0 → `translateX(+railW)`, sliding out to the right), using the same `--ds-transition-duration-slow` + `--ds-ease-in-out` tokens as the sidebar panels. The rail, the magnify overlay, and the add panel move as **one surface** via a `position:fixed inset:0` wrapper (a transformed fixed ancestor becomes the children's containing block, but the wrapper spans the viewport so every child's coordinates stay identical).
 - 🔁 CSS transitions interrupt natively: a rapid open→close→open re-toggle animates from the current intermediate geometry straight to the new target — no snap, no desync. The rail unmounts only after the closing slide finishes (`prefers-reduced-motion` closes instantly).
@@ -183,7 +184,7 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 - 🖱️ The add panel (market / config / settings overlay) explicitly re-enables `pointer-events: auto`: the drawer wrapper is click-transparent, and without the opt-in the panel was unhit-testable — clicks fell through to the rail's cards.
 - ✅ New self-contained verification `docs/verify-rail-drawer.cjs` (playwright-core + headless Chromium against the live host): open glides in from the right with 60+ intermediate frames, close slides past the viewport then unmounts, interrupt (rapid open→close→open) never unmounts and has zero hard step jumps, plus add-panel / card-render / hover smoke and a mid-slide screenshot; `docs/verify-ui2.cjs` and `docs/smoke-widgets.cjs` regressions stay green.
 
-### v1.4.1
+**Also in v1.4.1 — usage decimal fix:**
 
 - **Fix** — 滚动用量 / 每周用量 / 每月用量卡片的百分比保留一位小数（如 42% → 42.5%），与 OpenCode 官网一致；用量柱状图、用量环图数字格式不变。
 

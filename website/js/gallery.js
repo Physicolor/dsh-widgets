@@ -1,5 +1,5 @@
 /**
- * dsh-widgets showcase — widget gallery (all 19 real widgets).
+ * dsh-widgets showcase — widget gallery (all 24 real widgets).
  * Each card embeds the REAL widget render (same data, format and card
  * language as the product) inside a light frame that carries name / id /
  * category / size / builtin-vs-market / short description.

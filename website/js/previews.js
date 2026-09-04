@@ -32,6 +32,10 @@ window.DASH_PREVIEWS = (function () {
   function fmtTps(tps) {
     return tps >= 10 ? String(Math.round(tps)) : String(Math.round(tps * 10) / 10);
   }
+  function fmtGb(bytes) {
+    var gb = bytes / (1024 * 1024 * 1024);
+    return (gb >= 10 ? String(Math.round(gb)) : String(Math.round(gb * 10) / 10)) + ' GB';
+  }
   function dayKey(d) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
@@ -117,7 +121,24 @@ window.DASH_PREVIEWS = (function () {
     ],
     heatmapGrid: buildRollingGrid(PREVIEW_RAW, 13),
     heatmapRaw: PREVIEW_RAW,
-    armedAction: null
+    armedAction: null,
+    sysinfo: {
+      ts: 0,
+      cpu: { util: 43 },
+      mem: { used: 17.4 * 1024 * 1024 * 1024, total: 34.2 * 1024 * 1024 * 1024, percent: 51 },
+      gpu: { name: 'NVIDIA GeForce RTX 5070 Ti Laptop GPU', temp: 58, util: 8, memUsed: 4815 * 1024 * 1024, memTotal: 12227 * 1024 * 1024, memPercent: 39 },
+      // 30 samples @10s (~5 min) of plausible utilization drift for the
+      // sparkline preview: GPU idles low with a burst, CPU wanders mid-load.
+      history: (function () {
+        var now = Date.now(), ts = [], cpu = [], gpu = [], i;
+        for (i = 0; i < 30; i++) {
+          ts.push(now - (29 - i) * 10000);
+          cpu.push(Math.max(5, Math.min(85, Math.round(43 + Math.sin(i / 3) * 18 + (i % 5) * 2))));
+          gpu.push(Math.max(0, Math.min(70, Math.round(i >= 20 ? 38 + Math.cos(i) * 12 : 6 + Math.sin(i / 2) * 4))));
+        }
+        return { ts: ts, cpu: cpu, gpu: gpu };
+      })()
+    }
   };
 
   function t(key, vars) { return window.DASH_I18N.t(key, vars); }
@@ -261,9 +282,9 @@ window.DASH_PREVIEWS = (function () {
           chart: {
             kind: 'rings',
             rings: [
-              { label: t('usage.rolling'), value: ur.rolling.percent, ratio: ur.rolling.percent / 100, tone: toneR(ur.rolling.percent) },
-              { label: t('usage.week'), value: ur.weekly.percent, ratio: ur.weekly.percent / 100, tone: toneR(ur.weekly.percent) },
-              { label: t('usage.month'), value: ur.monthly.percent, ratio: ur.monthly.percent / 100, tone: toneR(ur.monthly.percent) }
+              { label: '', value: ur.rolling.percent, ratio: ur.rolling.percent / 100, tone: toneR(ur.rolling.percent) },
+              { label: '', value: ur.weekly.percent, ratio: ur.weekly.percent / 100, tone: toneR(ur.weekly.percent) },
+              { label: '', value: ur.monthly.percent, ratio: ur.monthly.percent / 100, tone: toneR(ur.monthly.percent) }
             ]
           }
         };
@@ -292,6 +313,60 @@ window.DASH_PREVIEWS = (function () {
           value: peak ? 'EXPENSIVE' : 'CHEAP',
           valueTone: peak ? 'danger' : undefined,
           alert: peak
+        };
+      }
+      case 'sys-cpu': {
+        var cpuU = s.sysinfo.cpu.util;
+        return {
+          title: t('widget.sys-cpu.name'),
+          value: cpuU == null ? '—' : cpuU + '%',
+          sub: t('sysinfo.memSub', { used: fmtGb(s.sysinfo.mem.used), total: fmtGb(s.sysinfo.mem.total) })
+        };
+      }
+      case 'sys-gpu': {
+        var g = s.sysinfo.gpu;
+        return {
+          title: t('widget.sys-gpu.name'),
+          value: fmtGb(g.memUsed),
+          sub: g.util + '% · ' + g.temp + '°C · ' + fmtGb(g.memTotal)
+        };
+      }
+      case 'sys-rings': {
+        var toneS = function (p) { return p >= 90 ? 'danger' : p >= 75 ? 'warn' : 'success'; };
+        var rings = [{ label: t('sysinfo.cpu'), value: s.sysinfo.cpu.util, ratio: s.sysinfo.cpu.util / 100, tone: toneS(s.sysinfo.cpu.util) }];
+        if (s.sysinfo.gpu) rings.push({ label: t('sysinfo.gpu'), value: s.sysinfo.gpu.util, ratio: s.sysinfo.gpu.util / 100, tone: toneS(s.sysinfo.gpu.util) });
+        return { title: t('widget.sys-rings.name'), chart: { kind: 'rings', rings: rings } };
+      }
+      case 'sys-board': {
+        var bg = s.sysinfo.gpu;
+        var toneB = function (p) { return p >= 90 ? 'danger' : p >= 75 ? 'warn' : 'success'; };
+        var boardRings = [
+          { label: t('sysinfo.cpu'), value: s.sysinfo.cpu.util, ratio: s.sysinfo.cpu.util / 100, tone: toneB(s.sysinfo.cpu.util) },
+          { label: t('sysinfo.mem'), value: s.sysinfo.mem.percent, ratio: s.sysinfo.mem.percent / 100, tone: toneB(s.sysinfo.mem.percent) }
+        ];
+        if (bg) {
+          boardRings.push({ label: t('sysinfo.gpu'), value: bg.util, ratio: bg.util / 100, tone: toneB(bg.util) });
+          boardRings.push({ label: t('sysinfo.vram'), value: bg.memPercent, ratio: bg.memPercent / 100, tone: toneB(bg.memPercent) });
+        }
+        return {
+          title: t('widget.sys-board.name'),
+          headRight: bg ? bg.temp + '°C · RTX 5070 Ti Laptop GPU' : undefined,
+          chart: { kind: 'rings', rings: boardRings }
+        };
+      }
+      case 'sys-gpu-line': {
+        var h = s.sysinfo.history || { ts: [], gpu: [] };
+        // Sample window default 20 (10..30 dropdown in the real widget) — draw
+        // only the most recent points so the line never compresses to a blob.
+        var N = 20;
+        var lv = h.gpu.slice(-N);
+        var lt = h.ts.slice(-N);
+        var fmtT = function (ms) { var d = new Date(ms); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
+        return {
+          title: t('widget.sys-gpu-line.name'),
+          value: Math.round(s.sysinfo.gpu.util) + '%',
+          sub: s.sysinfo.gpu.temp + '°C · ' + fmtGb(s.sysinfo.gpu.memUsed),
+          chart: { kind: 'line', line: { values: lv, max: 100, labels: [fmtT(lt[0]), fmtT(lt[lt.length - 1])] } }
         };
       }
       default:
@@ -380,14 +455,54 @@ window.DASH_PREVIEWS = (function () {
         var p = Math.max(0, Math.min(1, rg.ratio != null ? rg.ratio : rg.value / 100));
         var c = 2 * Math.PI * (r - sw / 2);
         var tone = SEG_TONES[rg.tone] || SEG_TONES.primary;
+        // Ring → caption: 4px, matching the real cards; value + name share one
+        // row when a label exists ("43% CPU"), label-less rings show just %.
+        var hasLabel = typeof rg.label === 'string' && rg.label.length > 0;
+        var cap = hasLabel
+          ? '<div style="display:flex;align-items:baseline;gap:3px;white-space:nowrap;margin-top:' + Math.round(4 * scale) + 'px">' +
+            '<span style="font-size:' + num(11) + 'px;font-weight:600;color:var(--dsw-title);font-variant-numeric:tabular-nums;line-height:1">' + Math.round(rg.value) + '%</span>' +
+            '<span style="font-size:' + num(9) + 'px;color:var(--dsw-label-ter);line-height:1">' + rg.label + '</span></div>'
+          : '<div style="font-size:' + num(11) + 'px;font-weight:600;color:var(--dsw-title);font-variant-numeric:tabular-nums;line-height:1;margin-top:' + Math.round(4 * scale) + 'px">' + Math.round(rg.value) + '%</div>';
         return '<div class="wg-ring" title="' + rg.label + ' ' + Math.round(rg.value) + '%">' +
           '<svg width="' + Math.round(r * 2) + '" height="' + Math.round(r * 2) + '" viewBox="0 0 ' + Math.round(r * 2) + ' ' + Math.round(r * 2) + '" aria-hidden="true">' +
           '<circle class="wg-ring-track" cx="' + r + '" cy="' + r + '" r="' + (r - sw / 2) + '" stroke-width="' + sw + '"></circle>' +
           '<circle cx="' + r + '" cy="' + r + '" r="' + (r - sw / 2) + '" fill="none" stroke="' + tone + '" stroke-width="' + sw +
           '" stroke-linecap="round" stroke-dasharray="' + (c * p).toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 ' + r + ' ' + r + ')"></circle></svg>' +
-          '<div class="wg-ring-value" style="font-size:' + num(11) + 'px;margin-top:' + Math.round(4 * scale) + 'px">' + Math.round(rg.value) + '%</div></div>';
+          cap + '</div>';
       }).join('');
       return '<div class="wg-rings" style="gap:' + mg + 'px">' + rings + '</div>';
+    }
+    if (chart.kind === 'line' && chart.line) {
+      // Windows-task-manager style utilization sparkline — port of the real
+      // ChartBlock line branch: filled area + polyline, barsV footprint,
+      // 3px chart↔time-label gap.
+      var cellL = Math.round((6 + 2) * scale);
+      var barAreaH = 7 * cellL + 6 * 2;
+      var labelH = Math.round(10 * scale);
+      var lmax = Math.max(1, chart.line.max || 100);
+      var lvals = chart.line.values || [];
+      var LW = Math.max(1, lvals.length - 1);
+      var Xl = function (i) { return LW === 0 ? 0 : (i / LW) * 100; };
+      var Yl = function (v) { return 100 - (Math.max(0, Math.min(lmax, v)) / lmax) * 100; };
+      var segs = [], cur = [];
+      lvals.forEach(function (v, i) {
+        if (v === null || v === undefined || !isFinite(v)) { if (cur.length > 1) { segs.push(cur); cur = []; } return; }
+        cur.push([Xl(i), Yl(v)]);
+      });
+      if (cur.length > 1) segs.push(cur);
+      var lineTone = 'var(--dsw-title)';
+      var lineFill = 'color-mix(in srgb, var(--dsw-title) 18%, transparent)';
+      var parts = segs.map(function (seg) {
+        var d = seg.map(function (xy, pi) { return (pi === 0 ? 'M' : 'L') + xy[0].toFixed(2) + ' ' + xy[1].toFixed(2); }).join('');
+        var pts = seg.map(function (xy) { return xy[0].toFixed(2) + ',' + xy[1].toFixed(2); }).join(' ');
+        return '<path d="' + d + ' L' + seg[seg.length - 1][0].toFixed(2) + ' 100 L' + seg[0][0].toFixed(2) + ' 100 Z" fill="' + lineFill + '" stroke="none"></path>' +
+          '<polyline points="' + pts + '" fill="none" stroke="' + lineTone + '" stroke-width="' + Math.max(1, Math.round(1.6 * scale)) + '" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></polyline>';
+      }).join('');
+      var lineLabels = chart.line.labels || ['', ''];
+      return '<div style="display:flex;flex-direction:column;gap:3px;margin-top:' + Math.round(4 * scale) + 'px">' +
+        '<div style="height:' + barAreaH + 'px;overflow:hidden"><svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' + parts + '</svg></div>' +
+        '<div style="display:flex;justify-content:space-between;min-height:' + labelH + 'px;font-size:' + num(9) + 'px;color:var(--dsw-label-ter);line-height:1">' +
+        '<span>' + lineLabels[0] + '</span><span>' + lineLabels[1] + '</span></div></div>';
     }
     if (chart.kind === 'heatmap' && chart.heatmap && chart.heatmap.length) {
       var weeks = chart.heatmap[0] ? chart.heatmap[0].length : 13;

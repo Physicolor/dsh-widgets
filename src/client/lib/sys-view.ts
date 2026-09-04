@@ -77,6 +77,18 @@ export function intervalSchema(): ConfigField[] {
   ]
 }
 
+/** Max samples shown by the sparkline (10–30, default 20): the host buffer can
+ *  hold 120 points — drawing all of them into a 2×2 card would squash the line
+ *  into an unreadable blob. The dropdown keeps the window explicit. */
+export const SPARK_POINTS_OPTS: Array<[string, string]> = ['10', '15', '20', '25', '30'].map((n) => [n, `${n}`])
+
+/** Effective sparkline sample window from a per-instance config (10..30). */
+export function resolveSparkPoints(config: Record<string, unknown> | undefined): number {
+  const n = Number(config?.points)
+  if (!Number.isFinite(n) || !(n > 0)) return 20
+  return Math.max(10, Math.min(30, Math.round(n)))
+}
+
 /** Effective refresh seconds from a per-instance config: preset value or the
  *  custom numeric; clamped to 5..60, falling back to 10 on anything invalid. */
 export function resolveInterval(config: Record<string, unknown> | undefined): number {
@@ -224,11 +236,16 @@ export function sysGpuLineRender(stats: WidgetStats): WidgetRenderOut | null {
   if (s === null) return sysUnavailable('widget.sys-gpu-line.name')
   if (s.gpu === null) return { title: t('widget.sys-gpu-line.name'), value: '—', legend: t('sysinfo.noGpu') }
   const hist = historyOf(s)
-  const vals = hist ? hist.gpu : []
-  const ts = hist ? hist.ts : []
-  if (vals.length < 2) {
+  const allVals = hist ? hist.gpu : []
+  const allTs = hist ? hist.ts : []
+  if (allVals.length < 2) {
     return { title: t('widget.sys-gpu-line.name'), value: `${Math.round(s.gpu.util)}%`, legend: t('sysinfo.waiting') }
   }
+  // Sample window (10..30, default 20): draw only the most recent N points so
+  // the line keeps its shape no matter how long the host has been sampling.
+  const N = resolveSparkPoints(stats)
+  const vals = allVals.slice(-N)
+  const ts = allTs.slice(-N)
   const fmtT = (tms: number): string => {
     const d = new Date(tms)
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
