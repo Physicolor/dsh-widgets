@@ -24,6 +24,37 @@ export function sysInfo(stats: WidgetStats): SysInfo | null {
   return s !== null && typeof s === 'object' && typeof (s as { cpu?: unknown }).cpu === 'object' ? (s as SysInfo) : null
 }
 
+/** Client-side sampling history fallback. The host streams a `history` ring
+ *  buffer since v1.5.0 round 3 — but a host that predates that field (not yet
+ *  restarted) never provides it, and sys-gpu-line would wait forever. The
+ *  collector ingests every successful poll here (capped, newest last), so the
+ *  sparkline works on ANY host; once the host restarts its (longer) history
+ *  takes precedence and the client buffer is ignored. */
+const CLIENT_HIST_CAP = 120
+let clientHist: { ts: number[]; gpu: Array<number | null> } = { ts: [], gpu: [] }
+
+/** Feed one successful snapshot into the client-side fallback history. */
+export function ingestSysInfo(s: SysInfo): void {
+  if (s === null || typeof s !== 'object') return
+  clientHist.ts.push(s.ts)
+  clientHist.gpu.push(s.gpu !== null && s.gpu !== undefined ? s.gpu.util : null)
+  if (clientHist.ts.length > CLIENT_HIST_CAP) {
+    const drop = clientHist.ts.length - CLIENT_HIST_CAP
+    clientHist.ts.splice(0, drop)
+    clientHist.gpu.splice(0, drop)
+  }
+}
+
+/** Resolve the sparkline history: host history when present (longer, survives
+ *  reloads), else the client-side accumulated fallback (works pre-restart). */
+function historyOf(s: SysInfo): { ts: number[]; gpu: Array<number | null> } | null {
+  const h = s.history
+  if (h && Array.isArray(h.ts) && Array.isArray(h.gpu) && h.ts.length > 0 && h.ts.length === h.gpu.length) {
+    return { ts: h.ts, gpu: h.gpu }
+  }
+  return clientHist.ts.length > 0 ? { ts: clientHist.ts.slice(), gpu: clientHist.gpu.slice() } : null
+}
+
 /** Per-widget refresh-interval schema: 5/10/30/60 s presets + a custom numeric
  *  field (used when the preset is `custom`). The collector applies the SHORTEST
  *  effective interval among installed sys-* instances (clamped 5..60 s). */
@@ -192,9 +223,9 @@ export function sysGpuLineRender(stats: WidgetStats): WidgetRenderOut | null {
   const s = sysInfo(stats)
   if (s === null) return sysUnavailable('widget.sys-gpu-line.name')
   if (s.gpu === null) return { title: t('widget.sys-gpu-line.name'), value: '—', legend: t('sysinfo.noGpu') }
-  const hist = s.history
-  const vals = hist && Array.isArray(hist.gpu) ? hist.gpu : []
-  const ts = hist && Array.isArray(hist.ts) ? hist.ts : []
+  const hist = historyOf(s)
+  const vals = hist ? hist.gpu : []
+  const ts = hist ? hist.ts : []
   if (vals.length < 2) {
     return { title: t('widget.sys-gpu-line.name'), value: `${Math.round(s.gpu.util)}%`, legend: t('sysinfo.waiting') }
   }

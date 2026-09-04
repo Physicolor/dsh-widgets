@@ -128,6 +128,12 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ### v1.5.0 (working tree, unreleased)
 
+**Fix — sys-gpu-line stuck on 「等待设备数据」:**
+
+- 🐛 The sparkline read the host's `history` ring buffer — a field only the NEWEST host build serves. A host that was restarted before that field landed (or not restarted since) never returns it, so the card waited forever.
+- 🩹 The collector now ingests every successful poll into a **client-side fallback history** (module ring buffer, ≤120 samples): the sparkline works on ANY host from the moment the page loads — curve appears after the second poll. When the host is restarted, its (longer, reload-surviving) history takes precedence automatically.
+- ✅ `verify-sysinfo.mjs` (12/12) + `verify-usage-guard.mjs` (5/5) stay green.
+
 **Polish — ring-to-caption spacing:**
 
 - 📏 All ring charts (usage-rings 3-ring, CPU·GPU twin rings, the 2×4 board) now keep a **4px** gap between the ring and its caption row — the same rhythm as bar→label in the bars charts. The old 2px glued the percent to the ring; the breathing room matters most on the 2×4 board's small rings.

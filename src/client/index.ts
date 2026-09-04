@@ -13,7 +13,7 @@ import './widgets.module.css'
 import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES } from './generated.registry'
 import { instanceKey, parseInstanceKey, sizesOf, widgetName, type SysInfo, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
 import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadSeen, migrateHeatmapV2, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
-import { SYS_WIDGET_IDS, resolveInterval } from './lib/sys-view'
+import { SYS_WIDGET_IDS, ingestSysInfo, resolveInterval } from './lib/sys-view'
 import { CardBody, WidgetsPage, type Prefs } from './components'
 import { t, installLocale, onLocaleChange } from './i18n'
 
@@ -448,7 +448,7 @@ export function apply(ctx: ClientContext): void {
         const refresh = (): void => {
           fetch('/api/sysinfo')
           .then((r) => r.json())
-          .then((data: SysInfo) => setState({ sysinfo: data }))
+          .then((data: SysInfo) => { setState({ sysinfo: data }); ingestSysInfo(data) })
           .catch(() => { /* keep last known snapshot */ })
         }
         refresh()
