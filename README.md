@@ -128,6 +128,10 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ### v1.5.0 (working tree, unreleased)
 
+**Polish — ring-to-caption spacing:**
+
+- 📏 All ring charts (usage-rings 3-ring, CPU·GPU twin rings, the 2×4 board) now keep a **4px** gap between the ring and its caption row — the same rhythm as bar→label in the bars charts. The old 2px glued the percent to the ring; the breathing room matters most on the 2×4 board's small rings.
+
 **Hotfix — one crashing widget took the WHOLE rail down (P1):**
 
 - 🐛 A malformed OpenCode usage payload (one window missing/null, e.g. an upstream partial response) made `usage-rings`/`usage-bars` throw on `u.rolling.percent`; the uncaught render error killed the entire `shell.overlay` slot entry — every widget disappeared until the next hard refresh ("only visible briefly after refresh").
