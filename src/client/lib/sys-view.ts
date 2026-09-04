@@ -60,6 +60,12 @@ export function fmtGb(bytes: number): string {
   return `${gb >= 10 ? gb.toFixed(0) : gb.toFixed(1)} GB`
 }
 
+/** Trim the verbose vendor prefix so the model name fits the 2×4 title row
+ *  ("NVIDIA GeForce RTX 5070 Ti Laptop GPU" → "RTX 5070 Ti Laptop GPU"). */
+export function shortGpuName(name: string): string {
+  return name.replace(/^NVIDIA GeForce /, '').replace(/^NVIDIA /, '')
+}
+
 /** Utilization tone: success under 75, warn 75–89, danger ≥90 (usage-rings
  *  convention, reused for load rings). */
 function loadTone(p: number): 'success' | 'warn' | 'danger' {
@@ -82,14 +88,15 @@ export function sysCpuRender(stats: WidgetStats): WidgetRenderOut | null {
   }
 }
 
-/** sys-gpu: big VRAM number + utilization/temperature line. */
+/** sys-gpu: big VRAM number + utilization/temperature line. No GPU model name
+ *  on the card — the value must sit bottom-left as the large figure (a
+ *  headRight would pull it into the title row). */
 export function sysGpuRender(stats: WidgetStats): WidgetRenderOut | null {
   const s = sysInfo(stats)
   if (s === null) return sysUnavailable('widget.sys-gpu.name')
   if (s.gpu === null) return { title: t('widget.sys-gpu.name'), value: '—', legend: t('sysinfo.noGpu') }
   return {
     title: t('widget.sys-gpu.name'),
-    headRight: s.gpu.name,
     value: fmtGb(s.gpu.memUsed),
     sub: `${s.gpu.util}% · ${s.gpu.temp}°C · ${fmtGb(s.gpu.memTotal)}`,
   }
@@ -111,8 +118,9 @@ export function sysRingsRender(stats: WidgetStats): WidgetRenderOut | null {
 }
 
 /** sys-board: the 2×4 monitoring dashboard — every metric as a ring (CPU
- *  utilization, memory, GPU utilization, VRAM) with the GPU temperature in the
- *  title row. */
+ *  utilization, memory, GPU utilization, VRAM). The GPU model (short form)
+ *  sits at the RIGHT END of the title row as headRight (2×4 title space is
+ *  wide enough); the body carries the VRAM figures and the ring row. */
 export function sysBoardRender(stats: WidgetStats): WidgetRenderOut | null {
   const s = sysInfo(stats)
   if (s === null) return sysUnavailable('widget.sys-board.name')
@@ -128,9 +136,9 @@ export function sysBoardRender(stats: WidgetStats): WidgetRenderOut | null {
   }
   return {
     title: t('widget.sys-board.name'),
-    headRight: gpu !== null ? `${gpu.temp}°C` : undefined,
+    headRight: gpu !== null ? `${gpu.temp}°C · ${shortGpuName(gpu.name)}` : undefined,
     legend: gpu === null ? t('sysinfo.noGpu') : undefined,
-    sub: gpu !== null ? `${fmtGb(gpu.memUsed)} / ${fmtGb(gpu.memTotal)} · ${gpu.name}` : undefined,
+    sub: gpu !== null ? `${fmtGb(gpu.memUsed)} / ${fmtGb(gpu.memTotal)}` : undefined,
     chart: { kind: 'rings', rings },
   }
 }

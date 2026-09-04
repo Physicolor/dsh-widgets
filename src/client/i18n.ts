@@ -88,6 +88,7 @@ const ZH: Record<string, string> = {
   // Market group labels (keyed by the widget's group id; a group without a
   // label falls back to the first widget's name)
   'group.system': '系统',
+  'group.device': '设备状态',
   'group.opencode-go': 'OpenCode Go',
   'group.coding-plan': 'Coding Plan 用量',
   'group.pricing': '峰谷定价',
@@ -163,6 +164,7 @@ const EN: Record<string, string> = {
   'market.sizeBlockedTitle': '2×4 is not shown in a 1-column layout',
 
   'group.system': 'System',
+  'group.device': 'Device',
   'group.opencode-go': 'OpenCode Go',
   'group.coding-plan': 'Coding Plan Usage',
   'group.pricing': 'Peak Pricing',

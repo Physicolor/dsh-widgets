@@ -1,4 +1,4 @@
-import { defineWidget } from '../../client/lib/contract'
+﻿import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
 import { intervalSchema, sysBoardRender } from '../../client/lib/sys-view'
 
@@ -8,7 +8,7 @@ export default defineWidget({
   name: () => t('widget.sys-board.name'),
   desc: () => t('widget.sys-board.desc'),
   builtin: false,
-  group: 'system',
+  group: 'device',
   configSchema: intervalSchema(),
   render: sysBoardRender,
 })

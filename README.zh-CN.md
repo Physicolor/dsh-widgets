@@ -120,7 +120,7 @@ pnpm run check      # 类型检查 + 测试 + 构建
 
 ### v1.5.0（插件 — 系统监控组件族）
 
-- 🖥️ **新增 4 个设备信息组件**（市场「system」分组）与 host 路由 `/api/sysinfo`（CPU 利用率 = 两次轮询间 `os.cpus()` 增量采样、内存 = `os.totalmem/freemem`、GPU = 单次 `nvidia-smi` 查询，1 秒缓存）：`sys-cpu`（CPU 利用率大数字 + 内存占用行）、`sys-gpu`（显存大数字 + 利用率/温度）、`sys-rings`（CPU/GPU 利用率双环形图）、`sys-board`（2×4 综合看板：CPU/内存/GPU 利用率/显存四环 + 标题行 GPU 温度）。共享逻辑收在 `src/client/lib/sys-view.ts`。
+- 🖥️ **新增 4 个设备信息组件**（市场「设备状态」分组——与 DeepSeek Harness 自身的「系统」分组区分）与 host 路由 `/api/sysinfo`（CPU 利用率 = 两次轮询间 `os.cpus()` 增量采样、内存 = `os.totalmem/freemem`、GPU = 单次 `nvidia-smi` 查询，1 秒缓存）：`sys-cpu`（CPU 利用率大数字 + 内存占用行）、`sys-gpu`（显存大数字 + 利用率/温度，不显示型号，大数值保持左下角）、`sys-rings`（CPU/GPU 利用率双环形图）、`sys-board`（2×4 综合看板：CPU/内存/GPU 利用率/显存四环，GPU 短型号置标题行右端）。共享逻辑收在 `src/client/lib/sys-view.ts`。
 - ⏱️ **每组件可设刷新间隔**（组件配置）：5 / 10 / 30 / 60 秒预设 + 自定义秒数，默认 10 秒；collector 按已装 sys-* 实例的**最短间隔**轮询（钳制 5–60 秒），host 侧 ~1 秒缓存保证同一时刻多个组件只 spawn 一次 `nvidia-smi`。
 - 🚫 **CPU 温度刻意不做**（先调研后舍弃）：Windows 无免特权稳定 CPU 温度源（WMI 热区在多数主板不可用——本机已实测读不到；LibreHardwareMonitor 属外部运行时依赖）。GPU 温度经 `nvidia-smi` 开箱即用；无 NVIDIA GPU 时组件优雅降级（「未检测到 NVIDIA GPU」）。
 - 🎨 环形图在百分比下方新增标签行（9px 三级文字，溢出省略）——用量环图（滚动/周/月）同步获得窗口名。

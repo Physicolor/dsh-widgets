@@ -1,4 +1,4 @@
-import { defineWidget } from '../../client/lib/contract'
+﻿import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
 import { intervalSchema, sysGpuRender } from '../../client/lib/sys-view'
 
@@ -9,7 +9,7 @@ export default defineWidget({
   name: () => t('widget.sys-gpu.name'),
   desc: () => t('widget.sys-gpu.desc'),
   builtin: false,
-  group: 'system',
+  group: 'device',
   configSchema: intervalSchema(),
   render: sysGpuRender,
 })
