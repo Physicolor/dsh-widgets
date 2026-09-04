@@ -307,7 +307,9 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
       React.createElement('polyline', { key: `p${si}`, points: seg.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' '), fill: 'none', stroke: tone, strokeWidth: Math.max(1, Math.round(1.6 * scale)), strokeLinejoin: 'round', strokeLinecap: 'round', vectorEffect: 'non-scaling-stroke' }),
     )
     const labels = chart.line.labels ?? ['', '']
-    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', marginTop: `${Math.round(4 * scale)}px` } },
+    // gap: 3 keeps the same sparkline→time-label spacing as the barsV bars
+    // (bar→date label gap 3); the outer marginTop matches barsV's 4px lead-in.
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 3, marginTop: `${Math.round(4 * scale)}px` } },
       React.createElement('div', { style: { height: `${barAreaH}px`, overflow: 'hidden' } },
         React.createElement('svg', { width: '100%', height: '100%', viewBox: '0 0 100 100', preserveAspectRatio: 'none', 'aria-hidden': true },
           ...areaPaths, ...polylines,

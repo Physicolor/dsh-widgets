@@ -128,6 +128,10 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ### v1.5.0 (working tree, unreleased)
 
+**Polish — sparkline↔time-label spacing:**
+
+- 📏 The GPU utilization sparkline now keeps a **3px** gap between the chart area and its bottom time labels — identical to the barsV bar→date-label spacing (outer 4px lead-in unchanged).
+
 **Fix — sys-gpu-line stuck on 「等待设备数据」:**
 
 - 🐛 The sparkline read the host's `history` ring buffer — a field only the NEWEST host build serves. A host that was restarted before that field landed (or not restarted since) never returns it, so the card waited forever.
