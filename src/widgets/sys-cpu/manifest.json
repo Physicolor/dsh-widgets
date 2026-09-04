@@ -1,0 +1,17 @@
+{
+  "id": "sys-cpu",
+  "order": 60,
+  "group": "system",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.sys-cpu.name": "CPU 状态",
+      "widget.sys-cpu.desc": "本机 CPU 利用率与内存占用"
+    },
+    "en": {
+      "widget.sys-cpu.name": "CPU Status",
+      "widget.sys-cpu.desc": "Local CPU utilization and memory usage"
+    }
+  }
+}

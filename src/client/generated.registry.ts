@@ -29,6 +29,10 @@ import w_usage_rolling from '../widgets/usage-rolling'
 import w_usage_weekly from '../widgets/usage-weekly'
 import w_usage_monthly from '../widgets/usage-monthly'
 import w_peak_pricing from '../widgets/peak-pricing'
+import w_sys_cpu from '../widgets/sys-cpu'
+import w_sys_gpu from '../widgets/sys-gpu'
+import w_sys_rings from '../widgets/sys-rings'
+import w_sys_board from '../widgets/sys-board'
 
 /** Every discovered widget, in manifest display order (then by id). */
 export const WIDGETS: import('./lib/contract').Widget[] = [
@@ -51,6 +55,10 @@ export const WIDGETS: import('./lib/contract').Widget[] = [
   w_usage_weekly,
   w_usage_monthly,
   w_peak_pricing,
+  w_sys_cpu,
+  w_sys_gpu,
+  w_sys_rings,
+  w_sys_board,
 ]
 
 /** All widget ids, in registry order. */
@@ -74,6 +82,10 @@ export const ALL_IDS: string[] = [
   'usage-weekly',
   'usage-monthly',
   'peak-pricing',
+  'sys-cpu',
+  'sys-gpu',
+  'sys-rings',
+  'sys-board',
 ]
 
 /** Every valid instance key (each widget at each of its supported sizes). */
@@ -99,6 +111,10 @@ export const ALL_INSTANCES: string[] = [
   `usage-weekly@2x2`,
   `usage-monthly@2x2`,
   `peak-pricing@2x2`,
+  `sys-cpu@2x2`,
+  `sys-gpu@2x2`,
+  `sys-rings@2x2`,
+  `sys-board@2x4`,
 ]
 
 /** The stats-line family (fresh installs pre-load ONLY these). */
@@ -135,6 +151,16 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "usage.rolling": "滚动",
     "usage.week": "周",
     "usage.month": "月",
+    "sysinfo.cpu": "CPU",
+    "sysinfo.gpu": "GPU",
+    "sysinfo.mem": "内存",
+    "sysinfo.vram": "显存",
+    "sysinfo.memSub": "内存 {used} / {total}",
+    "sysinfo.interval": "刷新间隔",
+    "sysinfo.intervalCustom": "自定义",
+    "sysinfo.intervalCustomValue": "自定义间隔（秒）",
+    "sysinfo.noGpu": "未检测到 NVIDIA GPU",
+    "sysinfo.waiting": "等待设备数据…",
     "widget.counts.name": "轮次·步数",
     "widget.counts.desc": "本轮会话的轮次与步骤计数",
     "card.counts.value": "{turns}轮 {steps}步",
@@ -205,6 +231,14 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "card.peak.window1": "上午 09:00–12:00",
     "card.peak.window2": "下午 14:00–18:00",
     "sim.peak": "高峰/低峰",
+    "widget.sys-cpu.name": "CPU 状态",
+    "widget.sys-cpu.desc": "本机 CPU 利用率与内存占用",
+    "widget.sys-gpu.name": "GPU 状态",
+    "widget.sys-gpu.desc": "本机 NVIDIA GPU 显存、利用率与温度",
+    "widget.sys-rings.name": "CPU·GPU 环图",
+    "widget.sys-rings.desc": "CPU / GPU 利用率双环形图",
+    "widget.sys-board.name": "系统监控",
+    "widget.sys-board.desc": "CPU/内存/GPU 显存与利用率全指标环形看板",
   },
   en: {
     "badge.opencode": "OpenCode Go Usage Quota",
@@ -215,6 +249,16 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "usage.rolling": "Rolling",
     "usage.week": "Week",
     "usage.month": "Month",
+    "sysinfo.cpu": "CPU",
+    "sysinfo.gpu": "GPU",
+    "sysinfo.mem": "Memory",
+    "sysinfo.vram": "VRAM",
+    "sysinfo.memSub": "Mem {used} / {total}",
+    "sysinfo.interval": "Refresh interval",
+    "sysinfo.intervalCustom": "Custom",
+    "sysinfo.intervalCustomValue": "Custom interval (s)",
+    "sysinfo.noGpu": "No NVIDIA GPU detected",
+    "sysinfo.waiting": "Waiting for device data…",
     "widget.counts.name": "Turns · Steps",
     "widget.counts.desc": "Turns and steps of the current session",
     "card.counts.value": "{turns} turns · {steps} steps",
@@ -285,5 +329,13 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "card.peak.window1": "Morning 09:00–12:00",
     "card.peak.window2": "Afternoon 14:00–18:00",
     "sim.peak": "Peak/Off-Peak",
+    "widget.sys-cpu.name": "CPU Status",
+    "widget.sys-cpu.desc": "Local CPU utilization and memory usage",
+    "widget.sys-gpu.name": "GPU Status",
+    "widget.sys-gpu.desc": "Local NVIDIA GPU VRAM, utilization and temperature",
+    "widget.sys-rings.name": "CPU · GPU Rings",
+    "widget.sys-rings.desc": "CPU / GPU utilization twin rings",
+    "widget.sys-board.name": "System Monitor",
+    "widget.sys-board.desc": "CPU / memory / GPU VRAM and utilization dashboard rings",
   },
 }

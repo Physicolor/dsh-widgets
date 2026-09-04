@@ -1,0 +1,17 @@
+{
+  "id": "sys-gpu",
+  "order": 61,
+  "group": "system",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.sys-gpu.name": "GPU 状态",
+      "widget.sys-gpu.desc": "本机 NVIDIA GPU 显存、利用率与温度"
+    },
+    "en": {
+      "widget.sys-gpu.name": "GPU Status",
+      "widget.sys-gpu.desc": "Local NVIDIA GPU VRAM, utilization and temperature"
+    }
+  }
+}

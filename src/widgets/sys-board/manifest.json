@@ -1,0 +1,17 @@
+{
+  "id": "sys-board",
+  "order": 63,
+  "group": "system",
+  "builtin": false,
+  "sizes": ["2x4"],
+  "locale": {
+    "zh": {
+      "widget.sys-board.name": "系统监控",
+      "widget.sys-board.desc": "CPU/内存/GPU 显存与利用率全指标环形看板"
+    },
+    "en": {
+      "widget.sys-board.name": "System Monitor",
+      "widget.sys-board.desc": "CPU / memory / GPU VRAM and utilization dashboard rings"
+    }
+  }
+}

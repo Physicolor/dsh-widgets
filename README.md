@@ -58,6 +58,7 @@ In both modes the magnified deck is painted by a fixed overlay **outside** the r
 | Cache hits | input cache-hit ratio |
 | Tokens | input / output token counts |
 | Context waterline | system/tool/message segment bars + breakdown; 2×2 and 2×4 supported |
+| System monitor | local hardware family: CPU/GPU utilization numbers, memory, VRAM, GPU temperature — 2×2 cards + 2×4 rings dashboard |
 | One-click compact | context usage % + round corner button (double-click to compact) |
 | Tasks | in-progress / done / todo counts |
 | Usage heatmap | GitHub-style calendar heatmap, self-tracked daily usage; 2×2 = ~3-month calendar, 2×4 = half-year all-points view |
@@ -124,6 +125,16 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 - Coordinates explicitly with `dsh-better-sidebar`'s right rail (shares `--dsh-sidebar-width`); no residue after uninstall.
 
 ## Changelog
+
+### v1.5.0 (working tree, unreleased)
+
+**New — System monitor family (local hardware widgets):**
+
+- 🖥️ **Four new widgets** reading the MACHINE's hardware through a new host route `/api/sysinfo` (CPU utilization = delta of `os.cpus()` totals across two polls, memory = `os.totalmem/freemem`, GPU = one `nvidia-smi` query): `sys-cpu` (CPU % big number + memory line), `sys-gpu` (VRAM big number + utilization/temperature), `sys-rings` (CPU / GPU utilization twin donuts) and `sys-board` (2×4 dashboard: CPU / memory / GPU utilization / VRAM rings + GPU temperature in the title row). All four sit in the new `system` marketplace group; shared family logic lives in `src/client/lib/sys-view.ts`.
+- ⏱️ **Per-widget refresh interval** (组件配置): 5 / 10 / 30 / 60 s presets + a custom numeric field, default 10 s. The collector polls at the SHORTEST interval among installed sys-* instances (clamped 5–60); the host caches ~1 s so widgets sharing one tick still trigger a single `nvidia-smi` spawn.
+- 🚫 **CPU temperature deliberately absent** — researched, then abandoned: Windows exposes no reliable, privilege-free CPU temperature source (WMI thermal zones are unavailable on most boards — verified on the dev machine; LibreHardwareMonitor would be an external runtime dependency). GPU temperature comes from `nvidia-smi` and works out of the box; widgets degrade gracefully (`未检测到 NVIDIA GPU`) without one.
+- 🎨 Ring charts now render their label under the percent (9px tertiary, ellipsized) — the usage-rings cards gain their window names (滚动/周/月) in the same stroke.
+- ✅ Self-contained verification `docs/verify-sysinfo.mjs` drives the REAL host route with a mocked webServer (no running DSH needed): payload shape, first-sample `cpu.util: null`, ~1 s cache hit, delta utilization on the second window, disposer cleanliness — 9/9 green on the dev machine.
 
 ### v1.4.2 (working tree, unreleased)
 
@@ -390,6 +401,7 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 The widget system is now built for scale: each widget is an independent, contract-driven unit under `src/widgets/` with build-time discovery — a new widget is a new unit dir, no shared file edits (guide: `src/widgets-template/README.md`).
 
 - **Agent-produced widgets**: the machine-readable contract (`manifest.json` + `defineWidget` descriptor + template + shared API) is exactly what a worker agent needs to create a widget end-to-end; the parallel-creation test in v1.3.0 demonstrated two agents adding widgets concurrently with zero file conflicts;
+- **More hardware metrics**: CPU temperature via an optional LibreHardwareMonitor bridge (external dependency, opt-in — deliberately not bundled), AMD/Intel GPU support beyond NVIDIA, per-interface network traffic;
 - **Heatmap range/period controls**: let the 2×4 heatmap and bars pick custom ranges (weekly/monthly/etc.) beyond the current half-year / 7-day defaults;
 - **Multi-platform usage widgets**: Z.ai, DeepSeek balance, etc., reusing the host same-origin proxy + credentials pattern;
 - **Custom peak-pricing schedules**: expose window customization for the peak-pricing widget (currently hard-coded Beijing weekdays 09:00–12:00 / 14:00–18:00) — custom start/end times, weekday sets, and timezone;

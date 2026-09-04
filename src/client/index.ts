@@ -11,8 +11,9 @@ import * as React from 'react'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import './widgets.module.css'
 import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES } from './generated.registry'
-import { instanceKey, parseInstanceKey, sizesOf, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
+import { instanceKey, parseInstanceKey, sizesOf, type SysInfo, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
 import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadSeen, migrateHeatmapV2, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
+import { SYS_WIDGET_IDS, resolveInterval } from './lib/sys-view'
 import { CardBody, WidgetsPage, type Prefs } from './components'
 import { t, installLocale, onLocaleChange } from './i18n'
 
@@ -230,7 +231,7 @@ export function apply(ctx: ClientContext): void {
   // the moment the bundle loads.
   try { migrateHeatmapV2() } catch { /* best-effort */ }
   let prefs = loadState()
-  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null }
+  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, sysinfo: null as SysInfo | null }
 
   const listeners = new Set<() => void>()
   function emit(): void { for (const fn of listeners) fn() }
@@ -266,7 +267,7 @@ export function apply(ctx: ClientContext): void {
       }
     } catch { /* host unavailable; stay on localStorage only */ }
   }
-  function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; usageMulti: UsageMulti | null; prefs: Prefs } {
+  function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; usageMulti: UsageMulti | null; sysinfo: SysInfo | null; prefs: Prefs } {
     const [snap, setSnap] = React.useState({ ...state, prefs: { ...prefs } })
     React.useEffect(() => subscribe(() => setSnap({ ...state, prefs: { ...prefs } })), [])
     return snap
@@ -389,6 +390,10 @@ export function apply(ctx: ClientContext): void {
       const contextPres = useProjection ? useProjection('contextPressure') : undefined
       const contextBrk = useProjection ? useProjection('contextBreakdown') : undefined
       const todosProj = useProjection ? useProjection('todos') : undefined
+      // Bridge subscription: the sysinfo poll cadence depends on per-instance
+      // refresh-interval config, so this collector re-renders on prefs changes
+      // (emit) exactly like the capsule/rail bridges do.
+      const snap = useBridge()
       // Heatmap self-accounting: per-step crediting (v2) crediting each assistant
       // step once by its own start time, with a cumulative-anchor fallback (v1)
       // when nodes lack `usage`. Persisted across mounts.
@@ -427,6 +432,25 @@ export function apply(ctx: ClientContext): void {
         else if (!running) refresh()
         prevRunningRef.current = running
       }, [running])
+      // Hardware snapshot (System widgets): the installed sys-* instances drive
+      // ONE shared poll loop — the effective cadence is the SHORTEST refresh
+      // interval among them (5/10/30/60 s presets + custom numeric, clamped
+      // 5..60, default 10). The host route caches ~1s, so every widget sharing
+      // the same tick still triggers a single nvidia-smi spawn.
+      React.useEffect(() => {
+        const sysKeys = (snap.prefs.installed ?? []).filter((key) => SYS_WIDGET_IDS.some((id) => key === id || key.startsWith(id + '@')))
+        const secs = sysKeys.length === 0 ? 0 : Math.min(...sysKeys.map((key) => resolveInterval(snap.prefs.cardConfigs?.[key])))
+        if (!(secs > 0)) return
+        const refresh = (): void => {
+          fetch('/api/sysinfo')
+          .then((r) => r.json())
+          .then((data: SysInfo) => setState({ sysinfo: data }))
+          .catch(() => { /* keep last known snapshot */ })
+        }
+        refresh()
+        const id = window.setInterval(refresh, secs * 1000)
+        return () => window.clearInterval(id)
+      }, [snap.prefs.installed, snap.prefs.cardConfigs])
       // One-second tick while a turn is running, so the in-flight LLM and tool
       // durations advance between settle boundaries instead of freezing.
       const [now, setNow] = React.useState(() => Date.now())
@@ -820,7 +844,7 @@ export function apply(ctx: ClientContext): void {
           const { widgetId, size } = parseInstanceKey(key)
           const w = WIDGETS.find((x) => x.id === widgetId)
           if (!w || sizesOf(w).indexOf(size) === -1) return null
-          const out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
+          const out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, sysinfo: snap.sysinfo, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
           if (!out) return null
           // 2脳4 is exactly two 2脳2 widths plus one inter-card gap.
           const baseW = size === '2x4' ? 2 * side + pad : side

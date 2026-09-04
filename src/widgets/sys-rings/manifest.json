@@ -1,0 +1,17 @@
+{
+  "id": "sys-rings",
+  "order": 62,
+  "group": "system",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.sys-rings.name": "CPU·GPU 环图",
+      "widget.sys-rings.desc": "CPU / GPU 利用率双环形图"
+    },
+    "en": {
+      "widget.sys-rings.name": "CPU · GPU Rings",
+      "widget.sys-rings.desc": "CPU / GPU utilization twin rings"
+    }
+  }
+}

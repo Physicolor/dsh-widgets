@@ -15,8 +15,12 @@
  */
 
 import { join, dirname } from 'node:path'
-import { homedir } from 'node:os'
+import { homedir, cpus, totalmem, freemem } from 'node:os'
 import { promises as fs } from 'node:fs'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+
+const execFileP = promisify(execFile)
 
 const USAGE_URL = 'https://opencode.ai/zen/go/v1/usage'
 const KEY_ENV = 'OPENCODE_GO_API_KEY'
@@ -205,4 +209,84 @@ export function apply(ctx: {
       res.end(JSON.stringify({ error: 'method not allowed' }))
     },
   }))
+
+  // Machine-local hardware snapshot (System widgets): CPU utilization (delta
+  // against the PREVIOUS request — the poll window is the averaging window),
+  // memory totals, and the NVIDIA GPU via `nvidia-smi` (temp / util / VRAM).
+  // The host caches ~1s so several widgets polling at the same instant share
+  // one `nvidia-smi` spawn instead of fanning out. CPU temperature stays
+  // deliberately ABSENT: Windows exposes no reliable, privilege-free CPU
+  // temperature source (see dsh-widgets changelog — researched, abandoned).
+  ctx.effect(() => {
+    let lastCpu: { idle: number; total: number } | null = null
+    let cache: { ts: number; payload: unknown } | null = null
+    return ctx.webServer.register({
+      kind: 'exact',
+      path: '/api/sysinfo',
+      handler: async (_req, res) => {
+        const now = Date.now()
+        if (cache !== null && now - cache.ts < 1000) {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify(cache.payload))
+          return
+        }
+        // CPU utilization: accumulate idle/user/sys over ALL logical cores and
+        // diff against the previous request's totals (the poll cadence IS the
+        // averaging window). First sample has no baseline → null.
+        let idle = 0
+        let total = 0
+        for (const c of cpus()) {
+          idle += c.times.idle
+          total += c.times.idle + c.times.user + c.times.nice + c.times.sys + c.times.irq
+        }
+        let util: number | null = null
+        if (lastCpu !== null) {
+          const dTotal = total - lastCpu.total
+          const dIdle = idle - lastCpu.idle
+          if (dTotal > 0) util = Math.max(0, Math.min(100, Math.round((1 - dIdle / dTotal) * 1000) / 10))
+        }
+        lastCpu = { idle, total }
+        const totalBytes = totalmem()
+        const freeBytes = freemem()
+        // NVIDIA GPU: single query call; absent/failing driver → gpu: null (the
+        // browser cards then degrade to CPU/memory only, never crash).
+        let gpu: { name: string; temp: number; util: number; memUsed: number; memTotal: number; memPercent: number } | null = null
+        try {
+          const out = (await execFileP('nvidia-smi', [
+            '--query-gpu=name,temperature.gpu,utilization.gpu,memory.used,memory.total',
+            '--format=csv,noheader,nounits',
+          ], { timeout: 3000, windowsHide: true })) as { stdout: string }
+          const stdout = out.stdout
+          const line = String(stdout).split(/\r?\n/).map((l: string) => l.trim()).find((l: string) => l.length > 0)
+          if (line !== undefined) {
+            const parts = line.split(',').map((s: string) => s.trim())
+            const memUsed = Number(parts[3])
+            const memTotal = Number(parts[4])
+            gpu = {
+              name: parts[0] ?? '',
+              temp: Number(parts[1]),
+              util: Number(parts[2]),
+              memUsed,
+              memTotal,
+              memPercent: memTotal > 0 ? Math.round((memUsed / memTotal) * 1000) / 10 : 0,
+            }
+          }
+        } catch { gpu = null }
+        const memUsed = totalBytes - freeBytes
+        const payload = {
+          ts: now,
+          cpu: { util },
+          mem: {
+            used: memUsed,
+            total: totalBytes,
+            percent: totalBytes > 0 ? Math.round((memUsed / totalBytes) * 1000) / 10 : 0,
+          },
+          gpu,
+        }
+        cache = { ts: now, payload }
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(payload))
+      },
+    })
+  })
 }

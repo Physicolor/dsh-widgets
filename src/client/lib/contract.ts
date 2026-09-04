@@ -50,6 +50,24 @@ export interface UsageMulti {
   keys: UsageKeyEntry[]
 }
 
+/** One hardware snapshot from the Host `/api/sysinfo` route (machine-local
+ *  values only — never session data). `cpu.util` is the utilization averaged
+ *  over the window between two host samples (null on the very first sample,
+ *  before a delta exists). */
+export interface SysInfo {
+  ts: number
+  cpu: { util: number | null }
+  mem: { used: number; total: number; percent: number }
+  gpu: {
+    name: string
+    temp: number
+    util: number
+    memUsed: number
+    memTotal: number
+    memPercent: number
+  } | null
+}
+
 /** Session stats a widget render can read. */
 export interface WidgetStats {
   turns: number

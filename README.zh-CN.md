@@ -118,6 +118,14 @@ pnpm run check      # 类型检查 + 测试 + 构建
 
 ## 变更日志
 
+### v1.5.0（插件 — 系统监控组件族）
+
+- 🖥️ **新增 4 个设备信息组件**（市场「system」分组）与 host 路由 `/api/sysinfo`（CPU 利用率 = 两次轮询间 `os.cpus()` 增量采样、内存 = `os.totalmem/freemem`、GPU = 单次 `nvidia-smi` 查询，1 秒缓存）：`sys-cpu`（CPU 利用率大数字 + 内存占用行）、`sys-gpu`（显存大数字 + 利用率/温度）、`sys-rings`（CPU/GPU 利用率双环形图）、`sys-board`（2×4 综合看板：CPU/内存/GPU 利用率/显存四环 + 标题行 GPU 温度）。共享逻辑收在 `src/client/lib/sys-view.ts`。
+- ⏱️ **每组件可设刷新间隔**（组件配置）：5 / 10 / 30 / 60 秒预设 + 自定义秒数，默认 10 秒；collector 按已装 sys-* 实例的**最短间隔**轮询（钳制 5–60 秒），host 侧 ~1 秒缓存保证同一时刻多个组件只 spawn 一次 `nvidia-smi`。
+- 🚫 **CPU 温度刻意不做**（先调研后舍弃）：Windows 无免特权稳定 CPU 温度源（WMI 热区在多数主板不可用——本机已实测读不到；LibreHardwareMonitor 属外部运行时依赖）。GPU 温度经 `nvidia-smi` 开箱即用；无 NVIDIA GPU 时组件优雅降级（「未检测到 NVIDIA GPU」）。
+- 🎨 环形图在百分比下方新增标签行（9px 三级文字，溢出省略）——用量环图（滚动/周/月）同步获得窗口名。
+- ✅ 新增自包含验证 `docs/verify-sysinfo.mjs`：以 mock webServer 直驱真实 host 路由（无需运行 DSH）校验负载形状、首采样 `cpu.util:null`、~1 秒缓存命中、第二窗口增量利用率、disposer 清理——本机 9/9 通过。
+
 ### v1.3.3（插件 — OpenCode 用量实时刷新）
 
 - 🔄 **OpenCode 用量不再「仅挂载拉一次」**：用量组件族（用量对比 / 环形 / 滚动 / 每周 / 每月）此前只在 collector 挂载时 fetch 一次，而 `conversation.composer.dock` 在会话间被组件复用——刷新或新建会话才会重新挂载，导致继续对话/切换会话后用量停留在旧值。现在 collector 在**每次对话完成（`running` true → false）时重新拉取** `/api/opencode-usage` 与 `/api/opencode-usage-multi`（多 Key 池），回合结束后配额扣减即时上卡，无需刷新；进行中的回合不会重复请求。

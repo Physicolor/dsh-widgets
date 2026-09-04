@@ -7,7 +7,17 @@
     "usage.resets": "重置 {date}",
     "usage.rolling": "滚动",
     "usage.week": "周",
-    "usage.month": "月"
+    "usage.month": "月",
+    "sysinfo.cpu": "CPU",
+    "sysinfo.gpu": "GPU",
+    "sysinfo.mem": "内存",
+    "sysinfo.vram": "显存",
+    "sysinfo.memSub": "内存 {used} / {total}",
+    "sysinfo.interval": "刷新间隔",
+    "sysinfo.intervalCustom": "自定义",
+    "sysinfo.intervalCustomValue": "自定义间隔（秒）",
+    "sysinfo.noGpu": "未检测到 NVIDIA GPU",
+    "sysinfo.waiting": "等待设备数据…"
   },
   "en": {
     "badge.opencode": "OpenCode Go Usage Quota",
@@ -17,6 +27,16 @@
     "usage.resets": "Resets {date}",
     "usage.rolling": "Rolling",
     "usage.week": "Week",
-    "usage.month": "Month"
+    "usage.month": "Month",
+    "sysinfo.cpu": "CPU",
+    "sysinfo.gpu": "GPU",
+    "sysinfo.mem": "Memory",
+    "sysinfo.vram": "VRAM",
+    "sysinfo.memSub": "Mem {used} / {total}",
+    "sysinfo.interval": "Refresh interval",
+    "sysinfo.intervalCustom": "Custom",
+    "sysinfo.intervalCustomValue": "Custom interval (s)",
+    "sysinfo.noGpu": "No NVIDIA GPU detected",
+    "sysinfo.waiting": "Waiting for device data…"
   }
 }
