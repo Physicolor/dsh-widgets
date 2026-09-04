@@ -136,6 +136,7 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 - 🎨 Ring charts now render their label under the percent (9px tertiary, ellipsized) — the usage-rings cards gain their window names (滚动/周/月) in the same stroke.
 - 🗂️ The system widgets form their own marketplace group `device` (「设备状态 / Device」) instead of riding the harness `system` group, which is about DeepSeek Harness internals, not the machine.
 - ✅ Self-contained verification `docs/verify-sysinfo.mjs` drives the REAL host route with a mocked webServer (no running DSH needed): payload shape, first-sample `cpu.util: null`, ~1 s cache hit, delta utilization on the second window, disposer cleanliness — 9/9 green on the dev machine.
+- 🔌 `docs/probe-sysinfo-live.cjs` checks the RUNNING DSH service instead (bundle coherence + live `/api/sysinfo` 200 + delta utilization). While the old host process is still up it fails with 404 — the expected "restart the web host" evidence when cards stay on 「等待设备数据」.
 
 ### v1.4.2 (working tree, unreleased)
 
