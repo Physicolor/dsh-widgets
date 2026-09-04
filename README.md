@@ -128,6 +128,12 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ### v1.5.0 (working tree, unreleased)
 
+**Fix — sys-board rendered as 2×2 (sizes double-source mismatch):**
+
+- 🐛 `sys-board` declared `2×4` in its `manifest.json`, but the runtime reads the DESCRIPTOR's `sizes` — which was missing, so `sizesOf()` fell back to `['2x2']`; the market listed and the rail rendered a bogus 2×2 instance. Fixed by adding `sizes: ['2x4']` to the descriptor; persisted `sys-board@2x2` instances auto-migrate to `sys-board@2x4` on load.
+- 🛡️ New build-time guard in `gen-registry.mjs`: the manifest sizes and the descriptor `sizes` literal must now agree (descriptor default = 2×2), so this class of drift fails the build instead of shipping.
+- 🔌 Live probe `docs/probe-sysinfo-live.cjs` relaxed: on a live host the first request usually already has a delta baseline (the browser collector polls continuously), so it accepts either `null` (fresh host) or a numeric util; the pristine first-sample-null assertion stays in `docs/verify-sysinfo.mjs`.
+
 **New — System monitor family (local hardware widgets):**
 
 - 🖥️ **Four new widgets** reading the MACHINE's hardware through a new host route `/api/sysinfo` (CPU utilization = delta of `os.cpus()` totals across two polls, memory = `os.totalmem/freemem`, GPU = one `nvidia-smi` query): `sys-cpu` (CPU % big number + memory line), `sys-gpu` (VRAM big number + utilization/temperature — no model name, the value stays the bottom-left figure), `sys-rings` (CPU / GPU utilization twin donuts) and `sys-board` (2×4 dashboard: CPU / memory / GPU utilization / VRAM rings + the short GPU model in the title row's right end). All four sit in their own `device` marketplace group (「设备状态」— distinct from the harness-system group); shared family logic lives in `src/client/lib/sys-view.ts`.

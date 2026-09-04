@@ -105,6 +105,21 @@ function main() {
     if (m.template === true) { failures.push(`${id}: 'template: true' in a discovered unit — templates live under src/widgets-template/`); continue }
     const sizes = Array.isArray(m.sizes) && m.sizes.length > 0 ? m.sizes : ['2x2']
     for (const s of sizes) if (!SIZES.includes(s)) { failures.push(`${id}: unsupported size "${s}"`); continue }
+    // Sizes are DOUBLE-SOURCED: the manifest drives ALL_INSTANCES / the market
+    // listing, while the descriptor's `sizes` drives the RUNTIME sizesOf().
+    // They must agree — sys-board v1.5.0 shipped with a 2×4 manifest but no
+    // descriptor sizes, so the runtime defaulted to 2×2 and users installed a
+    // bogus sys-board@2x2. Failing loudly here is the guard.
+    const dSizesMatch = /(?:^|[^-\w])sizes\s*:\s*\[([^\]]*)\]/.exec(src)
+    const dSizes = dSizesMatch
+      ? dSizesMatch[1].split(',').map((x) => x.trim().replace(/^['"]|['"]$/g, '')).filter((x) => x.length > 0)
+      : ['2x2']
+    for (const s of dSizes) if (!SIZES.includes(s)) { failures.push(`${id}: descriptor sizes "${s}" unsupported`); continue }
+    const norm = (a) => a.slice().sort()
+    if (JSON.stringify(norm(dSizes)) !== JSON.stringify(norm(sizes))) {
+      failures.push(`${id}: descriptor sizes [${dSizes.join(', ')}] !== manifest sizes [${sizes.join(', ')}] (sizesOf() reads the descriptor — keep both in sync)`)
+      continue
+    }
     for (const loc of ['zh', 'en']) {
       const dict = m.locale?.[loc]
       if (dict !== undefined && (typeof dict !== 'object' || Array.isArray(dict))) {

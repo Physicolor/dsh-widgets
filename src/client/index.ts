@@ -62,6 +62,10 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
   // Normalize one persisted entry to a valid instance key. Legacy bare widget
   // ids (pre-2脳4) migrate to their 2脳2 instance; unknown entries are dropped.
   const normalizeInstance = (key: string): string => {
+    // v1.5.0 leak migration: sys-board shipped with its descriptor missing the
+    // sizes list, so the runtime defaulted it to 2×2 while the manifest said
+    // 2×4 — users installed a bogus sys-board@2x2. Remap it to the real size.
+    if (key === 'sys-board@2x2') key = 'sys-board@2x4'
     const { widgetId, size } = parseInstanceKey(key)
     const w = WIDGETS.find((x) => x.id === widgetId)
     if (!w) return ''
