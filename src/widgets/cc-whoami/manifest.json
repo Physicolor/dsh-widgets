@@ -1,0 +1,17 @@
+{
+  "id": "cc-whoami",
+  "order": 60,
+  "group": "commandcode",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.cc-whoami.name": "Command Code 账户",
+      "widget.cc-whoami.desc": "当前 Command Code 账户身份"
+    },
+    "en": {
+      "widget.cc-whoami.name": "Command Code Account",
+      "widget.cc-whoami.desc": "Current Command Code account identity"
+    }
+  }
+}

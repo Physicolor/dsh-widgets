@@ -6,3 +6,7 @@ node_modules/
 # Private design workspace (cover/poster generator). Local-only: kept out of
 # the public repo on purpose - edit freely, git will never show it as dirty.
 docs/poster/
+
+# Runtime verification receipts (regenerated on each run; not source).
+docs/*-result.json
+docs/backup/

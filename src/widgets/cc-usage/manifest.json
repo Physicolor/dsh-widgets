@@ -1,0 +1,17 @@
+{
+  "id": "cc-usage",
+  "order": 61,
+  "group": "commandcode",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.cc-usage.name": "Command Code 用量",
+      "widget.cc-usage.desc": "请求数、成功率、Token 与消费摘要"
+    },
+    "en": {
+      "widget.cc-usage.name": "Command Code Usage",
+      "widget.cc-usage.desc": "Requests, success rate, tokens and spend"
+    }
+  }
+}

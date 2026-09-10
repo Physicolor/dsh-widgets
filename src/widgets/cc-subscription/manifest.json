@@ -1,0 +1,17 @@
+{
+  "id": "cc-subscription",
+  "order": 64,
+  "group": "commandcode",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.cc-subscription.name": "Command Code 套餐",
+      "widget.cc-subscription.desc": "当前套餐与账期结束时间"
+    },
+    "en": {
+      "widget.cc-subscription.name": "Command Code Plan",
+      "widget.cc-subscription.desc": "Current plan and billing period end"
+    }
+  }
+}

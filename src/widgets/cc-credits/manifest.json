@@ -1,0 +1,17 @@
+{
+  "id": "cc-credits",
+  "order": 62,
+  "group": "commandcode",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.cc-credits.name": "Command Code 额度",
+      "widget.cc-credits.desc": "Credits 余额与 5h/周额度窗口"
+    },
+    "en": {
+      "widget.cc-credits.name": "Command Code Credits",
+      "widget.cc-credits.desc": "Credit balance and 5h / weekly quota windows"
+    }
+  }
+}

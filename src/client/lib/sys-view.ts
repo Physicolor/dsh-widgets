@@ -229,8 +229,12 @@ export function sysBoardRender(stats: WidgetStats): WidgetRenderOut | null {
 }
 
 /** sys-gpu-line: GPU utilization sparkline (Windows-task-manager style) with
- *  the current utilization as the big figure. History from the host ring
- *  buffer; earliest/latest sample times on the chart's bottom corners. */
+ *  the current utilization as the big figure. The card body carries
+ *  value + sub + sparkline, and the sparkline is ELASTIC (CardBody gives the
+ *  line chart the remaining vertical space, ChartBlock renders it at
+ *  flex:1/100%) — so the card's intrinsic height stays inside the 2×2 box at
+ *  ANY side size or magnification factor (the old fixed 68px sparkline
+ *  totalled ≈178px and burst the 150px box on hover). */
 export function sysGpuLineRender(stats: WidgetStats): WidgetRenderOut | null {
   const s = sysInfo(stats)
   if (s === null) return sysUnavailable('widget.sys-gpu-line.name')
@@ -246,14 +250,15 @@ export function sysGpuLineRender(stats: WidgetStats): WidgetRenderOut | null {
   const N = resolveSparkPoints(stats)
   const vals = allVals.slice(-N)
   const ts = allTs.slice(-N)
+  const g = s.gpu
   const fmtT = (tms: number): string => {
     const d = new Date(tms)
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
   return {
     title: t('widget.sys-gpu-line.name'),
-    value: `${Math.round(s.gpu.util)}%`,
-    sub: `${s.gpu.temp}°C · ${fmtGb(s.gpu.memUsed)}`,
+    value: `${Math.round(g.util)}%`,
+    sub: `${Math.round(g.temp)}°C · ${fmtGb(g.memUsed)}`,
     chart: { kind: 'line', line: { values: vals, max: 100, labels: [fmtT(ts[0]), fmtT(ts[ts.length - 1])] } },
   }
 }

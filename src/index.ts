@@ -24,6 +24,18 @@ const execFileP = promisify(execFile)
 
 const USAGE_URL = 'https://opencode.ai/zen/go/v1/usage'
 const KEY_ENV = 'OPENCODE_GO_API_KEY'
+/** Official Command Code account endpoints (recorded in the market entry as
+ *  the verified live-account set; all four are account-scope reads). */
+const COMMANDCODE_BASE = 'https://api.commandcode.ai/alpha'
+const COMMANDCODE_ENDPOINTS = {
+  whoami: `${COMMANDCODE_BASE}/whoami`,
+  usage: `${COMMANDCODE_BASE}/usage/summary`,
+  credits: `${COMMANDCODE_BASE}/billing/credits`,
+  subscription: `${COMMANDCODE_BASE}/billing/subscriptions`,
+} as const
+const COMMANDCODE_KEY_ENV = 'COMMANDCODE_API_KEY'
+/** Per-endpoint fetch timeout (ms) so one slow upstream never stalls the rail. */
+const COMMANDCODE_TIMEOUT_MS = 8000
 /** Spare pool keys (dsh-multikey-pool convention) appended after the primary. */
 const POOL_KEY_ENVS = ['OPENCODE_GO_API_KEY', 'OPENCODE_GO_POOL_2', 'OPENCODE_GO_POOL_3', 'OPENCODE_GO_POOL_4', 'OPENCODE_GO_POOL_5', 'OPENCODE_GO_POOL_6', 'OPENCODE_GO_POOL_7', 'OPENCODE_GO_POOL_8', 'OPENCODE_GO_POOL_9']
 /** Max accepted PUT body (a prefs JSON is a few KB; this is a hard safety cap). */
@@ -167,6 +179,48 @@ export function apply(ctx: {
       })()
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ keys, total }))
+    },
+  }))
+
+  // Command Code account usage proxy: aggregates the four official endpoints
+  // (whoami / usage summary / billing credits / billing subscriptions) into
+  // ONE same-origin payload. Browser never talks to api.commandcode.ai
+  // directly; the key resolves through the same credentials seam as the
+  // OpenCode route (COMMANDCODE_API_KEY). Each endpoint is fetched and timed
+  // out independently — one failing endpoint yields null for that slice, the
+  // rest still render.
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: '/api/commandcode-usage',
+    handler: async (_req, res) => {
+      const resolved = await ctx.credentials.resolve(COMMANDCODE_KEY_ENV)
+      const key = resolved?.value
+      if (key === undefined || key === '') {
+        res.writeHead(503, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: `${COMMANDCODE_KEY_ENV} is not configured` }))
+        return
+      }
+      const headers = { Authorization: `Bearer ${key}` }
+      const fetchSlice = async (name: keyof typeof COMMANDCODE_ENDPOINTS): Promise<unknown> => {
+        try {
+          const ctrl = new AbortController()
+          const timer = setTimeout(() => ctrl.abort(), COMMANDCODE_TIMEOUT_MS)
+          try {
+            const upstream = await fetch(COMMANDCODE_ENDPOINTS[name], { headers, signal: ctrl.signal })
+            const text = await upstream.text()
+            if (!upstream.ok) return null
+            try { return JSON.parse(text) } catch { return null }
+          } finally { clearTimeout(timer) }
+        } catch { return null }
+      }
+      const [whoami, usage, credits, subscription] = await Promise.all([
+        fetchSlice('whoami'),
+        fetchSlice('usage'),
+        fetchSlice('credits'),
+        fetchSlice('subscription'),
+      ])
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ whoami, usage, credits, subscription }))
     },
   }))
 

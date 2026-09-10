@@ -126,6 +126,40 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ## Changelog
 
+### Working tree (未发布 — Command Code 账户用量组件家族)
+
+> 本次为 Command Code 组件批次，独立于上方 GPU 高度修复（一并保留在 working tree）。新增 5 个 2×2 小组件，复用 OpenCode 用量组件的宿主代理模式。
+
+**Feat — Command Code 账户用量组件家族（cc-whoami / cc-usage / cc-credits / cc-windows / cc-subscription）：**
+
+- 🔌 **host 新路由 `/api/commandcode-usage`**：聚合四个 **official Command Code account endpoints**（`/alpha/whoami`、`/alpha/usage/summary`、`/alpha/billing/credits`、`/alpha/billing/subscriptions`），凭据经 `credentials.resolve('COMMANDCODE_API_KEY')`（与 OpenCode 同 seam，绝不落浏览器）；四个端点独立 fetch + 8s 超时 + 独立容错——任一失败仅该片断置 null，其余照常渲染。
+- 🧩 **新增 5 个 2×2 组件**（group `commandcode`，共享渲染层 `src/client/lib/cc-view.ts`，防御式解析 null → `—`）：
+  - `cc-whoami`：当前账户身份（用户名 / 邮箱 / 组织）；
+  - `cc-usage`：请求数、成功率、Token 总量、消费（`$`）摘要；
+  - `cc-credits`：Credits 余额（月度/免费/购买）+ 5h / 周两窗口用量条（颜色随水位 danger/warn/success）；
+  - `cc-windows`：5h / 周两窗口用量环图（OpenCode usage-rings 同款三环风格，两环变体）；
+  - `cc-subscription`：套餐（planId）、状态、账期结束时间、是否到期取消。
+- 🎨 i18n：`_shared/locales.json` 增加 `badge.commandcode` / `group.commandcode` / `cc.*` 共 12 键 × 2 语言；市场分组显示「Command Code」。
+- 🖼 预览数据：`PREVIEW_STATS` 增加 `commandCode` 模拟载荷，市场/配置预览非空白。
+- ✅ 四个接口已在真实账户实测（whoami=Physicolor，plan=individual-goat，5h cap=14 / 周 cap=35，返回结构与文档一致）；构建通过（registry 29 组件，tsdown node 11.3kB / client 204.7kB）。
+
+### Working tree (未发布 — GPU 利用率卡片高度修复)
+
+> 本地修复，尚未 bump 版本 / 发布。回滚基线：`git HEAD 2fdacf8`（v1.4.1），磁盘快照见 `docs/backup/2026-08-31-gpu-line-height/`。
+
+**Fix — sys-gpu-line 2×2 悬浮时卡片高度异常（≈176px）：**
+
+- 🐛 根因：GPU 利用率卡片的**内容固有高度 ≈178px**（左下大数字 + sub + 固定 68px sparkline + 标题行），超出 2×2 卡片的 150px 盒子——卡片自身只有 `minHeight`，高度由内容决定，静止时即撑破 slot 28px；悬浮放大（magnify 1.25）时更糟（overlay 卡片 212px vs slot 186px），视觉上就是「悬浮后卡片莫名变高到 176 左右」。
+- 🩹 修复（两层）：
+  1. **弹性 sparkline**：line 图表改为 `flex:1` + `height:100%` 弹性容器，卡片在 `stretchChart`（仅 line 图表卡）时固定 `height: unit`，sparkline 吃满剩余空间——内容永不超出盒子，任意 cardSide / 悬浮放大倍数都自适配。
+  2. `stretchChart` 声明位置修正（TDZ）：`body.push` 立即求值，声明必须 precede 于使用（首次构建因声明后置报 `Cannot access 'stretchChart' before initialization`，已修正并复验）。
+- ✅ 实测（真实 3080 页面 + playwright，`docs/probe-gpu-height.cjs`，本机 cardSide=150 / magnify=1.25 / realtime）：
+  - 静止：GPU 卡 slot 150 = card 150（修复前 card 178）；其它 10+ 张卡均 150。
+  - 悬浮：overlay slot 186 = card 186（修复前 card 212）；扫掠衰减 185→177 平滑，移出熄灭。
+  - 设置页配置预览（CardBody 同路径）：150×150（修复前 234）。
+  - `CONSOLE_ERRORS: []`，`verify-*` 回归不受影响（未改 chart 其它分支与注册契约）。
+- 📝 已知边角：`上下文已用`（context-water）静止 cardH=156（超出 6px，内容少、不破坏视觉，非本次报告项）；line 分支注释同步更新。
+
 ### v1.4.1
 
 > This release ships the whole working tree: the **System monitor family** (below), the **rail drawer animation**, and the **usage decimal fix** — all previously unreleased work (logs under the old `v1.4.2` / `v1.5.0 working tree` headers).
@@ -438,6 +472,9 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 The widget system is now built for scale: each widget is an independent, contract-driven unit under `src/widgets/` with build-time discovery — a new widget is a new unit dir, no shared file edits (guide: `src/widgets-template/README.md`).
 
+- **发布本轮 Command Code 组件家族 + GPU 高度修复**（working tree 段）：随下一批改动一起 bump 版本（建议 v1.5.0 次版本号：新功能家族）→ GitHub + npm 双仓库发布（走 dsh-plugin-release-workflow）。
+- **Command Code 多 Key / 组织支持**：当前仅读 `COMMANDCODE_API_KEY` 主凭据；如需组织（org）维度或多账户，可在 host 复用 opencode-usage-multi 的池模式（`COMMANDCODE_POOL_2..N`）。
+- **context-water 2×2 轻微超高（~6px）**：`上下文已用` 静止 cardH=156 > slot 150（segments bar + rows 略高）。与 GPU 卡片同源的「内容驱动高度 ≥ slot」问题，下一轮用同样的弹性/压缩策略处理（或给 segments 加 `flex:1` 压缩行距）。
 - **Agent-produced widgets**: the machine-readable contract (`manifest.json` + `defineWidget` descriptor + template + shared API) is exactly what a worker agent needs to create a widget end-to-end; the parallel-creation test in v1.3.0 demonstrated two agents adding widgets concurrently with zero file conflicts;
 - **More hardware metrics**: CPU temperature via an optional LibreHardwareMonitor bridge (external dependency, opt-in — deliberately not bundled), AMD/Intel GPU support beyond NVIDIA, per-interface network traffic;
 - **Heatmap range/period controls**: let the 2×4 heatmap and bars pick custom ranges (weekly/monthly/etc.) beyond the current half-year / 7-day defaults;

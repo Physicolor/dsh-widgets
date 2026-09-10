@@ -11,7 +11,7 @@ import * as React from 'react'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import './widgets.module.css'
 import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES } from './generated.registry'
-import { instanceKey, parseInstanceKey, sizesOf, widgetName, type SysInfo, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
+import { instanceKey, parseInstanceKey, sizesOf, widgetName, type CommandCodeData, type SysInfo, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
 import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadSeen, migrateHeatmapV2, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
 import { SYS_WIDGET_IDS, ingestSysInfo, resolveInterval } from './lib/sys-view'
 import { CardBody, WidgetsPage, type Prefs } from './components'
@@ -235,7 +235,7 @@ export function apply(ctx: ClientContext): void {
   // the moment the bundle loads.
   try { migrateHeatmapV2() } catch { /* best-effort */ }
   let prefs = loadState()
-  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, sysinfo: null as SysInfo | null }
+  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, sysinfo: null as SysInfo | null }
 
   const listeners = new Set<() => void>()
   function emit(): void { for (const fn of listeners) fn() }
@@ -271,7 +271,7 @@ export function apply(ctx: ClientContext): void {
       }
     } catch { /* host unavailable; stay on localStorage only */ }
   }
-  function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; usageMulti: UsageMulti | null; sysinfo: SysInfo | null; prefs: Prefs } {
+  function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; usageMulti: UsageMulti | null; commandCode: CommandCodeData | null; sysinfo: SysInfo | null; prefs: Prefs } {
     const [snap, setSnap] = React.useState({ ...state, prefs: { ...prefs } })
     React.useEffect(() => subscribe(() => setSnap({ ...state, prefs: { ...prefs } })), [])
     return snap
@@ -429,6 +429,11 @@ export function apply(ctx: ClientContext): void {
           .then((r) => r.json())
           .then((data: UsageMulti) => setState({ usageMulti: data }))
           .catch(() => { /* pool endpoint optional: cards fall back to single-key */ })
+        // Command Code account usage (whoami / summary / credits / plan).
+        fetch('/api/commandcode-usage')
+          .then((r) => r.json())
+          .then((data: CommandCodeData) => setState({ commandCode: data }))
+          .catch(() => { /* keep last known commandcode payload */ })
         }
         // Pull on mount (both false — first render); afterwards only a
         // completed turn (true → false) refetches, an in-flight turn does not.
@@ -858,7 +863,7 @@ export function apply(ctx: ClientContext): void {
           // a placeholder instead; the error stays visible in the console.
           let out: ReturnType<typeof w.render>
           try {
-            out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, sysinfo: snap.sysinfo, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
+            out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, commandCode: snap.commandCode, sysinfo: snap.sysinfo, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
           } catch (error) {
             console.error(`[dsh-widgets] widget ${widgetId}@${size} render crashed:`, error)
             out = { title: widgetName(w), value: '—', legend: t('ui.renderError') }

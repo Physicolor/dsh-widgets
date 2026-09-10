@@ -50,6 +50,89 @@ export interface UsageMulti {
   keys: UsageKeyEntry[]
 }
 
+/** `GET /alpha/whoami` — current Command Code account / org identity. */
+export interface CommandCodeWhoami {
+  success?: boolean
+  user?: { id?: string; name?: string; email?: string; userName?: string } | null
+  org?: {
+    id?: string
+    name?: string
+    [k: string]: unknown
+  } | null
+}
+
+/** `GET /alpha/usage/summary` — request counts, success rate, tokens, spend. */
+export interface CommandCodeUsageSummary {
+  totalCount?: number
+  totalCost?: number
+  averageCost?: number
+  successRate?: number
+  completedCount?: number
+  failedCount?: number
+  totalTokensIn?: number
+  totalTokensOut?: number
+  totalTokens?: number
+  totalCredits?: number
+  totalFreeCredits?: number
+  totalMonthlyCredits?: number
+  totalPurchasedCredits?: number
+  periodBasis?: string
+}
+
+/** One Command Code window limit (5h / weekly): used vs cap + reset time. */
+export interface CommandCodeWindow {
+  used?: number
+  cap?: number
+  exceeded?: boolean
+  /** Epoch ms; the wall-clock time the window resets. */
+  resetAt?: number
+}
+
+/** `GET /alpha/billing/credits` — credit balance + 5h / weekly quota windows. */
+export interface CommandCodeCredits {
+  credits?: {
+    belowThreshold?: boolean
+    creditThreshold?: number
+    monthlyCredits?: number
+    purchasedCredits?: number
+    freeCredits?: number
+  } | null
+  windowLimits?: {
+    limited?: boolean
+    exceeded?: unknown
+    fiveHour?: CommandCodeWindow | null
+    weekly?: CommandCodeWindow | null
+  } | null
+}
+
+/** `GET /alpha/billing/subscriptions` — plan + billing-period end. */
+export interface CommandCodeSubscription {
+  success?: boolean
+  data?: {
+    id?: string
+    status?: string
+    planId?: string
+    priceId?: string
+    quantity?: number
+    cancelAtPeriodEnd?: boolean
+    currentPeriodStart?: string
+    currentPeriodEnd?: string
+    endedAt?: string | null
+    canceledAt?: string | null
+  } | null
+}
+
+/** The aggregated Command Code account payload from the host
+ *  `/api/commandcode-usage` route (the four official endpoints). Every slice
+ *  is nullable: the host fetches them independently, so one failing endpoint
+ *  never blanks the others. */
+export interface CommandCodeData {
+  whoami: CommandCodeWhoami | null
+  usage: CommandCodeUsageSummary | null
+  credits: CommandCodeCredits | null
+  subscription: CommandCodeSubscription | null
+}
+
 /** One hardware snapshot from the Host `/api/sysinfo` route (machine-local
  *  values only — never session data). `cpu.util` is the utilization averaged
  *  over the window between two host samples (null on the very first sample,
@@ -89,6 +172,9 @@ export interface WidgetStats {
   usageData: UsageData | null
   /** Multi-key pool usage (OpenCode Go): every key + host-computed total. */
   usageMulti?: UsageMulti | null
+  /** Command Code account usage (whoami / summary / credits / subscription),
+   *  aggregated by the host `/api/commandcode-usage` route. */
+  commandCode?: CommandCodeData | null
   /** Current pooled view selection: 'total' or a `poolModes` entry ('Key 1'…). */
   poolView?: string
   /** Selectable pooled views in cycle order; first entry must be 'total'. */

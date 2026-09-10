@@ -42,6 +42,14 @@ const PREVIEW_STATS: WidgetStats = {
   decodeMs: 5000, decodeTokens: 600,
   usage: { inputTokens: 18_600_000, cacheReadTokens: 18_400_000, outputTokens: 75_600 },
   usageData: { usage: { rolling: { status: 'ok', percent: 42, resetsAt: '2026-08-15T07:25:56Z' }, weekly: { status: 'ok', percent: 25, resetsAt: '2026-08-17T00:00:00Z' }, monthly: { status: 'ok', percent: 8, resetsAt: '2026-09-14T11:35:13Z' } } },
+  // Command Code account snapshot mock (mirrors the host-aggregated
+  // `/api/commandcode-usage` payload so the family previews render fully).
+  commandCode: {
+    whoami: { success: true, user: { id: 'usr_demo', name: 'Physicolor', email: 'demo@example.com', userName: 'Physicolor' }, org: null },
+    usage: { totalCount: 4821, totalCost: 0.00014, averageCost: 0.00003, successRate: 100, completedCount: 4821, failedCount: 0, totalTokensIn: 168000, totalTokensOut: 58000, totalTokens: 226000, periodBasis: 'billing-period' },
+    credits: { credits: { belowThreshold: false, creditThreshold: 0, monthlyCredits: 69.99986, purchasedCredits: 0, freeCredits: 0 }, windowLimits: { limited: true, exceeded: null, fiveHour: { used: 0.00014, cap: 14, exceeded: false, resetAt: 1789039577701 }, weekly: { used: 0.00014, cap: 35, exceeded: false, resetAt: 1789626377701 } } },
+    subscription: { success: true, data: { id: 'sub_demo', status: 'active', planId: 'individual-goat', priceId: 'price_demo', quantity: 1, cancelAtPeriodEnd: false, currentPeriodStart: '2026-09-10T04:42:28.000Z', currentPeriodEnd: '2026-10-10T04:42:28.000Z', endedAt: null, canceledAt: null } },
+  },
   contextPercent: 0.42,
   contextWindow: 1_000_000,
   contextTokens: 446_000,
@@ -274,12 +282,15 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
   }
   if (chart.kind === 'line' && chart.line) {
     // Windows-task-manager style utilization sparkline: a filled area under a
-    // polyline. Same footprint/paddings as the barsV chart (7-row calendar
-    // height); a proportional 100×100 viewBox stretches via preserveAspectRatio
+    // polyline. A proportional 100×100 viewBox stretches via preserveAspectRatio
     // none, so the stroke uses vector-effect non-scaling-stroke to stay
     // crisp. Null samples break the line into independent segments.
-    const cell = Math.round((6 + 2) * scale)
-    const barAreaH = 7 * cell + 6 * 2
+    // ELASTIC height: this container is flex:1 inside a stretch body (see
+    // CardBody's `stretchChart`), so the sparkline eats whatever vertical
+    // space the card has left after the fixed rows — at any side size /
+    // magnification the card NEVER bursts its box. With a fixed height the
+    // sys-gpu-line card totalled ≈178px (value + sub + 68px chart) and burst
+    // the 150px box on hover. The bottom time-labels stay fixed (flex:none).
     const labelH = Math.round(10 * scale)
     const max = Math.max(1, chart.line.max ?? 100)
     const vals = chart.line.values
@@ -308,14 +319,14 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
     )
     const labels = chart.line.labels ?? ['', '']
     // gap: 3 keeps the same sparkline→time-label spacing as the barsV bars
-    // (bar→date label gap 3); the outer marginTop matches barsV's 4px lead-in.
-    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 3, marginTop: `${Math.round(4 * scale)}px` } },
-      React.createElement('div', { style: { height: `${barAreaH}px`, overflow: 'hidden' } },
+    // (bar→date label gap 3). The svg canvas fills the flexible middle row.
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 3, minHeight: 0, flex: 1 } },
+      React.createElement('div', { style: { flex: 1, minHeight: 0, overflow: 'hidden' } },
         React.createElement('svg', { width: '100%', height: '100%', viewBox: '0 0 100 100', preserveAspectRatio: 'none', 'aria-hidden': true },
           ...areaPaths, ...polylines,
         ),
       ),
-      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', minHeight: labelH, fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1 } },
+      React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', minHeight: labelH, flex: 'none', fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1 } },
         React.createElement('span', null, labels[0]),
         React.createElement('span', null, labels[1]),
       ),
@@ -465,11 +476,25 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
   }
   const head = headEls
   const body: React.ReactElement[] = []
+  // The line sparkline (sys-gpu-line) is ELASTIC: the card body owns the full
+  // remaining height and the chart flexes into it, so the card never bursts
+  // its box at any side size or magnification. Other charts keep their fixed
+  // footprint and bottom-anchored posture. Declared BEFORE the chart push
+  // below (TDZ: the push evaluates it immediately).
+  const stretchChart = out.chart?.kind === 'line'
   // value is shown inline in the header when headRight is present (official meter
   // header: `上下文已用 64% ~638K / 1M`); otherwise it goes to the body.
   if (out.value != null && !out.headRight) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value', style: { fontSize: `${valuePx}px`, color: out.valueTone === 'danger' ? 'var(--dsw-alias-state-error-primary)' : undefined } }, out.value))
   if (out.sub) body.push(React.createElement('div', { key: 's', className: 'dsx-stats-card-sub', style: { fontSize: `${Math.round(10 * scale)}px` } }, out.sub))
-  if (out.chart) { const c = ChartBlock({ chart: out.chart, side: unit, width: boxW }); if (c) body.push(React.createElement('div', { key: 'c' }, c)) }
+  if (out.chart) {
+    const c = ChartBlock({ chart: out.chart, side: unit, width: boxW })
+    if (c) body.push(React.createElement('div', {
+      key: 'c',
+      // The stretch wrapper owns the card's remaining height so an elastic
+      // chart (line sparkline) can fill it; fixed-footprint charts ignore it.
+      style: stretchChart ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : undefined,
+    }, c))
+  }
   if (out.rich) body.push(React.createElement('div', { key: 'r' }, RichBlock({ rich: out.rich, scale })))
   // Bottom-left value sits in the normal foot; the corner button is absolutely
   // positioned top-right: a brand-blue filled round button with the official
@@ -492,17 +517,20 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
   // body owns the full remaining height so the block can sit top/center/bottom;
   // otherwise default to pushing content to the bottom of the card.
   const vj = out.rich?.valign === 'bottom' ? 'flex-end' : out.rich?.valign === 'center' ? 'center' : undefined
-  // Top-aligned only when a big figure demands its own row under the title
-  // (headAfter, official meter) or a rich block pins vertically. A headRight
-  // figure (today/window tokens) lives in the title row and must NOT force
-  // top-alignment — the chart below stays bottom-aligned (2×4 cards).
-  const topAligned = vj || out.headAfter
+  // (stretchChart is declared above with the body assembly — it is read here
+  // AND by the chart push, which precedes this line.)
+  const topAligned = vj || out.headAfter || stretchChart
   const footStyle: React.CSSProperties = topAligned
     ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: vj ?? 'flex-start' }
     : { marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }
   return React.createElement('div', {
     className: 'dsx-stats-card' + (out.alert ? ' dsx-peak-alert' : '') + (cyclable ? (pressed ? ' dsx-cyclable dsx-cycle-pressed' : ' dsx-cyclable') : ''),
-    style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, borderRadius: `${radius}px`, padding: `${innerPad}px` },
+    // minHeight is the resting contract for every card; the ELASTIC line card
+    // (sys-gpu-line) additionally pins a FIXED height so its flex body (chart
+    // eats the leftover space) compresses inside the box instead of letting
+    // content drive the card taller than the slot (the old card swelled to
+    // ≈178px and burst the 150px box on hover magnification).
+    style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, height: stretchChart ? `${unit}px` : undefined, borderRadius: `${radius}px`, padding: `${innerPad}px` },
     title: out.cycle?.hint,
     onClick: cyclable ? () => { pressDown(); if (onCycle) onCycle(out) } : undefined,
     onPointerDown: cyclable ? pressDown : undefined,
