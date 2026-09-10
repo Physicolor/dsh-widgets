@@ -134,6 +134,7 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 - 🌙 **月用量（新增）**：`billing/credits` 只提供 5h 与 weekly 两个硬 cap，**没有 monthly 窗口对象**，故月窗口按守恒推导：`已用 = usage.totalMonthlyCredits`（本期月度 credits 消耗）、`总额度 = 已用 + credits.monthlyCredits`（已用 + 剩余 = 套餐额度，实测 0.47 + 69.16 ≈ 69.63 ≈ $70 套餐），百分比 = 已用 / 总额度，重置时间取订阅账期结束 `currentPeriodEnd`。任一半缺失即降级占位，绝不编造数字。
 - 🍩 **cc-windows 双环 → 三环**：5h / 周 / 月 三窗口环图（对齐 OpenCode rolling / weekly / monthly 三环形态）。
+- 🔤 **环上数字独立性**：三环的百分比**不再带灰色「5h 窗口 / 周窗口 / 月窗口」小字标注**——环本身就是窗口三件套（顺序固定 5h → 周 → 月），数字单独站着；窗口名移到悬停 tooltip（与 OpenCode usage-rings 同一约定）。环上数字统一**保留一位小数**（如 1.8%、10.0%），不再四舍五入成整数。`WidgetChart.rings` 相应新增两个可选字段：`decimals`（精度，默认 0 整数，其它环图不受影响）与 `name`（仅 tooltip 用的名称）。
 - 🔢 **新增 3 个单窗口数字组件**（对齐 OpenCode 单窗口卡片形态：一个大百分比 + 重置日期）：
   - `cc-window-5h`：5h 窗口用量百分比 + 重置日期；
   - `cc-window-weekly`：周窗口用量百分比 + 重置日期；
@@ -143,7 +144,7 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 - 📏 产品名太长，标题一律固定为 `Command Code`，角色词改为标题下方**灰色小字 legend**：cc-whoami「账户」、cc-usage「用量」、cc-credits「额度」、cc-windows「窗口」、cc-subscription「套餐」、三个数字卡片「5h 窗口 / 周窗口 / 月窗口」。
 - 🏷 市场/配置列表里的组件名同步缩短为角色词（账户 / 用量 / 额度 / 窗口 / 套餐 / 5h 窗口 / 周窗口 / 月窗口），分组名仍是 Command Code，不再重复长前缀。
-- ✅ 验证：新增自包含探针 `docs/probe-cc-render.cjs`（编译真实渲染层 + 拉取真实账户数据跑 8 张卡）——17 项断言全 PASS：标题全为 `Command Code`、角色词落在 legend、cc-windows 三环、三张数字卡有百分比与重置行、月口径 = 已用/(已用+剩余)。静态验证脚本 `docs/verify-commandcode.cjs` 扩到 8 个组件 + 共享标题键。
+- ✅ 验证：新增自包含探针 `docs/probe-cc-render.cjs`（编译真实渲染层 + 拉取真实账户数据跑 8 张卡）——**21 项断言全 PASS**：标题全为 `Command Code`、角色词落在 legend、cc-windows 三环且**环上无灰色标注**（label 为空、窗口名仅在 `name`/tooltip）、环值为一位小数、三张数字卡百分比均一位小数且有重置行、月口径 = 已用/(已用+剩余)。静态验证脚本 `docs/verify-commandcode.cjs` 扩到 8 个组件 + 共享标题键（20 项 PASS，含 live 200）。
 
 ### Working tree (未发布 — Command Code 组件家族 + 自动读取修复)
 

@@ -218,8 +218,12 @@ export interface BarDatum {
 export interface WidgetChart {
   kind: 'bars' | 'ring' | 'rings' | 'line' | 'segments' | 'heatmap' | 'barsV'
   bars?: BarDatum[]
-  /** Three-per-window donut row (e.g. OpenCode rolling/weekly/monthly). */
-  rings?: Array<{ label: string; value: number; ratio?: number; tone?: 'primary' | 'success' | 'warn' | 'danger' | 'muted' }>
+  /** Donut row (e.g. OpenCode rolling/weekly/monthly, Command Code 5h/weekly/
+   *  monthly). `label` renders as a SMALL GREY caption beside the percent —
+   *  leave it empty when the figure should stand alone; `name` then carries the
+   *  datum's identity into the hover tooltip only. `decimals` overrides the
+   *  percent precision (default 0 = whole numbers). */
+  rings?: Array<{ label: string; value: number; ratio?: number; tone?: 'primary' | 'success' | 'warn' | 'danger' | 'muted'; decimals?: number; name?: string }>
   /** For ring: one datum + its centered label. */
   value?: number
   valueLabel?: string

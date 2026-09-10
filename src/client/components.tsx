@@ -261,16 +261,21 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
       const c = 2 * Math.PI * (r - sw / 2)
       const tone = CHART_TONES[rg.tone ?? 'primary'] ?? CHART_TONES.primary
       const hasLabel = typeof rg.label === 'string' && rg.label.length > 0
+      // Optional per-datum precision: a family that needs a finer figure asks
+      // for it here (Command Code windows -> 1 decimal, e.g. 7.8%); every
+      // other ring chart keeps the default whole number.
+      const dec = typeof rg.decimals === 'number' && Number.isFinite(rg.decimals) ? Math.max(0, Math.min(2, Math.trunc(rg.decimals))) : 0
+      const valueText = `${rg.value.toFixed(dec)}%`
       const labelRow = hasLabel
         ? React.createElement('div', { style: { display: 'flex', alignItems: 'baseline', gap: 3, whiteSpace: 'nowrap', maxWidth: '100%' } },
-            React.createElement('span', { style: { fontSize: `${Math.round(11 * scale)}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 } }, `${Math.round(rg.value)}%`),
+            React.createElement('span', { style: { fontSize: `${Math.round(11 * scale)}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 } }, valueText),
             React.createElement('span', { style: { fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis' } }, rg.label),
           )
-        : React.createElement('div', { style: { fontSize: `${Math.round(11 * scale)}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 } }, `${Math.round(rg.value)}%`)
+        : React.createElement('div', { style: { fontSize: `${Math.round(11 * scale)}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 } }, valueText)
       // Ring → caption spacing: 4px (same rhythm as bar → label in the bars
       // charts). The 2px gap used to glue the percent text to the ring; the
       // thicker visual breathing matters most on the 2×4 board's small rings.
-      return React.createElement('div', { key: i, title: `${rg.label} ${Math.round(rg.value)}%`, style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.round(4 * scale) } },
+      return React.createElement('div', { key: i, title: `${rg.name ?? rg.label} ${valueText}`, style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.round(4 * scale) } },
         React.createElement('svg', { width: Math.round(r * 2), height: Math.round(r * 2), viewBox: `0 0 ${Math.round(r * 2)} ${Math.round(r * 2)}`, 'aria-hidden': true },
           React.createElement('circle', { cx: r, cy: r, r: r - sw / 2, fill: 'none', stroke: 'var(--dsw-alias-interactive-bg-hover)', strokeWidth: sw }),
           React.createElement('circle', { cx: r, cy: r, r: r - sw / 2, fill: 'none', stroke: tone, strokeWidth: sw, strokeDasharray: `${c * p} ${c}`, transform: `rotate(-90 ${r} ${r})`, strokeLinecap: 'round' }),

@@ -136,9 +136,14 @@ async function loadReal(key) {
   check('role words on the grey legend line', cards['cc-whoami'].legend === '账户' && cards['cc-usage'].legend === '用量' && cards['cc-credits'].legend.startsWith('额度') && cards['cc-windows'].legend === '窗口' && cards['cc-subscription'].legend === '套餐',
     [cards['cc-whoami'].legend, cards['cc-usage'].legend, cards['cc-credits'].legend, cards['cc-windows'].legend, cards['cc-subscription'].legend].join(' / '))
   check('cc-windows renders THREE rings', Array.isArray(cards['cc-windows'].chart?.rings) && cards['cc-windows'].chart.rings.length === 3,
-    (cards['cc-windows'].chart?.rings || []).map((r) => `${r.label}:${r.value}%`).join(' '))
+    (cards['cc-windows'].chart?.rings || []).map((r) => `${r.name}:${r.value}%`).join(' '))
+  const rings = cards['cc-windows'].chart?.rings || []
+  check('cc-windows rings carry NO grey caption beside the figure', rings.every((r) => r.label === ''), rings.map((r) => JSON.stringify(r.label)).join(' '))
+  check('cc-windows rings keep the window name for the hover tooltip', rings.every((r) => typeof r.name === 'string' && r.name.length > 0), rings.map((r) => r.name).join(' / '))
+  check('cc-windows rings ask for one decimal', rings.every((r) => r.decimals === 1), rings.map((r) => String(r.decimals)).join(','))
+  check('cc-windows ring values carry at most one decimal', rings.every((r) => Math.abs(r.value * 10 - Math.round(r.value * 10)) < 1e-9), rings.map((r) => String(r.value)).join(' '))
   for (const id of ['cc-window-5h', 'cc-window-weekly', 'cc-window-monthly']) {
-    check(`${id} shows a percent`, /^\d+(\.\d+)?%$/.test(String(cards[id].value)), cards[id].value)
+    check(`${id} shows a percent to ONE decimal`, /^\d+\.\d%$/.test(String(cards[id].value)), cards[id].value)
     check(`${id} shows a reset/period line`, typeof cards[id].sub === 'string' && cards[id].sub.length > 0, cards[id].sub)
   }
   const used = data.usage?.totalMonthlyCredits

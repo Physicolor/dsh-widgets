@@ -224,8 +224,15 @@ export function ccWindowsRender(stats: WidgetStats): WidgetRenderOut | null {
   const wins = [fiveHourWindow(c), weeklyWindow(c), monthlyWindow(c)].filter((w): w is WindowInfo => w !== null)
   if (wins.length === 0) return { title: title(), value: '-', legend: hint(stats) }
   const rings = wins.map((w) => ({
-    label: w.label,
-    value: Math.round(w.pct),
+    // No grey caption beside the figure: the three rings ARE the window trio
+    // (5h / weekly / monthly, in that order), so the number stands alone and
+    // the window name rides the hover tooltip only - the same convention the
+    // OpenCode usage rings use. One decimal keeps small usage readable
+    // (0.7%, not a rounded 1%).
+    label: '',
+    name: w.label,
+    value: Number(w.pct.toFixed(1)),
+    decimals: 1,
     ratio: w.pct / 100,
     tone: w.exceeded === true || w.pct >= 95 ? ('danger' as const) : w.pct >= 75 ? ('warn' as const) : ('success' as const),
   }))
