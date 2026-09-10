@@ -1,0 +1,17 @@
+{
+  "id": "cc-window-weekly",
+  "order": 66,
+  "group": "commandcode",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.cc-window-weekly.name": "周窗口",
+      "widget.cc-window-weekly.desc": "周额度窗口用量百分比与重置时间"
+    },
+    "en": {
+      "widget.cc-window-weekly.name": "Weekly window",
+      "widget.cc-window-weekly.desc": "Weekly quota window usage percent and reset time"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "cc-window-5h",
+  "order": 65,
+  "group": "commandcode",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.cc-window-5h.name": "5h 窗口",
+      "widget.cc-window-5h.desc": "5 小时额度窗口用量百分比与重置时间"
+    },
+    "en": {
+      "widget.cc-window-5h.name": "5h window",
+      "widget.cc-window-5h.desc": "5-hour quota window usage percent and reset time"
+    }
+  }
+}

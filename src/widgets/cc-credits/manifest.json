@@ -6,12 +6,12 @@
   "sizes": ["2x2"],
   "locale": {
     "zh": {
-      "widget.cc-credits.name": "Command Code 额度",
-      "widget.cc-credits.desc": "Credits 余额与 5h/周额度窗口"
+      "widget.cc-credits.name": "额度",
+      "widget.cc-credits.desc": "Credits 余额与 5h / 周额度窗口用量"
     },
     "en": {
-      "widget.cc-credits.name": "Command Code Credits",
-      "widget.cc-credits.desc": "Credit balance and 5h / weekly quota windows"
+      "widget.cc-credits.name": "Credits",
+      "widget.cc-credits.desc": "Credit balance with 5h / weekly window usage"
     }
   }
 }

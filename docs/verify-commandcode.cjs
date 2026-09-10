@@ -46,12 +46,13 @@ function main() {
 
   // 2) client bundle 静态检查
   const client = readFileSync(join(ROOT, 'lib', 'client.js'), 'utf8')
-  const ccWidgets = ['cc-whoami', 'cc-usage', 'cc-credits', 'cc-windows', 'cc-subscription']
+  const ccWidgets = ['cc-whoami', 'cc-usage', 'cc-credits', 'cc-windows', 'cc-subscription', 'cc-window-5h', 'cc-window-weekly', 'cc-window-monthly']
   for (const id of ccWidgets) {
     const ok = client.includes(id)
     check(`client: widget unit ${id}`, ok, ok ? 'bundled' : 'missing')
   }
   check('client: commandCode stats key', client.includes('commandCode'))
+  check('client: shared card title "Command Code"', client.includes('cc.title'))
 
   // 3) 本机 DSH web 实测聚合路由（失败仅提示，不 fail 静态检查）
   const https = BASE.startsWith('https')

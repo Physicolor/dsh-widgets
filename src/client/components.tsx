@@ -46,8 +46,8 @@ const PREVIEW_STATS: WidgetStats = {
   // `/api/commandcode-usage` payload so the family previews render fully).
   commandCode: {
     whoami: { success: true, user: { id: 'usr_demo', name: 'Physicolor', email: 'demo@example.com', userName: 'Physicolor' }, org: null },
-    usage: { totalCount: 4821, totalCost: 0.00014, averageCost: 0.00003, successRate: 100, completedCount: 4821, failedCount: 0, totalTokensIn: 168000, totalTokensOut: 58000, totalTokens: 226000, periodBasis: 'billing-period' },
-    credits: { credits: { belowThreshold: false, creditThreshold: 0, monthlyCredits: 69.99986, purchasedCredits: 0, freeCredits: 0 }, windowLimits: { limited: true, exceeded: null, fiveHour: { used: 0.00014, cap: 14, exceeded: false, resetAt: 1789039577701 }, weekly: { used: 0.00014, cap: 35, exceeded: false, resetAt: 1789626377701 } } },
+    usage: { totalCount: 4821, totalCost: 0.467622536, averageCost: 0.0079258, successRate: 100, completedCount: 4821, failedCount: 0, totalTokensIn: 4896670, totalTokensOut: 28435, totalTokens: 4925105, totalCredits: 0.467622536, totalMonthlyCredits: 0.467622536, periodBasis: 'billing-period' },
+    credits: { credits: { belowThreshold: false, creditThreshold: 0, monthlyCredits: 69.163327664, purchasedCredits: 0, freeCredits: 0 }, windowLimits: { limited: true, exceeded: null, fiveHour: { used: 0.836672336, cap: 14, exceeded: false, resetAt: 1789039577701 }, weekly: { used: 0.836672336, cap: 35, exceeded: false, resetAt: 1789626377701 } } },
     subscription: { success: true, data: { id: 'sub_demo', status: 'active', planId: 'individual-goat', priceId: 'price_demo', quantity: 1, cancelAtPeriodEnd: false, currentPeriodStart: '2026-09-10T04:42:28.000Z', currentPeriodEnd: '2026-10-10T04:42:28.000Z', endedAt: null, canceledAt: null } },
   },
   contextPercent: 0.42,

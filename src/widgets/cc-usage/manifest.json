@@ -6,12 +6,12 @@
   "sizes": ["2x2"],
   "locale": {
     "zh": {
-      "widget.cc-usage.name": "Command Code 用量",
-      "widget.cc-usage.desc": "请求数、成功率、Token 与消费摘要"
+      "widget.cc-usage.name": "用量",
+      "widget.cc-usage.desc": "账期内的请求数、成功率、Token 与消费摘要"
     },
     "en": {
-      "widget.cc-usage.name": "Command Code Usage",
-      "widget.cc-usage.desc": "Requests, success rate, tokens and spend"
+      "widget.cc-usage.name": "Usage",
+      "widget.cc-usage.desc": "Requests, success rate, tokens and spend for the billing period"
     }
   }
 }

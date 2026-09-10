@@ -6,12 +6,12 @@
   "sizes": ["2x2"],
   "locale": {
     "zh": {
-      "widget.cc-whoami.name": "Command Code 账户",
-      "widget.cc-whoami.desc": "当前 Command Code 账户身份"
+      "widget.cc-whoami.name": "账户",
+      "widget.cc-whoami.desc": "当前 Command Code 账户身份（用户名 / 邮箱 / 组织）"
     },
     "en": {
-      "widget.cc-whoami.name": "Command Code Account",
-      "widget.cc-whoami.desc": "Current Command Code account identity"
+      "widget.cc-whoami.name": "Account",
+      "widget.cc-whoami.desc": "Current Command Code account identity (name / email / org)"
     }
   }
 }

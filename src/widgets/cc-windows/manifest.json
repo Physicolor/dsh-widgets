@@ -6,12 +6,12 @@
   "sizes": ["2x2"],
   "locale": {
     "zh": {
-      "widget.cc-windows.name": "Command Code 窗口",
-      "widget.cc-windows.desc": "5h / 周 额度窗口双环图"
+      "widget.cc-windows.name": "窗口",
+      "widget.cc-windows.desc": "5h / 周 / 月 三窗口用量环图"
     },
     "en": {
-      "widget.cc-windows.name": "Command Code Windows",
-      "widget.cc-windows.desc": "5h / weekly quota windows as rings"
+      "widget.cc-windows.name": "Windows",
+      "widget.cc-windows.desc": "5h / weekly / monthly usage as rings"
     }
   }
 }

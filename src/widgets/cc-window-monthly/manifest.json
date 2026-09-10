@@ -1,0 +1,17 @@
+{
+  "id": "cc-window-monthly",
+  "order": 67,
+  "group": "commandcode",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.cc-window-monthly.name": "月窗口",
+      "widget.cc-window-monthly.desc": "账期月额度用量百分比（已用 / 已用+剩余）与账期结束时间"
+    },
+    "en": {
+      "widget.cc-window-monthly.name": "Monthly window",
+      "widget.cc-window-monthly.desc": "Billing-period usage percent (used / used+remaining) and period end"
+    }
+  }
+}

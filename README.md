@@ -126,6 +126,25 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ## Changelog
 
+### Working tree (未发布 — Command Code 月窗口 + 三窗口数字组件 + 标题规范化)
+
+> 承接上一批：新增月用量、拆出 5h/周/月三个单窗口数字组件，并把卡片标题统一为短标题 + 灰色小字角色词。
+
+**Feat — Command Code 窗口家族扩展：**
+
+- 🌙 **月用量（新增）**：`billing/credits` 只提供 5h 与 weekly 两个硬 cap，**没有 monthly 窗口对象**，故月窗口按守恒推导：`已用 = usage.totalMonthlyCredits`（本期月度 credits 消耗）、`总额度 = 已用 + credits.monthlyCredits`（已用 + 剩余 = 套餐额度，实测 0.47 + 69.16 ≈ 69.63 ≈ $70 套餐），百分比 = 已用 / 总额度，重置时间取订阅账期结束 `currentPeriodEnd`。任一半缺失即降级占位，绝不编造数字。
+- 🍩 **cc-windows 双环 → 三环**：5h / 周 / 月 三窗口环图（对齐 OpenCode rolling / weekly / monthly 三环形态）。
+- 🔢 **新增 3 个单窗口数字组件**（对齐 OpenCode 单窗口卡片形态：一个大百分比 + 重置日期）：
+  - `cc-window-5h`：5h 窗口用量百分比 + 重置日期；
+  - `cc-window-weekly`：周窗口用量百分比 + 重置日期；
+  - `cc-window-monthly`：月窗口（账期）用量百分比 + 账期结束日期。
+
+**Polish — 卡片标题规范化（家族全体 8 个组件）：**
+
+- 📏 产品名太长，标题一律固定为 `Command Code`，角色词改为标题下方**灰色小字 legend**：cc-whoami「账户」、cc-usage「用量」、cc-credits「额度」、cc-windows「窗口」、cc-subscription「套餐」、三个数字卡片「5h 窗口 / 周窗口 / 月窗口」。
+- 🏷 市场/配置列表里的组件名同步缩短为角色词（账户 / 用量 / 额度 / 窗口 / 套餐 / 5h 窗口 / 周窗口 / 月窗口），分组名仍是 Command Code，不再重复长前缀。
+- ✅ 验证：新增自包含探针 `docs/probe-cc-render.cjs`（编译真实渲染层 + 拉取真实账户数据跑 8 张卡）——17 项断言全 PASS：标题全为 `Command Code`、角色词落在 legend、cc-windows 三环、三张数字卡有百分比与重置行、月口径 = 已用/(已用+剩余)。静态验证脚本 `docs/verify-commandcode.cjs` 扩到 8 个组件 + 共享标题键。
+
 ### Working tree (未发布 — Command Code 组件家族 + 自动读取修复)
 
 > 承接上一条 Command Code 批次：修复组件显示「未配置 COMMANDCODE_API_KEY」的误导文案——key 完全由 host 自动读取，用户无需（也不应）手动填写任何东西。
@@ -485,7 +504,8 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 The widget system is now built for scale: each widget is an independent, contract-driven unit under `src/widgets/` with build-time discovery — a new widget is a new unit dir, no shared file edits (guide: `src/widgets-template/README.md`).
 
-- **发布本轮 Command Code 组件家族 + GPU 高度修复**（working tree 段）：随下一批改动一起 bump 版本（建议 v1.5.0 次版本号：新功能家族）→ GitHub + npm 双仓库发布（走 dsh-plugin-release-workflow）。
+- **发布本轮 Command Code 组件家族（8 个 2×2）+ GPU 高度修复**（working tree 段）：随下一批改动一起 bump 版本（v1.5.0 次版本号：新功能家族）→ GitHub + npm 双仓库发布（走 dsh-plugin-release-workflow）。
+- **Command Code 月窗口待上游字段**：月用量目前按「已用 / (已用 + 剩余)」守恒推导，因为 `billing/credits` 不返回 monthly 窗口对象。若上游后续在 `windowLimits` 里补 `monthly`（带 used/cap/resetAt），`monthlyWindow()` 应改为优先直接读取、守恒推导仅作回退。
 - **Command Code 多 Key / 组织支持**：当前仅读 `COMMANDCODE_API_KEY` 主凭据；如需组织（org）维度或多账户，可在 host 复用 opencode-usage-multi 的池模式（`COMMANDCODE_POOL_2..N`）。
 - **context-water 2×2 轻微超高（~6px）**：`上下文已用` 静止 cardH=156 > slot 150（segments bar + rows 略高）。与 GPU 卡片同源的「内容驱动高度 ≥ slot」问题，下一轮用同样的弹性/压缩策略处理（或给 segments 加 `flex:1` 压缩行距）。
 - **Agent-produced widgets**: the machine-readable contract (`manifest.json` + `defineWidget` descriptor + template + shared API) is exactly what a worker agent needs to create a widget end-to-end; the parallel-creation test in v1.3.0 demonstrated two agents adding widgets concurrently with zero file conflicts;
