@@ -126,6 +126,19 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ## Changelog
 
+### Working tree (未发布 — Command Code 组件家族 + 自动读取修复)
+
+> 承接上一条 Command Code 批次：修复组件显示「未配置 COMMANDCODE_API_KEY」的误导文案——key 完全由 host 自动读取，用户无需（也不应）手动填写任何东西。
+
+**Fix — Command Code key 自动读取链路 + 组件状态文案：**
+
+- 🔍 根因：组件显示「未配置」是因为 `/api/commandcode-usage` 的 host 路由尚未加载（dsh web 未重启 → 404），client 拉取失败后统一落到「未配置」文案——**与 key 无关**；`.credentials.yaml` 中的 `COMMANDCODE_API_KEY` 一直存在。
+- 🧬 key 解析链路核实（credentials-local）：`resolve` 按 进程环境变量 → `$DSH_HOME/.credentials.yaml`(version+refs 布局) → `$DSH_HOME/.env` 三级自动读取，**永不进浏览器、无需在组件/设置里填写**。实测：env/.env 无此键，yaml 命中（tail WWna），四个 official endpoint 全部 200。
+- 🩹 修复（两层）：
+  1. **错误状态透传**：client 拉取 `/api/commandcode-usage` 时区分 404（host 未重启 → `unloaded`）/ 503（真没配 key → `unconfigured`）/ 网络失败（`unavailable`），存入 `stats.commandCodeError`；
+  2. **文案准确化**：各组件的「未配置」改为按错误状态提示——「dsh web 未重启，等待 host 路由加载（重启后自动刷新）」/「未配置 COMMANDCODE_API_KEY — host 自动读取环境变量 / .credentials.yaml / .env，重启后自动生效」。
+- ✅ 验证：`docs/verify-commandcode.cjs` 静态 13 项 PASS；live 404 属预期（重启后转 PASS 并自动留证）。
+
 ### Working tree (未发布 — Command Code 账户用量组件家族)
 
 > 本次为 Command Code 组件批次，独立于上方 GPU 高度修复（一并保留在 working tree）。新增 5 个 2×2 小组件，复用 OpenCode 用量组件的宿主代理模式。

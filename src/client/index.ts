@@ -235,7 +235,7 @@ export function apply(ctx: ClientContext): void {
   // the moment the bundle loads.
   try { migrateHeatmapV2() } catch { /* best-effort */ }
   let prefs = loadState()
-  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, sysinfo: null as SysInfo | null }
+  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, sysinfo: null as SysInfo | null }
 
   const listeners = new Set<() => void>()
   function emit(): void { for (const fn of listeners) fn() }
@@ -271,7 +271,7 @@ export function apply(ctx: ClientContext): void {
       }
     } catch { /* host unavailable; stay on localStorage only */ }
   }
-  function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; usageMulti: UsageMulti | null; commandCode: CommandCodeData | null; sysinfo: SysInfo | null; prefs: Prefs } {
+  function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; usageMulti: UsageMulti | null; commandCode: CommandCodeData | null; commandCodeError: string | null; sysinfo: SysInfo | null; prefs: Prefs } {
     const [snap, setSnap] = React.useState({ ...state, prefs: { ...prefs } })
     React.useEffect(() => subscribe(() => setSnap({ ...state, prefs: { ...prefs } })), [])
     return snap
@@ -430,10 +430,23 @@ export function apply(ctx: ClientContext): void {
           .then((data: UsageMulti) => setState({ usageMulti: data }))
           .catch(() => { /* pool endpoint optional: cards fall back to single-key */ })
         // Command Code account usage (whoami / summary / credits / plan).
+        // Error-aware: a 404 host route (dsh web 未重启) vs a 503 missing-key
+        // vs a network failure each produce a stable code the widgets render as
+        // an accurate hint — the key itself is auto-read host-side (env →
+        // .credentials.yaml → .env), never user-entered in this UI.
         fetch('/api/commandcode-usage')
-          .then((r) => r.json())
-          .then((data: CommandCodeData) => setState({ commandCode: data }))
-          .catch(() => { /* keep last known commandcode payload */ })
+          .then(async (r) => {
+            const data = (await r.json().catch(() => null)) as CommandCodeData | { error?: string } | null
+            if (!r.ok) {
+              const error = (data as { error?: string } | null)?.error
+              if (r.status === 404) setState({ commandCode: null, commandCodeError: 'unloaded' })
+              else if (r.status === 503) setState({ commandCode: null, commandCodeError: 'unconfigured' })
+              else setState({ commandCode: null, commandCodeError: error ? `http:${r.status}:${error}` : `http:${r.status}` })
+              return
+            }
+            setState({ commandCode: data as CommandCodeData, commandCodeError: null })
+          })
+          .catch(() => setState({ commandCode: null, commandCodeError: 'unavailable' }))
         }
         // Pull on mount (both false — first render); afterwards only a
         // completed turn (true → false) refetches, an in-flight turn does not.
@@ -863,7 +876,7 @@ export function apply(ctx: ClientContext): void {
           // a placeholder instead; the error stays visible in the console.
           let out: ReturnType<typeof w.render>
           try {
-            out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, commandCode: snap.commandCode, sysinfo: snap.sysinfo, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
+            out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, commandCode: snap.commandCode, commandCodeError: snap.commandCodeError, sysinfo: snap.sysinfo, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
           } catch (error) {
             console.error(`[dsh-widgets] widget ${widgetId}@${size} render crashed:`, error)
             out = { title: widgetName(w), value: '—', legend: t('ui.renderError') }

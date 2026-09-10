@@ -175,6 +175,11 @@ export interface WidgetStats {
   /** Command Code account usage (whoami / summary / credits / subscription),
    *  aggregated by the host `/api/commandcode-usage` route. */
   commandCode?: CommandCodeData | null
+  /** Command Code host-route error surfaced to the widgets: `null` when the
+   *  last fetch succeeded, or a stable code ('unconfigured' | 'unloaded' |
+   *  'unavailable') when it did not, so cards can say WHY instead of a bare
+   *  「未配置」 (the key is auto-read host-side, never user-entered). */
+  commandCodeError?: string | null
   /** Current pooled view selection: 'total' or a `poolModes` entry ('Key 1'…). */
   poolView?: string
   /** Selectable pooled views in cycle order; first entry must be 'total'. */
