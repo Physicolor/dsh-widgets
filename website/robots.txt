@@ -1,0 +1,7 @@
+# dsh-widgets — project website (GitHub Pages)
+# The site is a single static page; there is nothing to hide from crawlers.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://physicolor.github.io/dsh-widgets/sitemap.xml

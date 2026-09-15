@@ -31,7 +31,10 @@ section {
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* minmax(0, 1fr): a track must never be widened by its content — a 2×4
+     preview (324px) inside a 4-column grid used to blow the 4th track out and
+     make every 4th card wider than its row. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
 }
 
@@ -137,7 +140,7 @@ section {
 
 .design-chip span { font-size: 11px; color: var(--brand); font-weight: 700; }
 
-.good-bad { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.good-bad { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 
 .gb-card { margin: 0; padding: 18px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--bg-card); }
 .gb-good { border-color: rgba(34, 197, 94, 0.35); }
@@ -197,7 +200,7 @@ section {
   margin: 0 0 22px;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -266,7 +269,7 @@ section {
 .req-panel-title { margin: 0 0 4px; font-size: 17px; }
 .req-panel-sub { margin: 0 0 22px; color: var(--text-2); font-size: 13px; max-width: 720px; }
 
-.req-layout { display: grid; grid-template-columns: 1.15fr 1fr; gap: 26px; align-items: start; }
+.req-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 26px; align-items: start; }
 
 .req-form { display: flex; flex-direction: column; gap: 14px; }
 
@@ -306,7 +309,7 @@ section {
   box-shadow: 0 0 0 3px var(--brand-soft);
 }
 
-.field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.field-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .req-actions { display: flex; gap: 10px; margin-top: 4px; }
 .req-hint { margin: 0; font-size: 12.5px; color: var(--text-3); }
 
@@ -351,7 +354,7 @@ section {
   padding: 0;
   counter-reset: ct;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -405,7 +408,7 @@ section {
 .ct-lead { margin: 0 0 16px; color: var(--text-2); font-size: 0.95rem; max-width: 760px; }
 .ct-lead b { color: var(--brand); font-weight: 600; }
 
-.ct-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 30px; }
+.ct-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 30px; }
 
 .ct-card {
   padding: 18px;
@@ -433,29 +436,29 @@ section {
 
 /* ═══ Responsive ══════════════════════════════════════════════ */
 @media (max-width: 1080px) {
-  .gallery-grid { grid-template-columns: repeat(3, 1fr); }
+  .gallery-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 960px) {
-  .good-bad, .req-layout, .ct-cards { grid-template-columns: 1fr; }
-  .pipe-simple { grid-template-columns: repeat(3, 1fr); }
+  .good-bad, .req-layout, .ct-cards { grid-template-columns: minmax(0, 1fr); }
+  .pipe-simple { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .pipe-simple li:nth-child(3)::after { display: none; }
-  .ct-track { grid-template-columns: repeat(3, 1fr); }
+  .ct-track { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ct-track li:nth-child(3)::after { display: none; }
   .req-output { position: static; }
 }
 
 @media (max-width: 720px) {
-  .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-  .pipe-simple { grid-template-columns: 1fr; }
+  .pipe-simple { grid-template-columns: minmax(0, 1fr); }
   .pipe-simple li:not(:last-child)::after { content: "↓"; right: auto; left: 50%; top: auto; bottom: -13px; transform: translateX(-50%); }
 
-  .ct-track { grid-template-columns: 1fr 1fr; }
+  .ct-track { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ct-track li:not(:last-child)::after { display: none; }
 }
 
 @media (max-width: 520px) {
-  .gallery-grid { grid-template-columns: 1fr; }
-  .field-pair { grid-template-columns: 1fr; }
+  .gallery-grid { grid-template-columns: minmax(0, 1fr); }
+  .field-pair { grid-template-columns: minmax(0, 1fr); }
 }

@@ -105,10 +105,12 @@
 }
 
 .hero-title {
-  margin: 0 0 20px;
-  font-size: clamp(3.1rem, 7.6vw, 6rem);
+  margin: 0 0 16px;
+  /* The wordmark states the project; it must not out-weigh the REAL widget
+     array beside it, so the display size is deliberately restrained. */
+  font-size: clamp(2.7rem, 5.6vw, 4.4rem);
   font-weight: 800;
-  line-height: 1.0;
+  line-height: 1.02;
   letter-spacing: -0.035em;
 }
 

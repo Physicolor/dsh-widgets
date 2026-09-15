@@ -3,15 +3,324 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DeepSeek Harness Widgets — dsh-widgets</title>
-  <meta name="description" content="dsh-widgets：为 DeepSeek Harness 打造的组件系统——真实组件、独立单元、统一契约、标准生产流程。A collection of compact, beautiful and useful widgets for DeepSeek Harness." />
+  <title>dsh-widgets — DeepSeek Harness Widget Design System &amp; Component Library</title>
+  <meta name="description" content="dsh-widgets 是面向 DeepSeek Harness 的紧凑组件设计系统：33 个真实 Widget、连续放大的空间几何、基于几何测量的视觉审计（Visual Audit），以及 Agent 生产流程。A compact widget design system and component library for DeepSeek Harness — 33 real dashboard widgets, geometry-based UI auditing, and an agent production pipeline." />
+  <link rel="canonical" href="https://physicolor.github.io/dsh-widgets/" />
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
+  <meta name="author" content="Physicolor" />
+  <meta name="theme-color" content="#4176e6" />
   <meta name="color-scheme" content="light dark" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="dsh-widgets" />
+  <meta property="og:title" content="dsh-widgets — DeepSeek Harness Widget Design System" />
+  <meta property="og:description" content="33 real compact widgets for DeepSeek Harness, with the spatial geometry behind them, a measured visual audit, and an agent production pipeline." />
+  <meta property="og:url" content="https://physicolor.github.io/dsh-widgets/" />
+  <meta property="og:image" content="https://physicolor.github.io/dsh-widgets/assets/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="dsh-widgets — compact widget design system for DeepSeek Harness" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:locale:alternate" content="en_US" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="dsh-widgets — DeepSeek Harness Widget Design System" />
+  <meta name="twitter:description" content="33 real compact widgets for DeepSeek Harness — spatial design grammar, measured visual audit, agent production pipeline." />
+  <meta name="twitter:image" content="https://physicolor.github.io/dsh-widgets/assets/og.png" />
+
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/og.png" />
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="css/base.css" />
   <link rel="stylesheet" href="css/widgets.css" />
   <link rel="stylesheet" href="css/hero.css" />
   <link rel="stylesheet" href="css/sections.css" />
+  <link rel="stylesheet" href="css/lab.css" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://physicolor.github.io/dsh-widgets/#website",
+        "url": "https://physicolor.github.io/dsh-widgets/",
+        "name": "dsh-widgets — DeepSeek Harness Widget Design System",
+        "inLanguage": ["zh-CN", "en"],
+        "publisher": { "@id": "https://physicolor.github.io/dsh-widgets/#software" }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://physicolor.github.io/dsh-widgets/#software",
+        "name": "dsh-widgets",
+        "applicationCategory": "DeveloperApplication",
+        "applicationSubCategory": "UI component library",
+        "operatingSystem": "Web (DeepSeek Harness 0.1.x)",
+        "softwareVersion": "1.5.0",
+        "license": "https://opensource.org/licenses/MIT",
+        "url": "https://physicolor.github.io/dsh-widgets/",
+        "downloadUrl": "https://www.npmjs.com/package/dsh-widgets",
+        "codeRepository": "https://github.com/Physicolor/dsh-widgets",
+        "programmingLanguage": "TypeScript",
+        "author": { "@type": "Person", "name": "Physicolor" },
+        "description": "A right-hand widget rail for the DeepSeek Harness Web UI: 33 compact dashboard widgets on a 150px grid with a continuous magnification wave, per-instance sizing, and a geometry-based visual audit.",
+        "featureList": [
+          "33 compact widgets on a 150px grid",
+          "Continuous dock-style magnification (peak 1.2, 3-step influence)",
+          "Right-anchored reflow that keeps the rail edge flush",
+          "Rule-based geometry + layout-heuristic visual audit",
+          "Widget units produced through an agent pipeline"
+        ],
+        "keywords": "dsh-widgets, DeepSeek Harness, widgets, UI components, design system, component library, dashboard widgets, compact interface, information-dense UI, geometry-based UI auditing"
+      }
+    ]
+  }
+  </script>
+  <!-- gen:jsonld:start -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "@id": "https://physicolor.github.io/dsh-widgets/#widgets",
+    "name": "dsh-widgets widget library",
+    "description": "Every widget unit shipped by dsh-widgets, generated from the src/widgets unit manifests.",
+    "numberOfItems": 33,
+    "itemListOrder": "https://schema.org/ItemListOrderAscending",
+    "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "轮次·步数 / Turns · Steps",
+              "description": "本轮会话的轮次与步骤计数 Turns and steps of the current session",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/counts"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "LLM 时长 / LLM Time",
+              "description": "模型推理累计耗时 Cumulative model inference time",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/llm"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "工具调用 / Tool Calls",
+              "description": "工具调用累计耗时 Cumulative tool call time",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/tool"
+            },
+            {
+              "@type": "ListItem",
+              "position": 4,
+              "name": "首 token 平均 / Avg TTFT",
+              "description": "平均首 token 延迟 Average first-token latency",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/ttft"
+            },
+            {
+              "@type": "ListItem",
+              "position": 5,
+              "name": "速率 / Rate",
+              "description": "解码吞吐速度 Decode throughput speed",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/tps"
+            },
+            {
+              "@type": "ListItem",
+              "position": 6,
+              "name": "缓存命中 / Cache Hit",
+              "description": "输入缓存的命中比例 Input cache hit ratio",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cache"
+            },
+            {
+              "@type": "ListItem",
+              "position": 7,
+              "name": "Tokens / Tokens",
+              "description": "输入与输出 token 计数 Input & output token counts",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/tokens"
+            },
+            {
+              "@type": "ListItem",
+              "position": 8,
+              "name": "一键压缩 / Compact",
+              "description": "上下文占用百分比，右上按钮两次点击执行压缩 Context usage percent; top-right button compacts after two taps",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/context"
+            },
+            {
+              "@type": "ListItem",
+              "position": 9,
+              "name": "上下文水位 / Context Level",
+              "description": "上下文系统/工具/消息占比分段条 System/tools/messages share as a segmented bar",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/context-water"
+            },
+            {
+              "@type": "ListItem",
+              "position": 10,
+              "name": "任务 / Tasks",
+              "description": "当前任务的进行中/已完成/待办计数 Counts of in-progress / completed / pending tasks",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/task"
+            },
+            {
+              "@type": "ListItem",
+              "position": 11,
+              "name": "今日寄语 / Daily Quote",
+              "description": "显示你自定义的一句话（未填写文本时不显示内容） Shows a custom sentence you typed (hidden while empty)",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/quote"
+            },
+            {
+              "@type": "ListItem",
+              "position": 12,
+              "name": "用量热度图 / Token Heatmap",
+              "description": "每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；大小可在市场左右切换 Daily token usage heatmap (self-accounted). 2×2 shows a ~3-month calendar, 2×4 the ~half-year history; switch size in the market",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/heatmap"
+            },
+            {
+              "@type": "ListItem",
+              "position": 13,
+              "name": "用量柱状图 / Token Bars",
+              "description": "最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致 Vertical bars of the last 7 days of token usage; same height as the calendar view",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/heatmap-bars"
+            },
+            {
+              "@type": "ListItem",
+              "position": 14,
+              "name": "额度管理 / Quota Manager",
+              "description": "按账期趋势预测月末用量百分比，并给出今日 token 用量与今日推荐用量 Projects the month-end usage percent from the billing period's pace, with today's tokens vs the recommended budget",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/quota-manage"
+            },
+            {
+              "@type": "ListItem",
+              "position": 15,
+              "name": "用量对比 / Usage Bars",
+              "description": "OpenCode 滚动/周/月三窗口用量柱状图 OpenCode rolling/weekly/monthly usage bars",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-bars"
+            },
+            {
+              "@type": "ListItem",
+              "position": 16,
+              "name": "用量环图 / Usage Rings",
+              "description": "OpenCode 滚动/周/月三窗口用量环形图 OpenCode rolling/weekly/monthly usage rings",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-rings"
+            },
+            {
+              "@type": "ListItem",
+              "position": 17,
+              "name": "滚动用量 / Rolling Usage",
+              "description": "OpenCode Go 滚动窗口用量配额 OpenCode Go rolling-window usage quota",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-rolling"
+            },
+            {
+              "@type": "ListItem",
+              "position": 18,
+              "name": "每周用量 / Weekly Usage",
+              "description": "OpenCode Go 每周用量配额 OpenCode Go weekly usage quota",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-weekly"
+            },
+            {
+              "@type": "ListItem",
+              "position": 19,
+              "name": "每月用量 / Monthly Usage",
+              "description": "OpenCode Go 每月用量配额 OpenCode Go monthly usage quota",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-monthly"
+            },
+            {
+              "@type": "ListItem",
+              "position": 20,
+              "name": "账户 / Account",
+              "description": "当前 Command Code 账户身份（用户名 / 邮箱 / 组织） Current Command Code account identity (name / email / org)",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-whoami"
+            },
+            {
+              "@type": "ListItem",
+              "position": 21,
+              "name": "峰谷定价 / Peak Pricing",
+              "description": "DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰） DeepSeek V4 peak pricing: whether now is a peak window (Beijing time, weekdays 09:00–12:00 & 14:00–18:00 are peak)",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/peak-pricing"
+            },
+            {
+              "@type": "ListItem",
+              "position": 22,
+              "name": "CPU 状态 / CPU Status",
+              "description": "本机 CPU 利用率与内存占用 Local CPU utilization and memory usage",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-cpu"
+            },
+            {
+              "@type": "ListItem",
+              "position": 23,
+              "name": "用量 / Usage",
+              "description": "账期内的请求数、成功率、Token 与消费摘要 Requests, success rate, tokens and spend for the billing period",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-usage"
+            },
+            {
+              "@type": "ListItem",
+              "position": 24,
+              "name": "GPU 状态 / GPU Status",
+              "description": "本机 NVIDIA GPU 显存、利用率与温度 Local NVIDIA GPU VRAM, utilization and temperature",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-gpu"
+            },
+            {
+              "@type": "ListItem",
+              "position": 25,
+              "name": "额度 / Credits",
+              "description": "Credits 余额与 5h / 周额度窗口用量 Credit balance with 5h / weekly window usage",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-credits"
+            },
+            {
+              "@type": "ListItem",
+              "position": 26,
+              "name": "CPU·GPU 环图 / CPU · GPU Rings",
+              "description": "CPU / GPU 利用率双环形图 CPU / GPU utilization twin rings",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-rings"
+            },
+            {
+              "@type": "ListItem",
+              "position": 27,
+              "name": "窗口 / Windows",
+              "description": "5h / 周 / 月 三窗口用量环图 5h / weekly / monthly usage as rings",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-windows"
+            },
+            {
+              "@type": "ListItem",
+              "position": 28,
+              "name": "系统监控 / System Monitor",
+              "description": "CPU/内存/GPU 显存与利用率全指标环形看板 CPU / memory / GPU VRAM and utilization dashboard rings",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-board"
+            },
+            {
+              "@type": "ListItem",
+              "position": 29,
+              "name": "套餐 / Plan",
+              "description": "当前套餐、状态与账期结束时间 Current plan, status and billing period end",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-subscription"
+            },
+            {
+              "@type": "ListItem",
+              "position": 30,
+              "name": "GPU 利用率 / GPU Utilization",
+              "description": "GPU 利用率折线（最近约 20 分钟） GPU utilization sparkline (last ~20 min)",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-gpu-line"
+            },
+            {
+              "@type": "ListItem",
+              "position": 31,
+              "name": "5h 窗口 / 5h window",
+              "description": "5 小时额度窗口用量百分比与重置时间 5-hour quota window usage percent and reset time",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-window-5h"
+            },
+            {
+              "@type": "ListItem",
+              "position": 32,
+              "name": "周窗口 / Weekly window",
+              "description": "周额度窗口用量百分比与重置时间 Weekly quota window usage percent and reset time",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-window-weekly"
+            },
+            {
+              "@type": "ListItem",
+              "position": 33,
+              "name": "月窗口 / Monthly window",
+              "description": "账期月额度用量百分比（额度 − 剩余 / 额度）与账期结束时间 Billing-period usage percent ((allowance − remaining) / allowance) and period end",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-window-monthly"
+            }
+    ]
+  }
+  </script>
+          <!-- gen:jsonld:end -->
 </head>
 <body>
   <a class="skip-link" href="#home">跳过导航</a>
@@ -28,9 +337,11 @@
 
       <nav class="nav-links" id="nav-links" aria-label="主导航">
         <a href="#home" class="nav-link is-active" data-i18n="navHome">首页</a>
-        <a href="#widgets" class="nav-link" data-i18n="navWidgets">组件</a>
         <a href="#design" class="nav-link" data-i18n="navDesign">设计</a>
-        <a href="#create" class="nav-link" data-i18n="navCreate">创建</a>
+        <a href="#grammar" class="nav-link" data-i18n="navGrammar">几何</a>
+        <a href="#audit" class="nav-link" data-i18n="navAudit">审计</a>
+        <a href="#widgets" class="nav-link" data-i18n="navWidgets">组件</a>
+        <a href="#create" class="nav-link" data-i18n="navCreate">制作</a>
         <a href="#contribute" class="nav-link" data-i18n="navContribute">贡献</a>
       </nav>
 
@@ -77,19 +388,20 @@
               <span class="hero-line" data-i18n="heroLine1">DeepSeek Harness</span>
               <span class="hero-line hero-brand" data-i18n="heroLine2">Widgets</span>
             </h1>
+            <p class="hero-tagline" data-i18n="heroTagline">紧凑组件设计系统 · 空间几何 · 可测量的视觉审计</p>
             <div class="hero-desc">
               <p class="lead-main" data-i18n="heroLead1">将对话区域中的留白空间，转化为高信息密度、可随时隐藏的辅助界面。</p>
-              <p class="lead-en" data-i18n="heroLead2">A collection of compact, beautiful and useful widgets for DeepSeek Harness — live session stats, context, usage and pricing at a glance.</p>
+              <p class="lead-en" data-i18n="heroLead2">33 compact widgets for DeepSeek Harness on a 150px grid — with the spatial geometry behind them, a measured visual audit, and the agent pipeline that produces each unit.</p>
             </div>
             <div class="hero-cta">
               <a class="btn btn-primary" href="#widgets" data-i18n="ctaWidgets">浏览全部组件</a>
-              <a class="btn btn-ghost" href="#create" data-i18n="ctaPlay">创建你的组件</a>
+              <a class="btn btn-ghost" href="#grammar" data-i18n="ctaGrammar">看设计语法</a>
             </div>
             <dl class="hero-stats">
               <div class="hero-stat"><dt>33</dt><dd data-i18n="statWidgets">组件</dd></div>
               <div class="hero-stat"><dt>7</dt><dd data-i18n="statCats">分类</dd></div>
-              <div class="hero-stat"><dt>14</dt><dd data-i18n="statBuiltin">内置</dd></div>
-              <div class="hero-stat"><dt>19</dt><dd data-i18n="statMarket">市场组件</dd></div>
+              <div class="hero-stat"><dt>150</dt><dd data-i18n="statUnit">px 网格单元</dd></div>
+              <div class="hero-stat"><dt>13</dt><dd data-i18n="statRules">条审计规则</dd></div>
             </dl>
           </div>
 
@@ -118,35 +430,49 @@
       </div>
     </section>
 
-    <!-- ── Widgets Gallery ──────────────────────────────────── -->
-    <section class="gallery" id="widgets" aria-label="组件画廊">
-      <div class="wrap">
-        <h2 class="section-title reveal" data-i18n="gTitle">组件画廊</h2>
-        <p class="section-sub reveal" data-i18n="gSub">全部 33 个正式组件。</p>
-        <div class="filters reveal" role="group" aria-label="按分类筛选组件">
-          <button class="filter is-active" data-filter="all" type="button" data-i18n="gAll">全部</button>
-          <button class="filter" data-filter="system" type="button" data-i18n="gSystem">系统</button>
-          <button class="filter" data-filter="coding-plan" type="button" data-i18n="gCodingPlan">用量热度</button>
-          <button class="filter" data-filter="commandcode" type="button" data-i18n="gCommandCode">Command Code</button>
-          <button class="filter" data-filter="opencode-go" type="button" data-i18n="gOpenCodeGo">OpenCode Go</button>
-          <button class="filter" data-filter="pricing" type="button" data-i18n="gPricing">峰谷定价</button>
-          <button class="filter" data-filter="device" type="button" data-i18n="gDevice">设备状态</button>
-          <button class="filter" data-filter="other" type="button" data-i18n="gOther">其它</button>
-        </div>
-        <div class="gallery-grid" id="gallery-grid" role="list" aria-live="polite"></div>
-        <p class="gallery-empty" id="gallery-empty" data-i18n="gEmpty" hidden>该分类下暂无组件。</p>
-      </div>
-    </section>
-
-    <!-- ── Design ───────────────────────────────────────────── -->
+    <!-- ── Design：设计哲学（每一条都绑定真实组件与真实数字） ── -->
     <section class="design" id="design" aria-label="设计理念">
       <div class="wrap">
         <h2 class="section-title reveal" data-i18n="pTitle">什么才是好组件</h2>
-        <p class="section-sub reveal" data-i18n="pSub">在有限空间里，让最重要的信息先被看到。</p>
-        <div class="design-chips reveal">
-          <span class="design-chip"><span data-i18n="p1">有用</span><b data-i18n="p1b">Useful</b></span>
-          <span class="design-chip"><span data-i18n="p3">紧凑</span><b data-i18n="p3b">Compact</b></span>
-          <span class="design-chip"><span data-i18n="p5">清晰</span><b data-i18n="p5b">Clear</b></span>
+        <p class="section-sub reveal" data-i18n="pSub">在有限空间里，让最重要的信息先被看到。下面六条不是口号——每条都绑定一个真实组件和一段真实几何。</p>
+
+        <div class="principles reveal">
+          <article class="principle">
+            <span class="principle-no">01</span>
+            <h3><span data-i18n="pr1t">有用</span><b>Useful</b></h3>
+            <p data-i18n="pr1p">一个组件只回答一个问题。Turns · Steps 不做别的，只报当前会话的轮次与步数。</p>
+            <footer><code>src/widgets/counts</code><em data-i18n="pr1e">11 轮 · 137 步</em></footer>
+          </article>
+          <article class="principle">
+            <span class="principle-no">02</span>
+            <h3><span data-i18n="pr2t">紧凑</span><b>Compact</b></h3>
+            <p data-i18n="pr2p">150px 单元里放得下标题、主读数与图表：内边距 12、圆角 16、标题 13、主值 20、说明 10——全部按 scale = unit / 150 缩放。</p>
+            <footer><code>src/client/components.tsx:459</code><em data-i18n="pr2e">12 · 16 · 13 · 20 · 10</em></footer>
+          </article>
+          <article class="principle">
+            <span class="principle-no">03</span>
+            <h3><span data-i18n="pr3t">清晰</span><b>Clear</b></h3>
+            <p data-i18n="pr3p">主读数唯一且最大，明细退到说明字号。上下文水位里 42% 领衔，系统/工具/消息只在下面记账。</p>
+            <footer><code>src/widgets/context-water</code><em data-i18n="pr3e">20px 主值 / 10px 明细</em></footer>
+          </article>
+          <article class="principle">
+            <span class="principle-no">04</span>
+            <h3><span data-i18n="pr4t">空间分组</span><b>Spatial grouping</b></h3>
+            <p data-i18n="pr4p">卡片只有三层：标题行、可选说明、内容块；层与层之间固定 6px 节奏，说明行紧贴标题而不会挤走标题。</p>
+            <footer><code>src/client/components.tsx:588</code><em data-i18n="pr4e">gap 6px × 3 层</em></footer>
+          </article>
+          <article class="principle">
+            <span class="principle-no">05</span>
+            <h3><span data-i18n="pr5t">锚定</span><b>Anchoring</b></h3>
+            <p data-i18n="pr5p">整列右缘锚定：卡片放大只向左生长，行距靠累加行高维持，右边缘永远齐平——所以放大时不会把栏推走。</p>
+            <footer><code>src/client/index.ts:1158</code><em data-i18n="pr5e">right-anchored reflow</em></footer>
+          </article>
+          <article class="principle">
+            <span class="principle-no">06</span>
+            <h3><span data-i18n="pr6t">连续放大</span><b>Continuous magnification</b></h3>
+            <p data-i18n="pr6p">悬停按欧氏距离连续起峰：峰值 ×1.2，影响半径 3 格，衰减 t^1.6；指针在行内横移，上下行也会小数级让位，而不是跳档。</p>
+            <footer><code>src/client/index.ts:1053</code><em data-i18n="pr6e">peak 1.2 · r 3 · t^1.6</em></footer>
+          </article>
         </div>
 
         <div class="good-bad reveal">
@@ -168,6 +494,747 @@
             <p data-i18n="gbBadP">一次性塞满所有信息——读者看不出什么重要，于是什么都不重要。</p>
           </figure>
         </div>
+      </div>
+    </section>
+
+    <!-- ── Grammar：DSH Widget Design Grammar + Anatomy ──────── -->
+    <section class="grammar" id="grammar" aria-label="组件设计语法">
+      <div class="wrap">
+        <h2 class="section-title reveal" data-i18n="grTitle">DSH Widget Design Grammar</h2>
+        <p class="section-sub reveal" data-i18n="grSub">不是配色规范，而是一套空间语法：单元、间距、层级与放大都由固定公式决定。下表每一个数字都来自插件源码。</p>
+
+        <dl class="gr-consts reveal" id="gr-consts"></dl>
+
+        <div class="gr-lab reveal">
+          <div class="gr-lab-head">
+            <h3 data-i18n="grLabTitle">连续放大与右缘锚定</h3>
+            <p data-i18n="grLabSub">把指针移到下面的组件栏上：这就是产品里的那套算法在跑——同一曲线、同一重排、同一间距。拖动滑块等于改产品设置。</p>
+          </div>
+          <div class="gr-lab-body">
+            <div class="gr-stage-wrap">
+              <div class="gr-stage" id="gr-stage"><div class="gr-rail" id="gr-rail"></div></div>
+              <div class="gr-focus" id="gr-focus" hidden aria-hidden="true"></div>
+            </div>
+            <div class="gr-controls">
+              <label class="gr-ctl"><span>cardSide</span>
+                <input type="range" id="gr-side" min="100" max="220" step="1" value="150" />
+                <output id="gr-side-out">150px</output>
+              </label>
+              <label class="gr-ctl"><span>panelPadding</span>
+                <input type="range" id="gr-pad" min="4" max="40" step="1" value="24" />
+                <output id="gr-pad-out">24px</output>
+              </label>
+              <label class="gr-ctl"><span>magnify</span>
+                <input type="range" id="gr-peak" min="1" max="2" step="0.05" value="1.2" />
+                <output id="gr-peak-out">×1.20</output>
+              </label>
+              <p class="gr-readout" id="gr-readout"></p>
+              <pre class="gr-formula" id="gr-formula"></pre>
+              <p class="gr-source"><code>src/client/index.ts:1029-1188</code></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="anatomy reveal" id="anatomy">
+          <div class="an-head">
+            <h3 data-i18n="anTitle">Widget Anatomy — 放大一个真实组件</h3>
+            <p data-i18n="anSub">选一个组件，看它的空间关系被逐项量出来：内边距、圆角、字号、标题到内容的节奏、动作区偏移。标注读的是真实 DOM 的矩形，不是示意图。</p>
+          </div>
+          <div class="an-pick" id="an-pick" role="group" aria-label="选择组件"></div>
+          <div class="an-layout">
+            <div class="an-stage" id="an-stage">
+              <div class="an-host" id="an-host"></div>
+              <svg class="an-overlay" id="an-overlay" aria-hidden="true"></svg>
+            </div>
+            <div class="an-side">
+              <button type="button" class="btn btn-ghost an-toggle" id="an-toggle" data-i18n="anHide">隐藏标注</button>
+              <dl class="an-table" id="an-table"></dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Audit：规则化的几何 / 视觉审计 ───────────────────── -->
+    <section class="audit" id="audit" aria-label="视觉审计">
+      <div class="wrap">
+        <h2 class="section-title reveal" data-i18n="auTitle">DSH Visual Audit</h2>
+        <p class="section-sub reveal" data-i18n="auSub">几何告诉我们哪里没对齐，设计规则告诉我们那是否要紧。下面是全部 33 个组件按规则算出的结果——没有神经网络，只有测量与规则。</p>
+
+        <div class="au-method reveal">
+          <div class="au-layer-card">
+            <h3 data-i18n="auGeoTitle">Layer 1 · 几何测量</h3>
+            <p data-i18n="auGeoSub">在浏览器里对真实渲染的卡片取 getBoundingClientRect：内边距、右槽对齐、块间距、溢出、动作区偏移。</p>
+          </div>
+          <div class="au-layer-card">
+            <h3 data-i18n="auHeurTitle">Layer 2 · 设计规则</h3>
+            <p data-i18n="auHeurSub">声明式规则：主读数是否唯一、字号是否形成层级、动作是否抢戏、分组与密度是否越界、放大后层级是否还稳。</p>
+          </div>
+          <div class="au-layer-card au-formula">
+            <h3 data-i18n="auScoreTitle">评分公式</h3>
+            <pre>score<sub>dim</sub> = round(100 · Σ w<sub>rule</sub> / n)
+w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
+            <p data-i18n="auScoreSub">分数只是规则结果的加权和：它不说“漂亮”，只说“符合或偏离这套语法”。</p>
+          </div>
+        </div>
+
+        <div class="au-layout reveal">
+          <div class="au-list" id="au-list" role="table" aria-label="33 个组件的规则化审计"></div>
+          <div class="au-detail" id="au-detail"></div>
+        </div>
+        <div class="au-cases reveal" id="au-cases"></div>
+        <p class="au-foot" data-i18n="auFoot">规则来源：DASH_GRAMMAR.RULES（js/grammar.js），常量对齐 src/client/components.tsx 与 src/client/index.ts。测量在本页真实渲染的卡片上进行；放大稳定性用 unit×1.2 的独立样本复测。</p>
+        <div class="au-stage" id="au-stage" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <!-- ── Widgets Gallery ──────────────────────────────────── -->
+    <section class="gallery" id="widgets" aria-label="组件画廊">
+      <div class="wrap">
+        <h2 class="section-title reveal" data-i18n="gTitle">组件画廊</h2>
+        <p class="section-sub reveal" data-i18n="gSub">全部 33 个正式组件：真实渲染、真实数据格式、真实尺寸。点开任意一个可以看它的解剖与审计。</p>
+        <div class="filters reveal" role="group" aria-label="按分类筛选组件">
+          <button class="filter is-active" data-filter="all" type="button" data-i18n="gAll">全部</button>
+          <button class="filter" data-filter="system" type="button" data-i18n="gSystem">系统</button>
+          <button class="filter" data-filter="coding-plan" type="button" data-i18n="gCodingPlan">用量热度</button>
+          <button class="filter" data-filter="commandcode" type="button" data-i18n="gCommandCode">Command Code</button>
+          <button class="filter" data-filter="opencode-go" type="button" data-i18n="gOpenCodeGo">OpenCode Go</button>
+          <button class="filter" data-filter="pricing" type="button" data-i18n="gPricing">峰谷定价</button>
+          <button class="filter" data-filter="device" type="button" data-i18n="gDevice">设备状态</button>
+          <button class="filter" data-filter="other" type="button" data-i18n="gOther">其它</button>
+        </div>
+        <div class="gallery-grid" id="gallery-grid" role="list" aria-live="polite">
+          <!-- gen:gallery:start -->
+          <article class="widget-card" data-group="system" data-widget="counts" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="counts" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">轮次·步数<span class="widget-name-en">Turns · Steps</span></span>
+                <span class="widget-id">counts</span>
+              </div>
+              <p class="widget-desc">本轮会话的轮次与步骤计数<span class="widget-desc-en"> Turns and steps of the current session</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                <span class="badge badge-ok" data-i18n="badgePre">预装</span>
+                <button type="button" class="widget-open" data-widget="counts" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="llm" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="llm" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">LLM 时长<span class="widget-name-en">LLM Time</span></span>
+                <span class="widget-id">llm</span>
+              </div>
+              <p class="widget-desc">模型推理累计耗时<span class="widget-desc-en"> Cumulative model inference time</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                <span class="badge badge-ok" data-i18n="badgePre">预装</span>
+                <button type="button" class="widget-open" data-widget="llm" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="tool" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="tool" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">工具调用<span class="widget-name-en">Tool Calls</span></span>
+                <span class="widget-id">tool</span>
+              </div>
+              <p class="widget-desc">工具调用累计耗时<span class="widget-desc-en"> Cumulative tool call time</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                <span class="badge badge-ok" data-i18n="badgePre">预装</span>
+                <button type="button" class="widget-open" data-widget="tool" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="ttft" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="ttft" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">首 token 平均<span class="widget-name-en">Avg TTFT</span></span>
+                <span class="widget-id">ttft</span>
+              </div>
+              <p class="widget-desc">平均首 token 延迟<span class="widget-desc-en"> Average first-token latency</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                <span class="badge badge-ok" data-i18n="badgePre">预装</span>
+                <button type="button" class="widget-open" data-widget="ttft" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="tps" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="tps" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">速率<span class="widget-name-en">Rate</span></span>
+                <span class="widget-id">tps</span>
+              </div>
+              <p class="widget-desc">解码吞吐速度<span class="widget-desc-en"> Decode throughput speed</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                <span class="badge badge-ok" data-i18n="badgePre">预装</span>
+                <button type="button" class="widget-open" data-widget="tps" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="cache" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="cache" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">缓存命中<span class="widget-name-en">Cache Hit</span></span>
+                <span class="widget-id">cache</span>
+              </div>
+              <p class="widget-desc">输入缓存的命中比例<span class="widget-desc-en"> Input cache hit ratio</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                <span class="badge badge-ok" data-i18n="badgePre">预装</span>
+                <button type="button" class="widget-open" data-widget="cache" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="tokens" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="tokens" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">Tokens<span class="widget-name-en">Tokens</span></span>
+                <span class="widget-id">tokens</span>
+              </div>
+              <p class="widget-desc">输入与输出 token 计数<span class="widget-desc-en"> Input &amp; output token counts</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                <span class="badge badge-ok" data-i18n="badgePre">预装</span>
+                <button type="button" class="widget-open" data-widget="tokens" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="context" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="context" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">一键压缩<span class="widget-name-en">Compact</span></span>
+                <span class="widget-id">context</span>
+              </div>
+              <p class="widget-desc">上下文占用百分比，右上按钮两次点击执行压缩<span class="widget-desc-en"> Context usage percent; top-right button compacts after two taps</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.action"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="context" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="context-water" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="context-water" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">上下文水位<span class="widget-name-en">Context Level</span></span>
+                <span class="widget-id">context-water</span>
+              </div>
+              <p class="widget-desc">上下文系统/工具/消息占比分段条<span class="widget-desc-en"> System/tools/messages share as a segmented bar</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2 2×4</span>
+                <span class="badge badge-pattern" data-i18n="pattern.chart"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="context-water" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="task" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="task" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">任务<span class="widget-name-en">Tasks</span></span>
+                <span class="widget-id">task</span>
+              </div>
+              <p class="widget-desc">当前任务的进行中/已完成/待办计数<span class="widget-desc-en"> Counts of in-progress / completed / pending tasks</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="task" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="other" data-widget="quote" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="quote" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">今日寄语<span class="widget-name-en">Daily Quote</span></span>
+                <span class="widget-id">quote</span>
+              </div>
+              <p class="widget-desc">显示你自定义的一句话（未填写文本时不显示内容）<span class="widget-desc-en"> Shows a custom sentence you typed (hidden while empty)</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.other">其它</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.text"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="quote" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="coding-plan" data-widget="heatmap" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="heatmap" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">用量热度图<span class="widget-name-en">Token Heatmap</span></span>
+                <span class="widget-id">heatmap</span>
+              </div>
+              <p class="widget-desc">每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；大小可在市场左右切换<span class="widget-desc-en"> Daily token usage heatmap (self-accounted). 2×2 shows a ~3-month calendar, 2×4 the ~half-year history; switch size in the market</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.coding-plan">Coding Plan 用量</span>
+                <span class="badge badge-size">2×2 2×4</span>
+                <span class="badge badge-pattern" data-i18n="pattern.chart"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="heatmap" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="coding-plan" data-widget="heatmap-bars" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="heatmap-bars" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">用量柱状图<span class="widget-name-en">Token Bars</span></span>
+                <span class="widget-id">heatmap-bars</span>
+              </div>
+              <p class="widget-desc">最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致<span class="widget-desc-en"> Vertical bars of the last 7 days of token usage; same height as the calendar view</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.coding-plan">Coding Plan 用量</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.chart"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="heatmap-bars" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="coding-plan" data-widget="quota-manage" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="quota-manage" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">额度管理<span class="widget-name-en">Quota Manager</span></span>
+                <span class="widget-id">quota-manage</span>
+              </div>
+              <p class="widget-desc">按账期趋势预测月末用量百分比，并给出今日 token 用量与今日推荐用量<span class="widget-desc-en"> Projects the month-end usage percent from the billing period's pace, with today's tokens vs the recommended budget</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.coding-plan">Coding Plan 用量</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.chart"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="quota-manage" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="opencode-go" data-widget="usage-bars" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="usage-bars" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">用量对比<span class="widget-name-en">Usage Bars</span></span>
+                <span class="widget-id">usage-bars</span>
+              </div>
+              <p class="widget-desc">OpenCode 滚动/周/月三窗口用量柱状图<span class="widget-desc-en"> OpenCode rolling/weekly/monthly usage bars</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.opencode-go">OpenCode Go</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.bars"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="usage-bars" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="opencode-go" data-widget="usage-rings" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="usage-rings" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">用量环图<span class="widget-name-en">Usage Rings</span></span>
+                <span class="widget-id">usage-rings</span>
+              </div>
+              <p class="widget-desc">OpenCode 滚动/周/月三窗口用量环形图<span class="widget-desc-en"> OpenCode rolling/weekly/monthly usage rings</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.opencode-go">OpenCode Go</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.rings"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="usage-rings" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="opencode-go" data-widget="usage-rolling" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="usage-rolling" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">滚动用量<span class="widget-name-en">Rolling Usage</span></span>
+                <span class="widget-id">usage-rolling</span>
+              </div>
+              <p class="widget-desc">OpenCode Go 滚动窗口用量配额<span class="widget-desc-en"> OpenCode Go rolling-window usage quota</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.opencode-go">OpenCode Go</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="usage-rolling" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="opencode-go" data-widget="usage-weekly" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="usage-weekly" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">每周用量<span class="widget-name-en">Weekly Usage</span></span>
+                <span class="widget-id">usage-weekly</span>
+              </div>
+              <p class="widget-desc">OpenCode Go 每周用量配额<span class="widget-desc-en"> OpenCode Go weekly usage quota</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.opencode-go">OpenCode Go</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="usage-weekly" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="opencode-go" data-widget="usage-monthly" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="usage-monthly" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">每月用量<span class="widget-name-en">Monthly Usage</span></span>
+                <span class="widget-id">usage-monthly</span>
+              </div>
+              <p class="widget-desc">OpenCode Go 每月用量配额<span class="widget-desc-en"> OpenCode Go monthly usage quota</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.opencode-go">OpenCode Go</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="usage-monthly" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="commandcode" data-widget="cc-whoami" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="cc-whoami" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">账户<span class="widget-name-en">Account</span></span>
+                <span class="widget-id">cc-whoami</span>
+              </div>
+              <p class="widget-desc">当前 Command Code 账户身份（用户名 / 邮箱 / 组织）<span class="widget-desc-en"> Current Command Code account identity (name / email / org)</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.commandcode">Command Code</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="cc-whoami" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="pricing" data-widget="peak-pricing" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="peak-pricing" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">峰谷定价<span class="widget-name-en">Peak Pricing</span></span>
+                <span class="widget-id">peak-pricing</span>
+              </div>
+              <p class="widget-desc">DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰）<span class="widget-desc-en"> DeepSeek V4 peak pricing: whether now is a peak window (Beijing time, weekdays 09:00–12:00 &amp; 14:00–18:00 are peak)</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.pricing">峰谷定价</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.meter"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="peak-pricing" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="sys-cpu" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="sys-cpu" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">CPU 状态<span class="widget-name-en">CPU Status</span></span>
+                <span class="widget-id">sys-cpu</span>
+              </div>
+              <p class="widget-desc">本机 CPU 利用率与内存占用<span class="widget-desc-en"> Local CPU utilization and memory usage</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="sys-cpu" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="commandcode" data-widget="cc-usage" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="cc-usage" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">用量<span class="widget-name-en">Usage</span></span>
+                <span class="widget-id">cc-usage</span>
+              </div>
+              <p class="widget-desc">账期内的请求数、成功率、Token 与消费摘要<span class="widget-desc-en"> Requests, success rate, tokens and spend for the billing period</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.commandcode">Command Code</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.valuePair"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="cc-usage" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="sys-gpu" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="sys-gpu" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">GPU 状态<span class="widget-name-en">GPU Status</span></span>
+                <span class="widget-id">sys-gpu</span>
+              </div>
+              <p class="widget-desc">本机 NVIDIA GPU 显存、利用率与温度<span class="widget-desc-en"> Local NVIDIA GPU VRAM, utilization and temperature</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="sys-gpu" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="commandcode" data-widget="cc-credits" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="cc-credits" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">额度<span class="widget-name-en">Credits</span></span>
+                <span class="widget-id">cc-credits</span>
+              </div>
+              <p class="widget-desc">Credits 余额与 5h / 周额度窗口用量<span class="widget-desc-en"> Credit balance with 5h / weekly window usage</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.commandcode">Command Code</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.bars"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="cc-credits" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="sys-rings" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="sys-rings" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">CPU·GPU 环图<span class="widget-name-en">CPU · GPU Rings</span></span>
+                <span class="widget-id">sys-rings</span>
+              </div>
+              <p class="widget-desc">CPU / GPU 利用率双环形图<span class="widget-desc-en"> CPU / GPU utilization twin rings</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.rings"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="sys-rings" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="commandcode" data-widget="cc-windows" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="cc-windows" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">窗口<span class="widget-name-en">Windows</span></span>
+                <span class="widget-id">cc-windows</span>
+              </div>
+              <p class="widget-desc">5h / 周 / 月 三窗口用量环图<span class="widget-desc-en"> 5h / weekly / monthly usage as rings</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.commandcode">Command Code</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.rings"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="cc-windows" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="sys-board" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="sys-board" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">系统监控<span class="widget-name-en">System Monitor</span></span>
+                <span class="widget-id">sys-board</span>
+              </div>
+              <p class="widget-desc">CPU/内存/GPU 显存与利用率全指标环形看板<span class="widget-desc-en"> CPU / memory / GPU VRAM and utilization dashboard rings</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×4</span>
+                <span class="badge badge-pattern" data-i18n="pattern.rings"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="sys-board" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="commandcode" data-widget="cc-subscription" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="cc-subscription" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">套餐<span class="widget-name-en">Plan</span></span>
+                <span class="widget-id">cc-subscription</span>
+              </div>
+              <p class="widget-desc">当前套餐、状态与账期结束时间<span class="widget-desc-en"> Current plan, status and billing period end</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.commandcode">Command Code</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.valuePair"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="cc-subscription" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="device" data-widget="sys-gpu-line" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="sys-gpu-line" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">GPU 利用率<span class="widget-name-en">GPU Utilization</span></span>
+                <span class="widget-id">sys-gpu-line</span>
+              </div>
+              <p class="widget-desc">GPU 利用率折线（最近约 20 分钟）<span class="widget-desc-en"> GPU utilization sparkline (last ~20 min)</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.device">设备状态</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.line"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="sys-gpu-line" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="commandcode" data-widget="cc-window-5h" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="cc-window-5h" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">5h 窗口<span class="widget-name-en">5h window</span></span>
+                <span class="widget-id">cc-window-5h</span>
+              </div>
+              <p class="widget-desc">5 小时额度窗口用量百分比与重置时间<span class="widget-desc-en"> 5-hour quota window usage percent and reset time</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.commandcode">Command Code</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="cc-window-5h" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="commandcode" data-widget="cc-window-weekly" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="cc-window-weekly" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">周窗口<span class="widget-name-en">Weekly window</span></span>
+                <span class="widget-id">cc-window-weekly</span>
+              </div>
+              <p class="widget-desc">周额度窗口用量百分比与重置时间<span class="widget-desc-en"> Weekly quota window usage percent and reset time</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.commandcode">Command Code</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="cc-window-weekly" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="commandcode" data-widget="cc-window-monthly" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="cc-window-monthly" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">月窗口<span class="widget-name-en">Monthly window</span></span>
+                <span class="widget-id">cc-window-monthly</span>
+              </div>
+              <p class="widget-desc">账期月额度用量百分比（额度 − 剩余 / 额度）与账期结束时间<span class="widget-desc-en"> Billing-period usage percent ((allowance − remaining) / allowance) and period end</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.commandcode">Command Code</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="cc-window-monthly" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <!-- gen:gallery:end -->
+        </div>
+        <p class="gallery-empty" id="gallery-empty" data-i18n="gEmpty" hidden>该分类下暂无组件。</p>
       </div>
     </section>
 
@@ -335,23 +1402,36 @@
           <rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" opacity=".55" /><rect x="3" y="14" width="7" height="7" rx="2" opacity=".55" /><rect x="14" y="14" width="7" height="7" rx="2" />
         </svg>
         <span><b>dsh-widgets</b> v1.5.0 · MIT</span>
+        <p class="footer-note" data-i18n="footNote">紧凑组件设计系统：33 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。</p>
       </div>
       <nav class="footer-links" aria-label="页脚">
         <a href="https://github.com/Physicolor/dsh-widgets" target="_blank" rel="noopener">GitHub</a>
         <a href="https://github.com/Physicolor/dsh-widgets/blob/main/README.md" target="_blank" rel="noopener">README</a>
+        <a href="https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets" target="_blank" rel="noopener" data-i18n="footSource">组件源码</a>
         <a href="https://www.npmjs.com/package/dsh-widgets" target="_blank" rel="noopener">npm</a>
         <a href="https://github.com/Physicolor/dsh-widgets/issues" target="_blank" rel="noopener">Issues</a>
       </nav>
     </div>
   </footer>
 
+  <!-- ── component detail dialog ────────────────────────────── -->
+  <dialog class="wg-detail" id="wg-detail" aria-label="组件详情">
+    <div class="wg-detail-bar">
+      <button type="button" class="wg-detail-close" id="wg-detail-close" aria-label="关闭">×</button>
+    </div>
+    <div class="wg-detail-body" id="wg-detail-body"></div>
+  </dialog>
+
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
   <script src="js/data.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/previews.js"></script>
+  <script src="js/grammar.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/rails.js"></script>
+  <script src="js/lab.js"></script>
+  <script src="js/detail.js"></script>
   <script src="js/gallery.js"></script>
   <script src="js/spec.js"></script>
   <script src="js/main.js"></script>

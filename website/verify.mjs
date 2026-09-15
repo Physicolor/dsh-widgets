@@ -87,9 +87,13 @@ function htmlCheck(html) {
   const problems = [];
   const voidTags = new Set(['meta', 'link', 'input', 'br', 'img', 'hr', 'source', 'area', 'base', 'col', 'embed', 'track', 'wbr']);
   const stack = [];
+  // script/style contents are RAW TEXT in HTML — never markup, never scanned
+  const scanned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '<script></script>')
+    .replace(/<style[\s\S]*?<\/style>/gi, '<style></style>');
   const re = /<(\/)?([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/)?>/g;
   let m;
-  while ((m = re.exec(html))) {
+  while ((m = re.exec(scanned))) {
     const [, close, tag, , selfClose] = m;
     if (close) {
       const top = stack.pop();
@@ -99,7 +103,7 @@ function htmlCheck(html) {
     }
   }
   if (stack.length) problems.push(`unclosed tags: ${stack.join(', ')}`);
-  const abs = [...html.matchAll(/(?:src|href)="\/(?!\/)/g)];
+  const abs = [...scanned.matchAll(/(?:src|href)="\/(?!\/)/g)];
   if (abs.length) problems.push(`${abs.length} absolute asset path(s) starting with /`);
   return problems;
 }
@@ -296,6 +300,60 @@ try {
   const i18n = i18nKeyScan();
   check('i18n keys present in HTML', i18n.keys.length >= 60, i18n.keys.length + ' keys found');
 
+  /* generated artifacts: data.js + the static gallery/ItemList in index.html */
+  const gen = await new Promise((res) => {
+    const p = spawn(process.execPath, [join(SITE, 'gen-site.mjs'), '--check']);
+    let out = '';
+    p.stdout.on('data', (d) => (out += d));
+    p.stderr.on('data', (d) => (out += d));
+    p.on('close', (code) => res({ code, out: out.trim() }));
+  });
+  check('gen-site --check: data.js + index.html up to date', gen.code === 0, gen.out.slice(0, 200));
+
+  /* crawlability: the widget list must exist in the HTML source itself */
+  const staticCards = (html.match(/<article class="widget-card"/g) || []).length;
+  check('Gallery is in the HTML source (33 static cards)', staticCards === 33, `found ${staticCards}`);
+  check('Static gallery carries names + descriptions', /widget-name/.test(html) && /widget-desc/.test(html) &&
+    html.includes('轮次·步数') && html.includes('上下文水位'));
+
+  /* SEO surface */
+  const seo = [
+    ['<title> has the project + harness + design-system wording', /<title>[^<]*dsh-widgets[^<]*DeepSeek Harness[^<]*Design System/i.test(html)],
+    ['meta description present (>=120 chars)', /<meta name="description" content="([^"]{120,})"/.test(html)],
+    ['canonical points at the real Pages URL', html.includes('<link rel="canonical" href="https://physicolor.github.io/dsh-widgets/"')],
+    ['robots meta allows indexing', /<meta name="robots" content="index,follow/.test(html)],
+    ['Open Graph title/description/image/url', ['og:title', 'og:description', 'og:image', 'og:url'].every((p) => html.includes(`property="${p}"`))],
+    ['Twitter card = summary_large_image', html.includes('name="twitter:card" content="summary_large_image"')],
+    ['JSON-LD graph present', html.includes('"@type": "SoftwareApplication"') && html.includes('"@type": "ItemList"') && html.includes('"@type": "WebSite"')],
+    ['robots.txt exists', existsSync(join(SITE, 'robots.txt'))],
+    ['sitemap.xml exists', existsSync(join(SITE, 'sitemap.xml'))],
+    ['OG image exists (png)', existsSync(join(SITE, 'assets', 'og.png'))]
+  ];
+  for (const [name, ok] of seo) check(name, ok);
+
+  const robots = existsSync(join(SITE, 'robots.txt')) ? await readFile(join(SITE, 'robots.txt'), 'utf8') : '';
+  check('robots.txt allows crawling + points at the sitemap', /User-agent:\s*\*/i.test(robots) && !/Disallow:\s*\/\s*$/m.test(robots) && robots.includes('sitemap.xml'));
+  const sitemap = existsSync(join(SITE, 'sitemap.xml')) ? await readFile(join(SITE, 'sitemap.xml'), 'utf8') : '';
+  check('sitemap.xml lists the canonical URL', sitemap.includes('<loc>https://physicolor.github.io/dsh-widgets/</loc>'));
+
+  /* structured data must actually parse (two blocks: static graph + generated ItemList) */
+  const ldBlocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  let ld = null, ldErr = '';
+  const graphs = [];
+  for (const b of ldBlocks) {
+    try {
+      const parsed = JSON.parse(b);
+      graphs.push(parsed);
+    } catch (e) { ldErr = e.message; }
+  }
+  for (const g of graphs) {
+    if (g['@graph']) graphs.push(...g['@graph']);
+    if (g['@type'] === 'ItemList') ld = g;
+  }
+  check('JSON-LD parses and lists all 33 widgets',
+    !!ld && ld.itemListElement.length === 33 && ld.numberOfItems === 33 && !ldErr,
+    ldErr || (ld ? `${ld.itemListElement.length} items in ${ldBlocks.length} block(s)` : 'no ItemList block'));
+
   /* serve + browser */
   server = await serve();
   const url = `http://127.0.0.1:${server.address().port}/`;
@@ -310,8 +368,8 @@ try {
   const { cdp } = ctx;
 
   const checks = {
-    'Title': `document.title === 'DeepSeek Harness Widgets — dsh-widgets'`,
-    'All sections present': `['home','widgets','design','create','contribute'].every(id => !!document.getElementById(id))`,
+    'Title': `document.title.startsWith('dsh-widgets — DeepSeek Harness Widget Design System')`,
+    'All sections present': `['home','widgets','design','create','contribute','grammar','audit','anatomy'].every(id => !!document.getElementById(id))`,
     'Old sentence-sections removed': `!document.getElementById('why') && !document.getElementById('philosophy') && !document.getElementById('workflow')`,
     'No Playground/Demo residue': `!document.getElementById('playground') && !document.getElementById('deploy-modal') && !document.querySelector('.pg-deck') && !document.querySelector('.hs-sim') && !document.querySelector('.badge-demo')`,
     '33 gallery cards': `document.getElementById('gallery-grid').children.length === 33`,
@@ -336,6 +394,156 @@ try {
   check('Design GOOD card is a real widget', await evalJs(cdp, `!!document.querySelector('#gb-good .wg-card')`));
   check('Create: simple pipeline (5) + requirement form', await evalJs(cdp, `document.querySelectorAll('.pipe-simple li').length === 5 && !!document.querySelector('#create-form #req-form')`));
   check('Contribute: workflow strip (5)', await evalJs(cdp, `document.querySelectorAll('.ct-track li').length === 5`));
+
+  /* ── design philosophy: 6 principles, each with real evidence ── */
+  check('Design: 6 principles, each with a source ref + a real number', await evalJs(cdp, `(() => {
+    const ps = document.querySelectorAll('.principle');
+    return ps.length === 6 && Array.from(ps).every(p => /src\\/|components\\.tsx|index\\.ts/.test(p.querySelector('footer code').textContent) && p.querySelector('footer em').textContent.trim().length > 2);
+  })()`));
+
+  /* ── Design Grammar: constants + the REAL magnification math ── */
+  check('Grammar: constant table lists the real constants', await evalJs(cdp, `document.querySelectorAll('#gr-consts .gr-const').length >= 12 &&
+    document.getElementById('gr-consts').textContent.includes('cardSide') && document.getElementById('gr-consts').textContent.includes('unit / 150')`));
+  check('Grammar: rail renders real widget cards', await evalJs(cdp, `document.querySelectorAll('#gr-rail .gr-card .wg-card').length === 7`));
+  check('Grammar: stepScale matches src/client/index.ts', await evalJs(cdp, `(() => {
+    const G = window.DASH_GRAMMAR;
+    return Math.abs(G.stepScale(0, 1.2) - 1.2) < 1e-9 && Math.abs(G.stepScale(3, 1.2) - 1) < 1e-9 &&
+      G.stepScale(1, 1.2) > 1 && G.stepScale(1, 1.2) < 1.2 && Math.abs(G.stepScale(1.5, 1.2) - (1 + 0.2 * Math.pow(0.5, 1.6))) < 1e-9;
+  })()`));
+  check('Grammar: grid formulas match the plugin defaults', await evalJs(cdp, `(() => {
+    const G = window.DASH_GRAMMAR;
+    return G.railWidth(150, 24, 2) === 372 && G.wideWidth(150, 24) === 324 &&
+      G.metric(150).pad === 12 && G.metric(150).radius === 16 && G.metric(300).pad === 24 && G.metric(300).title === 26;
+  })()`));
+
+  const railMove = await evalJs(cdp, `(() => {
+    const host = document.getElementById('gr-rail');
+    const stage = document.getElementById('gr-stage');
+    const before = Array.from(host.children).map(c => c.style.width);
+    const r = host.getBoundingClientRect();
+    stage.dispatchEvent(new PointerEvent('pointermove', { clientX: r.left + 20, clientY: r.top + 20, bubbles: true }));
+    return new Promise(res => setTimeout(() => {
+      const after = Array.from(host.children).map(c => c.style.width);
+      const heights = new Set(Array.from(host.children).map(c => c.style.height));
+      res({ changed: before.join() !== after.join(), maxW: Math.max.apply(null, Array.from(host.children).map(c => parseFloat(c.style.width))), rows: heights.size, readout: document.getElementById('gr-readout').textContent });
+    }, 260));
+  })()`);
+  check('Grammar: hovering runs the real magnification reflow', railMove.changed === true && railMove.maxW > 150, `maxW=${railMove.maxW} rows=${railMove.rows} ${railMove.readout}`);
+
+  const railSlider = await evalJs(cdp, `(() => {
+    const s = document.getElementById('gr-side');
+    s.value = '200';
+    s.dispatchEvent(new Event('input', { bubbles: true }));
+    const f = document.getElementById('gr-formula').textContent;
+    const w = document.getElementById('gr-rail').style.width;
+    s.value = '150';
+    s.dispatchEvent(new Event('input', { bubbles: true }));
+    return { f: f.includes('2 × 200'), w: w };
+  })()`);
+  check('Grammar: cardSide slider drives the rail width formula', railSlider.f === true && railSlider.w === '424px', `width=${railSlider.w}`);
+
+  /* ── Anatomy: measured, not drawn ── */
+  const anatomy = await evalJs(cdp, `(() => {
+    const rows = document.querySelectorAll('#an-table .an-row');
+    const svg = document.querySelectorAll('#an-overlay > *');
+    const before = document.getElementById('an-host').innerHTML.length;
+    document.querySelectorAll('#an-pick .an-chip')[1].click();
+    const after = document.getElementById('an-host').innerHTML.length;
+    const active = document.querySelector('#an-pick .an-chip.is-active').getAttribute('data-an');
+    return { rows: rows.length, svg: svg.length, before: before, after: after, active: active,
+             outer: document.querySelector('#an-table .an-row dd').textContent };
+  })()`);
+  check('Anatomy: annotations + measured table', anatomy.rows >= 8 && anatomy.svg >= 8, `rows=${anatomy.rows} svg=${anatomy.svg}`);
+  check('Anatomy: switching widgets re-renders the stage', anatomy.active === 'context-water', `active=${anatomy.active}`);
+
+  const measured = await evalJs(cdp, `(() => {
+    const w = window.DASH_WIDGETS.byId['counts'];
+    const host = document.createElement('div');
+    host.className = 'wg-slot';
+    host.style.cssText = 'position:absolute;left:-9999px;top:0';
+    host.innerHTML = window.DASH_PREVIEWS.render(w, { unit: 150, size: '2x2' });
+    document.body.appendChild(host);
+    const m150 = window.DASH_GRAMMAR.measure(host.firstElementChild, w, 150, '2x2');
+    host.innerHTML = window.DASH_PREVIEWS.render(w, { unit: 300, size: '2x2' });
+    const m300 = window.DASH_GRAMMAR.measure(host.firstElementChild, w, 300, '2x2');
+    const res = { pad150: m150.pad.t, pad300: m300.pad.t, radius150: m150.radius, radius300: m300.radius,
+                  titleDelta: Math.abs((m150.title.left - m150.card.left) - m150.metric.pad) };
+    document.body.removeChild(host);
+    return res;
+  })()`);
+  check('Audit engine measures the real DOM (12px @150 → 24px @300)', measured.pad150 === 12 && measured.pad300 === 24 &&
+    measured.radius150 === 16 && measured.radius300 === 32 && measured.titleDelta <= 1,
+    JSON.stringify(measured));
+
+  /* ── Visual Audit ── */
+  const audit = await evalJs(cdp, `(() => {
+    const rows = document.querySelectorAll('#au-list .au-row');
+    const dims = rows[0].querySelectorAll('.au-dim');
+    const scored = Array.from(rows).filter(r => /\\d/.test(r.querySelector('.au-overall').textContent)).length;
+    const flagged = document.querySelector('#au-list .au-row[data-w="cc-window-monthly"] .au-flag');
+    return { rows: rows.length, dims: dims.length, scored: scored, flagged: !!flagged };
+  })()`);
+  check('Audit: all 33 widgets scored on 5 dimensions', audit.rows === 33 && audit.dims === 5 && audit.scored === 33, JSON.stringify(audit));
+  check('Audit: the real copy/implementation finding is flagged', audit.flagged === true);
+
+  const auditDetail = await evalJs(cdp, `(() => {
+    document.querySelector('#au-list .au-row[data-w="heatmap"]').click();
+    const d = document.getElementById('au-detail');
+    return { rules: d.querySelectorAll('.au-rule').length,
+             geo: d.querySelectorAll('.au-geo > div').length,
+             layer: d.querySelector('.au-layer').textContent.trim(),
+             source: d.querySelector('.au-links a').getAttribute('href').includes('/src/widgets/heatmap/index.ts') };
+  })()`);
+  check('Audit: detail shows 13 rules + measured geometry for the picked widget',
+    auditDetail.rules === 13 && auditDetail.geo >= 6 && auditDetail.source === true, JSON.stringify(auditDetail));
+
+  const cases = await evalJs(cdp, `(() => {
+    const li = document.querySelectorAll('#au-cases li');
+    const top = document.querySelector('#au-list .au-row');
+    return { n: li.length, text: Array.from(li).map(x => x.textContent.replace(/\\s+/g, ' ').trim()).slice(0, 6),
+             firstRowFlagged: !!top.querySelector('.au-flag') };
+  })()`);
+  check('Audit: exception list names the real findings (and sorts them first)',
+    cases.n >= 4 && cases.firstRowFlagged === true, cases.text.join(' ;; ').slice(0, 300));
+
+  /* ── component detail ── */
+  const detail = await evalJs(cdp, `(() => {
+    const btn = document.querySelector('#gallery-grid .widget-open');
+    btn.click();
+    const d = document.getElementById('wg-detail');
+    return { open: d.open === true, variants: d.querySelectorAll('.dt-variant .wg-card').length,
+             scores: d.querySelectorAll('.dt-score').length, rules: d.querySelectorAll('#wg-detail .au-rule').length,
+             geo: d.querySelectorAll('.dt-geo > div').length, links: d.querySelectorAll('.dt-links a').length,
+             isButton: btn.tagName === 'BUTTON' };
+  })()`);
+  check('Detail: dialog opens with variants, geometry, audit, source',
+    detail.open === true && detail.variants >= 1 && detail.scores === 5 && detail.rules === 13 && detail.geo >= 6 && detail.links === 3,
+    JSON.stringify(detail));
+  check('Detail: the gallery entry point is a real button (keyboard reachable)', detail.isButton === true);
+  await screenshot(cdp, join(OUT, 'detail-audit.png'));
+  const closed = await evalJs(cdp, `(() => { document.getElementById('wg-detail-close').click(); return document.getElementById('wg-detail').open === false; })()`);
+  check('Detail: closes cleanly', closed === true);
+
+  /* gallery hydration */
+  check('Gallery: every card hydrated with the real widget render', await evalJs(cdp, `document.querySelectorAll('#gallery-grid .widget-stage-lg .wg-card').length === 33`));
+
+  /* regression: one wide (2×4) preview must never widen its grid column */
+  const columns = await evalJs(cdp, `(() => {
+    const pv = Array.from(document.querySelectorAll('#gallery-grid .widget-preview')).map(p => Math.round(p.getBoundingClientRect().width));
+    const cards = Array.from(document.querySelectorAll('#gallery-grid .wg-card')).map(c => Math.round(c.getBoundingClientRect().width));
+    return { widths: [...new Set(pv)], widest: Math.max.apply(null, pv), thin: Math.min.apply(null, pv), cards: [...new Set(cards)] };
+  })()`);
+  check('Gallery: all 4 columns equal (a 2×4 preview cannot blow out a track)',
+    columns.widths.length === 1, `column widths=${columns.widths.join(',')} card widths=${columns.cards.join(',')}`);
+
+  /* section screenshots (evidence for the visual audit of the page itself) */
+  for (const [id, file] of [['design', 'section-design.png'], ['grammar', 'section-grammar.png'], ['audit', 'section-audit.png'], ['widgets', 'section-gallery.png']]) {
+    await evalJs(cdp, `document.getElementById('${id}').scrollIntoView({ block: 'start' })`);
+    await new Promise((r) => setTimeout(r, 700));
+    await screenshot(cdp, join(OUT, file));
+  }
+  await evalJs(cdp, `window.scrollTo(0, 0)`);
+  await new Promise((r) => setTimeout(r, 200));
 
   /* default theme LIGHT + default language zh */
   check('Default theme is LIGHT', await evalJs(cdp, `document.documentElement.getAttribute('data-theme') === 'light'`));
@@ -474,6 +682,19 @@ try {
   const mCols = await evalJs(cdp, `getComputedStyle(document.getElementById('gallery-grid')).gridTemplateColumns.split(' ').length`);
   check('Gallery 1 column on mobile', mCols === 1, `cols=${mCols}`);
   await screenshot(cdp, join(OUT, 'mobile.png'));
+  for (const [id, file] of [['grammar', 'mobile-grammar.png'], ['anatomy', 'mobile-anatomy.png'], ['audit', 'mobile-audit.png']]) {
+    await evalJs(cdp, `document.getElementById('${id}').scrollIntoView({ block: 'start' })`);
+    await new Promise((r) => setTimeout(r, 500));
+    await screenshot(cdp, join(OUT, file));
+  }
+  const mobileOk = await evalJs(cdp, `(() => {
+    const svg = document.querySelectorAll('#an-overlay > *').length;
+    const grid = getComputedStyle(document.querySelector('.principles')).gridTemplateColumns.split(' ').length;
+    const rows = document.querySelectorAll('#au-list .au-row').length;
+    return { svg: svg, principles: grid, rows: rows, overflow: document.documentElement.scrollWidth <= window.innerWidth + 1 };
+  })()`);
+  check('Mobile: anatomy labels + audit table survive the narrow layout',
+    mobileOk.svg >= 8 && mobileOk.principles === 1 && mobileOk.rows === 33 && mobileOk.overflow === true, JSON.stringify(mobileOk));
 
   /* desktop 1920×1080 viewport */
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });

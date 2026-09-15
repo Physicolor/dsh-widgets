@@ -23,7 +23,7 @@ DeepSeek-Harness Widgets is a **persistent DSH bundle plugin** built on the Cord
 
 ## Website / Showcase
 
-A self-contained showcase site lives in [`website/`](website/) and is ready for GitHub Pages at **https://physicolor.github.io/dsh-widgets/** — what dsh-widgets is, why it exists, all 33 real widgets, the widget-unit architecture, the production workflow, and a requirement-form → widget-spec generator. Plain HTML/CSS/JS, no build step, all paths relative for the project Pages base path. `node website/verify.mjs` self-verifies (static checks + Edge-headless browser checks, 44 checks); the widget table is regenerated from the manifests by `node website/sync-data.mjs`. Deploy: see `website/README.md`.
+A self-contained showcase site lives in [`website/`](website/) and is live at **https://physicolor.github.io/dsh-widgets/** — what dsh-widgets is, why it exists, all 33 real widgets, the **DSH Widget Design Grammar** (the real unit/spacing/magnification formulas from `src/client/index.ts`, with an interactive rail running the actual magnification + right-anchored reflow), **Widget Anatomy** (a real card at ×2 with every padding, gap and inset measured from the DOM), the **DSH Visual Audit** (13 declared rules scored over all 33 widgets from live `getBoundingClientRect` measurements — rule-based, not a model), the widget-unit architecture, the production workflow, and a requirement-form → widget-spec generator. Plain HTML/CSS/JS, no build step, all paths relative for the project Pages base path. `node website/verify.mjs` self-verifies (static + SEO + Edge-headless browser checks, 80 checks); the widget table, the static gallery markup and the JSON-LD `ItemList` are generated from the manifests by `node website/gen-site.mjs` (`--check` fails on drift); `node website/gen-og.mjs` regenerates the social card. Deploy: see `website/README.md`.
 
 ---
 
@@ -167,7 +167,7 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 **Showcase website:**
 
-- 🌐 The gallery is complete at **33 widgets** (it had stalled at 24, missing the whole 8-widget Command Code family), with new Command Code and Device filters and matching Chinese/English copy. The widget table is now generated from the manifests by `website/sync-data.mjs`. Headless site verification passes 44/44.
+- 🌐 The gallery is complete at **33 widgets** (it had stalled at 24, missing the whole 8-widget Command Code family), with new Command Code and Device filters and matching Chinese/English copy. The widget table is generated from the manifests by `website/gen-site.mjs`. Headless site verification passes 80/80.
 
 **Compatibility — DSH 0.1.5 session-snapshot split:**
 
