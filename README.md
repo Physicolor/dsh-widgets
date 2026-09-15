@@ -23,7 +23,7 @@ DeepSeek-Harness Widgets is a **persistent DSH bundle plugin** built on the Cord
 
 ## Website / Showcase
 
-A self-contained showcase site lives in [`website/`](website/) and is ready for GitHub Pages at **https://physicolor.github.io/dsh-widgets/** — what dsh-widgets is, why it exists, every real widget (galleries + a live playground), the widget-unit architecture, the production workflow, and a requirement-form → widget-spec generator. Plain HTML/CSS/JS, no build step, all paths relative for the project Pages base path. `node website/verify.mjs` self-verifies (static checks + Edge-headless browser checks). Deploy: see `website/README.md`.
+A self-contained showcase site lives in [`website/`](website/) and is ready for GitHub Pages at **https://physicolor.github.io/dsh-widgets/** — what dsh-widgets is, why it exists, all 33 real widgets, the widget-unit architecture, the production workflow, and a requirement-form → widget-spec generator. Plain HTML/CSS/JS, no build step, all paths relative for the project Pages base path. `node website/verify.mjs` self-verifies (static checks + Edge-headless browser checks, 44 checks); the widget table is regenerated from the manifests by `node website/sync-data.mjs`. Deploy: see `website/README.md`.
 
 ---
 
@@ -65,6 +65,15 @@ In both modes the magnified deck is painted by a fixed overlay **outside** the r
 | Last-7-days bars | vertical bars for the last 7 days; bar area height matches the calendar grid |
 | Quote of the day | random motivational quote; text/alignment/wrapping customizable |
 
+### Quota Manager (Coding Plan group, 2×2)
+
+Title on the left with the **projected month-end usage percent in the top-right corner**, the billing period on the next line (`账期 10-10`), and two figures at the bottom: **today's usage** (measured tokens) and **today's budget** (the remaining balance split evenly over the days left).
+
+- **Projection**: `used% + recent pace × days left`, where the recent pace is the last **3 day-equivalents** (the previous two whole days plus today prorated by how much of it has elapsed; today only counts after 6 h). The projection and the budget are therefore **mathematically consistent**: projected > 100% ⇔ recent pace > today's budget — the card can never claim "today is under budget" and "the month is over 100%" at once.
+- **Past 100%**: the figure itself turns red and breathes (1.6 s), instead of a red glow around the card.
+- **Credit → token conversion**: the balance (credits) is converted at the period's own realised "local tokens ÷ credits consumed" rate, so the figures share one caliber; the provider's own token counter is not mixed in (it measures the same period ~1.7× higher).
+- **Never invented**: a missing percentage/allowance, a finished period or less than 6 h elapsed renders 「数据不足」; only when the rate side is unavailable does today's budget degrade to `—`.
+
 ### Component Marketplace
 
 - Browse all widgets (system + external), search, size-switch preview, install per `widget@size`;
@@ -77,7 +86,7 @@ Rolling / weekly / monthly usage windows + percentage + reset time. The host hal
 
 ### Peak Pricing (market widget)
 
-A 2×2-only peak-pricing card showing whether the current moment is inside a DeepSeek peak-pricing window. Peak hours (Beijing time, UTC+8): Mon–Fri **09:00–12:00** and **14:00–18:00** — everything else, including weekends, is off-peak. Off-peak shows **CHEAP**; during a peak window the whole card glows with a breathing red inner glow (never a solid fill — the centre stays fully readable) and shows **EXPENSIVE**, while the corresponding window row under the title lights up brand-blue and scales up slightly. The schedule is hard-coded for now; a custom-schedule setting is on the roadmap.
+A 2×2-only peak-pricing card showing whether the current moment is inside a DeepSeek peak-pricing window. Peak hours (Beijing time, UTC+8): Mon–Fri **09:00–12:00** and **14:00–18:00** — everything else, including weekends, is off-peak. Off-peak shows **CHEAP**; during a peak window it shows **EXPENSIVE**, with the figure itself turning red and breathing (1.6 s) — a text-level escalation, the card frame stays clean — while the corresponding window row under the title lights up brand-blue and scales up slightly. The schedule is hard-coded for now; a custom-schedule setting is on the roadmap.
 
 ---
 
@@ -98,7 +107,7 @@ A 2×2-only peak-pricing card showing whether the current moment is inside a Dee
 dsh plugin --profile web add dsh-widgets
 
 # local development (link)
-dsh plugin --profile web add link:D:/dsh-home/plugins/harness-widgets
+dsh plugin --profile web add link:D:/dsh-home/plugins/dsh-widgets
 ```
 
 After installing, **hard-refresh the browser** (Ctrl+Shift+R) and click the "Components" (widgets) capsule in the session header to expand the rail. The OpenCode Go widget needs `OPENCODE_GO_API_KEY` configured in the Models settings.
@@ -125,6 +134,63 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 - Coordinates explicitly with `dsh-better-sidebar`'s right rail (shares `--dsh-sidebar-width`); no residue after uninstall.
 
 ## Changelog
+
+### v1.5.0
+
+> Everything since v1.4.1 ships at once: the Command Code account widget family and its host aggregate route, DeepSeek Harness 0.1.5 compatibility and official right-bar adaptation, the new **Quota Manager** widget, the daily-usage freshness fix, and a unified text-level alert. The `Working tree (unreleased)` sections below are part of this release too.
+
+**New — Quota Manager (2×2, Coding Plan group):**
+
+- 📊 **Monthly-window layout**: title left, **projected month-end percent top-right**, the billing period on the second line (`账期 10-10`), and two figures at the bottom: **today's usage** vs **today's budget** (the remaining balance split over the days left).
+- 📈 **Projection**: `used% + recent pace × days left`, the pace taken over the last **3 day-equivalents** (the two previous whole days plus today prorated; today only counts after 6 h). This makes the projection and the budget **the same statement**: projected > 100% ⇔ pace > budget.
+- 🔴 **Past 100%**: the figure turns red and breathes (1.6 s) — the old card-wide glow is gone.
+- 🧮 **Caliber**: the balance is converted at the period's realised local-tokens-per-credit rate, matching the daily log; the provider's token counter is not mixed in.
+- 🚫 **No invented numbers**: missing percentage/allowance, an ended period or <6 h elapsed renders 数据不足; a missing rate side degrades only today's budget to `—`.
+- 🧩 New `figures` chart kind (a row of label/value pairs: first flush left, last flush right, sharing the head row's gutters).
+
+**Fixed — daily-usage freshness:**
+
+- ⚡ **Today's figure now moves with every turn**: the day map comes from usage-center's log fold, which rescans on its own ~30 s cadence, so a finished turn kept showing the previous figure (measured: the index lagged an independent log fold by ~0.4M at the same instant). The client now keeps its per-step local counter running and takes `max(index, local)` for **today** only — history stays purely authoritative, because this browser only ever sees the sessions it had open.
+- 🔄 The host route `/api/widgets-usage-daily?refresh=1` asks usage-center to rescan immediately when a turn settles (5 s throttle, fully optional). The client half works after a page refresh; the parameter is host code and needs a dsh web restart.
+
+**Fixed — Command Code monthly-window denominator:**
+
+- 🧾 The monthly window divided by `used / (used + remaining)` — the sum of two unrelated snapshots (measured 17.26 + 59.01 = 76.27 on a $70 plan), so the card read 22.6% where the account page read ~16%. It is now `(allowance − remaining) / allowance` with the published plan table (GOAT = $70); an unknown plan falls back to the API's own used figure.
+
+**Changed — one text-level alert:**
+
+- 🔔 The whole card-glow mechanism was removed (`alert` field + `.dsx-peak-alert` + keyframes). Peak pricing's **EXPENSIVE** and Quota Manager's **over-100%** now turn the figure red and breathe (1.6 s, static under `prefers-reduced-motion`); the card frame never changes.
+
+**Layout — the card head row was restructured:**
+
+- 📐 The head row is now **two independent, top-aligned slots** (title left, value right). Previously the title shared one baseline with a 20px value, which stretched the line box and pushed the 13px title ~5px lower than on every card without a head value; the right slot now cancels its own extra line height with a negative bottom margin, so the period line hugs the title. Measured: the quota card's title top matches a plain card (11px), and `context-water@2×4` is back to a 16px head row.
+
+**Showcase website:**
+
+- 🌐 The gallery is complete at **33 widgets** (it had stalled at 24, missing the whole 8-widget Command Code family), with new Command Code and Device filters and matching Chinese/English copy. The widget table is now generated from the manifests by `website/sync-data.mjs`. Headless site verification passes 44/44.
+
+**Compatibility — DSH 0.1.5 session-snapshot split:**
+
+- 🧩 **Data source migration (skipping it silently loses every card's data)**: 0.1.5 split the session snapshot in two — `useSession` keeps lifecycle state (`running`, …) while chat data (`nodes` / `timeline` / `runningCalls`) moved to the new `useChat` hook. The composer-dock collector read `useSession(s => s.chat.legacy.nodes)`; on 0.1.5 that selector throws during render, the slot error boundary abdicates the entry, and the whole rail loses its data (and disappears, because `hasSession` never flips). The collector now prefers `useChat` and falls back to `useSession`, with optional-chained selectors so a slice that no longer exists resolves to `undefined` instead of throwing.
+- 🔌 **Types and packaging follow the official layout**: `@deepseek-ai/dsh-client-runtime` was retired in 0.1.5, so the client context type now comes from `@deepseek-ai/cordis`'s `Context`; the package was dropped from peer/dev dependencies and from the tsdown platform module table.
+- 🔍 **Audit result (no code change needed)**: all four slots (`shell.overlay` / `conversation.composer.dock` / `conversation.session.header.utilities` / `settings.section`), the `register({name,id,order,label})` options, the `__ModuleLoader__` client bundle protocol, the five projection keys, the six host routes and the `locale` usage are unchanged in 0.1.5; the official stats row still registers under the `stats` entry id.
+- ✅ **Measured**: in an isolated 0.1.5-rc.2 instance the client bundle loads alongside the other 62 entries with no exception.
+- 🧭 **Official right-bar adaptation (added 2026-09-13)**: DSH 0.1.5 makes the right side a third grid column (`[class$='_rightbarCol']`, occupied by `dsh-client-ui-sidebar-right`), while the rail anchored on `--dsh-sidebar-width` — a variable published by better-sidebar ≤0.14 that 0.19 stopped setting once it moved to the official `ctx.sidebarRight`. The rail therefore fell back to `right: 0` and painted straight over the panel. The rail and the add panel now anchor on a new `--dsx-rightbar-w` (measured from the `_rightbarCol` width, kept in step by a ResizeObserver across open/close/fullscreen/drag), with the old variable kept as fallback so both assemblies yield correctly.
+- 📌 Known follow-ups: `body.dsx-hide-statsline` still hides the whole composer-dock seat and could be narrowed to the official `stats` entry; the rail does not yet suppress its transition while the official right bar is being dragged.
+
+### Working tree (未发布 — 热度图 token 总量改由用量中心口径供给)
+
+> 修复：Token 用量热度图卡片的「窗口总量」与用量中心的总 Token 长期不一致。实测 2026-09-12，卡片显示 **7.72G**，真实值 **6.28G**（+23%）。
+
+**Fix — 热度图日数据来源改为权威口径（复用 dsh-usage-center，不重复实现）：**
+
+- 🔍 根因（三层，全部在 dsh-widgets 一侧）：① 旧版 `seedHeatmapIfNeeded` / 后来的 `HEATMAP_RECOVERED` 把**凭空写的常量**当历史播进 `localStorage`（2026-08-14/15/16 存的是 244.19M / 1639.55M / 1319.26M，日志真值 75.24M / 373.37M / 1204.72M）；② 迁移函数只「补零、不覆盖」，错误值永久留存；③ 逐步骤实时记账只在浏览器开着、且打开过该会话时才补记，闲日直接漏记（8/18 少 190.5M）。
+- 🧮 仲裁证据：独立复算脚本 `docs/verify-token-total-independent.mjs` 直接解压 175 个 `session.jsonl.zstd`（多帧 zstd 逐帧解码，按 (turn,step) 取最后一次 usage 上报、四桶求和、本地时区归日）：**6,275,649,773**；用量中心 index 口径 **6,276,176,394**（差 0.01%）；旧热度图 **7,715,756,948**（+23%）。日粒度对比见 `docs/compare-token-accounts.mjs`。
+- 🔗 修法（**不重写计算**）：host 新增 `/api/widgets-usage-daily`，在 dsh-usage-center 已安装时通过 Cordis 服务 `ctx.get('usageCenter')` 调用其 `getActivity()`（该方法已按会话日志折叠每日总量），把 `activity[].totalTokens` 原样转给浏览器；未安装/索引为空/服务抛错一律返回 `available:false`。`usageCenter` **不作为硬依赖**（`inject` 不变），dsh-widgets 仍可独立安装。
+- 🖥 client：`state.usageDaily` 为**首选**日数据源（挂载 + 每回合结束 + 60s 轮询刷新），权威数据存在时**完全跳过**本地记账；缺失时回退到原有逐步骤记账。热度图与热度柱状图两张卡片共用该口径，卡片数值与用量中心逐日一致。
+- 🧹 清理：删除烘焙历史常量与 `migrateHeatmapV2()`（含「只补零」的迁移陷阱），改为一次性 `loadHeatmapStore()`：清除旧版伪造的那 8 天（2026-08-14…08-21），**不动**任何真实累积日。回退路径宁可空、不留假数据。
+- ✅ 验证：`docs/verify-usage-daily-route.mjs` 直接驱动**编译产物** `lib/index.js`，10 项断言全 PASS（服务在→原样透传、服务缺失→`available:false`、空 payload/抛错/半残行→降级不炸）。
+- ⚠️ 需要重启 dsh web 才会加载新 host 路由（重启前该路由 404，卡片自动回落到旧记账，不报错）。
 
 ### Working tree (未发布 — Command Code 月窗口 + 三窗口数字组件 + 标题规范化)
 
@@ -505,7 +571,8 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 The widget system is now built for scale: each widget is an independent, contract-driven unit under `src/widgets/` with build-time discovery — a new widget is a new unit dir, no shared file edits (guide: `src/widgets-template/README.md`).
 
-- **发布本轮 Command Code 组件家族（8 个 2×2）+ GPU 高度修复**（working tree 段）：随下一批改动一起 bump 版本（v1.5.0 次版本号：新功能家族）→ GitHub + npm 双仓库发布（走 dsh-plugin-release-workflow）。
+- **发布本轮改动（热度图权威口径 + Command Code 组件家族 8 个 2×2 + GPU 高度修复）**（working tree 段）：随下一批改动一起 bump 版本 → GitHub + npm 双仓库发布（走 dsh-plugin-release-workflow）。
+- **热度图 token 口径的后续**：卡片总量现已等同用量中心（宿主路由复用其 `getActivity()`）。若希望**未安装用量中心**时也精确，可把同样的日志折叠搬进本插件 host（dsh-widgets host 已具备读盘能力）；当前刻意不重复实现该计算，保持「一处口径、一处维护」。
 - **Command Code 月窗口待上游字段**：月用量目前按「已用 / (已用 + 剩余)」守恒推导，因为 `billing/credits` 不返回 monthly 窗口对象。若上游后续在 `windowLimits` 里补 `monthly`（带 used/cap/resetAt），`monthlyWindow()` 应改为优先直接读取、守恒推导仅作回退。
 - **Command Code 多 Key / 组织支持**：当前仅读 `COMMANDCODE_API_KEY` 主凭据；如需组织（org）维度或多账户，可在 host 复用 opencode-usage-multi 的池模式（`COMMANDCODE_POOL_2..N`）。
 - **context-water 2×2 轻微超高（~6px）**：`上下文已用` 静止 cardH=156 > slot 150（segments bar + rows 略高）。与 GPU 卡片同源的「内容驱动高度 ≥ slot」问题，下一轮用同样的弹性/压缩策略处理（或给 segments 加 `flex:1` 压缩行距）。

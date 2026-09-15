@@ -23,7 +23,7 @@ DeepSeek-Harness Widgets 是一个基于 Cordis 的 DeepSeek Harness **持久 bu
 
 ## 官网 / Showcase
 
-项目官网位于 [`website/`](website/)（纯 HTML/CSS/JS，无构建步骤，全部相对路径，可直接发布到 GitHub Pages **https://physicolor.github.io/dsh-widgets/**）：介绍 dsh-widgets 是什么、为什么要做、全部 19 个正式 Widget 的真实展示与 Live Playground、Widget 单元化架构、生产 Workflow，以及「需求表 → Widget Specification」生成器。自包含验证脚本 `node website/verify.mjs`（静态检查 + Edge 无头浏览器验证）。部署方式见 `website/README.md`。
+项目官网位于 [`website/`](website/)（纯 HTML/CSS/JS，无构建步骤，全部相对路径，可直接发布到 GitHub Pages **https://physicolor.github.io/dsh-widgets/**）：介绍 dsh-widgets 是什么、为什么要做、全部 33 个组件的真实展示、Widget 单元化架构、生产 Workflow，以及「需求表 → Widget Specification」生成器。自包含验证脚本 `node website/verify.mjs`（静态检查 + Edge 无头浏览器验证，44 项）；组件表由 `node website/sync-data.mjs` 从各 `src/widgets/<id>/manifest.json` 重新生成，避免手工维护漂移。部署方式见 `website/README.md`。
 
 ---
 
@@ -63,6 +63,15 @@ macOS Dock 式悬浮放大，提供两种模式（在 **设置 → 组件 → �
 | 用量热度图 | GitHub 式日历热力图，自记账每日用量 |
 | 今日寄语 | 随机鼓励语录，可自定义文字/对齐/换行 |
 
+### 额度管理（Coding Plan 分组，2×2）
+
+标题左侧、**右上角是月末用量预测百分比**，第二行是账期日期（`账期 10-10`），底部两个数字：**今日用量**（实测 token）与**今日推荐**（把剩余额度均摊到剩余天数得到的每日上限）。
+
+- **预测口径**：`已用% + 近期速率 × 剩余天数`，近期速率取**最近 3 个日当量**（前 2 个完整天 + 今天按已过比例折算，今天不足 6 小时不计入）。这让预测与今日推荐**数学同调**——预测 > 100% ⇔ 近期速率 > 今日推荐速率，不会出现「今天明明没超推荐、整月却显示超 100%」的自相矛盾。
+- **超 100% 的表现**：百分比数值本身变红并做 1.6s 呼吸闪烁（不使用卡片四周的红色内晕）。
+- **额度换算**：余额（credits）按本账期已实现的「本地 token ÷ 消耗 credits」汇率折算为 token，与今日用量同口径；不使用 provider 侧的 token 计数（两者对同一账期的计量相差约 1.7 倍）。
+- **不造数**：缺百分比/额度、账期已结束或刚开始不足 6 小时 → 显示「数据不足」；仅汇率侧缺失时，今日推荐单独显示 `—`。
+
 ### 组件市场
 
 - 展示全部组件（系统 + 外部），支持搜索、尺寸切换预览、按 `组件@尺寸` 独立安装；
@@ -75,7 +84,7 @@ macOS Dock 式悬浮放大，提供两种模式（在 **设置 → 组件 → �
 
 ### 峰谷定价（市场组件）
 
-仅 2×2 的「峰谷定价」卡片，实时显示当前是否处于 DeepSeek V4 高峰计费时段。高峰时段（北京时间 UTC+8）为工作日 **09:00–12:00** 与 **14:00–18:00**，其余所有时间（含周末）均为低峰。低峰时左下角显示 **CHEAP**；处于高峰时段时，整卡泛起呼吸式的红色内晕（非整块实填，中央内容始终清晰可读）并显示 **EXPENSIVE**，标题下方对应时段行同步亮起品牌蓝并微微放大。时段目前硬编码，自定义时段设置已列入 Roadmap。
+仅 2×2 的「峰谷定价」卡片，实时显示当前是否处于 DeepSeek V4 高峰计费时段。高峰时段（北京时间 UTC+8）为工作日 **09:00–12:00** 与 **14:00–18:00**，其余所有时间（含周末）均为低峰。低峰时左下角显示 **CHEAP**；处于高峰时段时显示 **EXPENSIVE**，该数值本身变红并做 1.6s 呼吸闪烁（文字级告警，卡片边框不变），标题下方对应时段行同步亮起品牌蓝并微微放大。时段目前硬编码，自定义时段设置已列入 Roadmap。
 
 ---
 
@@ -94,7 +103,7 @@ macOS Dock 式悬浮放大，提供两种模式（在 **设置 → 组件 → �
 dsh plugin --profile web add dsh-widgets
 
 # 本地开发（link 方式）
-dsh plugin --profile web add link:D:/dsh-home/plugins/harness-widgets
+dsh plugin --profile web add link:D:/dsh-home/plugins/dsh-widgets
 ```
 
 安装后**硬刷新浏览器**（Ctrl+Shift+R），在会话页头部点击「组件」胶囊即可展开右侧部件栏。OpenCode Go 部件需先在 Models 设置中配置 `OPENCODE_GO_API_KEY`。
@@ -117,6 +126,49 @@ pnpm run check      # 类型检查 + 测试 + 构建
 - 与 `dsh-better-sidebar` 右栏显式协调（共用 `--dsh-sidebar-width`），卸载后无残留。
 
 ## 变更日志
+
+### v1.5.0
+
+> 自 v1.4.1 以来的全部工作一次性发布：Command Code 账户用量组件族与 host 聚合路由、DeepSeek Harness 0.1.5 兼容与官方右栏适配、全新「额度管理」组件、每日用量数据新鲜度修复，以及告警呈现统一改为文字红闪。下方标注「未发布」的小节同样属于本版本。
+
+**新增 — 额度管理（2×2，Coding Plan 分组）：**
+
+- 📊 **月窗口版式**：标题左侧、右上角是**月末用量预测百分比**，第二行是账期日期（`账期 10-10`），底部为「今日用量 / 今日推荐」两个数字（今日实测 token 与「剩余额度均摊到每天」的推荐上限）。
+- 📈 **预测口径**：`已用% + 近期速率 × 剩余天数`，近期速率取**最近 3 个日当量**（前 2 个完整天 + 今天按已过比例折算，今天不足 6 小时不计入）。预测与今日推荐因此**数学同调**：预测 > 100% ⇔ 近期速率 > 今日推荐速率，不会出现「今天没超推荐、整月却显示超 100%」。
+- 🔴 **超 100% 的表现**：数值本身变红并做 1.6s 呼吸闪烁（不再使用卡片四周的红色内晕）。
+- 🧮 **额度换算**：余额（credits）按本账期已实现的「本地 token ÷ 消耗 credits」汇率折算为 token，与今日用量同口径；不使用 provider 侧 token 计数（同一账期两者相差约 1.7 倍）。
+- 🚫 **不造数**：缺百分比/额度、账期已结束或不足 6 小时 → 显示「数据不足」；仅汇率侧缺失时今日推荐单独显示 `—`。
+- 🧩 新增 `figures` 图表类型（一行「标签 + 数值」对，首块贴左、末块贴右，与标题行共用内边距）。
+
+**修复 — 每日用量数据新鲜度：**
+
+- ⚡ **今日数字随每一轮对话更新**：每日用量取自用量中心折叠会话日志得到的索引，而它按自身 ~30s 节奏重扫——此前一轮对话结束后卡片仍显示上一轮的数（实测同一时刻索引比独立日志折叠滞后约 0.4M）。现在客户端保留「逐 step 本地计数」，并对**今天**取 `max(索引, 本地)`（历史日永远用索引值：本地只见过本浏览器打开过的会话，绝不改写历史），每一步落定即刷新。
+- 🔄 host 路由 `/api/widgets-usage-daily?refresh=1` 在每轮对话结束时让用量中心**立即重扫**（5s 节流 + try/catch，未安装用量中心时全程可选）。客户端改动刷新页面即生效；该参数属 host 代码，需重启 dsh web 后生效。
+
+**修复 — Command Code 月窗口百分比口径：**
+
+- 🧾 月窗口此前用 `已用 / (已用 + 剩余)` 作分母——那是一对互不相干的快照之和（$70 套餐实测 17.26 + 59.01 = 76.27），卡片读 22.6% 而官网读 ~16%。现改为 `(额度 − 剩余) / 额度`，额度按套餐表（GOAT = $70）取值；未知套餐回退到 API 自报的已用值。
+
+**改动 — 告警统一为文字红闪：**
+
+- 🔔 删除整套「卡片四周红色内晕」机制（`alert` 字段 + `.dsx-peak-alert` + keyframes）。峰谷定价的 **EXPENSIVE** 与额度管理的**超 100%** 改为数值本身使用 error 红并做 1.6s 不透明度呼吸（`prefers-reduced-motion` 下静止），卡片边框不再变化。
+
+**排版 — 卡片标题行重构：**
+
+- 📐 标题行改为**两个互相独立的 slot**（左标题、右数值）并顶对齐。此前标题与 20px 数值共享一条基线，行被撑高后 13px 标题被下推约 5px、比普通卡片低一截；现在右侧数值再用负 margin 抵消自身多出的行高，账期行因此紧贴标题。实测额度卡标题顶部与无右上角数值的普通卡一致（11px），`context-water@2×4` 行高回到 16px。
+
+**官网 / 展示页：**
+
+- 🌐 组件画廊补齐到 **33 个组件**（此前停留在 24，缺整族 8 个 Command Code 组件），新增 Command Code 与设备状态两个筛选，中文/英文文案同步；组件表改由 `website/sync-data.mjs` 从 manifest 生成，避免再次漂移。站点无头验证 44/44 通过。
+
+**兼容性 — 适配 DeepSeek Harness 0.1.5 的会话快照拆分：**
+
+- 🧩 **数据源迁移（不迁移就会静默失去全部卡片数据）**：0.1.5 把会话快照拆成两半——`useSession` 只留生命周期状态（`running` 等），聊天数据（`nodes` / `timeline` / `runningCalls`）改由新的 `useChat` 提供。composer dock 收集器此前用 `useSession(s => s.chat.legacy.nodes)` 取值；在 0.1.5 下该 selector 会在渲染期抛错，被 slot 错误边界捕获后整个 entry 退位，结果是**卡片全部拿不到数据、rail 因 `hasSession` 永不置位而消失**。现在收集器优先 `useChat`、回退 `useSession`，两条路径的 selector 都用可选链，任何一版缺失的切片都解析为 `undefined` 而不是抛错。
+- 🔌 **类型与打包来源对齐官方**：`@deepseek-ai/dsh-client-runtime` 已在 0.1.5 退役，客户端上下文的类型来源改为 `@deepseek-ai/cordis` 的 `Context`；`package.json` 的 peer/devDependencies 与 `tsdown.config.ts` 的平台模块表同步移除该包。
+- 🔍 **审计结论（未改代码）**：4 个 slot（`shell.overlay` / `conversation.composer.dock` / `conversation.session.header.utilities` / `settings.section`）、`register({name,id,order,label})` 选项、`__ModuleLoader__` 客户端 bundle 协议、5 个投影字段（`sessionStats` / `tokenUsage` / `contextPressure` / `contextBreakdown` / `todos`）、宿主 6 条自定路由与 `locale` 用法在 0.1.5 全部兼容；官方同槽统计行的 entry id 仍是 `stats`。
+- ✅ **实测**：0.1.5-rc.2 隔离实例中 client bundle 与其余 62 个 entry 一同加载，无异常。
+- 🧭 **官方右栏适配（2026-09-13 追加）**：0.1.5 的框架把右栏变成第三列 grid track（`[class$='_rightbarCol']`，由官方 `dsh-client-ui-sidebar-right` 占据），而 rail 原先锚定 `--dsh-sidebar-width`——该变量由 better-sidebar ≤0.14 提供，0.19 起它改走官方 `ctx.sidebarRight` 后不再发布，于是 rail 回退到 `right: 0` 直接压在官方右栏上。现在 rail 与「+ 添加」面板都锚定新的 `--dsx-rightbar-w`（测量 `_rightbarCol` 宽度写入，ResizeObserver 跟随官方右栏的开合/全屏/拖拽），旧变量保留为回退值，两种装配都能正常让位。
+- 📌 已知待办：`body.dsx-hide-statsline` 目前隐藏整个 composer dock 槽的可见性，后续可收窄到官方 `stats` entry；官方右栏拖拽期间 rail 的过渡尚未跟随（官方用自身类名标记拖拽态）。
 
 ### v1.4.1
 

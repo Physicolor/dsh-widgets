@@ -41,7 +41,7 @@
   color: var(--dsw-title);
   line-height: 1.2;
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 6px;
 }
@@ -294,32 +294,21 @@
   line-height: 1.5;
 }
 
-/* ── Peak-pricing red inner glow (REAL dsx-peak-alert) ── */
-.wg-card.wg-alert {
-  box-shadow:
-    inset 0 0 22px color-mix(in srgb, var(--dsw-err) 32%, transparent),
-    inset 0 0 5px color-mix(in srgb, var(--dsw-err) 20%, transparent),
-    var(--dsw-card-shadow);
-  animation: wg-peak-breathe 2.2s ease-in-out infinite alternate;
+/* ── Live/over-budget value pulse (REAL dsx-value-pulse) ──
+   The escalation lives on the FIGURE, not on the card: red + a slow blink,
+   while the card frame stays clean (the old edge glow was removed). */
+.wg-value.pulse {
+  color: var(--dsw-err);
+  animation: wg-value-breathe 1.6s ease-in-out infinite alternate;
 }
 
-@keyframes wg-peak-breathe {
-  from {
-    box-shadow:
-      inset 0 0 15px color-mix(in srgb, var(--dsw-err) 20%, transparent),
-      inset 0 0 4px color-mix(in srgb, var(--dsw-err) 12%, transparent),
-      var(--dsw-card-shadow);
-  }
-  to {
-    box-shadow:
-      inset 0 0 30px color-mix(in srgb, var(--dsw-err) 42%, transparent),
-      inset 0 0 7px color-mix(in srgb, var(--dsw-err) 28%, transparent),
-      var(--dsw-card-shadow);
-  }
+@keyframes wg-value-breathe {
+  from { opacity: 1; }
+  to { opacity: 0.35; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wg-card.wg-alert {
+  .wg-value.pulse {
     animation: none;
   }
 }

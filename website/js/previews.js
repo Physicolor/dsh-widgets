@@ -112,6 +112,14 @@ window.DASH_PREVIEWS = (function () {
     contextWindow: 1000000,
     contextTokens: 446000,
     contextBreakdown: { systemTokens: 6000, toolsTokens: 11700, messageTokens: 428300 },
+    // Command Code account mock — mirrors components.tsx PREVIEW_STATS so the
+    // eight cc-* cards preview exactly as the product's market does.
+    commandCode: {
+      whoami: { success: true, user: { id: 'usr_demo', name: 'Physicolor', email: 'demo@example.com', userName: 'Physicolor' }, org: null },
+      usage: { totalCount: 4821, totalCost: 0.467622536, averageCost: 0.0079258, successRate: 100, completedCount: 4821, failedCount: 0, totalTokensIn: 4896670, totalTokensOut: 28435, totalTokens: 4925105, totalCredits: 0.467622536, totalMonthlyCredits: 0.467622536, periodBasis: 'billing-period' },
+      credits: { credits: { belowThreshold: false, creditThreshold: 0, monthlyCredits: 69.163327664, purchasedCredits: 0, freeCredits: 0 }, windowLimits: { limited: true, exceeded: null, fiveHour: { used: 0.836672336, cap: 14, exceeded: false, resetAt: 1789039577701 }, weekly: { used: 0.836672336, cap: 35, exceeded: false, resetAt: 1789626377701 } } },
+      subscription: { success: true, data: { id: 'sub_demo', status: 'active', planId: 'individual-goat', priceId: 'price_demo', quantity: 1, cancelAtPeriodEnd: false, currentPeriodStart: '2026-09-10T04:42:28.000Z', currentPeriodEnd: '2026-10-10T04:42:28.000Z', endedAt: null, canceledAt: null } }
+    },
     todos: [
       { content: 'Split plan tasks', status: 'in_progress' },
       { content: 'Feed context data', status: 'completed' },
@@ -142,6 +150,124 @@ window.DASH_PREVIEWS = (function () {
   };
 
   function t(key, vars) { return window.DASH_I18N.t(key, vars); }
+
+  /* ── Command Code account helpers (ported from src/client/lib/cc-view.ts) ── */
+  function fmtCredit(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return '-';
+    var abs = Math.abs(n);
+    if (abs >= 100) return n.toFixed(0);
+    if (abs >= 1) return n.toFixed(2);
+    if (abs >= 0.01) return n.toFixed(4);
+    return String(n);
+  }
+  function fmtCost(n) { return '$' + fmtCredit(n); }
+  function winPct(w2) {
+    var used = w2 && w2.used, cap = w2 && w2.cap;
+    if (typeof used !== 'number' || typeof cap !== 'number' || !isFinite(used) || !isFinite(cap) || cap <= 0) return null;
+    return Math.min(100, Math.max(0, (used / cap) * 100));
+  }
+  function winTone(p, exceeded) {
+    if (p === null) return 'muted';
+    if (exceeded === true || p >= 95) return 'danger';
+    if (p >= 75) return 'warn';
+    return 'success';
+  }
+  function fmtReset(ms) {
+    if (typeof ms !== 'number' || !isFinite(ms)) return '';
+    var d = new Date(ms);
+    return String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function fmtIsoDay(iso) {
+    if (typeof iso !== 'string' || iso.length < 10) return '';
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    return m ? m[2] + '-' + m[3] : '';
+  }
+  function ccFiveHour(c) {
+    var w2 = c.credits.windowLimits.fiveHour;
+    var p = winPct(w2);
+    if (p === null) return null;
+    return { key: 'fiveHour', label: t('cc.win5h'), used: w2.used, cap: w2.cap, pct: p, resetAt: w2.resetAt, exceeded: w2.exceeded };
+  }
+  function ccWeekly(c) {
+    var w2 = c.credits.windowLimits.weekly;
+    var p = winPct(w2);
+    if (p === null) return null;
+    return { key: 'weekly', label: t('cc.winWeekly'), used: w2.used, cap: w2.cap, pct: p, resetAt: w2.resetAt, exceeded: w2.exceeded };
+  }
+  /* Monthly allowance (USD credits) per plan — the published plan table. */
+  var CC_ALLOWANCE = { 'individual-goat': 70 };
+  function ccMonthly(c) {
+    var remaining = c.credits.credits.monthlyCredits;
+    var resetIso = c.subscription.data.currentPeriodEnd;
+    var plan = c.subscription.data.planId;
+    var allowance = CC_ALLOWANCE[plan];
+    if (allowance !== undefined && allowance > 0) {
+      var used = Math.min(allowance, Math.max(0, allowance - remaining));
+      return { key: 'monthly', label: t('cc.winMonthly'), used: used, cap: allowance, pct: (used / allowance) * 100, resetIso: resetIso };
+    }
+    var used2 = c.usage.totalMonthlyCredits;
+    var cap2 = used2 + remaining;
+    if (!(cap2 > 0)) return null;
+    return { key: 'monthly', label: t('cc.winMonthly'), used: used2, cap: cap2, pct: Math.min(100, Math.max(0, (used2 / cap2) * 100)), resetIso: resetIso };
+  }
+
+  /* ── 额度管理 (quota-manage) — ported from src/client/lib/quota-math.ts ── */
+  function fmtQuota(n) {
+    if (!isFinite(n) || n <= 0) return '0';
+    if (n >= 1e9) return (Math.floor(n / 1e8) / 10).toFixed(1) + 'B';
+    if (n >= 1e8) return Math.floor(n / 1e6) + 'M';
+    if (n >= 1e6) return (Math.floor(n / 1e5) / 10) + 'M';
+    if (n >= 1e3) return Math.floor(n / 1e3) + 'K';
+    return String(Math.floor(n));
+  }
+  /** The widget's own example.stats() mock: a live-shaped account + 14-day log. */
+  function quotaMock() {
+    var now = new Date(), DAY = 86400000, daily = {}, periodTotal = 0, i, d, v;
+    for (i = 0; i < 14; i++) {
+      d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (13 - i));
+      v = i === 13 ? 120000000 : 90000000 + ((i * 137) % 44) * 8000000;
+      daily[dayKey(d)] = v;
+      if (i >= 9) periodTotal += v;
+    }
+    var consumed = periodTotal / 89000000;
+    return {
+      daily: daily,
+      remainingCredits: 64.5,
+      consumedCredits: consumed,
+      periodStart: new Date(now.getTime() - 4 * DAY).toISOString(),
+      periodEnd: new Date(now.getTime() + 26 * DAY).toISOString()
+    };
+  }
+  /** planQuota(): recent-pace projection + today's budget (quota-math.ts). */
+  function quotaPlan(mock) {
+    var now = new Date(), DAY = 86400000, RECENT = 3;
+    var start = new Date(mock.periodStart), end = new Date(mock.periodEnd);
+    var elapsed = (now.getTime() - start.getTime()) / DAY;
+    var total = (end.getTime() - start.getTime()) / DAY;
+    var allowance = CC_ALLOWANCE['individual-goat'];
+    var usedPct = ((allowance - mock.remainingCredits) / allowance) * 100;
+    var daysLeft = Math.max(1, Math.ceil((end.getTime() - now.getTime()) / DAY));
+    var midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var dayFraction = Math.max(0.25, Math.min(1, (now.getTime() - midnight.getTime()) / DAY));
+    var todayTokens = mock.daily[dayKey(now)] || 0;
+    var periodTokens = 0, k;
+    for (k in mock.daily) if (new Date(k + 'T12:00:00').getTime() >= start.getTime()) periodTokens += mock.daily[k];
+    var rate = periodTokens / mock.consumedCredits;
+    var windowStart = new Date(midnight);
+    windowStart.setDate(windowStart.getDate() - (RECENT - 1));
+    var paceFrom = windowStart.getTime() < start.getTime() ? start : windowStart;
+    var paces = Math.max(1, Math.round((midnight.getTime() - new Date(paceFrom.getFullYear(), paceFrom.getMonth(), paceFrom.getDate()).getTime()) / DAY) + 1);
+    var whole = 0, i;
+    for (i = 1; i < paces; i++) whole += mock.daily[dayKey(new Date(midnight.getTime() - i * DAY))] || 0;
+    var pace = (whole + todayTokens / dayFraction) / paces;
+    return {
+      usedPct: usedPct,
+      projectedPct: usedPct + ((pace / rate) * (total - elapsed) / allowance) * 100,
+      periodEndIso: end.toISOString(),
+      todayTokens: todayTokens,
+      todayRecommend: (mock.remainingCredits * rate) / daysLeft
+    };
+  }
 
   /* ── real per-widget render() — ported from the unit implementations ── */
   var SEG_TONES = {
@@ -312,7 +438,102 @@ window.DASH_PREVIEWS = (function () {
           ],
           value: peak ? 'EXPENSIVE' : 'CHEAP',
           valueTone: peak ? 'danger' : undefined,
-          alert: peak
+          /* Text-level escalation (red + blink), never a card-wide glow. */
+          valuePulse: peak
+        };
+      }
+      case 'quota-manage': {
+        var mock = quotaMock();
+        var plan = quotaPlan(mock);
+        var over = plan.projectedPct > 100;
+        var m2 = Number(plan.periodEndIso.slice(5, 7)), d2 = Number(plan.periodEndIso.slice(8, 10));
+        return {
+          title: t('widget.quota-manage.name'),
+          /* '' puts the big figure in the top-right slot with no extra caption */
+          headRight: '',
+          value: Math.round(plan.projectedPct) + '%',
+          valueTone: over ? 'danger' : undefined,
+          valuePulse: over,
+          legend: t('card.quota.periodEnd', { m: m2, d: d2 }),
+          chart: {
+            kind: 'figures',
+            figures: [
+              { label: t('card.quota.used'), value: fmtQuota(plan.todayTokens) },
+              { label: t('card.quota.recommend'), value: fmtQuota(plan.todayRecommend) }
+            ]
+          }
+        };
+      }
+      case 'cc-whoami': {
+        var cu = s.commandCode.whoami.user;
+        return {
+          title: t('cc.title'),
+          value: cu.name || cu.userName || '-',
+          legend: t('cc.account'),
+          sub: [cu.email, s.commandCode.whoami.org ? '' : ''].filter(Boolean).join(' / ') || undefined
+        };
+      }
+      case 'cc-usage': {
+        var u3 = s.commandCode.usage;
+        return {
+          title: t('cc.title'),
+          legend: t('cc.roleUsage'),
+          headAfter: { big: fmtTokens(u3.totalTokens), small: t('cc.tokens') },
+          sub: [
+            u3.totalCount + ' ' + t('cc.requests'),
+            u3.successRate.toFixed(0) + '% ' + t('cc.successRate'),
+            t('cc.spend') + ' ' + fmtCost(u3.totalCost)
+          ].join(' / ')
+        };
+      }
+      case 'cc-credits': {
+        var cr = s.commandCode.credits.credits;
+        var fh = ccFiveHour(s.commandCode), wk = ccWeekly(s.commandCode);
+        var bars = [];
+        if (fh) bars.push({ label: t('cc.win5h'), value: Math.round(fh.pct), ratio: fh.pct / 100, tone: winTone(fh.pct, fh.exceeded) });
+        if (wk) bars.push({ label: t('cc.winWeekly'), value: Math.round(wk.pct), ratio: wk.pct / 100, tone: winTone(wk.pct, wk.exceeded) });
+        return {
+          title: t('cc.title'),
+          legend: t('cc.roleCredits'),
+          headAfter: { big: fmtCredit(cr.monthlyCredits), small: t('cc.credits') },
+          chart: bars.length ? { kind: 'bars', bars: bars } : undefined,
+          sub: [fh ? t('cc.win5h') + ' ' + fmtReset(fh.resetAt) : '', wk ? t('cc.winWeekly') + ' ' + fmtReset(wk.resetAt) : ''].filter(Boolean).join(' / ') || undefined
+        };
+      }
+      case 'cc-windows': {
+        var wins = [ccFiveHour(s.commandCode), ccWeekly(s.commandCode), ccMonthly(s.commandCode)].filter(Boolean);
+        return {
+          title: t('cc.title'),
+          legend: t('cc.roleWindow'),
+          chart: {
+            kind: 'rings',
+            rings: wins.map(function (x) {
+              return { label: '', name: x.label, value: Number(x.pct.toFixed(1)), decimals: 1, ratio: x.pct / 100, tone: x.exceeded === true || x.pct >= 95 ? 'danger' : x.pct >= 75 ? 'warn' : 'success' };
+            })
+          }
+        };
+      }
+      case 'cc-subscription': {
+        var sub = s.commandCode.subscription.data;
+        return {
+          title: t('cc.title'),
+          legend: t('cc.rolePlan'),
+          headAfter: { big: String(sub.planId), small: sub.status },
+          sub: t('cc.periodEnd') + ' ' + fmtIsoDay(sub.currentPeriodEnd)
+        };
+      }
+      case 'cc-window-5h':
+      case 'cc-window-weekly':
+      case 'cc-window-monthly': {
+        var key = w.id === 'cc-window-5h' ? 'fiveHour' : w.id === 'cc-window-weekly' ? 'weekly' : 'monthly';
+        var info = key === 'fiveHour' ? ccFiveHour(s.commandCode) : key === 'weekly' ? ccWeekly(s.commandCode) : ccMonthly(s.commandCode);
+        var roleKey = key === 'fiveHour' ? 'cc.win5h' : key === 'weekly' ? 'cc.winWeekly' : 'cc.winMonthly';
+        if (!info) return { title: t('cc.title'), value: '-', legend: t(roleKey) };
+        return {
+          title: t('cc.title'),
+          legend: t(roleKey),
+          value: info.pct.toFixed(1) + '%',
+          sub: info.resetIso ? t('cc.periodEnd') + ' ' + fmtIsoDay(info.resetIso) : (fmtReset(info.resetAt) ? t('cc.resets') + ' ' + fmtReset(info.resetAt) : undefined)
         };
       }
       case 'sys-cpu': {
@@ -392,6 +613,20 @@ window.DASH_PREVIEWS = (function () {
   function chartHtml(chart, scale, width) {
     var num = function (v) { return Math.round(v * scale); };
     if (!chart) return '';
+    if (chart.kind === 'figures' && chart.figures && chart.figures.length) {
+      /* A row of label-over-value figure pairs: the FIRST is flush with the
+         card's left padding, the LAST with its right padding (space-between),
+         so the row shares the head row's gutters. */
+      var lastFig = chart.figures.length - 1;
+      return '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:' + num(8) + 'px;width:100%">' +
+        chart.figures.map(function (f, i) {
+          var align = i === 0 ? 'flex-start' : i === lastFig ? 'flex-end' : 'center';
+          return '<div style="min-width:0;display:flex;flex-direction:column;align-items:' + align + ';gap:' + num(2) + 'px">' +
+            '<div style="font-size:' + num(9) + 'px;color:var(--dsw-label-ter);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">' + f.label + '</div>' +
+            '<div style="font-size:' + num(13) + 'px;font-weight:600;color:var(--dsw-label-pri);font-variant-numeric:tabular-nums;line-height:1.2;white-space:nowrap">' + f.value + '</div>' +
+            '</div>';
+        }).join('') + '</div>';
+    }
     if (chart.kind === 'bars' && chart.bars) {
       var h = Math.round(56 * scale);
       var gl = [0.25, 0.5, 0.75].map(function (p) {
@@ -549,17 +784,31 @@ window.DASH_PREVIEWS = (function () {
     /* real 2×4 width = two grid-units + the rail's inter-card gap (panelPadding=24) */
     var boxW = wide ? unit * 2 + 24 : unit;
 
-    /* header */
+    /* header — two INDEPENDENT top-aligned slots (mirrors components.tsx): the
+       title box on the left, and when headRight is DEFINED (even as '') the
+       value + caption hard against the right edge. The right slot cancels its
+       own extra line height with a negative bottom margin so the row stays as
+       tall as the title and the legend hugs the title. */
+    var hasHeadRight = out.headRight !== undefined;
+    var titleLine = Math.round(titlePx * 1.2);
+    var captionLine = Math.round(10 * scale * 1.2);
+    var valueLine = Math.round(valuePx * 1.25);
+    var rightLine = hasHeadRight ? Math.max(out.value != null ? valueLine : 0, out.headRight ? captionLine : 0) : 0;
+    var spill = Math.max(0, rightLine - titleLine);
     var titleRow =
-      '<div class="wg-title-row" style="font-size:' + titlePx + 'px">' +
-      '<span class="wg-title-group"><span class="wg-title-text">' + out.title + '</span>' +
-      (out.headRight && out.value != null
-        ? '<span style="font-size:' + valuePx + 'px;font-weight:600;color:var(--dsw-label-pri);font-variant-numeric:tabular-nums">' + out.value + '</span>'
+      '<div class="wg-title-row" style="font-size:' + titlePx + 'px;align-items:flex-start;min-height:' + titleLine + 'px">' +
+      '<span class="wg-title-text" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + out.title + '</span>' +
+      (hasHeadRight
+        ? '<span class="wg-title-right" style="display:inline-flex;align-items:baseline;gap:6px;flex:none' + (spill > 0 ? ';margin-bottom:-' + spill + 'px' : '') + '">' +
+          (out.value != null
+            ? '<span class="wg-value' + (out.valueTone === 'danger' ? ' danger' : '') + (out.valuePulse ? ' pulse' : '') + '" style="font-size:' + valuePx + 'px">' + out.value + '</span>'
+            : '') +
+          (out.headRight
+            ? '<span style="font-size:' + num(10) + 'px;color:var(--dsw-label-ter);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap">' + out.headRight + '</span>'
+            : '') +
+          '</span>'
         : '') +
-      (out.headRight
-        ? '<span style="font-size:' + num(10) + 'px;color:var(--dsw-label-ter);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap">' + out.headRight + '</span>'
-        : '') +
-      '</span></div>';
+      '</div>';
     var head = titleRow;
     if (out.headAfter) {
       head += '<div class="wg-headafter" style="margin-top:' + num(2) + 'px">' +
@@ -582,8 +831,8 @@ window.DASH_PREVIEWS = (function () {
 
     /* body */
     var body = '';
-    if (out.value != null && !out.headRight) {
-      body += '<div class="wg-value' + (out.valueTone === 'danger' ? ' danger' : '') + '" style="font-size:' + valuePx + 'px">' + out.value + '</div>';
+    if (out.value != null && out.headRight === undefined) {
+      body += '<div class="wg-value' + (out.valueTone === 'danger' ? ' danger' : '') + (out.valuePulse ? ' pulse' : '') + '" style="font-size:' + valuePx + 'px">' + out.value + '</div>';
     }
     if (out.sub) {
       body += '<div class="wg-sub">' + out.sub + '</div>';
@@ -598,7 +847,7 @@ window.DASH_PREVIEWS = (function () {
       '<div class="wg-foot">' + body + '</div>';
 
     return (
-      '<div class="wg-card' + (out.alert ? ' wg-alert' : '') + '" style="width:' + boxW + 'px;min-height:' + unit + 'px;border-radius:' + radius + 'px;padding:' + pad + 'px"' +
+      '<div class="wg-card" style="width:' + boxW + 'px;min-height:' + unit + 'px;border-radius:' + radius + 'px;padding:' + pad + 'px"' +
       (out.cycle && out.cycle.hint ? ' title="' + out.cycle.hint + '"' : '') + '>' +
       cornerHtml(out.corner, scale) +
       '<div class="wg-card-inner">' + head + foot + '</div>' +
