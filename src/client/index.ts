@@ -8,11 +8,11 @@
  */
 
 import * as React from 'react'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import './widgets.module.css'
 import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES } from './generated.registry'
 import { instanceKey, parseInstanceKey, sizesOf, widgetName, type CommandCodeData, type SysInfo, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
-import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadSeen, migrateHeatmapV2, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
+import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
 import { SYS_WIDGET_IDS, ingestSysInfo, resolveInterval } from './lib/sys-view'
 import { CardBody, WidgetsPage, type Prefs } from './components'
 import { t, installLocale, onLocaleChange } from './i18n'
@@ -230,12 +230,13 @@ export function apply(ctx: ClientContext): void {
     const disposeListener = onLocaleChange(() => { emit() })
     return () => { disposeLocale(); disposeListener() }
   })
-  // Run the heatmap table repair/recovery once at plugin boot (independent of
-  // any active session/dock), so polluted or incomplete histories are fixed
-  // the moment the bundle loads.
-  try { migrateHeatmapV2() } catch { /* best-effort */ }
+  // One-time boot cleanup of the fallback heatmap log: older builds wrote
+  // fabricated "recovered history" constants into it (see loadHeatmapStore).
+  // Independent of any active session/dock, so it runs the moment the bundle
+  // loads — and it must never touch live-accumulated days.
+  try { loadHeatmapStore() } catch { /* best-effort */ }
   let prefs = loadState()
-  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, sysinfo: null as SysInfo | null }
+  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null }
 
   const listeners = new Set<() => void>()
   function emit(): void { for (const fn of listeners) fn() }
@@ -271,7 +272,7 @@ export function apply(ctx: ClientContext): void {
       }
     } catch { /* host unavailable; stay on localStorage only */ }
   }
-  function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; usageMulti: UsageMulti | null; commandCode: CommandCodeData | null; commandCodeError: string | null; sysinfo: SysInfo | null; prefs: Prefs } {
+  function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; usageMulti: UsageMulti | null; commandCode: CommandCodeData | null; commandCodeError: string | null; usageDaily: Record<string, number> | null; sysinfo: SysInfo | null; prefs: Prefs } {
     const [snap, setSnap] = React.useState({ ...state, prefs: { ...prefs } })
     React.useEffect(() => subscribe(() => setSnap({ ...state, prefs: { ...prefs } })), [])
     return snap
@@ -326,7 +327,42 @@ export function apply(ctx: ClientContext): void {
 
   // ---- Rail-top / composer-bottom measurement. ----
   let raf = 0
+  /** Last measured official right-bar width (px); -1 = never measured. */
+  let lastRightbarW = -1
+  /** Timer that ends the track-sync window. */
+  let syncTimer = 0
   function measureRailTop(): void {
+    // Official right bar (DSH 0.1.5): the frame owns a third grid column
+    // ([class$='_rightbarCol'], occupied by dsh-client-ui-sidebar-right). The
+    // rail must stop at that column's LEFT edge instead of the viewport edge,
+    // or it paints straight over the panel (measured 2026-09-13: with the
+    // panel open the rail sat on top of it). Older installs published
+    // --dsh-sidebar-width from dsh-better-sidebar instead; the rail's right
+    // offset falls back to that variable when this one is absent, so both
+    // layouts work.
+    const rightbar = document.querySelector('[class$="_rightbarCol"]')
+    const rightbarW = rightbar ? Math.round(rightbar.getBoundingClientRect().width) : 0
+    if (rightbarW !== lastRightbarW) {
+      lastRightbarW = rightbarW
+      // The frame animates its grid track on open/close/fullscreen. While the
+      // width is moving the rail must NOT run its own tween: every write would
+      // restart a fresh 0.3s transition, so the rail would trail the panel by
+      // seconds (the reported "平移延迟"). Freeze the tween for the duration of
+      // the movement — `right` then lands on the measured value every frame and
+      // the rail rides the track exactly — and let the class expire once the
+      // track settles.
+      document.documentElement.classList.add('dsx-syncing')
+      if (syncTimer !== 0) window.clearTimeout(syncTimer)
+      syncTimer = window.setTimeout(() => {
+        syncTimer = 0
+        document.documentElement.classList.remove('dsx-syncing')
+      }, 160)
+      document.documentElement.style.setProperty('--dsx-rightbar-w', `${rightbarW}px`)
+      // While the track moves, only the width matters; skip the heavier header
+      // and composer probes so the transition keeps the main thread.
+      return
+    }
+    document.documentElement.style.setProperty('--dsx-rightbar-w', `${rightbarW}px`)
     const el = document.querySelector('[data-conversation-scroll]')
     const top = el ? el.getBoundingClientRect().top : 0
     // 12px breathing gap below the session header; the rail AND the magnify
@@ -360,14 +396,21 @@ export function apply(ctx: ClientContext): void {
       if (h) ro.observe(h)
       const c = document.querySelector('[data-composer-seat]')
       if (c) ro.observe(c)
+      // The official right bar resizes on open/close/fullscreen/drag; observing
+      // its column keeps the rail's right offset in lockstep with the track.
+      const rb = document.querySelector('[class$="_rightbarCol"]')
+      if (rb) ro.observe(rb)
     }
     const sub = subscribe(scheduleMeasure)
     return () => {
       window.removeEventListener('resize', scheduleMeasure)
       if (ro) ro.disconnect()
       sub()
+      if (syncTimer !== 0) window.clearTimeout(syncTimer)
+      document.documentElement.classList.remove('dsx-syncing')
       document.documentElement.style.removeProperty('--dsx-rail-top')
       document.documentElement.style.removeProperty('--dsx-input-bottom')
+      document.documentElement.style.removeProperty('--dsx-rightbar-w')
     }
   })
 
@@ -384,10 +427,23 @@ export function apply(ctx: ClientContext): void {
   // ---- Data collector (session stats + OpenCode usage). ----
   ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register(
     { name: 'conversation.composer.dock', id: 'widgets-panel-collector', order: 9999 },
-    ({ useSession, useProjection }: any) => {
-      const settled = useSession ? useSession((s: any) => s.chat.legacy.nodes) : []
-      const timeline = useSession ? useSession((s: any) => s.chat.timeline) : undefined
-      const runningCalls = useSession ? useSession((s: any) => s.runningCalls) : []
+    ({ useSession, useProjection, useChat }: any) => {
+      // DSH 0.1.5 split the session snapshot: chat data (nodes, timeline and
+      // running tool calls) moved to the new `useChat` hook while `useSession`
+      // now carries lifecycle state only. Read whichever half the running build
+      // provides — the selectors are optional-chained so a slice that no longer
+      // exists resolves to undefined instead of throwing inside the selector,
+      // which the slot renderer would answer by abdicating this entry (taking
+      // the whole collector, and therefore every card's data, with it).
+      const settled = (useChat
+        ? useChat((c: any) => c.legacy?.nodes)
+        : useSession((s: any) => s.chat?.legacy?.nodes)) ?? []
+      const timeline = (useChat
+        ? useChat((c: any) => c.timeline)
+        : useSession((s: any) => s.chat?.timeline)) ?? undefined
+      const runningCalls = (useChat
+        ? useChat((c: any) => c.legacy?.runningCalls)
+        : useSession((s: any) => s.runningCalls)) ?? []
       const running = useSession ? useSession((s: any) => s.running) : false
       const projected = useProjection ? useProjection('sessionStats') : undefined
       const usage = useProjection ? useProjection('tokenUsage') : undefined
@@ -398,10 +454,12 @@ export function apply(ctx: ClientContext): void {
       // refresh-interval config, so this collector re-renders on prefs changes
       // (emit) exactly like the capsule/rail bridges do.
       const snap = useBridge()
-      // Heatmap self-accounting: per-step crediting (v2) crediting each assistant
-      // step once by its own start time, with a cumulative-anchor fallback (v1)
-      // when nodes lack `usage`. Persisted across mounts.
-      const heatmapRef = React.useRef<Record<string, number>>(migrateHeatmapV2())
+      // Heatmap FALLBACK accounting: kept for installs without dsh-usage-center.
+      // Per-step crediting (v2) credits each assistant step once by its own start
+      // time, with a cumulative-anchor fallback (v1) when nodes lack `usage`.
+      // Persisted across mounts; skipped entirely whenever the authoritative
+      // host map (`snap.usageDaily`) is present.
+      const heatmapRef = React.useRef<Record<string, number>>(loadHeatmapStore())
       const anchorRef = React.useRef<number>(loadHeatmapAnchor())
       const [heatmap, setHeatmap] = React.useState<Record<string, number>>(heatmapRef.current)
       // Presence signal: this dock slot renders only while an active session is
@@ -447,6 +505,20 @@ export function apply(ctx: ClientContext): void {
             setState({ commandCode: data as CommandCodeData, commandCodeError: null })
           })
           .catch(() => setState({ commandCode: null, commandCodeError: 'unavailable' }))
+        // Authoritative per-day token totals for the heatmap cards. The host
+        // route re-serves dsh-usage-center's log-folded days when that plugin is
+        // installed; `available: false` (missing service, empty index, dsh web
+        // not restarted) simply leaves the cards on their own live accounting.
+        // `refresh=1` (this path runs when a turn SETTLES) makes the host fold
+        // the logs immediately instead of waiting for usage-center's next ~30 s
+        // pass, so the day's figure moves with the turn that just finished.
+        fetch('/api/widgets-usage-daily?refresh=1')
+          .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
+          .then((data: { available?: boolean; daily?: Record<string, number> } | null) => {
+            const daily = data?.available === true && data.daily !== null && data.daily !== undefined ? data.daily : null
+            setState({ usageDaily: daily })
+          })
+          .catch(() => { /* keep the last authoritative map (or the fallback) */ })
         }
         // Pull on mount (both false — first render); afterwards only a
         // completed turn (true → false) refetches, an in-flight turn does not.
@@ -454,6 +526,27 @@ export function apply(ctx: ClientContext): void {
         else if (!running) refresh()
         prevRunningRef.current = running
       }, [running])
+      // The authoritative day map needs a slow poll of its own: usage-center
+      // rescans every ~30 s, so a long idle page would otherwise show a frozen
+      // "today" cell. One tiny same-origin JSON per minute; a missing service or
+      // an unrestarted host simply keeps answering `available: false`.
+      React.useEffect(() => {
+        const pull = (): void => {
+          fetch('/api/widgets-usage-daily')
+            .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
+            .then((data: { available?: boolean; daily?: Record<string, number> } | null) => {
+              const daily = data?.available === true && data.daily !== null && data.daily !== undefined ? data.daily : null
+              setState({ usageDaily: daily })
+            })
+            .catch(() => { /* keep the last authoritative map (or the fallback) */ })
+        }
+        const id = window.setInterval(pull, 60_000)
+        // Immediate pull too: the mount-time fetch above can land before
+        // usage-center has finished its first scan, and this converges the card
+        // within seconds instead of waiting for the next turn.
+        pull()
+        return () => window.clearInterval(id)
+      }, [])
       // Hardware snapshot (System widgets): the installed sys-* instances drive
       // ONE shared poll loop — the effective cadence is the SHORTEST refresh
       // interval among them (5/10/30/60 s presets + custom numeric, clamped
@@ -500,7 +593,12 @@ export function apply(ctx: ClientContext): void {
           cacheRead = usage.cacheReadTokens || 0
           outputTokens = usage.outputTokens || 0
         }
-        // Heatmap accounting, two-layer:
+        // Heatmap day data. AUTHORITATIVE first: when the host route served
+        // dsh-usage-center's log-folded per-day totals, the cards render exactly
+        // those numbers and this browser's own accounting is skipped entirely
+        // (it can only ever agree by accident — it credits steps only while a
+        // page is open, and older builds seeded fabricated days into it).
+        // The two-layer local accounting below is the STANDALONE fallback:
         //  (a) per-step (v2): if settled assistant nodes carry `usage`, credit
         //      each step ONCE to the day its `stepStartTime` began 鈥?exact
         //      per-conversation attribution, immune to cross-midnight sessions,
@@ -511,73 +609,89 @@ export function apply(ctx: ClientContext): void {
         //      rebuilt ONLY on a cumulative RESET (new session) 鈥?never on a
         //      bare "new day" 鈥?so continuing a session across midnight still
         //      credits only the newly observed growth to today.
-        const seenState = loadSeen()
+        const authoritative = snap.usageDaily
+        const heatTz = (prefs.cardConfigs?.heatmap?.timeZone as string) || DEFAULT_TZ
         // Heatmap timezone: per-card config (default Beijing UTC+8), 'local' =
         // browser clock. Every day attribution below uses it.
-        const heatTz = (prefs.cardConfigs?.heatmap?.timeZone as string) || DEFAULT_TZ
-        let dirty = false
-        let nodeUsageOk = false
-        const isStartF = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n)
-        for (const node of settled ?? []) {
-          if (node?.kind !== 'assistant') continue
-          if (node?.usage == null) continue
-          nodeUsageOk = true
-          const start = node.timing?.stepStartTime
-          const nodeUsage = node.usage
-          if (start == null) continue
-          const total = (isStartF(nodeUsage.uncachedInputTokens) ? nodeUsage.uncachedInputTokens : 0)
-            + (isStartF(nodeUsage.cacheReadTokens) ? nodeUsage.cacheReadTokens : 0)
-            + (isStartF(nodeUsage.cacheWriteTokens) ? nodeUsage.cacheWriteTokens : 0)
-            + (isStartF(nodeUsage.outputTokens) ? nodeUsage.outputTokens : 0)
-          if (total <= 0) continue
-          const key = `${node.turn ?? '?'}:${node.step ?? '?'}:${start}`
-          if (seenState.keys.has(key)) continue
-          seenState.keys.add(key)
-          if (start > seenState.strongest) seenState.strongest = start
-          const day = dateKey(new Date(start), heatTz)
-          heatmapRef.current = accumulateHeatmap(heatmapRef.current, day, total)
-          dirty = true
-        }
-        if (dirty) {
-          saveSeen(seenState.keys, seenState.strongest)
-          setHeatmap(heatmapRef.current)
-        }
-        // (b) anchor fallback 鈥?only when per-step nodes carried no usage.
-        // Anchor discipline (the cross-day over-credit fix):
-        //   * while per-step crediting is active, keep the anchor parked at the
-        //     observed cumulative 鈥?a later fallback takeover then diffs only
-        //     what per-step did NOT already credit (never the whole history);
-        //   * the fallback credits growth ONLY when the active session shows a
-        //     step that actually began today (todayActivity). Without it, an
-        //     anchor that lags the cumulative (page reopened on yesterday's
-        //     session, projection lag right after a new-session switch) would
-        //     diff the entire prior-day total into today's cell.
-        const current = usage ? inputTokens + outputTokens : 0
-        if (nodeUsageOk && usage && current > anchorRef.current) {
-          anchorRef.current = current
-          saveHeatmapAnchor(current)
-        }
-        if (!nodeUsageOk && usage) {
-          const todayKey = dateKey(new Date(), heatTz)
-          const todayActivity = (settled ?? []).some((n: any) =>
-            n?.kind === 'assistant' && n?.timing?.stepStartTime != null && dateKey(new Date(n.timing.stepStartTime), heatTz) === todayKey)
-          if (current < anchorRef.current) {
-            // cumulative reset (new session / log rebuild): re-anchor, no credit
-            anchorRef.current = current
-            saveHeatmapAnchor(current)
-          } else if (todayActivity) {
-            const delta = current - anchorRef.current
-            anchorRef.current = current
-            saveHeatmapAnchor(current)
-            heatmapRef.current = accumulateHeatmap(heatmapRef.current, todayKey, delta)
-            setHeatmap(heatmapRef.current)
-          } else if (current > anchorRef.current) {
-            // history only (no step began today yet): park the anchor at the
-            // cumulative without crediting, so it can never be diffed later.
+        //
+        // The per-step accounting runs in BOTH modes. Without usage-center it IS
+        // the day map; WITH it, it keeps TODAY live: the indexer folds the session
+        // logs on a ~30 s cadence, so between two scans the authoritative map
+        // still shows the PREVIOUS turn and the card would look frozen while
+        // every settled step is already measurable right here.
+        {
+          const seenState = loadSeen()
+          let dirty = false
+          let nodeUsageOk = false
+          const isStartF = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n)
+          for (const node of settled ?? []) {
+            if (node?.kind !== 'assistant') continue
+            if (node?.usage == null) continue
+            nodeUsageOk = true
+            const start = node.timing?.stepStartTime
+            const nodeUsage = node.usage
+            if (start == null) continue
+            const total = (isStartF(nodeUsage.uncachedInputTokens) ? nodeUsage.uncachedInputTokens : 0)
+              + (isStartF(nodeUsage.cacheReadTokens) ? nodeUsage.cacheReadTokens : 0)
+              + (isStartF(nodeUsage.cacheWriteTokens) ? nodeUsage.cacheWriteTokens : 0)
+              + (isStartF(nodeUsage.outputTokens) ? nodeUsage.outputTokens : 0)
+            if (total <= 0) continue
+            const key = `${node.turn ?? '?'}:${node.step ?? '?'}:${start}`
+            if (seenState.keys.has(key)) continue
+            seenState.keys.add(key)
+            if (start > seenState.strongest) seenState.strongest = start
+            const day = dateKey(new Date(start), heatTz)
+            heatmapRef.current = accumulateHeatmap(heatmapRef.current, day, total)
+            dirty = true
+          }
+          if (dirty) {
+            saveSeen(seenState.keys, seenState.strongest)
+            // The React state copy exists for the STANDALONE path only; with
+            // usage-center the merge below reads the ref directly.
+            if (authoritative === null || authoritative === undefined) setHeatmap(heatmapRef.current)
+          }
+          // (b) anchor fallback 鈥?only when per-step nodes carried no usage AND
+          // no authoritative map exists to supersede it.
+          // Anchor discipline (the cross-day over-credit fix):
+          //   * while per-step crediting is active, keep the anchor parked at the
+          //     observed cumulative 鈥?a later fallback takeover then diffs only
+          //     what per-step did NOT already credit (never the whole history);
+          //   * the fallback credits growth ONLY when the active session shows a
+          //     step that actually began today (todayActivity). Without it, an
+          //     anchor that lags the cumulative (page reopened on yesterday's
+          //     session, projection lag right after a new-session switch) would
+          //     diff the entire prior-day total into today's cell.
+          const current = usage ? inputTokens + outputTokens : 0
+          if (nodeUsageOk && usage && current > anchorRef.current) {
             anchorRef.current = current
             saveHeatmapAnchor(current)
           }
+          if ((authoritative === null || authoritative === undefined) && !nodeUsageOk && usage) {
+            const todayKey = dateKey(new Date(), heatTz)
+            const todayActivity = (settled ?? []).some((n: any) =>
+              n?.kind === 'assistant' && n?.timing?.stepStartTime != null && dateKey(new Date(n.timing.stepStartTime), heatTz) === todayKey)
+            if (current < anchorRef.current) {
+              // cumulative reset (new session / log rebuild): re-anchor, no credit
+              anchorRef.current = current
+              saveHeatmapAnchor(current)
+            } else if (todayActivity) {
+              const delta = current - anchorRef.current
+              anchorRef.current = current
+              saveHeatmapAnchor(current)
+              heatmapRef.current = accumulateHeatmap(heatmapRef.current, todayKey, delta)
+              setHeatmap(heatmapRef.current)
+            } else if (current > anchorRef.current) {
+              // history only (no step began today yet): park the anchor at the
+              // cumulative without crediting, so it can never be diffed later.
+              anchorRef.current = current
+              saveHeatmapAnchor(current)
+            }
+          }
         }
+        /** The day map the cards render: authoritative, with TODAY topped up by
+         *  the live per-step counter (see `mergeToday`) so a finished turn shows
+         *  up at once instead of waiting for usage-center's next scan. */
+        const heatmapDays = mergeToday(authoritative, heatmapRef.current, dateKey(new Date(), heatTz))
         // Live in-flight elapsed, added to the settled whole-log figures.
         let llmMs = folded.llmMs
         let toolMs = folded.toolMs
@@ -622,11 +736,11 @@ export function apply(ctx: ClientContext): void {
           usage: { inputTokens, cacheReadTokens: cacheRead, outputTokens },
           contextPercent, contextWindow, contextTokens, contextBreakdown,
           todos: Array.isArray(todosProj) && todosProj.length >= 0 ? todosProj as Stats['todos'] : null,
-          heatmapGrid: buildHeatmapGrid(heatmapRef.current, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling', heatTz),
-          heatmapRaw: { ...heatmapRef.current },
+          heatmapGrid: buildHeatmapGrid(heatmapDays, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling', heatTz),
+          heatmapRaw: { ...heatmapDays },
         }
         setState({ stats })
-      }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now, prefs.cardConfigs?.heatmap?.monthMode, prefs.cardConfigs?.heatmap?.timeZone])
+      }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now, snap.usageDaily, prefs.cardConfigs?.heatmap?.monthMode, prefs.cardConfigs?.heatmap?.timeZone])
       return null
     },
   ))
@@ -844,13 +958,16 @@ export function apply(ctx: ClientContext): void {
       document.documentElement.style.setProperty('--dsx-rail-pad', `${pad}px`)
       document.documentElement.style.setProperty('--dsx-rail-overshoot', `0px`)
       document.documentElement.style.setProperty('--dsx-rail-scroll', `${railScrollTop}px`)
-      // Heatmap data is owned by the dock collector (live accumulated + persisted to
-      // localStorage). The rail MUST consume the collector's live values and
-      // never override them; only when stats lacks heatmap fields entirely
-      // (first paint before the collector effect runs) fall back to the
-      // persisted table so the cards are never blank.
+      // Heatmap day data is owned by the dock collector: the authoritative host
+      // map when dsh-usage-center is installed, else its own persisted live log.
+      // The rail consumes the collector's values and never overrides them; only
+      // when stats lacks heatmap fields entirely (first paint before the
+      // collector effect runs) does it fall back to the persisted table so the
+      // cards are never blank.
       const statsHeat = (snap.stats as { heatmapRaw?: Record<string, number>; heatmapGrid?: unknown } | null) ?? null
-      const fallbackRaw = statsHeat?.heatmapRaw && Object.keys(statsHeat.heatmapRaw).length > 0 ? statsHeat.heatmapRaw : migrateHeatmapV2()
+      const fallbackRaw = statsHeat?.heatmapRaw && Object.keys(statsHeat.heatmapRaw).length > 0
+        ? statsHeat.heatmapRaw
+        : (snap.usageDaily ?? loadHeatmapStore())
       const base = {
         ...(snap.stats ?? { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, decodeMs: 0, decodeTokens: 0, usage: null }),
         // Only inject the fallback when live stats lacks heatmap fields.
@@ -1171,7 +1288,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
         ),
       ]
       const rail = React.createElement('div', {
-        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsh-sidebar-width, 0px)', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
+        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px))', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
         onMouseLeave: () => {
           armedRef.current = false
           setFocusY(null); setFocusX(null)

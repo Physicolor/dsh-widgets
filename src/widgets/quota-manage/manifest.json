@@ -1,0 +1,27 @@
+{
+  "id": "quota-manage",
+  "order": 42,
+  "group": "coding-plan",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.quota-manage.name": "额度管理",
+      "widget.quota-manage.desc": "按账期趋势预测月末用量百分比，并给出今日 token 用量与今日推荐用量",
+      "widget.quota-manage.periodEnd": "账期 {m}-{d}",
+      "widget.quota-manage.used": "今日用量",
+      "widget.quota-manage.recommend": "今日推荐",
+      "widget.quota-manage.insufficient": "数据不足",
+      "widget.quota-manage.simToggle": "超额状态"
+    },
+    "en": {
+      "widget.quota-manage.name": "Quota Manager",
+      "widget.quota-manage.desc": "Projects the month-end usage percent from the billing period's pace, with today's tokens vs the recommended budget",
+      "widget.quota-manage.periodEnd": "Ends {m}-{d}",
+      "widget.quota-manage.used": "Today",
+      "widget.quota-manage.recommend": "Budget",
+      "widget.quota-manage.insufficient": "No data",
+      "widget.quota-manage.simToggle": "Over budget"
+    }
+  }
+}

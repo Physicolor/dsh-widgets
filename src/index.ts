@@ -41,6 +41,57 @@ const POOL_KEY_ENVS = ['OPENCODE_GO_API_KEY', 'OPENCODE_GO_POOL_2', 'OPENCODE_GO
 /** Max accepted PUT body (a prefs JSON is a few KB; this is a hard safety cap). */
 const MAX_STATE_BYTES = 2 * 1024 * 1024
 
+/**
+ * The slice of the `usageCenter` service (dsh-usage-center) this plugin reads.
+ *
+ * The heatmap cards need authoritative per-day token totals, and that plugin
+ * already computes them by folding the session logs — so this plugin CONSUMES
+ * its result instead of re-deriving it. The lookup is optional by design:
+ * dsh-widgets is a standalone, published plugin, so `usageCenter` must never be
+ * a hard dependency (see the client's fallback to its own live accounting).
+ */
+interface UsageCenterLike {
+  getActivity?: (provider?: string, model?: string, mode?: string) => {
+    activity?: ReadonlyArray<{ date?: unknown; totalTokens?: unknown }>
+  } | null
+  /** Present on the real service: forces an index rescan now instead of waiting
+   *  for its periodic pass. Read through the OPTIONAL seam — dsh-widgets must
+   *  keep working where dsh-usage-center is not installed. */
+  refresh?: () => Promise<unknown>
+}
+
+/** Minimum gap between two on-demand rescans (ms). The card asks for a refresh
+ *  when a turn settles; a handful of cards/browsers settling together must not
+ *  queue a scan each. */
+const REFRESH_THROTTLE_MS = 5000
+
+/**
+ * Daily token totals from the optional usage-center service.
+ * @param ctx - host context.
+ * @returns `{ available: false, reason }` when the service is absent, else the
+ *   date → tokens map plus the day count the service reported.
+ */
+function readAuthoritativeDaily(ctx: { get?: (name: string) => unknown }): Record<string, unknown> {
+  const service = ctx.get?.('usageCenter') as UsageCenterLike | undefined
+  if (service === undefined || service === null || typeof service.getActivity !== 'function') {
+    return { available: false, reason: 'usage-center-unavailable' }
+  }
+  try {
+    const payload = service.getActivity()
+    const rows = Array.isArray(payload?.activity) ? payload.activity : []
+    const daily: Record<string, number> = {}
+    for (const row of rows) {
+      const date = typeof row?.date === 'string' ? row.date : null
+      const total = typeof row?.totalTokens === 'number' && Number.isFinite(row.totalTokens) ? row.totalTokens : null
+      if (date !== null && total !== null) daily[date] = total
+    }
+    if (Object.keys(daily).length === 0) return { available: false, reason: 'usage-center-empty' }
+    return { available: true, source: 'usage-center', days: rows.length, daily }
+  } catch (error) {
+    return { available: false, reason: error instanceof Error ? error.message : String(error) }
+  }
+}
+
 /** Required services: the web server (route registration) and the credentials seam (API key). */
 export const inject = ['webServer', 'credentials']
 
@@ -81,6 +132,7 @@ interface ServerResponseLike {
 
 interface ReqLike {
   method?: string
+  url?: string
 }
 
 export function apply(ctx: {
@@ -94,6 +146,8 @@ export function apply(ctx: {
   credentials: {
     resolve(ref: string): Promise<{ value: string; source: string } | undefined>
   }
+  /** Optional Cordis service lookup — `usageCenter` is read when present. */
+  get?: (name: string) => unknown
   effect: (setup: () => () => void) => void
 }): void {
   // OpenCode usage proxy (unchanged).
@@ -221,6 +275,38 @@ export function apply(ctx: {
       ])
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ whoami, usage, credits, subscription }))
+    },
+  }))
+
+  // Authoritative daily token totals for the heatmap cards.
+  //
+  // The heatmap used to be a browser-local accumulator: it credited steps only
+  // while a page was open and carried a baked-in history table, so its "window
+  // total" drifted far from the real usage (measured 2026-09-12: 7.72G shown vs
+  // 6.28G real, +23%). dsh-usage-center already folds the session logs into
+  // exact per-day totals, so this route re-serves THAT result — one number, one
+  // source of truth. When usage-center is not installed the client falls back to
+  // its own live accounting, so the widget still works standalone.
+  //
+  // `?refresh=1` additionally asks usage-center to fold the logs RIGHT NOW: its
+  // periodic pass runs every ~30 s, so a turn that just settled would otherwise
+  // keep showing the previous figure. Throttled, and optional throughout — the
+  // route still answers the last known map when the service is absent or slow.
+  let lastRefreshAt = 0
+  ctx.effect(() => ctx.webServer.register({
+    kind: 'exact',
+    path: '/api/widgets-usage-daily',
+    handler: async (req, res) => {
+      const url = (req as ReqLike | undefined)?.url ?? ''
+      if (url.includes('refresh=1') && Date.now() - lastRefreshAt >= REFRESH_THROTTLE_MS) {
+        lastRefreshAt = Date.now()
+        const service = ctx.get?.('usageCenter') as UsageCenterLike | undefined
+        try {
+          await service?.refresh?.()
+        } catch { /* a stale number beats no number */ }
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(readAuthoritativeDaily(ctx)))
     },
   }))
 

@@ -216,7 +216,7 @@ export interface BarDatum {
 
 /** A chart block a card body can render (declarative, theme tokens only). */
 export interface WidgetChart {
-  kind: 'bars' | 'ring' | 'rings' | 'line' | 'segments' | 'heatmap' | 'barsV'
+  kind: 'bars' | 'ring' | 'rings' | 'line' | 'segments' | 'heatmap' | 'barsV' | 'figures'
   bars?: BarDatum[]
   /** Donut row (e.g. OpenCode rolling/weekly/monthly, Command Code 5h/weekly/
    *  monthly). `label` renders as a SMALL GREY caption beside the percent —
@@ -228,6 +228,9 @@ export interface WidgetChart {
   value?: number
   valueLabel?: string
   max?: number
+  /** For figures: a row of label-over-value figure pairs (e.g. 今日用量 24.7M /
+   *  今日推荐 200M) — plain numbers, no axis, spread across the card width. */
+  figures?: Array<{ label: string; value: string; tone?: BarDatum['tone'] }>
   /** Utilization sparkline (Windows-task-manager style): a filled area under
    *  a polyline. `null` entries break the line (no baseline at that sample). */
   line?: {
@@ -308,7 +311,10 @@ export function parseInstanceKey(key: string): { widgetId: string; size: WidgetS
 export interface WidgetRenderOut {
   title: string
   title2?: string
-  /** Optional text shown at the right end of the title row (e.g. ~613K / 1M). */
+  /** Optional text shown at the right end of the title row (e.g. ~613K / 1M).
+   *  Whenever it is DEFINED the card's `value` moves up into that same row
+   *  (instead of sitting in the body) — pass `''` to place the big figure at the
+   *  top-right corner with no extra caption of its own. */
   headRight?: string
   /** Optional prominent figure rendered on its own row UNDER the title (e.g. the
    *  context percent, with small figures beside it). Pushes content top-aligned. */
@@ -324,6 +330,10 @@ export interface WidgetRenderOut {
   /** Value color override (e.g. 'danger' renders the value in the error red,
    *  used by the peak-pricing EXPENSIVE state). */
   valueTone?: 'danger'
+  /** Slow red blink on the VALUE itself (e.g. peak pricing is live, or a plan
+   *  projected past 100%): the text pulses between full and ~35% opacity in the
+   *  error red. Text-level escalation — it deliberately does NOT paint the card. */
+  valuePulse?: boolean
   sub?: string
   chart?: WidgetChart
   actions?: WidgetAction[]
@@ -336,10 +346,6 @@ export interface WidgetRenderOut {
    *  'poolView'); sys widgets use their own field (e.g. 'bigMetric') so their
    *  cycle never collides with the usage pool view nor fires multikey calls. */
   cycle?: { modes: string[]; current: string; hint: string; store?: string }
-  /** Whole-card red inner-glow alert (e.g. peak pricing is live): a red glow
-   *  bleeds in from the card edges while the centre stays clean, with a small
-   *  breathing animation. Applied as the `dsx-peak-alert` class. */
-  alert?: boolean
 }
 
 /** A per-card configuration field rendered in the 组件配置 tab. Text fields

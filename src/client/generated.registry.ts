@@ -23,6 +23,7 @@ import w_task from '../widgets/task'
 import w_quote from '../widgets/quote'
 import w_heatmap from '../widgets/heatmap'
 import w_heatmap_bars from '../widgets/heatmap-bars'
+import w_quota_manage from '../widgets/quota-manage'
 import w_usage_bars from '../widgets/usage-bars'
 import w_usage_rings from '../widgets/usage-rings'
 import w_usage_rolling from '../widgets/usage-rolling'
@@ -58,6 +59,7 @@ export const WIDGETS: import('./lib/contract').Widget[] = [
   w_quote,
   w_heatmap,
   w_heatmap_bars,
+  w_quota_manage,
   w_usage_bars,
   w_usage_rings,
   w_usage_rolling,
@@ -94,6 +96,7 @@ export const ALL_IDS: string[] = [
   'quote',
   'heatmap',
   'heatmap-bars',
+  'quota-manage',
   'usage-bars',
   'usage-rings',
   'usage-rolling',
@@ -132,6 +135,7 @@ export const ALL_INSTANCES: string[] = [
   `heatmap@2x2`,
   `heatmap@2x4`,
   `heatmap-bars@2x2`,
+  `quota-manage@2x2`,
   `usage-bars@2x2`,
   `usage-rings@2x2`,
   `usage-rolling@2x2`,
@@ -286,6 +290,13 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "widget.heatmap-bars.desc": "最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致",
     "config.monthMode.rolling7": "滚动(最近7天)",
     "config.monthMode.weekly": "每周对齐",
+    "widget.quota-manage.name": "额度管理",
+    "widget.quota-manage.desc": "按账期趋势预测月末用量百分比，并给出今日 token 用量与今日推荐用量",
+    "widget.quota-manage.periodEnd": "账期 {m}-{d}",
+    "widget.quota-manage.used": "今日用量",
+    "widget.quota-manage.recommend": "今日推荐",
+    "widget.quota-manage.insufficient": "数据不足",
+    "widget.quota-manage.simToggle": "超额状态",
     "widget.usage-bars.name": "用量对比",
     "widget.usage-bars.desc": "OpenCode 滚动/周/月三窗口用量柱状图",
     "widget.usage-rings.name": "用量环图",
@@ -437,6 +448,13 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "widget.heatmap-bars.desc": "Vertical bars of the last 7 days of token usage; same height as the calendar view",
     "config.monthMode.rolling7": "Rolling (last 7 days)",
     "config.monthMode.weekly": "Weekly aligned",
+    "widget.quota-manage.name": "Quota Manager",
+    "widget.quota-manage.desc": "Projects the month-end usage percent from the billing period's pace, with today's tokens vs the recommended budget",
+    "widget.quota-manage.periodEnd": "Ends {m}-{d}",
+    "widget.quota-manage.used": "Today",
+    "widget.quota-manage.recommend": "Budget",
+    "widget.quota-manage.insufficient": "No data",
+    "widget.quota-manage.simToggle": "Over budget",
     "widget.usage-bars.name": "Usage Bars",
     "widget.usage-bars.desc": "OpenCode rolling/weekly/monthly usage bars",
     "widget.usage-rings.name": "Usage Rings",

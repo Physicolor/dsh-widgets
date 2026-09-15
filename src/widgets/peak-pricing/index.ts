@@ -26,9 +26,11 @@ export function peakStatusNow(now = new Date()): { peak: boolean; activeKey?: st
 
 /** Peak-pricing card (2×2): which DeepSeek pricing window is live right now.
  *  Value mirrors the cache/tokens card (big bottom-left label): EXPENSIVE while
- *  a peak window is active (whole card glows red), CHEAP otherwise. The two
- *  windows live under the title; the active one lights up brand-blue. A preview
- *  can pass meta.sim = { peak: boolean, window?: 0|1 } to force either state. */
+ *  a peak window is active, CHEAP otherwise. The two windows live under the
+ *  title; the active one lights up brand-blue. The EXPENSIVE escalation is on
+ *  the TEXT itself — the value turns red and blinks (valuePulse); the card frame
+ *  stays clean (the old red inner glow was removed on request). A preview can
+ *  pass meta.sim = { peak: boolean, window?: 0|1 } to force either state. */
 function peakPricingRender(_stats: WidgetStats, meta?: WidgetRenderMeta): ReturnType<NonNullable<ReturnType<typeof defineWidget>['render']>> {
   const sim = meta?.sim
   const simPeak = sim && typeof sim.peak === 'boolean' ? sim.peak : null
@@ -42,7 +44,7 @@ function peakPricingRender(_stats: WidgetStats, meta?: WidgetRenderMeta): Return
     meter: PEAK_WINDOWS_BJ.map((w) => ({ label: t(w.key), active: w.key === activeKey })),
     value: peak ? 'EXPENSIVE' : 'CHEAP',
     valueTone: peak ? 'danger' : undefined,
-    alert: peak,
+    valuePulse: peak,
   }
 }
 

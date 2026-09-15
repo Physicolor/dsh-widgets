@@ -337,6 +337,24 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
       ),
     )
   }
+  if (chart.kind === 'figures' && chart.figures && chart.figures.length) {
+    // A row of label-over-value figure pairs (e.g. the quota card's 今日用量
+    // 24.7M / 今日推荐 200M). No axes, no bars — the two numbers ARE the block,
+    // in the space a chart would have taken. The FIRST pair is flush with the
+    // card's left padding and the LAST with its right padding (space-between),
+    // so the row shares the head row's insets instead of floating inward — a
+    // centred row reads as a different, unrelated gutter.
+    const last = chart.figures.length - 1
+    const items = chart.figures.map((f, i) => {
+      const valColor = f.tone ? (CHART_TONES[f.tone] ?? CHART_TONES.primary) : 'var(--dsw-alias-label-primary)'
+      const align = i === 0 ? 'flex-start' : i === last ? 'flex-end' : 'center'
+      return React.createElement('div', { key: i, style: { minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: align, gap: Math.round(2 * scale) } },
+        React.createElement('div', { style: { fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' } }, f.label),
+        React.createElement('div', { style: { fontSize: `${Math.round(13 * scale)}px`, fontWeight: 600, color: valColor, fontVariantNumeric: 'tabular-nums', lineHeight: 1.2, whiteSpace: 'nowrap' } }, f.value),
+      )
+    })
+    return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: Math.round(8 * scale), width: '100%' } }, items)
+  }
   if (chart.kind === 'ring') {
     const p = Math.max(0, Math.min(1, (chart.value ?? 0) / (chart.max ?? 100)))
     const r = 22 * scale
@@ -441,12 +459,35 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
     if (pressTimer.current !== undefined) window.clearTimeout(pressTimer.current)
     pressTimer.current = window.setTimeout(() => setPressed(false), 190)
   }
-  const headFlex = React.createElement('div', { key: 't', className: 'dsx-stats-card-title', style: { fontSize: `${titlePx}px`, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6 } },
-    React.createElement('span', { style: { display: 'inline-flex', alignItems: 'baseline', gap: 6 } },
-      React.createElement('span', null, out.title),
-      out.headRight && out.value != null ? React.createElement('span', { style: { fontSize: `${valuePx}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums' } }, out.value) : null,
+  // Head row = two INDEPENDENT slots: the title box (which ellipsizes rather
+  // than pushing the figures out) and — when `headRight` is DEFINED, even as ''
+  // — a right slot holding the optional big value plus the small caption, hard
+  // against the RIGHT edge of the row.
+  //
+  // The slots are TOP-aligned and INDEPENDENT, never baseline-aligned: baseline
+  // alignment puts the whole row on one shared baseline, so a 20px value
+  // stretches the line box and PUSHES THE 13px TITLE DOWN by ~5px. Top-aligning
+  // restores the title, but the line box would still grow to the value's 25px and
+  // leave a gap under the title. The right slot therefore cancels its own extra
+  // height with a negative bottom margin: the row stays as tall as the TITLE
+  // alone, so a caption (e.g. the billing-period line) sits directly under it,
+  // while the value still occupies its width and can never collide with it.
+  const hasHeadRight = out.headRight !== undefined
+  const headValueTone = out.valueTone === 'danger' || out.valuePulse === true
+  const titleLine = Math.round(titlePx * 1.2)
+  const captionLine = Math.round(10 * scale * 1.2)
+  const valueLine = Math.round(valuePx * 1.25)
+  const rightLine = hasHeadRight ? Math.max(out.value != null ? valueLine : 0, out.headRight ? captionLine : 0) : 0
+  const rightSpill = Math.max(0, rightLine - titleLine)
+  const headFlex = React.createElement('div', { key: 't', className: 'dsx-stats-card-title', style: { fontSize: `${titlePx}px`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, minHeight: `${titleLine}px` } },
+    React.createElement('span', { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, out.title),
+    hasHeadRight ? React.createElement('span', { style: { display: 'inline-flex', alignItems: 'baseline', gap: 6, flex: 'none', marginBottom: rightSpill > 0 ? `${-rightSpill}px` : undefined } },
+      out.value != null ? React.createElement('span', {
+        className: headValueTone ? 'dsx-stats-card-value' + (out.valuePulse ? ' dsx-value-pulse' : '') : undefined,
+        style: { fontSize: `${valuePx}px`, fontWeight: 600, color: headValueTone ? 'var(--dsw-alias-state-error-primary)' : 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
+      }, out.value) : null,
       out.headRight ? React.createElement('span', { style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, out.headRight) : null,
-    ),
+    ) : null,
   )
   const headEls: Array<React.ReactElement> = [
     headFlex,
@@ -461,7 +502,9 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
   if (out.legend) {
     // Small caption right under the title; unlike headAfter it does not change
     // the vertical alignment, so a bottom-anchored card (e.g. heatmap) keeps it.
-    headEls.push(React.createElement('div', { key: 'lg', className: 'dsx-stats-card-legend', style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', marginTop: `${Math.round(2 * scale)}px` } }, out.legend))
+    // One line, ellipsized: a long localized caption must never wrap and push
+    // the card's content down.
+    headEls.push(React.createElement('div', { key: 'lg', className: 'dsx-stats-card-legend', style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', marginTop: `${Math.round(2 * scale)}px`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, out.legend))
   }
   if (out.meter && out.meter.length) {
     // Two-line live meter under the title (e.g. peak-pricing windows): the
@@ -489,7 +532,7 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
   const stretchChart = out.chart?.kind === 'line'
   // value is shown inline in the header when headRight is present (official meter
   // header: `上下文已用 64% ~638K / 1M`); otherwise it goes to the body.
-  if (out.value != null && !out.headRight) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value', style: { fontSize: `${valuePx}px`, color: out.valueTone === 'danger' ? 'var(--dsw-alias-state-error-primary)' : undefined } }, out.value))
+  if (out.value != null && out.headRight === undefined) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value' + (out.valuePulse ? ' dsx-value-pulse' : ''), style: { fontSize: `${valuePx}px`, color: out.valueTone === 'danger' ? 'var(--dsw-alias-state-error-primary)' : undefined } }, out.value))
   if (out.sub) body.push(React.createElement('div', { key: 's', className: 'dsx-stats-card-sub', style: { fontSize: `${Math.round(10 * scale)}px` } }, out.sub))
   if (out.chart) {
     const c = ChartBlock({ chart: out.chart, side: unit, width: boxW })
@@ -529,7 +572,7 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
     ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: vj ?? 'flex-start' }
     : { marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }
   return React.createElement('div', {
-    className: 'dsx-stats-card' + (out.alert ? ' dsx-peak-alert' : '') + (cyclable ? (pressed ? ' dsx-cyclable dsx-cycle-pressed' : ' dsx-cyclable') : ''),
+    className: 'dsx-stats-card' + (cyclable ? (pressed ? ' dsx-cyclable dsx-cycle-pressed' : ' dsx-cyclable') : ''),
     // minHeight is the resting contract for every card; the ELASTIC line card
     // (sys-gpu-line) additionally pins a FIXED height so its flex body (chart
     // eats the leftover space) compresses inside the box instead of letting

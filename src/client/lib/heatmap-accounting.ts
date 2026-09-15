@@ -1,14 +1,20 @@
 /**
- * dsh-widgets — token heatmap self-accounting (shared data provider).
+ * dsh-widgets — token heatmap day data (shared data provider).
  *
- * The shell's dock collector owns the LIVE accounting loop; this module owns
- * the persistence primitives, the timezone-aware day attribution, the grid
- * builder and the boot-time repair/migration. Shared by the `heatmap` and
- * `heatmap-bars` widget units (each derives its own grid from the same raw log
- * the collector accumulates into localStorage under `harness-widgets.heatmap`).
+ * TWO SOURCES, ONE DISPLAYED NUMBER:
+ *  1. AUTHORITATIVE (preferred): the host route `/api/widgets-usage-daily`
+ *     re-serves dsh-usage-center's per-day totals, which are folded from the
+ *     session logs. The shell's collector stores that map in `state.usageDaily`
+ *     and the cards render it as-is — this is why the heatmap total now equals
+ *     the usage center's total instead of drifting from it.
+ *  2. FALLBACK (standalone installs, usage-center absent): this module's own
+ *     live per-step accounting, accumulated in localStorage while a page with an
+ *     active session is open.
  *
- * Moved verbatim out of the shell entry so the widget family owns its data
- * provider without the shell carrying 250 lines of heatmap history.
+ * This module owns the fallback's persistence primitives, the timezone-aware day
+ * attribution, the grid builder, and the boot-time purge of days older builds
+ * fabricated. Shared by the `heatmap` and `heatmap-bars` widget units (each
+ * derives its own grid from the same raw log).
  */
 
 // ── Daily token-usage heatmap (self-accounted to localStorage). ──
@@ -71,12 +77,85 @@ export function buildHeatmapGrid(m: Record<string, number>, mode: 'rolling' | 'q
   return grid
 }
 
+/**
+ * Boot-time store preparation: load the log and drop the fabricated days older
+ * builds wrote into it.
+ *
+ * WHY THE PURGE EXISTS. Earlier versions seeded "recovered history" as literal
+ * constants (v1.1.x `seedHeatmapIfNeeded`, later `HEATMAP_RECOVERED`). Those
+ * constants were never derived from the logs — measured 2026-09-12, the store
+ * held 244.19M / 1639.55M / 1319.26M for 2026-08-14/15/16 while the real totals
+ * were 75.24M / 373.37M / 1204.72M, i.e. the card reported 7.72G against a true
+ * 6.28G (+23%).
+ *
+ * The live path is now the AUTHORITATIVE per-day table served by the host
+ * (`/api/widgets-usage-daily`, read from dsh-usage-center when installed — see
+ * src/index.ts); this browser-local log is only the standalone fallback. Since a
+ * fallback may not carry fiction, the baked-in days are removed once so the
+ * fallback shows nothing rather than something wrong. Live-accumulated days
+ * (2026-08-22 onward) are untouched: only the baked date list is cleared.
+ *
+ * @returns the cleaned daily log.
+ */
+const BAKED_DAYS_PURGE_KEY = 'harness-widgets.heatmap.baked-purge-v1'
+/** The exact days old builds fabricated values for (never measured). */
+const BAKED_DAYS = [
+  '2026-08-14',
+  '2026-08-15',
+  '2026-08-16',
+  '2026-08-17',
+  '2026-08-18',
+  '2026-08-19',
+  '2026-08-20',
+  '2026-08-21',
+]
+export function loadHeatmapStore(): Record<string, number> {
+  const store = loadHeatmap()
+  try {
+    if (localStorage.getItem(BAKED_DAYS_PURGE_KEY) !== null) return store
+    const next = { ...store }
+    let dropped = false
+    for (const day of BAKED_DAYS) {
+      if ((next[day] ?? 0) > 0) {
+        delete next[day]
+        dropped = true
+      }
+    }
+    localStorage.setItem(BAKED_DAYS_PURGE_KEY, '1')
+    if (dropped) saveHeatmap(next)
+    return next
+  } catch {
+    return store
+  }
+}
+
 /** Add newly observed tokens to today; returns the running grid for the card. */
 export function accumulateHeatmap(m: Record<string, number>, dayKey: string, delta: number): Record<string, number> {
   if (delta <= 0) return m
   const next = { ...m, [dayKey]: (m[dayKey] ?? 0) + delta }
   saveHeatmap(next)
   return next
+}
+
+/**
+ * Merge the live local counter into the authoritative day map — TODAY ONLY.
+ *
+ * The authoritative map is folded from the session logs on usage-center's own
+ * cadence (~30 s), so right after a turn it still carries the PREVIOUS figure
+ * and the card looks frozen even though the finished step's usage is already
+ * measurable locally. Today therefore keeps the LARGER of the two; every other
+ * day stays purely authoritative, because this browser only ever sees the
+ * sessions it had open and must never rewrite the account's history.
+ *
+ * @param authoritative - the host's day map, or null/undefined when absent.
+ * @param local - the live local counter (this browser's per-step credits).
+ * @param todayKey - today in the accounting timezone.
+ * @returns the map the cards should render.
+ */
+export function mergeToday(authoritative: Record<string, number> | null | undefined, local: Record<string, number>, todayKey: string): Record<string, number> {
+  if (authoritative === null || authoritative === undefined) return local
+  const localToday = local[todayKey] ?? 0
+  return localToday > (authoritative[todayKey] ?? 0) ? { ...authoritative, [todayKey]: localToday } : authoritative
 }
 
 // Heatmap self-accounting: primary = per-step crediting (v2) when settled
@@ -89,7 +168,6 @@ export function accumulateHeatmap(m: Record<string, number>, dayKey: string, del
 const HEATMAP_SEEN = 'harness-widgets.heatmap.seen'
 const HEATMAP_SEEN_STRONGEST = 'harness-widgets.heatmap.strongest'
 const HEATMAP_ANCHOR = 'harness-widgets.heatmap.anchor'
-const HEATMAP_LOG_KEY = 'harness-widgets.heatmap.log-v2'
 export function loadSeen(): { keys: Set<string>; strongest: number } {
   try {
     const keys = new Set<string>()
@@ -114,87 +192,4 @@ export function loadHeatmapAnchor(): number {
 }
 export function saveHeatmapAnchor(n: number): void {
   try { localStorage.setItem(HEATMAP_ANCHOR, String(n)) } catch { /* storage unavailable */ }
-}
-/**
- * V2 migration: NEVER drop existing heatmap history. Preservation-only +
- * backfill of the authoritative recovered history. See the full story in the
- * original shell file comment; semantics are unchanged (moved verbatim).
- */
-/** Daily totals rebuilt from the authoritative per-event session logs
- *  (D:/dsh-home/sessions/.../session.jsonl.zstd, decoded via ZSTD frame scan +
- *  the official tokenUsageOf delta algorithm, attributed by each usage
- *  EVENT's `time` in LOCAL time — not by session createdAt, because a session
- *  can span midnight. Sum is conserved: equals the all-session official total.
- *  IMPORTANT: non-live past days (8/14–8/21) are backfilled here — their
- *  sessions have ended, so the live collector will never re-credit them.
- *  8/22 must NOT be seeded: the live per-step accounting accumulates it in
- *  real time, and a fixed seed on top double-counts (8/22 was once 145M–181M). */
-const HEATMAP_RECOVERED: Record<string, number> = {
-  '2026-08-14': 74_315_859,
-  '2026-08-15': 367_790_777,
-  '2026-08-16': 1_195_700_475,
-  '2026-08-17': 161_488_382,
-  '2026-08-18': 292_337_504,
-  '2026-08-19': 352_355_694,
-  '2026-08-20': 214_853_935,
-  '2026-08-21': 44_552_871,
-  /* 8/22 intentionally absent — live-accumulated */
-}
-export function migrateHeatmapV2(): Record<string, number> {
-  const m = loadHeatmap()
-  try {
-    // Ensure the recovered history is present REGARDLESS of the v2-log flag:
-    // earlier builds may have run the buggy migration (flag set) but been left
-    // with an empty/incomplete table, so the flag alone must not block the
-    // backfill. Preserve any user value; only fill zeros.
-    const next = { ...m }
-    let patched = false
-    for (const [k, v] of Object.entries(HEATMAP_RECOVERED)) {
-      if ((next[k] ?? 0) === 0) { next[k] = v; patched = true }
-    }
-    // Repair double-counted live days: 8/21 & 8/22 are accumulated by the
-    // real-time per-step accounting; a leftover fixed seed or an inflated
-    // value (e.g. 145M/181M from the V2.0 double-write) must be removed so the
-    // live path rebuilds them from the authoritative session events. Clear the
-    // seen-set too, so those steps get re-credited once. Runs ONCE (guarded by
-    // a marker) so it never wipes the live values on subsequent renders.
-    const repairedKey = 'harness-widgets.heatmap.live-fixed'
-    let repaired = false
-    if (!localStorage.getItem(repairedKey)) {
-      // Only the CURRENT live day may be cleared for re-accumulation — past
-      // days are closed history and must never be wiped (the old hard-coded
-      // 8/21+8/22 list would delete a finished day's value on a fresh browser).
-      const liveDays = [dateKey(new Date())]
-      for (const k of liveDays) {
-        if ((next[k] ?? 0) > 0) { delete next[k]; repaired = true }
-      }
-      if (repaired) {
-        saveHeatmap(next)
-        saveSeen(new Set<string>(), 0)
-      }
-      localStorage.setItem(repairedKey, '1')
-    }
-    // One-shot: clear TODAY's cell so any polluted value from the pre-fix
-    // accounting (cross-day over-credit that diffed a whole session history
-    // into today) is dropped; the live collector rebuilds it from here on.
-    const tzResetKey = 'harness-widgets.heatmap.today-reset-v1'
-    if (!localStorage.getItem(tzResetKey)) {
-      const tk = dateKey(new Date())
-      if ((next[tk] ?? 0) > 0) { delete next[tk]; patched = true }
-      localStorage.setItem(tzResetKey, '1')
-    }
-    // Re-backfill after the one-shot repair: clearing 8/21 dropped its value,
-    // so restore the authoritative history for non-live days again.
-    let refill = false
-    for (const [k, v] of Object.entries(HEATMAP_RECOVERED)) {
-      if ((next[k] ?? 0) === 0) { next[k] = v; refill = true }
-    }
-    if (refill) saveHeatmap(next)
-    if (patched) saveHeatmap(next)
-    if (!localStorage.getItem(HEATMAP_LOG_KEY)) {
-      localStorage.setItem(HEATMAP_LOG_KEY, '1')
-      saveSeen(new Set<string>(), 0)
-    }
-    return next
-  } catch { return m }
 }

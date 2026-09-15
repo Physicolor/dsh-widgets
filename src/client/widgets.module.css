@@ -158,6 +158,16 @@ body[data-dsh-sidebar-dragging] .dsx-stats-rail {
   transition: none;
 }
 
+/* While the frame's right-bar grid track is animating, the rail must follow the
+   measured column width frame-by-frame: with its own tween active every write
+   would restart a fresh transition, so the rail trailed the panel by seconds
+   (reported 2026-09-13). The client half adds `dsx-syncing` for the duration of
+   the movement — and skips the heavier header/composer probes meanwhile — so the
+   rail rides the track exactly and the animation stays interruptible. */
+html.dsx-syncing .dsx-stats-rail {
+  transition: none !important;
+}
+
 body.dsx-stats-active [data-conversation-scroll] {
   padding-right: var(--dsx-rail-w, 220px) !important;
 }
@@ -274,7 +284,7 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
      interactive child must opt back in explicitly. Without this the whole
      add panel was unhit-testable — clicks fell through to the rail's cards. */
   pointer-events: auto;
-  right: calc(var(--dsh-sidebar-width, 0px) + var(--dsx-rail-pad, 14px));
+  right: calc(var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)) + var(--dsx-rail-pad, 14px));
   width: auto;
   /* Bottom = input-box breathing gap (--dsx-input-bottom) -- NEVER track
      --dsh-sidebar-width here: that variable is dsh-better-sidebar's right
@@ -713,36 +723,28 @@ body.dsx-hide-statsline [data-slot='conversation.composer.dock'] > div * {
   color: transparent !important;
 }
 
-/* 钬斺€  Peak-pricing alert: red inner glow (B scheme) instead of a solid red
-   fill — the glow bleeds in from the card edges while the centre stays clean
-   and readable. A small breathing animation (2.2s, modest ~20% swing) adds
-   urgency without ever pushing the user to click anything; it is pure
-   atmosphere. Reduced-motion users get the static steady glow. 钬斺€ */
-.dsx-peak-alert {
-  box-shadow:
-    inset 0 0 22px color-mix(in srgb, var(--dsw-alias-state-error-primary) 32%, transparent),
-    inset 0 0 5px color-mix(in srgb, var(--dsw-alias-state-error-primary) 20%, transparent),
-    var(--dsw-shadow-lv2);
-  animation: dsx-peak-breathe 2.2s ease-in-out infinite alternate;
+/* ── Live/over-budget value pulse ──────────────────────────────────────────
+   The escalation now lives on the FIGURE, not on the card: the value turns the
+   error red and blinks (a slow opacity breathe) while the card frame stays
+   clean — no edge glow, no shadow noise around the widget. Used by peak
+   pricing's EXPENSIVE state and by a plan projected past 100%.
+   ponytail: opacity-only blink; swap for a colour tween if it reads too soft. */
+.dsx-stats-card-value.dsx-value-pulse {
+  color: var(--dsw-alias-state-error-primary);
+  animation: dsx-value-breathe 1.6s ease-in-out infinite alternate;
 }
 
-@keyframes dsx-peak-breathe {
+@keyframes dsx-value-breathe {
   from {
-    box-shadow:
-      inset 0 0 15px color-mix(in srgb, var(--dsw-alias-state-error-primary) 20%, transparent),
-      inset 0 0 4px color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent),
-      var(--dsw-shadow-lv2);
+    opacity: 1;
   }
   to {
-    box-shadow:
-      inset 0 0 30px color-mix(in srgb, var(--dsw-alias-state-error-primary) 42%, transparent),
-      inset 0 0 7px color-mix(in srgb, var(--dsw-alias-state-error-primary) 28%, transparent),
-      var(--dsw-shadow-lv2);
+    opacity: 0.35;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dsx-peak-alert {
+  .dsx-stats-card-value.dsx-value-pulse {
     animation: none;
   }
 }
