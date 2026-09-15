@@ -15,10 +15,11 @@
  *   - 5h / weekly: `billing/credits` -> windowLimits.{fiveHour,weekly} with an
  *     explicit `used` and `cap`;
  *   - monthly: the API serves NO monthly window object, so the month figure is
- *     derived by conservation from `usage/summary` + `billing/credits`:
- *     used = totalMonthlyCredits (this billing period),
- *     cap  = totalMonthlyCredits + credits.monthlyCredits (used + remaining,
- *     which equals the plan allowance, e.g. 0.47 + 69.16 = 69.63 of a $70 plan).
+ *     derived from the one monthly quantity the API DOES report — the remaining
+ *     balance: used = plan allowance - credits.monthlyCredits, against the
+ *     plan's published allowance. The old `used + remaining` denominator was
+ *     not the allowance at all (measured 17.26 + 59.01 = 76.27 on a $70 plan),
+ *     which is how the card read 22.6% where the official site read ~16%.
  *
  * The payload is fully nullable: the host fetches each endpoint independently,
  * so one failing endpoint degrades that slice to a placeholder instead of
@@ -105,7 +106,7 @@ function fmtIsoDay(iso: string | undefined): string {
 }
 
 /** One resolved window: used / cap / reset time / percent. */
-interface WindowInfo {
+export interface WindowInfo {
   key: 'fiveHour' | 'weekly' | 'monthly'
   label: string
   used: number
@@ -132,20 +133,57 @@ function weeklyWindow(c: CommandCodeData | null): WindowInfo | null {
   return { key: 'weekly', label: t('cc.winWeekly'), used: w.used, cap: w.cap, pct, resetAt: w.resetAt, exceeded: w.exceeded }
 }
 
-/** The monthly window. The API exposes no monthly window object, so it is
- *  derived by conservation: used = this period's monthly credits consumed,
- *  cap = used + remaining monthly credits (used + remaining === the plan
- *  allowance). The reset time is the subscription's period end, when the
- *  allowance is refilled. Returns null when either half is unavailable, so the
- *  monthly card degrades instead of inventing a number. */
-function monthlyWindow(c: CommandCodeData | null): WindowInfo | null {
-  const used = c?.usage?.totalMonthlyCredits
+/**
+ * Monthly allowance (USD of credits) per plan, from Command Code's published
+ * plan table. Only plans whose figures are published appear here; an unknown
+ * plan falls back to the API's own used figure instead of inventing a cap.
+ *
+ * GOAT: $10 buys $70 of credits, and the API's own window caps confirm the
+ * split this constant encodes — 5h = $14 (20% of the month) and weekly = $35
+ * (50%), both reported by `/alpha/billing/credits`.
+ */
+const PLAN_MONTHLY_ALLOWANCE: Record<string, number> = {
+  'individual-goat': 70,
+}
+
+/**
+ * The monthly window.
+ *
+ * The API exposes neither a monthly window object nor an allowance field, so
+ * the figure comes from the one monthly quantity it DOES report: the remaining
+ * monthly credits. `used = allowance - remaining`, reset at the subscription's
+ * period end.
+ *
+ * The previous `used / (used + remaining)` form is deliberately gone. That
+ * denominator is the sum of two unrelated snapshots rather than the plan
+ * allowance (measured 17.26 + 59.01 = 76.27 against a $70 plan), so the card
+ * read 22.6% while the account page read ~16%. `usage.totalMonthlyCredits` is
+ * the billing period's total spend, not the monthly allowance consumed.
+ *
+ * Returns null when the balance or the plan is unknown, so the card degrades
+ * instead of inventing a number.
+ *
+ * Exported so widgets that reason ABOUT the month (not just print it) — e.g.
+ * the 额度管理 quota card, which extrapolates the month-end percent — read the
+ * same official-matching figure instead of re-deriving their own.
+ */
+export function monthlyWindow(c: CommandCodeData | null): WindowInfo | null {
   const remaining = c?.credits?.credits?.monthlyCredits
-  if (typeof used !== 'number' || typeof remaining !== 'number' || !Number.isFinite(used) || !Number.isFinite(remaining)) return null
+  const resetIso = c?.subscription?.data?.currentPeriodEnd
+  if (typeof remaining !== 'number' || !Number.isFinite(remaining)) return null
+  const plan = c?.subscription?.data?.planId
+  const allowance = typeof plan === 'string' ? PLAN_MONTHLY_ALLOWANCE[plan] : undefined
+  if (allowance !== undefined && allowance > 0) {
+    // Clamped at the allowance: a topped-up balance would otherwise drive
+    // "used" negative, which is a display bug rather than a reading.
+    const used = Math.min(allowance, Math.max(0, allowance - remaining))
+    return { key: 'monthly', label: t('cc.winMonthly'), used, cap: allowance, pct: (used / allowance) * 100, resetIso }
+  }
+  const used = c?.usage?.totalMonthlyCredits
+  if (typeof used !== 'number' || !Number.isFinite(used)) return null
   const cap = used + remaining
   if (!(cap > 0)) return null
   const pct = Math.min(100, Math.max(0, (used / cap) * 100))
-  const resetIso = c?.subscription?.data?.currentPeriodEnd
   return { key: 'monthly', label: t('cc.winMonthly'), used, cap, pct, resetIso }
 }
 
