@@ -1,0 +1,386 @@
+{
+ "1_rail_closed": {
+  "rail": null,
+  "railDisplay": null,
+  "navSlot": {
+   "x": 312,
+   "y": 52,
+   "w": 1246,
+   "h": 0,
+   "right": 1558,
+   "bottom": 52
+  },
+  "navSlotDisplay": "block",
+  "navFrame": {
+   "x": 1550,
+   "y": 401,
+   "w": 28,
+   "h": 22,
+   "right": 1578,
+   "bottom": 423
+  },
+  "navFrameDisplay": "block",
+  "navFramePointer": "auto",
+  "navMarkCount": 5,
+  "navMarkFirst": {
+   "aria": null,
+   "rect": {
+    "x": 1550,
+    "y": 401,
+    "w": 28,
+    "h": 22,
+    "right": 1578,
+    "bottom": 423
+   }
+  },
+  "navWidthVar": "",
+  "railOverlapsNav": null,
+  "probePoint": {
+   "x": 1574,
+   "y": 412
+  },
+  "hits": [
+   {
+    "at": {
+     "x": 1574,
+     "y": 412
+    },
+    "el": {
+     "tag": "DIV",
+     "cls": "eGxaPq_markPosition",
+     "aria": null,
+     "path": "DIV.eGxaPq_markPosition < DIV.eGxaPq_marks < DIV.eGxaPq_scroller < NAV.eGxaPq_frame < DIV.eGxaPq_slot < DIV.EvIC1a_scroll"
+    }
+   },
+   {
+    "at": {
+     "x": 1552,
+     "y": 412
+    },
+    "el": {
+     "tag": "DIV",
+     "cls": "eGxaPq_markPosition",
+     "aria": null,
+     "path": "DIV.eGxaPq_markPosition < DIV.eGxaPq_marks < DIV.eGxaPq_scroller < NAV.eGxaPq_frame < DIV.eGxaPq_slot < DIV.EvIC1a_scroll"
+    }
+   },
+   {
+    "at": {
+     "x": 1564,
+     "y": 412
+    },
+    "el": {
+     "tag": "DIV",
+     "cls": "eGxaPq_markPosition",
+     "aria": null,
+     "path": "DIV.eGxaPq_markPosition < DIV.eGxaPq_marks < DIV.eGxaPq_scroller < NAV.eGxaPq_frame < DIV.eGxaPq_slot < DIV.EvIC1a_scroll"
+    }
+   }
+  ],
+  "dragRegions": [
+   {
+    "cls": "wSkVaW_widthHandle",
+    "cursor": "col-resize",
+    "rect": {
+     "x": 502,
+     "y": 52,
+     "w": 40,
+     "h": 848,
+     "right": 542,
+     "bottom": 900
+    }
+   },
+   {
+    "cls": "wSkVaW_widthHandle",
+    "cursor": "col-resize",
+    "rect": {
+     "x": 1338,
+     "y": 52,
+     "w": 40,
+     "h": 848,
+     "right": 1378,
+     "bottom": 900
+    }
+   },
+   {
+    "cls": "pI_x6G_handle",
+    "cursor": "col-resize",
+    "rect": {
+     "x": 276,
+     "y": 0,
+     "w": 8,
+     "h": 900,
+     "right": 284,
+     "bottom": 900
+    }
+   }
+  ],
+  "dragOverNav": [],
+  "centerCol": {
+   "x": 280,
+   "y": 0,
+   "w": 1320,
+   "h": 900,
+   "right": 1600,
+   "bottom": 900
+  },
+  "rightbar": {
+   "x": 1600,
+   "y": 0,
+   "w": 0,
+   "h": 900,
+   "right": 1600,
+   "bottom": 900
+  },
+  "containerW": 1246,
+  "railRightVar": "anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)))",
+  "railWVar": "372px",
+  "railAvailVar": "498px"
+ },
+ "2_rail_open": {
+  "rail": {
+   "x": 1228,
+   "y": 64,
+   "w": 372,
+   "h": 836,
+   "right": 1600,
+   "bottom": 900
+  },
+  "railDisplay": "block",
+  "navSlot": {
+   "x": 0,
+   "y": 0,
+   "w": 0,
+   "h": 0,
+   "right": 0,
+   "bottom": 0
+  },
+  "navSlotDisplay": "none",
+  "navFrame": {
+   "x": 0,
+   "y": 0,
+   "w": 0,
+   "h": 0,
+   "right": 0,
+   "bottom": 0
+  },
+  "navFrameDisplay": "block",
+  "navFramePointer": "auto",
+  "navMarkCount": 5,
+  "navMarkFirst": {
+   "aria": null,
+   "rect": {
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0,
+    "right": 0,
+    "bottom": 0
+   }
+  },
+  "navWidthVar": "",
+  "railOverlapsNav": null,
+  "probePoint": null,
+  "hits": [],
+  "dragRegions": [
+   {
+    "cls": "dsx-stats-addpanel-resize",
+    "cursor": "ew-resize",
+    "rect": {
+     "x": 1612,
+     "y": 65,
+     "w": 10,
+     "h": 834,
+     "right": 1622,
+     "bottom": 899
+    }
+   },
+   {
+    "cls": "wSkVaW_widthHandle",
+    "cursor": "col-resize",
+    "rect": {
+     "x": 316,
+     "y": 52,
+     "w": 40,
+     "h": 848,
+     "right": 356,
+     "bottom": 900
+    }
+   },
+   {
+    "cls": "wSkVaW_widthHandle",
+    "cursor": "col-resize",
+    "rect": {
+     "x": 1152,
+     "y": 52,
+     "w": 40,
+     "h": 848,
+     "right": 1192,
+     "bottom": 900
+    }
+   },
+   {
+    "cls": "pI_x6G_handle",
+    "cursor": "col-resize",
+    "rect": {
+     "x": 276,
+     "y": 0,
+     "w": 8,
+     "h": 900,
+     "right": 284,
+     "bottom": 900
+    }
+   }
+  ],
+  "dragOverNav": [],
+  "centerCol": {
+   "x": 280,
+   "y": 0,
+   "w": 1320,
+   "h": 900,
+   "right": 1600,
+   "bottom": 900
+  },
+  "rightbar": {
+   "x": 1600,
+   "y": 0,
+   "w": 0,
+   "h": 900,
+   "right": 1600,
+   "bottom": 900
+  },
+  "containerW": 0,
+  "railRightVar": "anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)))",
+  "railWVar": "372px",
+  "railAvailVar": "498px"
+ },
+ "3_rail_open_sidebar_open": {
+  "rail": {
+   "x": 1228,
+   "y": 74,
+   "w": 372,
+   "h": 826,
+   "right": 1600,
+   "bottom": 900
+  },
+  "railDisplay": "block",
+  "navSlot": {
+   "x": 0,
+   "y": 0,
+   "w": 0,
+   "h": 0,
+   "right": 0,
+   "bottom": 0
+  },
+  "navSlotDisplay": "none",
+  "navFrame": {
+   "x": 0,
+   "y": 0,
+   "w": 0,
+   "h": 0,
+   "right": 0,
+   "bottom": 0
+  },
+  "navFrameDisplay": "block",
+  "navFramePointer": "auto",
+  "navMarkCount": 5,
+  "navMarkFirst": {
+   "aria": null,
+   "rect": {
+    "x": 0,
+    "y": 0,
+    "w": 0,
+    "h": 0,
+    "right": 0,
+    "bottom": 0
+   }
+  },
+  "navWidthVar": "",
+  "railOverlapsNav": null,
+  "probePoint": null,
+  "hits": [],
+  "dragRegions": [
+   {
+    "cls": "dsx-stats-addpanel-resize",
+    "cursor": "ew-resize",
+    "rect": {
+     "x": 892,
+     "y": 75,
+     "w": 10,
+     "h": 824,
+     "right": 902,
+     "bottom": 899
+    }
+   },
+   {
+    "cls": "wSkVaW_widthHandle",
+    "cursor": "col-resize",
+    "rect": {
+     "x": 261,
+     "y": 62,
+     "w": 0,
+     "h": 838,
+     "right": 261,
+     "bottom": 900
+    }
+   },
+   {
+    "cls": "wSkVaW_widthHandle",
+    "cursor": "col-resize",
+    "rect": {
+     "x": 899,
+     "y": 62,
+     "w": 0,
+     "h": 838,
+     "right": 899,
+     "bottom": 900
+    }
+   },
+   {
+    "cls": "pI_x6G_handle",
+    "cursor": "col-resize",
+    "rect": {
+     "x": 276,
+     "y": 0,
+     "w": 8,
+     "h": 900,
+     "right": 284,
+     "bottom": 900
+    }
+   },
+   {
+    "cls": "pI_x6G_handle",
+    "cursor": "col-resize",
+    "rect": {
+     "x": 876,
+     "y": 0,
+     "w": 8,
+     "h": 900,
+     "right": 884,
+     "bottom": 900
+    }
+   }
+  ],
+  "dragOverNav": [],
+  "centerCol": {
+   "x": 280,
+   "y": 0,
+   "w": 600,
+   "h": 900,
+   "right": 880,
+   "bottom": 900
+  },
+  "rightbar": {
+   "x": 880,
+   "y": 0,
+   "w": 720,
+   "h": 900,
+   "right": 1600,
+   "bottom": 900
+  },
+  "containerW": 0,
+  "railRightVar": "0px",
+  "railWVar": "0px",
+  "railAvailVar": "0px"
+ }
+}

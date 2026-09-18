@@ -1,0 +1,173 @@
+{
+ "states": {
+  "1440": {
+   "closed": {
+    "navVisible": true,
+    "nav": {
+     "x": 1390,
+     "y": 491,
+     "w": 28,
+     "h": 22,
+     "right": 1418
+    },
+    "rail": null,
+    "railOverlapsNav": null,
+    "handlesOverNav": [],
+    "gapNavToRail": null,
+    "railClaim": "198px",
+    "railRight": "anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)))",
+    "scrollerPad": "0px",
+    "navContainerContent": 1086,
+    "railCenterTop": null,
+    "noSessionClass": false,
+    "activeClass": false
+   },
+   "open": {
+    "navVisible": false,
+    "nav": {
+     "x": 0,
+     "y": 0,
+     "w": 0,
+     "h": 0,
+     "right": 0
+    },
+    "rail": {
+     "x": 1242,
+     "y": 64,
+     "w": 198,
+     "h": 1016,
+     "right": 1440
+    },
+    "railOverlapsNav": null,
+    "handlesOverNav": [],
+    "gapNavToRail": null,
+    "railClaim": "198px",
+    "railRight": "anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)))",
+    "scrollerPad": "198px",
+    "navContainerContent": 888,
+    "railCenterTop": {
+     "tag": "DIV",
+     "cls": ""
+    },
+    "noSessionClass": false,
+    "activeClass": true
+   }
+  },
+  "1600": {
+   "closed": {
+    "navVisible": true,
+    "nav": {
+     "x": 1550,
+     "y": 491,
+     "w": 28,
+     "h": 22,
+     "right": 1578
+    },
+    "rail": null,
+    "railOverlapsNav": null,
+    "handlesOverNav": [],
+    "gapNavToRail": null,
+    "railClaim": "372px",
+    "railRight": "anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)))",
+    "scrollerPad": "0px",
+    "navContainerContent": 1246,
+    "railCenterTop": null,
+    "noSessionClass": false,
+    "activeClass": false
+   },
+   "open": {
+    "navVisible": false,
+    "nav": {
+     "x": 0,
+     "y": 0,
+     "w": 0,
+     "h": 0,
+     "right": 0
+    },
+    "rail": {
+     "x": 1228,
+     "y": 64,
+     "w": 372,
+     "h": 1016,
+     "right": 1600
+    },
+    "railOverlapsNav": null,
+    "handlesOverNav": [],
+    "gapNavToRail": null,
+    "railClaim": "372px",
+    "railRight": "anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)))",
+    "scrollerPad": "372px",
+    "navContainerContent": 874,
+    "railCenterTop": {
+     "tag": "DIV",
+     "cls": ""
+    },
+    "noSessionClass": false,
+    "activeClass": true
+   }
+  },
+  "1920": {
+   "closed": {
+    "navVisible": true,
+    "nav": {
+     "x": 1870,
+     "y": 491,
+     "w": 28,
+     "h": 22,
+     "right": 1898
+    },
+    "rail": null,
+    "railOverlapsNav": null,
+    "handlesOverNav": [],
+    "gapNavToRail": null,
+    "railClaim": "372px",
+    "railRight": "anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)))",
+    "scrollerPad": "0px",
+    "navContainerContent": 1566,
+    "railCenterTop": null,
+    "noSessionClass": false,
+    "activeClass": false
+   },
+   "open": {
+    "navVisible": true,
+    "nav": {
+     "x": 1498,
+     "y": 491,
+     "w": 28,
+     "h": 22,
+     "right": 1526
+    },
+    "rail": {
+     "x": 1548,
+     "y": 64,
+     "w": 372,
+     "h": 1016,
+     "right": 1920
+    },
+    "railOverlapsNav": null,
+    "handlesOverNav": [],
+    "gapNavToRail": 22,
+    "railClaim": "372px",
+    "railRight": "anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)))",
+    "scrollerPad": "372px",
+    "navContainerContent": 1194,
+    "railCenterTop": {
+     "tag": "DIV",
+     "cls": ""
+    },
+    "noSessionClass": false,
+    "activeClass": true
+   }
+  }
+ },
+ "wave": {
+  "overlayOpacity": "1",
+  "railPointerEvents": "auto",
+  "deckWaveOn": true
+ },
+ "panelAbove": {
+  "hitTag": "DIV",
+  "hitCls": "geFEbW_guide",
+  "hitIsRail": false
+ }
+}

@@ -1,0 +1,16 @@
+{
+ "railCount": 0,
+ "railRect": null,
+ "chain": null,
+ "hitStack": null,
+ "bodyClass": "",
+ "heroRect": {
+  "x": 689,
+  "y": 477,
+  "w": 812,
+  "h": 28,
+  "cls": "wSkVaW_heroWorkspaceRow"
+ },
+ "dockSlots": 0,
+ "overlaySlots": 1
+}

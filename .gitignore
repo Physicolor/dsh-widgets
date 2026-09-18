@@ -10,3 +10,13 @@ docs/poster/
 # Runtime verification receipts (regenerated on each run; not source).
 docs/*-result.json
 docs/backup/
+
+# One-off CDP investigation probes from the 2026-09-17 rail / turn-navigator
+# incident. Local-only: the durable assertions live in
+# docs/verify-report3/scripts/, the receipts in docs/verify-report3/, and the
+# written record in docs/verify-report3/FIX-2026-09-17.md.
+scripts/diag-*.cjs
+scripts/_scan-*.cjs
+
+# Scratch files used to assemble the docs in a release pass.
+.tmp-*
