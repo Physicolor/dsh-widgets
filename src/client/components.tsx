@@ -204,7 +204,12 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
       const label = (i === 0 || i === last) ? b.label : ''
       return React.createElement('div', { key: i, title: `${b.label}: ${b.value} tok`, style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 3, height: '100%' } },
         React.createElement('div', { style: { width: '93%', maxWidth: Math.max(6, Math.round(21 * scale)), height: active ? `${Math.max(2, Math.round((barAreaH - labelH) * ratio))}px` : `${Math.max(2, Math.round(3 * scale))}px`, borderRadius: 4, background: tone, opacity: active ? 0.85 : 0.18 } }),
-        React.createElement('div', { style: { fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1, minHeight: labelH, display: 'flex', alignItems: 'flex-end' } }, label),
+        // nowrap: a two-digit day ("9.11") is wider than its ~15px column, and
+        // wrapping it into "9.1" / "1" made the label two lines tall — which
+        // pushed the bars up and overflowed the 150px card (measured over CDP).
+        // The label only exists on the first/last columns, so the spill is
+        // symmetric and stays inside the card's padding.
+        React.createElement('div', { style: { fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1, minHeight: labelH, whiteSpace: 'nowrap', display: 'flex', alignItems: 'flex-end' } }, label),
       )
     })
     return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 4, height: `${barAreaH}px`, marginTop: `${Math.round(4 * scale)}px` } }, bars)
@@ -348,8 +353,8 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
         ),
       ),
       React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', minHeight: labelH, flex: 'none', fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1 } },
-        React.createElement('span', null, labels[0]),
-        React.createElement('span', null, labels[1]),
+        React.createElement('span', { style: { whiteSpace: 'nowrap' } }, labels[0]),
+        React.createElement('span', { style: { whiteSpace: 'nowrap' } }, labels[1]),
       ),
     )
   }
@@ -415,7 +420,7 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
     const todayIso = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}-${String(nowD.getDate()).padStart(2, '0')}`
     const corner = (text: string | undefined, align: 'flex-start' | 'flex-end'): React.ReactElement | null => {
       if (!text) return null
-      return React.createElement('span', { style: { display: 'flex', alignItems: align, fontSize: `${Math.round(8.5 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' } }, fmtShortDate(text))
+      return React.createElement('span', { style: { display: 'flex', alignItems: align, fontSize: `${Math.round(8.5 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' } }, fmtShortDate(text))
     }
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: `${Math.round(4 * scale)}px`, alignItems: 'center', width: '100%' } },
       ...rows,

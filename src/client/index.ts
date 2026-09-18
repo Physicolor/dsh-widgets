@@ -1,8 +1,8 @@
 /**
- * Harness Widgets 鈥?browser half entry.
+ * Harness Widgets — browser half entry.
  *
  * Registers the right-hand widget rail, the header capsule toggle, and the
- * two settings surfaces (General rows + the "缁勪欢" section). One shared bridge
+ * two settings surfaces (General rows + the component-settings section). One shared bridge
  * holds the persisted prefs, the folded session stats, and the OpenCode usage
  * payload fetched from the Host's same-origin `/api/opencode-usage` route.
  */
@@ -25,6 +25,290 @@ const SAVED_AT_KEY = 'harness-widgets.state.savedAt'
 /** Same-origin host route holding the authoritative state file. */
 const STORE_API = '/api/widgets-state'
 const BASE_SIDE = 150
+
+/**
+ * The rail is a contextual utility strip INSIDE the conversation track, so the
+ * only space it may claim is the margin the product's own transcript measure
+ * leaves over — never the measure itself. Both numbers are published at runtime
+ * by `ui-conversation` on the conversation root (verified 2026-09-17:
+ * `--dsh-conversation-column-width: 1298px`, `--dsh-chat-content-width: 748px`
+ * at a 1578px viewport), so the budget costs no geometry read:
+ *
+ *   budget = columnWidth − contentWidth
+ *
+ * The transcript is re-centred inside the remaining box, so pushing by more
+ * than that budget shrinks the reading measure itself (measured before this
+ * rule: 748px → 554px at 1280 viewport, 394px at 1120 — below the official
+ * `clamp(680px, …, 920px)` floor).
+ */
+const RAIL_BUDGET_SAFETY = 24
+/**
+ * The transcript sits inside the scroll box with ~36px of side padding, and the
+ * scroller itself is ~2px narrower than the track (measured 2026-09-17: at a
+ * 1280 viewport the box was 800px and the prose 728px, i.e. 72px of inset; at
+ * 1578 the prose stayed capped at its 748px measure). Without this term the
+ * rail still shaved 20-50px off the measure.
+ */
+const RAIL_BOX_INSET = 74
+/** Smallest card side the settings slider allows; below it the rail collapses. */
+const RAIL_MIN_SIDE = 100
+
+/**
+ * Conversation column width (px), 0 while the shell has not mounted it.
+ *
+ * Geometry first: the shell publishes --dsh-conversation-column-width a beat
+ * AFTER a track transition settles, so a variable-only read can still see the
+ * mid-flight column (measured 2026-09-17: closing the right panel left the
+ * budget stuck at 0 because the read happened during that window).
+ */
+function readColumnWidth(): number {
+  const columnEl = document.querySelector('[class$="_centerCol"]')
+  const measured = columnEl === null ? 0 : columnEl.getBoundingClientRect().width
+  if (measured > 0) return measured
+  const host = document.querySelector('[data-phase]') ?? columnEl
+  const cs = host === null ? null : getComputedStyle(host)
+  return cs === null ? 0 : Number.parseFloat(cs.getPropertyValue('--dsh-conversation-column-width'))
+}
+
+/** Read the official transcript measure / column width off the conversation root. */
+function readRailBudget(): number {
+  const host = document.querySelector('[data-phase]') ?? document.querySelector('[class$="_centerCol"]')
+  const columnEl = document.querySelector('[class$="_centerCol"]')
+  if (host === null && columnEl === null) return 0
+  const cs = host === null ? null : getComputedStyle(host)
+  const content = cs === null ? Number.NaN : Number.parseFloat(cs.getPropertyValue('--dsh-chat-content-width'))
+  const columnW = readColumnWidth()
+  if (!(columnW > 0)) return 0
+  // Fallback mirrors the official clamp when the measure variable is absent.
+  const measure = Number.isFinite(content) && content > 0
+    ? content
+    : Math.min(920, Math.max(680, columnW * 0.64))
+  return Math.max(0, Math.round(columnW - measure - RAIL_BOX_INSET))
+}
+
+/**
+ * The column width the shell is ANIMATING TOWARD.
+ *
+ * The AppFrame animates `grid-template-columns`, so its INLINE value is the
+ * transition's target while the computed value interpolates (measured
+ * 2026-09-17: 45ms into an open the inline read `280px minmax(0px, 1fr) 710px`
+ * while the computed column was still 1293px). Reading the target is what lets
+ * the rail yield ON THE SAME BEAT as the panel instead of after it: the two
+ * motions then share one 0.3s curve instead of running one after the other.
+ */
+function readTargetColumnWidth(): number | null {
+  const frame = document.querySelector('[class$="_frame"]') as HTMLElement | null
+  const inline = frame?.style.gridTemplateColumns ?? ''
+  // First and last track only: the middle one is `minmax(0px, 1fr)`, whose space
+  // makes a naive whitespace split produce four tokens instead of three.
+  const parts = inline.split(/\s+/).filter(Boolean)
+  if (parts.length < 3) return null
+  const px = (token: string): number | null => {
+    const match = /^([\d.]+)px$/.exec(token)
+    return match === null ? null : Number(match[1])
+  }
+  const left = px(parts[0])
+  const right = px(parts[parts.length - 1])
+  if (left === null || right === null) return null
+  const width = window.innerWidth - left - right
+  return width > 0 ? width : null
+}
+
+/**
+ * Width of the right panel the shell is animating toward, read from the same
+ * inline target: `0` means no panel is present (or it is on its way out), which
+ * is what tells the rail whether it is being covered by a panel or merely has no
+ * room. Falls back to the measured column so a drag (inline == current) works.
+ */
+function readTargetRightbarWidth(): number {
+  const frame = document.querySelector('[class$="_frame"]') as HTMLElement | null
+  const inline = frame?.style.gridTemplateColumns ?? ''
+  const parts = inline.split(/\s+/).filter(Boolean)
+  if (parts.length >= 3) {
+    const match = /^([\d.]+)px$/.exec(parts[parts.length - 1])
+    if (match !== null) return Number(match[1])
+  }
+  const column = document.querySelector('[class$="_rightbarCol"]')
+  return column === null ? 0 : Math.round(column.getBoundingClientRect().width)
+}
+
+/** Current right-column width (0 when no panel is on screen at all). */
+function measuredRightbarWidth(): number {
+  const column = document.querySelector('[class$="_rightbarCol"]')
+  return column === null ? 0 : Math.round(column.getBoundingClientRect().width)
+}
+
+/** The rail's normal right inset: it follows the conversation column's right edge. */
+function railAnchorRight(): string {
+  return ANCHOR_FOLLOW ? `anchor(--dsx-center right, ${RIGHTBAR_FALLBACK})` : RIGHTBAR_FALLBACK
+}
+
+/**
+ * Right inset every rail-owned fixed layer reads. Normal mode follows the column
+ * (anchor positioning); while a panel is present the rail is pinned to the
+ * viewport's right edge — the same value whenever no panel is open — so the
+ * panel, which paints ABOVE the rail's conversation-scoped slot, covers it.
+ */
+function applyRailRight(swallowed: boolean): void {
+  document.documentElement.style.setProperty('--dsx-rail-right', swallowed ? '0px' : railAnchorRight())
+}
+
+/** Panel width reached when fully open, held across one open/close gesture. */
+let engagedPanelW = 0
+
+/** Everything the rail's fixed layers need to know for the current space. */
+interface RailSpace {
+  /** The transcript must yield its margin (claim 0). */
+  yielded: boolean
+  /** A panel is present and will cover the rail (paint order: panel above rail). */
+  swallowed: boolean
+  /** No room and nothing to cover it: hide. */
+  hidden: boolean
+  /** Right inset for the rail / magnify / add panel. */
+  right: string
+  /** Width the rail draws. */
+  drawW: number
+  /**
+   * Extra rightward shift (px) so a panel NARROWER than the rail can still cover
+   * it completely: the rail's right edge is pinned to the viewport, so shifting
+   * it right by (rail −panel) lands its left edge exactly on the panel's left
+   * edge. Zero whenever the panel is at least as wide as the rail.
+   */
+  shiftX: number
+  /** Space the transcript yields to the rail. */
+  claimW: number
+  side: number
+  columns: number
+  pad: number
+}
+
+/**
+ * Everything a React entry reads from the plugin bridge. One immutable object
+ * per emit (see `emit`), because `useSyncExternalStore` compares references.
+ */
+interface BridgeSnapshot {
+  open: boolean
+  hasSession: boolean
+  stats: Stats | null
+  usageData: UsageData | null
+  usageMulti: UsageMulti | null
+  commandCode: CommandCodeData | null
+  commandCodeError: string | null
+  usageDaily: Record<string, number> | null
+  sysinfo: SysInfo | null
+  prefs: Prefs
+  railBudget: number
+}
+
+/**
+ * Decide how the rail coexists with the right panel and the transcript measure.
+ *
+ * Resolution order: the preferred deck — what still fits the transcript's
+ * leftover margin — if nothing does, the panel takes the space and the rail is
+ * COVERED by it (the rail's slot is inside the conversation, which paints below
+ * the right column), or hidden when there is no panel to do the covering.
+ */
+function resolveRailSpace(prefs: Prefs, budget: number): RailSpace {
+  const layout = resolveRailLayout(prefs, budget)
+  const pad = prefs.panelPadding
+  const columns = layout.constrained ? ([1, 2, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2) : layout.columns
+  const side = layout.constrained ? prefs.cardSide : layout.side
+  const drawW = columns > 1 ? columns * side + (columns + 1) * pad : side + pad * 2
+  // A panel counts as present while it is on screen OR on its way in. Reading the
+  // target alone would drop to 0 the moment a CLOSE begins, snapping the rail out
+  // from under the panel at full opacity (a pop); the measured column keeps the
+  // rail pinned until the panel is really gone — and by then the anchor resolves
+  // to the same 0px, so handing back is invisible.
+  const panelW = Math.max(readTargetRightbarWidth(), measuredRightbarWidth())
+  const swallowed = panelW > 0
+  // Panel width for the COVER calculation: the width it reaches when fully open,
+  // held for the whole gesture. Using the live value would make a closing panel
+  // (shrinking to 0) push the rail further and further right.
+  if (swallowed) engagedPanelW = Math.max(engagedPanelW, panelW)
+  else engagedPanelW = 0
+  return {
+    yielded: layout.constrained,
+    swallowed,
+    hidden: layout.constrained && !swallowed,
+    right: swallowed ? '0px' : railAnchorRight(),
+    drawW,
+    shiftX: swallowed ? Math.max(0, drawW - engagedPanelW) : 0,
+    claimW: layout.constrained ? 0 : drawW,
+    side,
+    columns,
+    pad,
+  }
+}
+
+/** Budget implied by the track the frame is animating toward (null = unknown). */
+function predictRailBudget(): number | null {  const column = readTargetColumnWidth()
+  if (column === null) return null
+  const host = document.querySelector('[data-phase]')
+  const cs = host === null ? null : getComputedStyle(host)
+  const content = cs === null ? Number.NaN : Number.parseFloat(cs.getPropertyValue('--dsh-chat-content-width'))
+  const measure = Number.isFinite(content) && content > 0
+    ? content
+    : Math.min(920, Math.max(680, column * 0.64))
+  return Math.max(0, Math.round(column - measure - RAIL_BOX_INSET))
+}
+
+/** The rail geometry that fits a budget: preferred — fewer columns — narrower — collapse. */function resolveRailLayout(prefs: Prefs, budget: number): { side: number; columns: number; railW: number; constrained: boolean } {
+  const pad = prefs.panelPadding
+  const wantColumns = [1, 2, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
+  const wantSide = prefs.cardSide
+  const widthOf = (columns: number, side: number): number => (columns > 1 ? columns * side + (columns + 1) * pad : side + pad * 2)
+  const wantW = widthOf(wantColumns, wantSide)
+  // Before the first measurement (-1) the budget is unknown: assume the rail
+  // fits, so a plugin start never flashes a collapsed deck.
+  if (!(budget >= 0)) return { side: wantSide, columns: wantColumns, railW: wantW, constrained: false }
+  const room = Math.max(0, budget - RAIL_BUDGET_SAFETY)
+  if (room >= wantW) return { side: wantSide, columns: wantColumns, railW: wantW, constrained: false }
+  // Fewer columns at the preferred card size (grid decks collapse first).
+  for (const columns of [2, 1]) {
+    if (columns >= wantColumns) continue
+    const railW = widthOf(columns, wantSide)
+    if (railW <= room) return { side: wantSide, columns, railW, constrained: false }
+  }
+  // One column, shrunk to what is left.
+  const side = Math.floor(room - 2 * pad)
+  if (side >= RAIL_MIN_SIDE) return { side, columns: 1, railW: widthOf(1, side), constrained: false }
+  // Nothing fits without eating the reading measure: collapse (prefs untouched).
+  return { side: wantSide, columns: 1, railW: 0, constrained: true }
+}
+
+/**
+ * Whether the rail can follow the shell's column track NATIVELY through CSS
+ * anchor positioning (`right: anchor(--dsx-center right)`) instead of being
+ * repositioned from JS every frame. Both the rail and its magnify overlay are
+ * `position: fixed` and the anchor is the AppFrame's center column
+ * (`[class$='_centerCol']`, declared in widgets.module.css), so the browser
+ * resolves the rail's right edge inside the very layout pass that animates
+ * `grid-template-columns`: the rail and the conversation column move as ONE
+ * surface — no tween, no frame lag, and none of the per-frame
+ * `--dsx-rightbar-w` writes (a :root style invalidation, i.e. a full-document
+ * style recalc every animation frame) the fallback path needs.
+ */
+const ANCHOR_FOLLOW = typeof CSS !== 'undefined' && typeof CSS.supports === 'function'
+  && CSS.supports('right: anchor(--dsx-center right)')
+
+/** Right inset the JS fallback path publishes (and the anchor fallback reads). */
+const RIGHTBAR_FALLBACK = 'var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px))'
+
+/**
+ * Right inset shared by the rail and its magnify overlay (must stay identical).
+ *
+ * The anchor form carries a FALLBACK on purpose: while the drawer wrapper plays
+ * its enter/leave slide it has a `transform`, which makes that wrapper the
+ * containing block of the fixed rail — and an anchor outside the containing
+ * block chain is not acceptable, so `anchor()` silently falls back (measured:
+ * without a fallback the property turns into `auto` and the rail paints at the
+ * wrapper's LEFT edge for the whole 0.3s slide, i.e. "components flash over the
+ * left sidebar on every refresh"). With the fallback the rail glides in from
+ * the right edge like the rest of the drawer, then snaps onto the anchor once
+ * the transform is gone.
+ */
+/** Every rail-owned fixed layer reads this one variable (default set in the CSS). */
+const RAIL_RIGHT_VAR = 'var(--dsx-rail-right)'
 
 /** Map from interactive action id to the slash command it triggers. */
 const ACTION_COMMANDS: Record<string, string> = {
@@ -52,6 +336,226 @@ const DEFAULTS: Prefs = {
 /** Required services: the slot registry (React is a platform module). */
 export const inject = ['slots']
 
+/** One card placement of the wave deck (right-anchored, rail-content coords). */
+interface WavePlace { s: number; top: number; right: number; w: number; h: number }
+
+/**
+ * The magnifying rail surface. The magnification wave is the ONLY part of the
+ * rail that changes on a hover frame, so it lives in its own component: a
+ * pointer move re-renders THIS component alone, and the static deck arrives as
+ * an already-built `deck` element whose identity the parent keeps stable — React
+ * bails out of that whole subtree instead of reconciling every card body, every
+ * bridge-derived widget output and the always-mounted add panel 60 times a
+ * second (measured 2026-09-13: 12.5ms p50 / 41.8ms p95 hover frames with the wave
+ * inside the parent, vs 4.2ms idle).
+ *
+ * The enlarged copies are sized through `transform: scale()` with a top-right
+ * origin rather than width/height: `placeCards` gives the focused box as
+ * {top, right, w, h} with the box anchored to its right edge, which is exactly
+ * what scaling the resting-size card around its top-right corner produces. Only
+ * the compositor is involved per frame — no per-frame layout or repaint of seven
+ * dense card subtrees.
+ */
+interface RailWaveProps {
+  /** Prebuilt resting deck (identity-stable between pointer frames). */
+  deck: React.ReactNode
+  items: ReadonlyArray<{ key: string; size: WidgetSize; baseW: number; out: WidgetRenderOut; w: { id: string } }>
+  side: number
+  pad: number
+  railW: number
+  stackHeight: number
+  addRadius: number
+  /** true = the peak follows the pointer every frame; false = quantized wave. */
+  active: boolean
+  placeCards: (sc: number[]) => WavePlace[]
+  scaleFor: (x: number, y: number) => number[]
+  nearest: (v: number, pts: number[]) => number
+  stepScale: (d: number) => number
+  xPts: number[]
+  yPts: number[]
+  addSlotFor: (layout: WavePlace[]) => { top: number; right: number }
+  cardElsRef: { current: Array<HTMLDivElement | null> }
+  /** The rail is mounted on a live session (state is dropped when it is not). */
+  live: boolean
+  /** Rightward shift (px) so a narrower panel still covers the rail completely. */
+  shiftX: number
+}
+
+function RailWave(props: RailWaveProps): React.ReactElement {
+  const { deck, items, side, pad, railW, stackHeight, addRadius, active, placeCards, scaleFor, nearest, stepScale, xPts, yPts, addSlotFor, cardElsRef, live, shiftX } = props
+  const n = items.length
+  // ---- Pointer focus. Realtime: the peak follows the pointer's 2D position
+  //      every frame; discrete: it is snapped onto a quantized grid (row/column
+  //      centres + midpoints) so the peak glides between cards and gaps.
+  const [focusY, setFocusY] = React.useState<number | null>(null)
+  const [focusX, setFocusX] = React.useState<number | null>(null)
+  // Animation phase for the overlay's CSS size tween: entering/leaving uses a
+  // short grow/shrink; FOLLOWING the pointer disables the transition so every
+  // frame lands on the steady-state right-anchored geometry (a live tween would
+  // linger in intermediate geometry: misaligned right edges, uneven gaps).
+  const [animPhase, setAnimPhase] = React.useState<'idle' | 'grow' | 'follow' | 'shrink'>('idle')
+  const animPhaseRef = React.useRef<'idle' | 'grow' | 'follow' | 'shrink'>('idle')
+  const phaseTimer = React.useRef<number | undefined>(undefined)
+  const schedulePhase = (next: 'grow' | 'follow' | 'shrink' | 'idle', afterMs: number): void => {
+    if (phaseTimer.current !== undefined) window.clearTimeout(phaseTimer.current)
+    if (afterMs <= 0) { animPhaseRef.current = next; setAnimPhase(next); return }
+    animPhaseRef.current = next
+    setAnimPhase(next)
+    phaseTimer.current = window.setTimeout(() => {
+      phaseTimer.current = undefined
+      // Follow is only meaningful while still engaged; a leave that raced this
+      // timer morphs into the shrink phase instead.
+      const final = next === 'follow' ? (armedRef.current ? 'follow' : 'shrink') : next
+      animPhaseRef.current = final
+      setAnimPhase(final)
+    }, afterMs)
+  }
+  React.useEffect(() => () => { if (phaseTimer.current !== undefined) window.clearTimeout(phaseTimer.current) }, [])
+  // Rail content scroll offset (px), synced to the fixed magnify overlay so it
+  // tracks the scrolled deck instead of sitting at the rail's viewport top.
+  const [railScrollTop, setRailScrollTop] = React.useState(0)
+  // Realtime magnification arming: the wave engages only once the pointer has
+  // actually hit a CARD (bare rail gaps must not trigger it), then stays engaged
+  // while the pointer crosses the gaps between cards, and disarms only when it
+  // leaves the rail.
+  const armedRef = React.useRef(false)
+  // Last pointer position in rail-content coordinates, kept so a rail scroll
+  // (which moves cards but not the mouse) re-targets the peak correctly.
+  const lastClientXYRef = React.useRef<{ x: number; y: number } | null>(null)
+  const contentYRef = React.useRef<number | null>(null)
+  const contentXRef = React.useRef<number | null>(null)
+  const rafRef = React.useRef(0)
+  /** True when the pointer lies inside any static card slot rect. */
+  const hitTestCards = (clientX: number, clientY: number): boolean => {
+    for (const el of cardElsRef.current) {
+      if (!el) continue
+      const r = el.getBoundingClientRect()
+      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) return true
+    }
+    return false
+  }
+  const moveRailFocus = (clientX: number, clientY: number, el: HTMLDivElement): void => {
+    lastClientXYRef.current = { x: clientX, y: clientY }
+    const rect = el.getBoundingClientRect()
+    contentXRef.current = clientX - rect.left
+    contentYRef.current = clientY - rect.top - 2 + el.scrollTop
+    if (hitTestCards(clientX, clientY)) armedRef.current = true
+    if (!armedRef.current) return
+    if (rafRef.current) return
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0
+      if (active && animPhaseRef.current !== 'follow' && animPhaseRef.current !== 'grow') {
+        schedulePhase('grow', 0)
+        schedulePhase('follow', 170)
+      } else if (!active && animPhaseRef.current === 'idle') {
+        schedulePhase('grow', 0)
+        schedulePhase('follow', 170)
+      }
+      setFocusX(contentXRef.current)
+      setFocusY(contentYRef.current)
+    })
+  }
+  // Re-target the peak when the rail scrolls without the pointer moving.
+  const railScrollSync = (el: HTMLDivElement): void => {
+    if (lastClientXYRef.current === null) return
+    moveRailFocus(lastClientXYRef.current.x, lastClientXYRef.current.y, el)
+  }
+  React.useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }, [])
+  React.useEffect(() => {
+    if (live) return
+    setFocusY(null); setFocusX(null)
+    armedRef.current = false
+    animPhaseRef.current = 'idle'
+    setAnimPhase('idle')
+    if (phaseTimer.current !== undefined) { window.clearTimeout(phaseTimer.current); phaseTimer.current = undefined }
+  }, [live])
+  // ---- Wave geometry (pure, recomputed per frame). ----
+  const engaged = focusX !== null && focusY !== null && armedRef.current
+  // Focus is in rail-content coordinates: rawX is the rail-box X minus the left
+  // padding (card cell centres are content-relative); rawY already is.
+  const rawX = (focusX ?? 0) - pad
+  const rawY = focusY ?? 0
+  let scaleArr = new Array(n).fill(1)
+  if (engaged && n > 0) {
+    scaleArr = active ? scaleFor(rawX, rawY) : scaleFor(nearest(rawX, xPts), nearest(rawY, yPts))
+  }
+  const focusLayout = placeCards(engaged ? scaleArr : new Array(n).fill(1))
+  const focusedAdd = addSlotFor(focusLayout)
+  const addCenter = { x: railW - 2 * pad - focusedAdd.right - side / 2, y: focusedAdd.top + side / 2 }
+  const addScale = engaged && n > 0 ? stepScale(Math.hypot(addCenter.x - rawX, addCenter.y - rawY) / (side + pad)) : 1
+  const magnifying = engaged && n > 0 && (scaleArr.some((s) => s > 1.001) || addScale > 1.001)
+  // Render-body write (not an effect): the overlay's top offset reads this the
+  // moment React commits, so a rail scroll never trails by a frame.
+  document.documentElement.style.setProperty('--dsx-rail-scroll', `${railScrollTop}px`)
+  // The size tween applies to the enter/exit phases and to the discrete style's
+  // grid gliding; the realtime FOLLOW phase has no transition so every frame
+  // lands directly on the steady-state geometry.
+  const tweenSize = !active || animPhase === 'grow' || animPhase === 'shrink'
+  const overlayTransition = tweenSize ? 'transform 0.15s var(--ds-ease-in-out)' : 'none'
+  const rail = React.createElement('div', {
+    className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: RAIL_RIGHT_VAR, bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto', transform: `translateX(${shiftX}px)`, // Anchor mode must NOT ease `right`: the anchored value is re-resolved every
+      // layout pass, and a `transition: right` would spend the whole animation
+      // interpolating toward a target that keeps moving (measured: the rail
+      // trailed the column by up to 600px for ~0.5s). `transform` IS eased: it
+      // carries the swallow shift (panel narrower than the rail) on the shell's
+      // own curve. The fallback path eases `right` too.
+      ...(ANCHOR_FOLLOW
+        ? { transition: 'transform var(--ds-transition-duration-slow) var(--ds-ease-in-out)' }
+        : { transition: 'right var(--ds-transition-duration-slow) var(--ds-ease-in-out), transform var(--ds-transition-duration-slow) var(--ds-ease-in-out)' }) },
+    onMouseLeave: () => {
+      armedRef.current = false
+      setFocusY(null); setFocusX(null)
+      if (animPhaseRef.current !== 'idle' && animPhaseRef.current !== 'shrink') schedulePhase('shrink', 0)
+      schedulePhase('idle', 200)
+    },
+    onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => moveRailFocus(e.clientX, e.clientY, e.currentTarget as HTMLDivElement),
+    onScroll: (e: React.UIEvent<HTMLDivElement>) => { setRailScrollTop(e.currentTarget.scrollTop); railScrollSync(e.currentTarget) },
+  },
+    // The deck dims through a class (not a re-render): its element identity is
+    // stable, so engaging the wave never reconciles the card DOM.
+    React.createElement('div', { className: magnifying ? 'dsx-wave-deck dsx-wave-on' : 'dsx-wave-deck' }, deck),
+  )
+  // Magnify overlay: a FIXED layer rendered OUTSIDE the rail's scroll-clip box (a
+  // sibling of the rail, so no ancestor overflow clips it) that paints the live
+  // reflow while a card is magnified — its leftward growth shows over the
+  // conversation edge instead of being cut at the rail's left boundary, and the
+  // rail width (hence the conversation column) never changes. pointer-events:none
+  // keeps interaction on the rail; --dsx-rail-scroll pins it to the scrolled
+  // deck. Its right offset MUST be the same variable the rail uses
+  // (--dsx-rightbar-w): DSH 0.1.5's right sidebar never publishes
+  // --dsh-sidebar-width, so the old fallback left the overlay parked at the
+  // viewport edge — 720px to the right of the rail, painting over the panel
+  // (measured 2026-09-13).
+  const magnifyLayer = React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: RAIL_RIGHT_VAR, width: `${railW}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent', transform: `translateX(${shiftX}px)`, opacity: magnifying ? 1 : 0, transition: 'opacity 0.15s ease' } },
+    React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${stackHeight}px` } },
+      focusLayout.map((c, idx) => {
+        const it = items[idx]
+        const baseW = it.baseW
+        // Resting-size box, scaled about its top-right corner: identical geometry
+        // to {top, right, w: baseW*s, h: side*s}, without re-laying-out the card.
+        const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${baseW}px`, height: `${side}px`, transformOrigin: 'top right', transform: `scale(${c.s.toFixed(4)})`, transition: overlayTransition, willChange: magnifying ? 'transform' : undefined, zIndex: Math.round((c.s - 1) * 50) }
+        return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle },
+          // Lazy body: cards render ONLY while actually magnifying. The slot div
+          // stays mounted (its transform tween continues seamlessly on
+          // enter/exit), but the heavy card DOM is absent at rest. The body is
+          // rendered at the RESTING unit and scaled by the transform, so it is
+          // built once per engage instead of once per frame.
+          magnifying ? React.createElement(CardBody, { out: it.out, unit: side, width: baseW, onAction: undefined }) : null,
+        )
+      }),
+      // Mirror the add button at its WAVE position (focusedAdd), scaled by its own
+      // wave factor — it displaces with the magnified deck like a card.
+      React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), tabIndex: -1, style: { position: 'absolute', top: `${focusedAdd.top.toFixed(2)}px`, right: `${focusedAdd.right.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, transformOrigin: 'top right', transform: `scale(${addScale.toFixed(4)})`, transition: overlayTransition, willChange: magnifying ? 'transform' : undefined, zIndex: 30 } },
+        React.createElement('span', { className: 'dsx-stats-add-icon' },
+          React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
+        ),
+        React.createElement('span', { className: 'dsx-stats-add-label' }, t('ui.rail.addLabel')),
+      ),
+    )
+  )
+  return React.createElement(React.Fragment, null, rail, magnifyLayer)
+}
+
 /** Normalize an arbitrary persisted/remote prefs object into a valid Prefs.
  *  Shared by localStorage loads and the authoritative host-store sync, so both
  *  channels survive schema drift identically. */
@@ -60,7 +564,7 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
   if (!Number.isFinite(s.panelPadding) || s.panelPadding < 4 || s.panelPadding > 40) s.panelPadding = DEFAULTS.panelPadding
   if (!Number.isFinite(s.cardSide) || s.cardSide < 100 || s.cardSide > 220) s.cardSide = DEFAULTS.cardSide
   // Normalize one persisted entry to a valid instance key. Legacy bare widget
-  // ids (pre-2脳4) migrate to their 2脳2 instance; unknown entries are dropped.
+  // ids (pre-2×2) migrate to their 2×4 instance; unknown entries are dropped.
   const normalizeInstance = (key: string): string => {
     // v1.5.0 leak migration: sys-board shipped with its descriptor missing the
     // sizes list, so the runtime defaulted it to 2×2 while the manifest said
@@ -71,7 +575,7 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
     if (!w) return ''
     return sizesOf(w).includes(size) ? instanceKey(widgetId, size) : ''
   }
-  // Respect the user's installed set exactly 鈥?do NOT force-append built-ins
+  // Respect the user's installed set exactly — do NOT force-append built-ins
   // back on every load (that kept overflowing the max-widgets cap after the
   // user uninstalled system widgets). Only the first-run path seeds defaults.
   if (!Array.isArray(s.installed)) s.installed = []
@@ -148,7 +652,7 @@ function saveState(s: Prefs): void {
  * being torn down (window/tab close, navigation, desktop-app quit). The
  * 400 ms debounce means the last edit before a quick close is usually still
  * pending here; a normal fetch would be cancelled with the page, but
- * `sendBeacon` is delivered by the browser even as the page is destroyed 鈥?
+ * `sendBeacon` is delivered by the browser even as the page is destroyed —
  * which is what keeps the write inside desktop shells that spawn a fresh
  * random loopback origin on every launch (their localStorage is a new realm
  * each boot, so the host file is the only channel that survives).
@@ -172,7 +676,7 @@ function flushPendingState(): void {
         keepalive: true,
       })
     }
-  } catch { /* page is going away; nothing more can be done 鈥?the boot sync on the next launch converges */ }
+  } catch { /* page is going away; nothing more can be done — the boot sync on the next launch converges */ }
 }
 
 /** Session stats shape collected by the dock collector. */
@@ -239,8 +743,27 @@ export function apply(ctx: ClientContext): void {
   let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null }
 
   const listeners = new Set<() => void>()
-  function emit(): void { for (const fn of listeners) fn() }
+  /**
+   * The bridge snapshot React renders from. Cached per emit because
+   * `useSyncExternalStore` compares references: a fresh object per call would
+   * re-render forever.
+   */
+  let bridgeSnapshot: BridgeSnapshot | null = null
+  /**
+   * The snapshot must be rebuilt inside `emit`, i.e. AFTER the state/`prefs`/
+   * `railBudget` updates, so every subscriber (and every late subscriber) reads
+   * the same values. `bridgeSnapshot` starts null instead of pre-built because
+   * `railBudget` is declared further down: reading it here would throw (TDZ).
+   */
+  function emit(): void {
+    bridgeSnapshot = { ...state, prefs: { ...prefs }, railBudget }
+    for (const fn of listeners) fn()
+  }
   function subscribe(fn: () => void): () => void { listeners.add(fn); return () => { listeners.delete(fn) } }
+  function getBridgeSnapshot(): BridgeSnapshot {
+    if (bridgeSnapshot === null) bridgeSnapshot = { ...state, prefs: { ...prefs }, railBudget }
+    return bridgeSnapshot
+  }
   function setState(patch: Partial<typeof state>): void { state = { ...state, ...patch }; emit() }
   function setPrefs(patch: Partial<Prefs>): void { prefs = { ...prefs, ...patch }; saveState(prefs); emit() }
 
@@ -259,7 +782,7 @@ export function apply(ctx: ClientContext): void {
       const hostState = data.state !== null && typeof data.state === 'object' ? data.state : null
       const localAt = loadSavedAt()
       if (hostState && hostAt > localAt) {
-        // Host is newer (another origin/browser saved it) 鈫?adopt + mirror locally.
+        // Host is newer (another origin/browser saved it) — adopt + mirror locally.
         prefs = normalizePrefs(hostState)
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
@@ -267,19 +790,30 @@ export function apply(ctx: ClientContext): void {
         } catch { /* ignore */ }
         emit()
       } else if (hostAt < localAt && localAt > 0) {
-        // Local is newer (host file absent/stale 鈥?e.g. first run after upgrade).
+        // Local is newer (host file absent/stale — e.g. first run after upgrade).
         try { await putState(prefs, localAt) } catch { /* best-effort */ }
       }
     } catch { /* host unavailable; stay on localStorage only */ }
   }
-  function useBridge(): { open: boolean; hasSession: boolean; stats: Stats | null; usageData: UsageData | null; usageMulti: UsageMulti | null; commandCode: CommandCodeData | null; commandCodeError: string | null; usageDaily: Record<string, number> | null; sysinfo: SysInfo | null; prefs: Prefs } {
-    const [snap, setSnap] = React.useState({ ...state, prefs: { ...prefs } })
-    React.useEffect(() => subscribe(() => setSnap({ ...state, prefs: { ...prefs } })), [])
-    return snap
+  /**
+   * Bridge subscription for React entries.
+   *
+   * `useSyncExternalStore` (not `useState` + a subscribing effect) is what makes
+   * a session hand-off reliable: a plain effect misses every emit that lands
+   * between the entry's render and its effect flush, and the shell can mount a
+   * NEW conversation's composer overlay slot in exactly that window while the
+   * old session's dock unmounts — the fresh entry then kept a stale
+   * `hasSession: true` snapshot, so the rail stayed painted (and kept capturing
+   * pointer events) over the fresh-conversation page until a reload (measured
+   * 2026-09-17, 5/5 runs). `useSyncExternalStore` re-reads the snapshot after
+   * subscribing and re-renders when it changed, so that emit cannot be lost.
+   */
+  function useBridge(): BridgeSnapshot {
+    return React.useSyncExternalStore(subscribe, getBridgeSnapshot, getBridgeSnapshot)
   }
   // Cross-tab + visibility re-sync, so "every change takes effect immediately"
   // also holds when the same DSH service is open in several tabs/windows:
-  //  - `storage` events fire in OTHER tabs of the SAME origin when one saves 鈫?
+  //  - `storage` events fire in OTHER tabs of the SAME origin when one saves —
   //    re-read + emit instead of waiting for a reload;
   //  - `visibilitychange` re-pulls the host store, so switching back to a tab
   //    whose origin differs (localhost vs 127.0.0.1) still converges to the
@@ -331,7 +865,164 @@ export function apply(ctx: ClientContext): void {
   let lastRightbarW = -1
   /** Timer that ends the track-sync window. */
   let syncTimer = 0
-  function measureRailTop(): void {
+  let ro: ResizeObserver | null = null
+  /**
+   * Elements already handed to the ResizeObserver. The targets MUST be looked up
+   * lazily: this plugin applies BEFORE the Web UI shell mounts its frame, so a
+   * one-shot querySelector pass at apply time finds nothing and the observer ends
+   * up watching zero nodes (verified 2026-09-13: 19 live ResizeObservers on the
+   * page, none of them on [class$='_rightbarCol']). The rail's right offset then
+   * only changed when some unrelated event happened to re-measure — which is why
+   * the rail sat still for seconds while the right sidebar's grid track animated,
+   * then jumped into place. Re-binding on every measure is idempotent (observing
+   * an element twice is a no-op) and self-heals whenever the shell or the
+   * conversation root is re-created.
+   */
+  const observedEls = new Set<Element>()
+  /**
+   * Cached handle for the official right-bar column — the single element the
+   * hot path needs. The rail syncs at animation cadence while the shell eases
+   * its right-bar grid track, so the per-frame path must not re-run four
+   * `querySelector` probes nor force a layout with `getBoundingClientRect`:
+   * the ResizeObserver entry that scheduled the frame already carries the new
+   * content-box width. Measured 2026-09-17 (1578x846, long conversation): the
+   * previous per-frame selector+rect pass cost 36ms per one-toggle animation
+   * on top of the shell's own track re-layout.
+   */
+  let rightbarEl: Element | null = null
+  /** Width (px) reported by the newest RO entry for {@link rightbarEl}; null = none. */
+  let entryRightbarW: number | null = null
+  /**
+   * Minimum spacing between the VERTICAL anchor probes (`--dsx-rail-top`,
+   * `--dsx-input-bottom`). Those two anchors only move with header / route /
+   * composer layout, never with the horizontal grid track — yet the composer and
+   * scroll body re-resize on every frame of a sidebar toggle (their content
+   * reflows), so an unthrottled probe forces an extra full re-layout per frame
+   * for values that are already correct (measured 2026-09-17: 111ms over 5
+   * callbacks in one toggle). A trailing timer guarantees the final value lands.
+   */
+  const VERTICAL_PROBE_INTERVAL_MS = 250
+  let lastVerticalProbeAt = 0
+  let verticalTimer = 0
+  /** One-shot publish of the settled right-bar width (anchor path only). */
+  let settleTimer = 0
+  /** Space the product's transcript measure leaves for the rail (px). */
+  let railBudget = -1
+  /** The AppFrame whose track transition drives the yield beat. */
+  let frameEl: Element | null = null
+  /** The drawer wrapper, so the yield can be applied on the shell's own beat. */
+  let drawerEl: HTMLDivElement | null = null
+  /** Debounces the budget refresh until a track movement has settled. */
+  let railBudgetTimer = 0
+  /**
+   * The right-bar track just changed width — the movement is in flight. Predict
+   * the TARGET budget on every such tick: the first tick can be delivered before
+   * the shell has written the target tracks for this gesture, so latching on it
+   * would miss the whole movement (measured: the inline read the old `0px` on the
+   * first tick and `710px` afterwards). `updateRailBudget` no-ops when the value
+   * is unchanged, so repeated predictions are free.
+   *
+   * Triggered from the observer itself, not from the "horizontal only" fast path:
+   * during a push the transcript scroller resizes in the same batch, so that path
+   * is usually NOT taken and a prediction hung off it would never run.
+   */
+  function noteRightbarMoved(): void {
+    const predicted = predictRailBudget()
+    if (predicted !== null) updateRailBudget(predicted)
+    scheduleBudgetRefresh()
+  }
+  /**
+   * The shell's track transition is STARTING (AppFrame `transitionrun` for
+   * `grid-template-columns`). This is the earliest possible beat — the observer's
+   * first delivery trails it by ~100ms — so the rail's yield lands on the same
+   * frame as the panel's first pixel of movement.
+   */
+  function onTrackTransitionRun(event: Event): void {
+    if ((event as TransitionEvent).propertyName !== 'grid-template-columns') return
+    const predicted = predictRailBudget()
+    if (predicted !== null) updateRailBudget(predicted)
+    scheduleBudgetRefresh()
+  }
+  /** Keep the transition listener bound to whatever frame the shell renders. */
+  function bindFrameTransition(): void {
+    const frame = document.querySelector('[class$="_frame"]')
+    if (frame === frameEl) return
+    frameEl?.removeEventListener('transitionrun', onTrackTransitionRun)
+    frameEl = frame
+    frameEl?.addEventListener('transitionrun', onTrackTransitionRun)
+  }
+  /**
+   * Recompute how much room the rail may claim and, when it moved, re-render the
+   * drawer with the resolved geometry. Quantised to 8px so a drag or a resize
+   * does not re-render the deck per pixel.
+   */
+  function updateRailBudget(next = readRailBudget()): void {
+    if (next === railBudget) return
+    if (railBudget >= 0 && Math.abs(next - railBudget) < 8) return
+    railBudget = next
+    document.documentElement.style.setProperty('--dsx-rail-avail', `${next}px`)
+    // Apply the yield to the DOM directly, not only through React: during the
+    // track animation React's commit can land ~100ms late (the main thread is
+    // busy re-laying out the columns), which is exactly the "panel first, rail
+    // afterwards" beat we are removing. The next render writes the same values.
+    const space = resolveRailSpace(prefs, next)
+    document.documentElement.style.setProperty('--dsx-rail-w', `${space.claimW}px`)
+    applyRailRight(space.swallowed)
+    if (drawerEl !== null) {
+      drawerEl.style.opacity = space.hidden ? '0' : '1'
+      if (space.yielded) drawerEl.setAttribute('data-yielded', '')
+      else drawerEl.removeAttribute('data-yielded')
+    }
+    emit()
+  }
+  /** Refresh the budget once the right-bar track has stopped moving. */
+  function scheduleBudgetRefresh(): void {
+    if (railBudgetTimer !== 0) window.clearTimeout(railBudgetTimer)
+    railBudgetTimer = window.setTimeout(() => {
+      railBudgetTimer = 0
+      updateRailBudget()
+      // One verification pass: a single read can land while the shell is still
+      // publishing the settled column, which would freeze the rail at whatever
+      // the mid-flight value implied (never collapses the window, just a
+      // second look once everything has settled).
+      railBudgetTimer = window.setTimeout(() => {
+        railBudgetTimer = 0
+        updateRailBudget()
+      }, 520)
+    }, 240)
+  }
+  /**
+   * Freeze the rail's OWN `transition: right` (fallback path only) for the
+   * duration of a track movement; the class expires 160ms after the last tick.
+   */
+  function armSyncFreeze(): void {
+    document.documentElement.classList.add('dsx-syncing')
+    if (syncTimer !== 0) window.clearTimeout(syncTimer)
+    syncTimer = window.setTimeout(() => {
+      syncTimer = 0
+      document.documentElement.classList.remove('dsx-syncing')
+    }, 160)
+  }
+  function observeMeasured(): void {
+    if (!ro) return
+    bindFrameTransition()
+    for (const sel of ['[data-conversation-scroll]', '[data-slot="conversation.session.header"]', '[data-composer-seat]', '[class$="_rightbarCol"]']) {
+      const el = document.querySelector(sel)
+      if (el && !observedEls.has(el)) {
+        observedEls.add(el)
+        ro.observe(el)
+      }
+    }
+    const rightbar = document.querySelector('[class$="_rightbarCol"]')
+    if (rightbar !== null && rightbar !== rightbarEl) {
+      rightbarEl = rightbar
+      entryRightbarW = null
+    }
+  }
+  function measureRailTop(widthHint?: number, horizontalOnly = false): void {
+    // Re-bind only when the shell swapped the measured nodes out (self-heal);
+    // the steady-state sync never pays for a query.
+    if (rightbarEl === null || !rightbarEl.isConnected) observeMeasured()
     // Official right bar (DSH 0.1.5): the frame owns a third grid column
     // ([class$='_rightbarCol'], occupied by dsh-client-ui-sidebar-right). The
     // rail must stop at that column's LEFT edge instead of the viewport edge,
@@ -340,37 +1031,75 @@ export function apply(ctx: ClientContext): void {
     // --dsh-sidebar-width from dsh-better-sidebar instead; the rail's right
     // offset falls back to that variable when this one is absent, so both
     // layouts work.
-    const rightbar = document.querySelector('[class$="_rightbarCol"]')
-    const rightbarW = rightbar ? Math.round(rightbar.getBoundingClientRect().width) : 0
+    const rightbarW = widthHint ?? entryRightbarW ?? (rightbarEl !== null ? Math.round(rightbarEl.getBoundingClientRect().width) : 0)
+    if (horizontalOnly) {
+      // The observer reported the right-bar column only: the vertical anchors
+      // cannot have moved, so skip the header/composer probes entirely (each
+      // one forces a re-layout while the shell eases its grid track).
+      scheduleBudgetRefresh()
+      if (ANCHOR_FOLLOW) {
+        // The rail rides the shell's own layout pass (CSS anchor positioning),
+        // so nothing has to be published per frame. Publish the settled width
+        // once so any non-anchor consumer still reads a current value.
+        lastRightbarW = rightbarW
+        if (settleTimer !== 0) window.clearTimeout(settleTimer)
+        settleTimer = window.setTimeout(() => {
+          settleTimer = 0
+          document.documentElement.style.setProperty('--dsx-rightbar-w', `${lastRightbarW}px`)
+        }, 200)
+        return
+      }
+      // Fallback path: the rail consumes --dsx-rightbar-w, and its own
+      // transition must stay frozen for the whole movement, otherwise every
+      // per-frame write restarts a fresh 0.3s tween and the rail trails the
+      // panel by seconds (reported 2026-09-13). Re-arm on EVERY horizontal
+      // tick, not only when the rounded width changes: a stalled frame must
+      // not expire the freeze while the track is still moving.
+      armSyncFreeze()
+      document.documentElement.style.setProperty('--dsx-rightbar-w', `${rightbarW}px`)
+      lastRightbarW = rightbarW
+      return
+    }
     if (rightbarW !== lastRightbarW) {
       lastRightbarW = rightbarW
-      // The frame animates its grid track on open/close/fullscreen. While the
-      // width is moving the rail must NOT run its own tween: every write would
-      // restart a fresh 0.3s transition, so the rail would trail the panel by
-      // seconds (the reported "平移延迟"). Freeze the tween for the duration of
-      // the movement — `right` then lands on the measured value every frame and
-      // the rail rides the track exactly — and let the class expire once the
-      // track settles.
-      document.documentElement.classList.add('dsx-syncing')
-      if (syncTimer !== 0) window.clearTimeout(syncTimer)
-      syncTimer = window.setTimeout(() => {
-        syncTimer = 0
-        document.documentElement.classList.remove('dsx-syncing')
-      }, 160)
-      document.documentElement.style.setProperty('--dsx-rightbar-w', `${rightbarW}px`)
+      if (!ANCHOR_FOLLOW) {
+        // See armSyncFreeze: freeze the rail's own tween for the duration of
+        // the track movement so `right` lands on the measured value every
+        // frame instead of chasing it.
+        armSyncFreeze()
+        document.documentElement.style.setProperty('--dsx-rightbar-w', `${rightbarW}px`)
+      }
       // While the track moves, only the width matters; skip the heavier header
       // and composer probes so the transition keeps the main thread.
       return
     }
+    lastRightbarW = rightbarW
     document.documentElement.style.setProperty('--dsx-rightbar-w', `${rightbarW}px`)
+    // Throttled vertical probes (see VERTICAL_PROBE_INTERVAL_MS): the rail top
+    // and the composer gap cannot move with a horizontal track change, so a
+    // burst of composer/scroll resizes must not buy a forced re-layout each.
+    const now = performance.now()
+    if (now - lastVerticalProbeAt < VERTICAL_PROBE_INTERVAL_MS) {
+      if (verticalTimer === 0) {
+        verticalTimer = window.setTimeout(() => {
+          verticalTimer = 0
+          measureRailTop(entryRightbarW ?? undefined)
+        }, VERTICAL_PROBE_INTERVAL_MS)
+      }
+      return
+    }
+    lastVerticalProbeAt = now
+    // Resize / settle path: refresh the rail's space budget through the same
+    // debounce (a direct read here can land mid-animation and freeze the value).
+    scheduleBudgetRefresh()
     const el = document.querySelector('[data-conversation-scroll]')
     const top = el ? el.getBoundingClientRect().top : 0
     // 12px breathing gap below the session header; the rail AND the magnify
     // overlay share this variable so both stay aligned.
     document.documentElement.style.setProperty('--dsx-rail-top', `${top + 12}px`)
     // Composer bottom gap: one "breathing" band under everything in the input
-    // column 鈥?the composer dock stats bar (`.FJxK*_root` inside
-    // `conversation.composer.dock`) plus its own bottom padding 鈥?so a fixed
+    // column — the composer dock stats bar (`.FJxK*_root` inside
+    // `conversation.composer.dock`) plus its own bottom padding — so a fixed
     // overlay can sit flush below it. Prefer the dock (the lowest visible row);
     // then the composer seat; then the scroll body as a last resort.
     const dock = document.querySelector('[data-slot="conversation.composer.dock"]')
@@ -380,33 +1109,63 @@ export function apply(ctx: ClientContext): void {
     const gap = comp ? Math.max(0, window.innerHeight - comp.getBoundingClientRect().bottom) : 0
     document.documentElement.style.setProperty('--dsx-input-bottom', `${gap}px`)
   }
-  const scheduleMeasure = (): void => {
+  /** Pending observer hint: the reported right-bar width and whether the
+   *  trigger was the right-bar column alone (horizontal-only, no vertical work). */
+  let pendingHint: { width?: number; horizontalOnly: boolean } = { horizontalOnly: false }
+  const scheduleMeasure = (widthHint?: number, horizontalOnly = false): void => {
+    // Guarded: this function is also a store subscriber, so only a real number
+    // may be adopted as the observer-reported width.
+    if (typeof widthHint === 'number' && Number.isFinite(widthHint)) entryRightbarW = widthHint
+    pendingHint = { width: entryRightbarW ?? undefined, horizontalOnly: horizontalOnly || pendingHint.horizontalOnly }
     if (raf !== 0) return
-    raf = requestAnimationFrame(() => { raf = 0; measureRailTop() })
+    raf = requestAnimationFrame(() => {
+      raf = 0
+      const hint = pendingHint
+      pendingHint = { horizontalOnly: false }
+      measureRailTop(hint.width, hint.horizontalOnly)
+    })
   }
-  let ro: ResizeObserver | null = null
+  /** `resize` listener: passes its event, which must never reach the width hint. */
+  const onViewportResize = (): void => { scheduleMeasure() }
   ctx.effect(() => {
+    updateRailBudget()
     measureRailTop()
-    window.addEventListener('resize', scheduleMeasure)
+    window.addEventListener('resize', onViewportResize)
     if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(scheduleMeasure)
-      const t = document.querySelector('[data-conversation-scroll]')
-      if (t) ro.observe(t)
-      const h = document.querySelector('[data-slot="conversation.session.header"]')
-      if (h) ro.observe(h)
-      const c = document.querySelector('[data-composer-seat]')
-      if (c) ro.observe(c)
-      // The official right bar resizes on open/close/fullscreen/drag; observing
-      // its column keeps the rail's right offset in lockstep with the track.
-      const rb = document.querySelector('[class$="_rightbarCol"]')
-      if (rb) ro.observe(rb)
+      ro = new ResizeObserver((entries) => {
+        // Only the right bar's width is needed per frame; the RO entry's
+        // content box already has it, so no rect read is required here. When
+        // the right-bar column is the ONLY thing that resized (the shell's grid
+        // track easing), the vertical anchors are untouched and the frame must
+        // not pay for their probes.
+        let width: number | undefined
+        let vertical = false
+        for (const entry of entries) {
+          if (entry.target === rightbarEl || String((entry.target as Element).className ?? '').endsWith('_rightbarCol')) {
+            width = Math.round(entry.contentRect.width)
+          } else {
+            vertical = true
+          }
+        }
+        if (width !== undefined && width !== lastRightbarW) noteRightbarMoved()
+        scheduleMeasure(width, width !== undefined && !vertical)
+      })
+      // Bind to whatever the shell currently has; the lazy re-bind inside
+      // measureRailTop picks up the live nodes once the shell mounts them.
+      observeMeasured()
     }
     const sub = subscribe(scheduleMeasure)
     return () => {
-      window.removeEventListener('resize', scheduleMeasure)
+      window.removeEventListener('resize', onViewportResize)
       if (ro) ro.disconnect()
       sub()
       if (syncTimer !== 0) window.clearTimeout(syncTimer)
+      if (verticalTimer !== 0) window.clearTimeout(verticalTimer)
+      if (settleTimer !== 0) window.clearTimeout(settleTimer)
+      if (railBudgetTimer !== 0) window.clearTimeout(railBudgetTimer)
+      frameEl?.removeEventListener('transitionrun', onTrackTransitionRun)
+      frameEl = null
+      document.documentElement.style.removeProperty('--dsx-rail-avail')
       document.documentElement.classList.remove('dsx-syncing')
       document.documentElement.style.removeProperty('--dsx-rail-top')
       document.documentElement.style.removeProperty('--dsx-input-bottom')
@@ -415,12 +1174,37 @@ export function apply(ctx: ClientContext): void {
   })
 
   // ---- Header capsule toggle. ----
+  // Placement in this list slot is decided by `order` alone: the slot core sorts
+  // a list slot by (priority, order) and falls back to registration sequence
+  // only on a tie. dsh-better-sidebar registers its bottom-panel toggle at
+  // order 10, so sharing 10 tied the two entries and the capsule's place
+  // followed whichever fiber re-registered last — a reload of this bundle
+  // (tsdown/HMR, market toggle) pushed 组件 past the toggle to the row's right
+  // end. 5 keeps it right of the official export control (order 0) and
+  // open-in-app (order -10), and left of that toggle, independent of load order.
   ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register(
-    { name: 'conversation.session.header.utilities', id: 'widgets-panel-toggle', order: 10 },
+    { name: 'conversation.session.header.utilities', id: 'widgets-panel-toggle', order: 5 },
     () => {
       const snap = useBridge()
-      const toggle = (): void => { const next = !snap.open; setState({ open: next }); setPrefs({ railOpen: next }) }
-      return React.createElement('button', { type: 'button', className: 'dsx-stats-capsule', 'aria-pressed': snap.open, onClick: toggle }, React.createElement('span', null, t('ui.capsule')))
+      // The rail yields when the product's transcript measure leaves no margin
+      // (see resolveRailLayout). Reflect that on the control instead of leaving
+      // a dead toggle: a button that can never show anything is disabled, not
+      // pressed-but-empty.
+      const unavailable = snap.hasSession && resolveRailLayout(snap.prefs, railBudget).constrained
+      const toggle = (): void => {
+        if (unavailable) return
+        const next = !snap.open
+        setState({ open: next })
+        setPrefs({ railOpen: next })
+      }
+      return React.createElement('button', {
+        type: 'button',
+        className: 'dsx-stats-capsule',
+        'aria-pressed': unavailable ? false : snap.open,
+        'aria-disabled': unavailable || undefined,
+        'data-space': unavailable ? 'tight' : undefined,
+        onClick: toggle,
+      }, React.createElement('span', null, t('ui.capsule')))
     },
   ))
 
@@ -482,15 +1266,15 @@ export function apply(ctx: ClientContext): void {
           .then((r) => r.json())
           .then((data: UsageData) => setState({ usageData: data }))
           .catch(() => { /* keep last known usage */ })
-        // Multi-key pool usage (鎬?Key 瑙嗗浘 + 姣忔妸 Key 鐙珛瑙嗗浘).
+        // Multi-key pool usage (primary key + pooled backup keys).
         fetch('/api/opencode-usage-multi')
           .then((r) => r.json())
           .then((data: UsageMulti) => setState({ usageMulti: data }))
           .catch(() => { /* pool endpoint optional: cards fall back to single-key */ })
         // Command Code account usage (whoami / summary / credits / plan).
-        // Error-aware: a 404 host route (dsh web 未重启) vs a 503 missing-key
+        // Error-aware: a 404 host route (dsh web not restarted) vs a 503 missing-key
         // vs a network failure each produce a stable code the widgets render as
-        // an accurate hint — the key itself is auto-read host-side (env →
+        // an accurate hint → the key itself is auto-read host-side (env →
         // .credentials.yaml → .env), never user-entered in this UI.
         fetch('/api/commandcode-usage')
           .then(async (r) => {
@@ -520,7 +1304,7 @@ export function apply(ctx: ClientContext): void {
           })
           .catch(() => { /* keep the last authoritative map (or the fallback) */ })
         }
-        // Pull on mount (both false — first render); afterwards only a
+        // Pull on mount (both false → first render); afterwards only a
         // completed turn (true → false) refetches, an in-flight turn does not.
         if (running === prevRunningRef.current) refresh()
         else if (!running) refresh()
@@ -575,7 +1359,7 @@ export function apply(ctx: ClientContext): void {
         const id = window.setInterval(() => setNow(Date.now()), 1000)
         return () => window.clearInterval(id)
       }, [running])
-      // Time-sensitive cards (e.g. 宄拌胺瀹氫环 peak-pricing windows) must re-read
+      // Time-sensitive cards (e.g. peak-pricing windows) must re-read
       // the clock even with no turn running: a 30s tick rebuilds stats so the
       // window check stays fresh across a peak/off-peak boundary.
       React.useEffect(() => {
@@ -600,14 +1384,14 @@ export function apply(ctx: ClientContext): void {
         // page is open, and older builds seeded fabricated days into it).
         // The two-layer local accounting below is the STANDALONE fallback:
         //  (a) per-step (v2): if settled assistant nodes carry `usage`, credit
-        //      each step ONCE to the day its `stepStartTime` began 鈥?exact
+        //      each step ONCE to the day its `stepStartTime` began — exact
         //      per-conversation attribution, immune to cross-midnight sessions,
         //      session switches, remounts, compaction.
         //  (b) anchor fallback (v1): if nodes lack `usage` (host did not
         //      project it into the folded surface), fall back to diffing the
         //      cumulative `tokenUsage` projection against an anchor that is
-        //      rebuilt ONLY on a cumulative RESET (new session) 鈥?never on a
-        //      bare "new day" 鈥?so continuing a session across midnight still
+        //      rebuilt ONLY on a cumulative RESET (new session) — never on a
+        //      bare "new day" — so continuing a session across midnight still
         //      credits only the newly observed growth to today.
         const authoritative = snap.usageDaily
         const heatTz = (prefs.cardConfigs?.heatmap?.timeZone as string) || DEFAULT_TZ
@@ -650,11 +1434,11 @@ export function apply(ctx: ClientContext): void {
             // usage-center the merge below reads the ref directly.
             if (authoritative === null || authoritative === undefined) setHeatmap(heatmapRef.current)
           }
-          // (b) anchor fallback 鈥?only when per-step nodes carried no usage AND
+          // (b) anchor fallback — only when per-step nodes carried no usage AND
           // no authoritative map exists to supersede it.
           // Anchor discipline (the cross-day over-credit fix):
           //   * while per-step crediting is active, keep the anchor parked at the
-          //     observed cumulative 鈥?a later fallback takeover then diffs only
+          //     observed cumulative — a later fallback takeover then diffs only
           //     what per-step did NOT already credit (never the whole history);
           //   * the fallback credits growth ONLY when the active session shows a
           //     step that actually began today (todayActivity). Without it, an
@@ -746,8 +1530,16 @@ export function apply(ctx: ClientContext): void {
   ))
 
   // ---- Right rail panel. ----
-  ctx.slots.inject('shell.overlay', () => ctx.slots.register(
-    { name: 'shell.overlay', id: 'widgets-panel', order: 1000 },
+  // Hosted inside the CONVERSATION, not in `shell.overlay`. Two reasons:
+  //  1. paint order: everything in `shell.overlay` (z-20) paints ABOVE the right
+  //     column's panel (z-10) — a rail there can never be covered by a panel;
+  //  2. semantics: the rail is a conversation-scoped utility strip (it tracks the
+  //     conversation column's edge), so the conversation's floating-overlay seat
+  //     — "floating entries rendered inside the resident composer card" — is its
+  //     natural home. Measured 2026-09-17: a fixed layer in any conversation slot
+  //     paints below the panel, in `shell.overlay` above it.
+  ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register(
+    { name: 'conversation.input.overlay', id: 'widgets-panel', order: 1000 },
     () => {
       const snap = useBridge()
       // Hooks MUST be declared unconditionally, before the early return, or the
@@ -785,120 +1577,13 @@ export function apply(ctx: ClientContext): void {
           body: JSON.stringify({ action: 'prefer', ref: next === 'total' ? '' : (entry?.ref ?? '') }),
         }).catch(() => { /* pool endpoint optional: display only */ })
       }
-      // One magnification engine, two wave styles (chosen by prefs.realTime):
-      //  - discrete: the live pointer is snapped onto a quantized grid (row /
-      //    column centres + midpoints), so the peak glides between grid points
-      //    as the pointer crosses cards AND the gaps between them.
-      //  - realtime: the peak follows the pointer's 2D position every frame.
-      // Both are driven by the same focusX/focusY (armed by an actual card
-      // hit, kept while crossing gaps, disarmed on leaving the rail); the
-      // size tween lives entirely in the overlay's CSS width/height
-      // transition, so entering/exiting magnifies smoothly.
-      const [focusY, setFocusY] = React.useState<number | null>(null)
-      const [focusX, setFocusX] = React.useState<number | null>(null)
-      // Animation phase for the overlay's CSS size tween. Entering/leaving the
-      // wave uses a short tween (smooth grow/shrink, no pop); while FOLLOWING
-      // the pointer the transition is disabled so every frame lands directly on
-      // the steady-state right-anchored geometry 鈥?that keeps the right edge on
-      // the rail's right line and the inter-card gaps exactly `pad` even under
-      // fast pointer movement (a live width tween would linger in non-steady
-      // intermediate geometry: misaligned right edges and uneven gaps).
-      const [animPhase, setAnimPhase] = React.useState<'idle' | 'grow' | 'follow' | 'shrink'>('idle')
-      const animPhaseRef = React.useRef<'idle' | 'grow' | 'follow' | 'shrink'>('idle')
-      const phaseTimer = React.useRef<number | undefined>(undefined)
-      const schedulePhase = (next: 'grow' | 'follow' | 'shrink' | 'idle', afterMs: number): void => {
-        if (phaseTimer.current !== undefined) window.clearTimeout(phaseTimer.current)
-        if (afterMs <= 0) { animPhaseRef.current = next; setAnimPhase(next); return }
-        animPhaseRef.current = next
-        setAnimPhase(next)
-        phaseTimer.current = window.setTimeout(() => {
-          phaseTimer.current = undefined
-          // Follow is only meaningful while still engaged; a leave that raced
-          // this timer morphs into the shrink phase instead.
-          const final = next === 'follow' ? (armedRef.current ? 'follow' : 'shrink') : next
-          animPhaseRef.current = final
-          setAnimPhase(final)
-        }, afterMs)
-      }
-      React.useEffect(() => () => { if (phaseTimer.current !== undefined) window.clearTimeout(phaseTimer.current) }, [])
-      // Rail content scroll offset (px), synced to the fixed magnify overlay so
-      // it tracks the scrolled deck instead of sitting at the rail's viewport top.
-      const [railScrollTop, setRailScrollTop] = React.useState(0)
-      // Realtime magnification arming: the wave engages only once the pointer
-      // has actually hit a CARD (bare rail gaps must not trigger it), then
-      // stays engaged while the pointer crosses the gaps between cards, and
-      // disarms only when it leaves the rail. cardElsRef owns the static
-      // deck's card slots for hit-testing; armedRef is the state machine.
+      // Static-deck card slots, handed to the wave for its card hit test. Declared
+      // above the drawer early-return so the hook/ref order never changes.
       const cardElsRef = React.useRef<(HTMLDivElement | null)[]>([])
-      const armedRef = React.useRef(false)
-      // Last pointer position in rail-content coordinates, kept so a rail scroll
-      // (which moves cards but not the mouse) re-targets the peak correctly.
-      const lastClientXYRef = React.useRef<{ x: number; y: number } | null>(null)
-      const contentYRef = React.useRef<number | null>(null)
-      const contentXRef = React.useRef<number | null>(null)
-      const rafRef = React.useRef(0)
-      const railRectRef = React.useRef<DOMRect | null>(null)
-      /** True when the pointer lies inside any static card slot rect. */
-      const hitTestCards = (clientX: number, clientY: number): boolean => {
-        for (const el of cardElsRef.current) {
-          if (!el) continue
-          const r = el.getBoundingClientRect()
-          if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) return true
-        }
-        return false
-      }
-      const moveRailFocus = (clientX: number, clientY: number, el: HTMLDivElement): void => {
-        lastClientXYRef.current = { x: clientX, y: clientY }
-        const rect = el.getBoundingClientRect()
-        railRectRef.current = rect
-        const contentX = clientX - rect.left
-        const contentY = clientY - rect.top - 2 + el.scrollTop
-        contentXRef.current = contentX
-        contentYRef.current = contentY
-        // Engage only on a real card hit; crossing gaps afterwards keeps the
-        // arm, leaving the rail disarms it (see onMouseLeave).
-        if (hitTestCards(clientX, clientY)) armedRef.current = true
-        if (!armedRef.current) return
-        if (rafRef.current) return
-        rafRef.current = requestAnimationFrame(() => {
-          rafRef.current = 0
-          const x = contentXRef.current
-          const y = contentYRef.current
-          // First engaged frame (or re-engage after a leave) uses the "grow"
-          // tween so the wave scales up smoothly; once the tween settles we
-          // switch to "follow" (no transition) so fast pointer movement lands
-          // instantly on steady-state geometry. Only the realtime style needs
-          // the follow mode 鈥?discrete keeps its tween for grid gliding.
-          if (prefs.realTime && animPhaseRef.current !== 'follow' && animPhaseRef.current !== 'grow') {
-            schedulePhase('grow', 0)
-            schedulePhase('follow', 170)
-          } else if (!prefs.realTime && animPhaseRef.current === 'idle') {
-            schedulePhase('grow', 0)
-            schedulePhase('follow', 170)
-          }
-          setFocusX(x)
-          setFocusY(y)
-        })
-      }
-      // Re-target the peak when the rail scrolls without the pointer moving.
-      // Both modes re-sync (the scroll moves the deck under a stationary
-      // pointer, so the wave must follow the new card positions).
-      const railScrollSync = (el: HTMLDivElement): void => {
-        if (lastClientXYRef.current === null) return
-        moveRailFocus(lastClientXYRef.current.x, lastClientXYRef.current.y, el)
-      }
+      // The add panel belongs to a live session: drop it when the session does.
+      // (The wave's own focus state is dropped by RailWave on the same signal.)
       React.useEffect(() => {
-        return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
-      }, [])
-      React.useEffect(() => {
-        if (!snap.open || !snap.hasSession) {
-          setAddOpen(false); setFocusY(null); setFocusX(null)
-          armedRef.current = false
-          cardElsRef.current = []
-          animPhaseRef.current = 'idle'
-          setAnimPhase('idle')
-          if (phaseTimer.current !== undefined) { window.clearTimeout(phaseTimer.current); phaseTimer.current = undefined }
-        }
+        if (!snap.open || !snap.hasSession) setAddOpen(false)
       }, [snap.open, snap.hasSession])
       // ── Drawer open/close animation, matching dsh-better-sidebar's right
       //    panel: a translateX slide with --ds-transition-duration-slow +
@@ -914,12 +1599,30 @@ export function apply(ctx: ClientContext): void {
       const shouldOpen = snap.open && snap.hasSession
       const [drawerPhase, setDrawerPhase] = React.useState<'closed' | 'enter' | 'open' | 'leave'>(shouldOpen ? 'open' : 'closed')
       const reduceMotion = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && !!window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      // Boot restore must NOT play the enter glide. Prefs are read synchronously
+      // while the session arrives asynchronously, so at mount the drawer is
+      // `closed` even though the rail is already wanted: the restore that
+      // follows then looks exactly like a user open and slides the drawer on
+      // every refresh. `bootRestorePending` marks precisely that state (wanted,
+      // session still unknown); a genuine later open never sets it.
+      const bootRestorePending = React.useRef(snap.open && !snap.hasSession)
       // Leave timeout: the CSS slide is 0.3s (--ds-transition-duration-slow);
       // unmount 350ms later so the element is gone only after the slide ends.
       const DRAWER_LEAVE_MS = 350
       React.useEffect(() => {
         setDrawerPhase((p) => {
-          if (shouldOpen) return p === 'closed' ? 'enter' : p === 'leave' ? 'open' : p
+          if (shouldOpen) {
+            if (p === 'closed') {
+              // Restored (prefs + session resolved in the same commit) — appear
+              // in place; user open — glide in from the right.
+              if (bootRestorePending.current) {
+                bootRestorePending.current = false
+                return 'open'
+              }
+              return 'enter'
+            }
+            return p === 'leave' ? 'open' : p
+          }
           return p === 'closed' ? 'closed' : 'leave'
         })
       }, [shouldOpen])
@@ -943,21 +1646,35 @@ export function apply(ctx: ClientContext): void {
         return () => window.clearTimeout(t)
       }, [drawerPhase, reduceMotion])
       if (drawerPhase === 'closed') return null
-      const side = prefs.cardSide
-      const pad = prefs.panelPadding
-      const columns = [1, 2, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
+      // Geometry resolves against the space the product's transcript measure
+      // leaves over (see readRailBudget): the rail may shrink (fewer columns, a
+      // narrower card) and finally collapse, but it never pushes the reading
+      // measure below what the user chose.
+      // Read the LIVE budget, not the React snapshot: a render can be committed
+      // after the yield was applied directly to the DOM, and a stale snapshot
+      // would then write the pre-yield geometry back (measured: a yielded drawer
+      // re-claiming 372px, insetting a transcript whose rail was invisible).
+      // One decision function, shared with the direct-DOM beat write, so React
+      // and the animation path can never disagree about the geometry.
+      const space = resolveRailSpace(prefs, railBudget)
+      const yielded = space.yielded
+      const side = space.side
+      const pad = space.pad
+      const columns = space.columns
       const multi = columns > 1
-      // Rail width is the STATIC grid width 鈥?NO magnification overshoot. The
+      // Rail width is the STATIC grid width — NO magnification overshoot. The
       // rail no longer reserves left room for the bell-curve overshoot (which
       // used to widen both the rail and --dsx-rail-w, pushing the conversation
       // column right). A magnified card's left growth is instead painted by a
       // fixed overlay layer OUTSIDE the rail's scroll-clip box (see magnifyLayer)
       // so the conversation column keeps the resting rail's width at all times.
-      const railW = multi ? columns * side + (columns + 1) * pad : side + pad * 2
-      document.documentElement.style.setProperty('--dsx-rail-w', `${railW}px`)
+      const railW = space.drawW
+      const hidden = space.hidden
+      document.documentElement.style.setProperty('--dsx-rail-w', `${space.claimW}px`)
       document.documentElement.style.setProperty('--dsx-rail-pad', `${pad}px`)
       document.documentElement.style.setProperty('--dsx-rail-overshoot', `0px`)
-      document.documentElement.style.setProperty('--dsx-rail-scroll', `${railScrollTop}px`)
+      applyRailRight(space.swallowed)
+      // --dsx-rail-scroll is owned by RailWave (it tracks the rail's scrollTop).
       // Heatmap day data is owned by the dock collector: the authoritative host
       // map when dsh-usage-center is installed, else its own persisted live log.
       // The rail consumes the collector's values and never overrides them; only
@@ -975,7 +1692,7 @@ export function apply(ctx: ClientContext): void {
         ...(statsHeat?.heatmapGrid ? {} : { heatmapGrid: buildHeatmapGrid(fallbackRaw, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling', (prefs.cardConfigs?.heatmap?.timeZone as string) || DEFAULT_TZ) }),
       }
       interface RailItem { key: string; size: WidgetSize; w: (typeof WIDGETS)[number]; out: NonNullable<ReturnType<(typeof WIDGETS)[number]['render']>>; baseW: number }
-      // Pooled usage views: ['total', 'Key 1', 'Key 2', 鈥 when the pool has
+      // Pooled usage views: ['total', 'Key 1', 'Key 2', 'Key N'] when the pool has
       // more than one key; otherwise usage cards fall back to single-key data.
       const poolModes = (snap.usageMulti?.keys.length ?? 0) > 1
         ? ['total', ...snap.usageMulti!.keys.map((entry, i) => entry.label || `Key ${i + 1}`)]
@@ -999,13 +1716,13 @@ export function apply(ctx: ClientContext): void {
             out = { title: widgetName(w), value: '—', legend: t('ui.renderError') }
           }
           if (!out) return null
-          // 2脳4 is exactly two 2脳2 widths plus one inter-card gap.
+          // 2×4 is exactly two 2×2 widths plus one inter-card gap.
           const baseW = size === '2x4' ? 2 * side + pad : side
           return { key, size, w, out, baseW }
         })
         .filter((it): it is RailItem => it !== null)
-        // In a 1-column layout a 2脳4 tile (two cells wide) cannot fit the single
-        // rail column, so its instances are hidden 鈥?TEMPORARILY blocklisted,
+        // In a 1-column layout a 2×4 tile (two cells wide) cannot fit the single
+        // rail column, so its instances are hidden — TEMPORARILY blocklisted,
         // not removed: switching back to 2/4 columns restores them from
         // installed/order as-is. The market marks those entries in the same state
         // (struck-through title + yellow capsule + disabled add).
@@ -1016,12 +1733,12 @@ export function apply(ctx: ClientContext): void {
       // `#root { margin-right: var(--dsh-sidebar-width) }` (neutralized by
       // dsh-ui-harmonizer to the conversation column's margin-right). The rail
       // anchors its right edge to that SAME variable inline (0 while absent)
-      // and its CSS carries `transition: right` 鈥?deliberately on the MAIN
+      // and its CSS carries `transition: right` — deliberately on the MAIN
       // THREAD, the same animation path as the conversation column's
       // margin-right. A compositor transform (v1.2.3) never dropped frames,
       // but when the column's per-frame reflow overran a frame the rail kept
-      // gliding while the column stalled 鈥?the two visibly split. Same-path
-      // animation cannot split: both surfaces advance in the same style鈫抣ayout
+      // gliding while the column stalled — the two visibly split. Same-path
+      // animation cannot split: both surfaces advance in the same style→layout
       // pass every frame. The rail subtree is cheap (lazy overlay deck, no
       // persistent will-change), so the per-frame cost is negligible.
       // Padding is `0 pad pad pad`: no top inset so the first card aligns with
@@ -1036,11 +1753,11 @@ export function apply(ctx: ClientContext): void {
       // Dock-style magnification, following the authoritative macOS Dock
       // algorithm (see LikhithSP/MacOS-Web-Simulator Dock.jsx):
       //   - scale is a DISCRETE STEP of the distance from the hovered card
-      //     {d0: peak, d1, d2, 鈮3 none} 鈥?a steep bell, NOT a flat gaussian, so
+      //     {d0: peak, d1, d2, …, none} — a steep bell, NOT a flat gaussian, so
       //     neighbours barely grow while the hovered card is clearly the peak.
       //   - the hovered card is HARD-MAX by construction (d=0 returns the peak).
       //   - cards are sized through LAYOUT (width/height change, neighbours make
-      //     room via cumulative top), not transform 鈥?so the right edge stays
+      //     room via cumulative top), not transform — so the right edge stays
       //     pinned to the rail right and the gap between cards is constant.
       const restCenter = (i: number): number => i * (side + pad) + side / 2
       const peakScale = prefs.magnify
@@ -1059,10 +1776,10 @@ export function apply(ctx: ClientContext): void {
       }
       const active = prefs.realTime
       // Row-band packing (P2, no gaps): every card is one grid-unit tall
-      // (2脳2 and 2脳4 share the same height). A 2脳4 spans two cells in width, a
-      // 2脳2 spans one. Cards pack left-to-right through the row's cell budget;
-      // when the current row cannot fit a card (e.g. a 2脳4 with only one cell
-      // left), it moves to the next row, so a later 2脳2 always back-fills the gap.
+      // (2×2 and 2×4 share the same height). A 2×4 spans two cells in width, a
+      // 2×2 spans one. Cards pack left-to-right through the row's cell budget;
+      // when the current row cannot fit a card (e.g. a 2×4 with only one cell
+      // left), it moves to the next row, so a later 2×2 always back-fills the gap.
       const spanOf = (i: number): number => (items[i].size === '2x4' ? 2 : 1)
       const baseWOf = (i: number): number => items[i].baseW
       const rowIndexOf: number[] = []
@@ -1072,9 +1789,9 @@ export function apply(ctx: ClientContext): void {
       if (n > 0) {
         if (multi) {
           // Greedy best-fit packing: each item lands in the EARLIEST row that has
-          // room for its span, opening a new row only when none fits. A 2脳4 (span
+          // room for its span, opening a new row only when none fits. A 2×4 (span
           // 2) that would leave a single-cell gap is therefore back-filled by a
-          // later 2脳2, so no row ever shows a hole regardless of drag order.
+          // later 2×2, so no row ever shows a hole regardless of drag order.
           const rowUsed: number[] = [0]
           for (let i = 0; i < n; i++) {
             const sp = spanOf(i)
@@ -1099,8 +1816,8 @@ export function apply(ctx: ClientContext): void {
       // flush with the rail regardless of mode.
       //  - Stepless (`active`):   focus = the pointer's live coordinates.
       //  - Discrete (`!active`):  focus = the pointer coordinates SNAPPED onto a
-      //    discrete grid 鈥?the row/column centres plus the midpoints between each
-      //    adjacent pair (rows 鈫?2路rows-1 Y points, cols 鈫?2路cols-1 X points).
+      //    discrete grid — the row/column centres plus the midpoints between each
+      //    adjacent pair (rows → 2·rows−1 Y points, cols → 2·cols−1 X points).
       //    The 0.2s tween then glides the peak between those grid points.
       const cellW = side + pad
       const rowH = side + pad
@@ -1134,23 +1851,11 @@ export function apply(ctx: ClientContext): void {
         for (let k = 1; k < pts.length; k++) if (Math.abs(pts[k] - v) < Math.abs(best - v)) best = pts[k]
         return best
       }
-      // Engagement: focus coordinates exist AND the pointer has hit a card once
-      // since entering the rail (armed). Crossing the gaps keeps the arm;
-      // leaving the rail disarms. Both modes share this state machine.
-      const engaged = focusX !== null && focusY !== null && armedRef.current
-      let scaleArr = new Array(n).fill(1)
-      // Focus in rail-content coordinates. rawX is the rail-box X minus the
-      // left padding (card cell centres are content-relative); rawY already is.
-      let rawX = 0
-      let rawY = 0
-      if (engaged) {
-        rawX = (focusX ?? 0) - pad
-        rawY = focusY ?? 0
-        scaleArr = active ? scaleFor(rawX, rawY) : scaleFor(nearest(rawX, xPts), nearest(rawY, yPts))
-      }
+      // Engagement / focus geometry lives in RailWave (see the component): this
+      // component only owns the resting deck and the persisted prefs.
       // --- build actual reflow (right-edge anchored) for a given scale array.
-      //   Each card is one grid-unit tall (2脳2 and 2脳4 share the same height =
-      //   side 脳 scale); only the width differs (2脳4 is two units plus the gap).
+      //   Each card is one grid-unit tall (2×2 and 2×4 share the same height =
+      //   side × scale); only the width differs (2×4 is two units plus the gap).
       //   Within each row cards place right-to-left (rightmost at right:0, each
       //   next pushed left by prev width + pad); row top accumulates by the
       //   tallest scaled height in the row (+pad), so a magnified row pushes the
@@ -1178,7 +1883,7 @@ export function apply(ctx: ClientContext): void {
               }
             }
           } else {
-            // Single column, right-anchored (2脳4 collapses to 2脳2 width here since
+            // Single column, right-anchored (2×4 collapses to 2×2 width here since
             // a single column has no room for a two-cell-wide card).
             let acc = 2
             for (let i = 0; i < n; i++) { const h = side * sc[i]; place[i] = { s: sc[i], top: acc, right: 0, w: h, h }; acc += h + pad }
@@ -1188,26 +1893,22 @@ export function apply(ctx: ClientContext): void {
       }
       // Static deck (rail scroll content): resting grid, scale 1 everywhere. The
       // rail keeps this deck intact for scrolling, occupancy and interaction.
+      // The live magnification reflow is RailWave's fixed overlay, which escapes
+      // the rail's scroll-clip box and rides the same placeCards().
       const staticLayout = placeCards(new Array(n).fill(1))
-      // Focus deck (fixed overlay, escapes the rail's scroll-clip box): the live
-      // magnification reflow. It is ALWAYS rendered (resting grid when not
-      // engaged) so the overlay's CSS width/height transition can animate the
-      // growth/shrink smoothly on enter and exit instead of popping in at the
-      // target size; its opacity hides it while resting.
-      const focusLayout = placeCards(engaged ? scaleArr : new Array(n).fill(1))
       // Deck height is the STATIC reflow bottom (the rail content never grows
-      // while magnifying 鈥?growth is painted by the fixed overlay), so the add
+      // while magnifying — growth is painted by the fixed overlay), so the add
       // button and scroll height stay fixed at the resting grid.
       const deckBottom = staticLayout.reduce((m, c) => Math.max(m, c.top + c.h), 2)
       // Add button placement, shared by the static deck and the focus overlay.
 // Rows are right-anchored, so the leftover cell(s) of a short last row sit at
 // the row's LEFT edge. The button parks in that gap ONLY when the STATIC gap
-// is actually wide enough (leftGap >= side) 鈥?the fit decision must not
+// is actually wide enough (leftGap >= side) — the fit decision must not
 // flip under magnification (a focused row's wider cards would shrink the gap
 // below `side` and jump the button to the deck bottom-right mid-hover).
 // Placement itself rides the passed `layout` (static or scaled), so while
 // hovering the button stays in its gap slot, gliding with the row.
-// The leftmost placed card, not the last item, anchors the gap 鈥?the old code
+// The leftmost placed card, not the last item, anchors the gap — the old code
 // anchored off the last item, which for a left-packed 4-col row put the button
 // on top of the row's own cards.
 const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: number; h: number }>): { top: number; right: number } => {
@@ -1246,117 +1947,36 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       const addRight = staticAdd.right
       const addBottom = addTop + side
       const stackHeight = (nItems > 0 ? Math.max(deckBottom, addBottom) : addBottom) + pad
-      // The add button participates in the magnification wave like a card 鈥?and its
-      // PLACEMENT rides the wave layout too: top/right are recomputed from the
-      // focused (scaled) rows, so when cards above it grow taller the button
-      // moves down with the magnified deck bottom / last-row gap, exactly like
-      // a card would. Resting (unengaged) it equals the static placement.
-      const focusedAdd = addSlotFor(focusLayout)
-      const addCenter = { x: railW - 2 * pad - focusedAdd.right - side / 2, y: focusedAdd.top + side / 2 }
-      const addScale = engaged && n > 0
-        ? stepScale(Math.hypot(addCenter.x - rawX, addCenter.y - rawY) / (side + pad))
-        : 1
-      // True only when the focus deck or the add button differs from rest.
-      const magnifying = engaged && n > 0 && (scaleArr.some((s) => s > 1.001) || addScale > 1.001)
-      const railChildren: React.ReactNode[] = [
-        // Relative-positioned layer that owns the cards' absolute layout. This
-        // is the STATIC deck: resting grid, fixed scroll height, and it carries
-        // all the interactive affordances (hover, resize). While a card is
-        // magnified it fades out and the fixed overlay below paints the bigger
-        // cards, so the two never double-draw shadows/borders.
-        React.createElement('div', { key: '__deck', style: { position: 'relative', height: `${stackHeight}px` } },
-          staticLayout.map((c, idx) => {
-            const it = items[idx]
-            // Static cards never change size themselves (the overlay paints the
-            // scaled copies); only their opacity fades while magnifying.
-            const transition = 'opacity 0.15s ease'
-            const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition, opacity: magnifying ? 0 : 1 }
-            return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle, ref: (el: HTMLDivElement | null) => { cardElsRef.current[idx] = el } },
-              React.createElement(CardBody, { out: it.out, unit: side, width: c.w, onAction: handleAction, onCycle: cyclePool(it.key) }),
-              React.createElement('span', { className: 'dsx-stats-resize', 'aria-label': t('ui.rail.resizeAria'), onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = side; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
-            )
-          }),
-          // Bottom add button, parked inside the deck so it shares the grid
-          // layout: fills the empty last-row cell on odd counts, or sits
-          // right-aligned below the rows on even counts / single column.
-          React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), onClick: () => setAddOpen((v) => !v), style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, opacity: magnifying ? 0 : 1, transition: 'opacity 0.15s ease' } },
-            React.createElement('span', { className: 'dsx-stats-add-icon' },
-              React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
-            ),
-            React.createElement('span', { className: 'dsx-stats-add-label' }, t('ui.rail.addLabel')),
+      // Static deck: resting grid + every interactive affordance. Built HERE so
+      // its element identity stays stable while the pointer moves — RailWave
+      // re-renders per hover frame, and React bails out of this whole subtree
+      // because the element object it receives never changes. The engage fade is
+      // the `.dsx-wave-deck` class the wave puts on its wrapper (no re-render).
+      const deck = React.createElement('div', { key: '__deck', style: { position: 'relative', height: `${stackHeight}px` } },
+        staticLayout.map((c, idx) => {
+          const it = items[idx]
+          const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px` }
+          return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle, ref: (el: HTMLDivElement | null): void => { cardElsRef.current[idx] = el } },
+            React.createElement(CardBody, { out: it.out, unit: side, width: c.w, onAction: handleAction, onCycle: cyclePool(it.key) }),
+            React.createElement('span', { className: 'dsx-stats-resize', 'aria-label': t('ui.rail.resizeAria'), onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = side; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
+          )
+        }),
+        // Bottom add button, parked inside the deck so it shares the grid layout:
+        // it fills the empty last-row cell on odd counts, or sits right-aligned
+        // below the rows on even counts / single column.
+        React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), onClick: () => setAddOpen((v) => !v), style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px` } },
+          React.createElement('span', { className: 'dsx-stats-add-icon' },
+            React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
           ),
+          React.createElement('span', { className: 'dsx-stats-add-label' }, t('ui.rail.addLabel')),
         ),
-      ]
-      const rail = React.createElement('div', {
-        className: 'dsx-stats-rail', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: 'var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px))', bottom: 0, width: `${railW}px`, overflowY: 'auto', overflowX: 'visible', boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, background: 'transparent', pointerEvents: 'auto' },
-        onMouseLeave: () => {
-          armedRef.current = false
-          setFocusY(null); setFocusX(null)
-          // Smooth shrink back to resting size (the overlay stays mounted and
-          // its width/height tween runs against the resting layout).
-          if (animPhaseRef.current !== 'idle' && animPhaseRef.current !== 'shrink') schedulePhase('shrink', 0)
-          schedulePhase('idle', 200)
-        },
-        onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => moveRailFocus(e.clientX, e.clientY, e.currentTarget),
-        onScroll: (e) => { setRailScrollTop(e.currentTarget.scrollTop); railScrollSync(e.currentTarget) },
-      }, railChildren)
-      // Magnify overlay: a FIXED layer rendered OUTSIDE the rail's scroll-clip
-      // box (a sibling of the rail, so no ancestor overflow clips it). When a
-      // card is magnifying it paints the live reflow here 鈥?its leftward growth
-      // is visible over the conversation edge instead of being cut off at the
-      // rail's left boundary, and the rail width (hence the conversation column)
-      // never changes. It is pointer-events:none (interaction stays on the rail)
-      // and tracks the rail's scroll via --dsx-rail-scroll so it stays pinned to
-      // the scrolled deck. zIndex 25 keeps it above the rail's own cards.
-      // ALWAYS mounted: entering/exiting updates only scale, and the CSS
-      // width/height transition below animates the growth/shrink smoothly
-      // (mounting at the target size would pop). Opacity hides it while rest.
-      // Positions (top/right) are INSTANT always 鈥?right-anchored geometry
-      // keeps the right edge on the rail's right line. The size tween applies
-      // to the enter/exit phases (grow/shrink) and to the discrete style's
-      // grid gliding; the realtime FOLLOW phase has no transition so every
-      // frame lands directly on the steady-state geometry (right edge aligned
-      // AND inter-card gaps exactly `pad`, even under fast pointer movement).
-      const tweenSize = !active || animPhase === 'grow' || animPhase === 'shrink'
-      const overlayTransition = tweenSize
-        ? 'top 0s, right 0s, width 0.15s var(--ds-ease-in-out), height 0.15s var(--ds-ease-in-out)'
-        : 'none'
-      const magnifyLayer = React.createElement('div', { key: '__magnify', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: 'var(--dsh-sidebar-width, 0px)', width: `${railW}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad}px`, pointerEvents: 'none', zIndex: 25, overflow: 'visible', background: 'transparent', opacity: magnifying ? 1 : 0, transition: 'opacity 0.15s ease' } },
-        React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${stackHeight}px` } },
-          // Positions (top/right) are INSTANT always 鈥?right-anchored geometry
-          // keeps the right edge on the rail's right line. The size tween
-          // applies to the enter/exit phases (grow/shrink) and to the discrete
-          // style's grid gliding; the realtime FOLLOW phase has no transition
-          // so every frame lands directly on the steady-state geometry (right
-          // edge aligned AND inter-card gaps exactly `pad`, even under fast
-          // pointer movement).
-          focusLayout.map((c, idx) => {
-            const it = items[idx]
-            const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, transition: overlayTransition, zIndex: Math.round((c.s - 1) * 100) }
-            return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle },
-              // Lazy body: cards render ONLY while actually magnifying. The slot
-              // div stays mounted (its geometry tween continues seamlessly on
-              // enter/exit), but the heavy card DOM (heatmaps, charts) is
-              // absent at rest 鈥?halving the rail's resident DOM and its
-              // layout cost while the right sidebar animates. At rest the
-              // overlay is invisible (opacity 0) anyway, and on engage the
-              // body mounts at rest geometry BEFORE the size tween starts, so
-              // the fade-in shows no pop.
-              magnifying ? React.createElement(CardBody, { out: it.out, unit: side * c.s, width: c.w, onAction: undefined }) : null,
-            )
-          }),
-          // Mirror the add button at its WAVE position (focusedAdd), scaled by
-          // its own wave factor 鈥?it displaces with the magnified deck like a
-          // card, and its size follows the same bell curve.
-          React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), tabIndex: -1, style: { position: 'absolute', top: `${focusedAdd.top.toFixed(2)}px`, right: `${focusedAdd.right.toFixed(2)}px`, width: `${(side * addScale).toFixed(2)}px`, height: `${(side * addScale).toFixed(2)}px`, borderRadius: `${Math.round(addRadius * addScale)}px`, transition: overlayTransition, zIndex: 30 } },
-              React.createElement('span', { className: 'dsx-stats-add-icon' },
-                React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
-              ),
-              React.createElement('span', { className: 'dsx-stats-add-label' }, t('ui.rail.addLabel')),
-            ),
-          ),
-        )
-      // Temporary right-side add panel: reuses the settings 缁勪欢甯傚満 + 鎷栧姩鎺掑簭
+      )
+      const rail = React.createElement(RailWave, {
+        key: '__wave', deck, items, side, pad, railW, stackHeight, addRadius, active,
+        placeCards, scaleFor, nearest, stepScale, xPts, yPts, addSlotFor,
+        cardElsRef, live: snap.open && snap.hasSession, shiftX: space.shiftX, 
+      })
+      // Temporary right-side add panel: reuses the component-config + component-market settings pages
       // (WidgetsPage) wholesale, floats over content, never affects layout.
       // Width is configurable (prefs.panelWidth) and draggable via the left edge.
       const pw = prefs.panelWidth
@@ -1397,13 +2017,24 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       const drawerTravel = Math.round(railW + 24)
       const drawerTransform = drawerPhase === 'enter' || drawerPhase === 'leave' ? `translateX(${drawerTravel}px)` : 'none'
       const drawerTransition = reduceMotion ? 'none' : 'transform var(--ds-transition-duration-slow) var(--ds-ease-in-out)'
-      return React.createElement('div', { key: '__drawer', style: { position: 'fixed', inset: 0, pointerEvents: 'none', transform: drawerTransform, transition: drawerTransition } },
-        rail, magnifyLayer, addPanel,
+      // The whole drawer (rail + magnify + add panel) fades as ONE surface when
+      // the rail yields, on the same duration/easing as the panel's push, so the
+      // two motions cannot split (the official layout README requires co-motion
+      // with the track transition).
+      // Opacity is used ONLY for the no-space-to-hide case (a narrow window with
+      // no panel to cover the rail). When a panel is present the rail stays fully
+      // opaque and simply sits under it — that is the swallow.
+      const drawerOpacity = hidden ? 0 : 1
+      // The class is also the instant, emit-proof kill switch for the whole
+      // group: `body.dsx-stats-no-session` (see the rail-width effect below)
+      // hides it in the same style pass the transcript's yield is released.
+      return React.createElement('div', { key: '__drawer', ref: (el: HTMLDivElement | null) => { drawerEl = el }, className: 'dsx-stats-drawer', 'data-yielded': yielded ? '' : undefined, 'data-no-room': hidden ? '' : undefined, style: { position: 'fixed', inset: 0, pointerEvents: 'none', transform: drawerTransform, opacity: drawerOpacity, transition: `${drawerTransition}, opacity var(--ds-transition-duration-slow) var(--ds-ease-in-out)` } },
+        rail, addPanel,
       )
     },
   ))
 
-  // ---- Settings section ("缁勪欢" page). ----
+  // ---- Settings section ("component settings" page). ----
   ctx.slots.inject('settings.section', () => ctx.slots.register(
     { name: 'settings.section', id: 'widgets', order: 30, label: () => t('ui.section.label') },
     () => {
@@ -1414,10 +2045,26 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
 
   // ---- Rail width + stats-line toggle. ----
   ctx.effect(() => {
-    const apply = (): void => { document.body.classList.toggle('dsx-stats-active', state.open && state.hasSession); scheduleMeasure() }
+    const apply = (): void => {
+      document.body.classList.toggle('dsx-stats-active', state.open && state.hasSession)
+      // Session hand-off kill switch. The rail is a set of `position: fixed`
+      // layers, so an entry that misses the session-loss emit keeps painting (and
+      // capturing pointer events) over the fresh-conversation page — the React
+      // half of the fix is `useSyncExternalStore`, this is the belt-and-braces
+      // half that cannot be missed: the module-level subscriber above always runs,
+      // and the class hides the whole drawer in the same style pass that releases
+      // the transcript's yield. It is instant on purpose (the leave glide belongs
+      // to a user-initiated close, not to "this conversation is gone").
+      document.body.classList.toggle('dsx-stats-no-session', !state.hasSession)
+      scheduleMeasure()
+    }
     const sub = subscribe(apply)
     apply()
-    return () => { sub(); document.body.classList.remove('dsx-stats-active') }
+    return () => {
+      sub()
+      document.body.classList.remove('dsx-stats-active')
+      document.body.classList.remove('dsx-stats-no-session')
+    }
   })
 
   // ---- Official composer stats-line hide switch (personal preference). ----
@@ -1428,3 +2075,4 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
     return () => { sub(); document.body.classList.remove('dsx-hide-statsline') }
   })
 }
+

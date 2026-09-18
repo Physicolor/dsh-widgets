@@ -1,5 +1,18 @@
 /* Harness Widgets — rail and settings styling. Plain class names, no CSS-module hashing: the client toggles them from JS verbatim. */
 
+/* The rail lives inside the CONVERSATION subtree (so a panel can paint over it),
+ * which means it would otherwise inherit the transcript's typography — the
+ * conversation sets 14px/24px, and every card rule that only declares a
+ * font-size (the 10-11px grey legends, date labels) then inherits a 24px line
+ * box, blowing up the card's text height. Pin the app-level typography here
+ * (measured on the app root: 16px / line-height: normal) so nothing from the
+ * transcript can leak in; card rules that declare their own line-height win. */
+.dsx-stats-rail {
+  font-family: var(--dsw-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif);
+  font-size: 16px;
+  line-height: normal;
+}
+
 .dsx-stats-capsule {
   display: inline-flex;
   align-items: center;
@@ -19,6 +32,13 @@
   background: var(--dsw-alias-state-business-primary);
   color: #fff;
   border-color: transparent;
+}
+
+/* No margin for the rail at this width (the transcript measure owns it):
+ * the toggle reads as unavailable instead of opening nothing. */
+.dsx-stats-capsule[data-space='tight'] {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .dsx-stats-card {
@@ -104,7 +124,54 @@
 }
 
 [data-conversation-scroll] {
-  transition: padding-right 0.2s ease;
+  /* Must be the SAME curve the AppFrame uses for its track (the official layout
+     README lists "track and occupant share one curve" as a layout invariant), so
+     the transcript's inset and the panel's push start and end together. 0.2s/ease
+     here was visibly out of step with the 0.3s track. */
+  transition: padding-right var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+}
+
+/* Yielded (the panel owns the space): the drawer is faded out but stays
+ * mounted so its retreat is part of the panel's motion. An invisible cover must
+ * not keep capturing clicks over the transcript it just gave back. */
+[data-yielded] .dsx-stats-rail,
+[data-yielded] .dsx-stats-addpanel {
+  pointer-events: none !important;
+}
+
+/* One variable positions every rail-owned fixed layer (rail, magnify overlay,
+ * settings drawer). Normal mode follows the conversation column's right edge via
+ * anchor positioning; while a panel is present the client pins it to the
+ * viewport's right edge (identical when no panel is open) so the panel — which
+ * paints above the rail's conversation-scoped host — covers the rail. */
+:root {
+  --dsx-rail-right: anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)));
+}
+
+/* Native rail follow (Chrome 125+ / Edge): naming the conversation column as an
+ * anchor lets the rail's `right: anchor(--dsx-center right)` be resolved in the
+ * SAME style→layout pass that animates the shell's `grid-template-columns`
+ * track, so rail and column advance together at every frame — the JS path below
+ * (--dsx-rightbar-w + a frozen tween) is only the fallback for browsers without
+ * anchor positioning. See RAIL_RIGHT in index.ts. */
+@supports (anchor-name: --dsx-center) {
+  /* Official seam first: the conversation host carries `data-phase` and shares
+     the center column's box exactly (measured: both [280,1120,840,800]). The
+     hashed column class stays as the fallback for a shell whose conversation
+     root is renamed, selected only when that seam is absent so exactly one
+     element ever owns the anchor name. */
+  [data-phase='active'] {
+    anchor-name: --dsx-center;
+  }
+  body:not(:has([data-phase='active'])) [class$='_centerCol'] {
+    anchor-name: --dsx-center;
+  }
+  /* The settings drawer is a sibling fixed layer anchored to the rail's edge:
+     it rides the same variable as the rail, so while a panel swallows the rail
+     it is swallowed with it instead of staying parked over the panel. */
+  .dsx-stats-addpanel {
+    right: calc(var(--dsx-rail-right) + var(--dsx-rail-pad, 14px));
+  }
 }
 
 /* The rail tracks `--dsh-sidebar-width` (set by dsh-better-sidebar when its
@@ -136,7 +203,7 @@
 /* Hide the rail's scrollbar while keeping it scrollable. Chromium, Edge, and
    Safari take the ::-webkit-scrollbar path. The standard `scrollbar-width`
    property MUST stay behind the `@supports not selector(::-webkit-scrollbar)`
-   gate below 鈥?the theme's own scrollbar sheet documents that a non-`auto`
+   gate below — the theme's own scrollbar sheet documents that a non-`auto`
    `scrollbar-width` makes Chromium/Edge drop every ::-webkit-scrollbar rule,
    so declaring it unconditionally would silence this `display: none` too. */
 .dsx-stats-rail::-webkit-scrollbar {
@@ -169,15 +236,21 @@ html.dsx-syncing .dsx-stats-rail {
 }
 
 body.dsx-stats-active [data-conversation-scroll] {
-  padding-right: var(--dsx-rail-w, 220px) !important;
+  /* The claim is computed in JS from the product's own transcript measure
+     (column − measure, published by ui-conversation as
+     --dsh-conversation-column-width / --dsh-chat-content-width; see
+     readRailBudget in index.ts). It is therefore NEVER larger than the margin
+     the measure leaves over, which is why this rule needs no !important: the
+     rail cannot squeeze the reading column, it can only be collapsed. */
+  padding-right: var(--dsx-rail-w, 0px);
 }
 
-/* Trajectory/overlay tab (杞ㄨ抗) alignment: the official product anchors the
+/* Trajectory/overlay tab alignment: the official product anchors the
    composer seat with absolute positioning against the scroll body's PADDING
    box (see ConversationRoot.module.css `.scrollBody:has([data-conversation-composer-overlay]) >
-   .composerSeat { right: var(--dsh-scrollbar-width) }`), so 鈥?unlike the Chat
+   .composerSeat { right: var(--dsh-scrollbar-width) }`), so — unlike the Chat
    seat, which is sticky inside the CONTENT box and automatically yields to the
-   padding above 鈥?it does NOT see [data-conversation-scroll]'s padding-right
+   padding above — it does NOT see [data-conversation-scroll]'s padding-right
    and would span the full padding box, sliding the composer stack right over
    the rail by the whole rail width. Give that overlay seat back the rail width
    in its `right`, exactly the way it already gives back `--dsh-scrollbar-width`
@@ -188,18 +261,62 @@ body.dsx-stats-active [data-conversation-scroll] {
 body.dsx-stats-active
 [data-conversation-scroll]:has([data-conversation-composer-overlay])
 > [data-composer-seat] {
-  right: calc(var(--dsh-scrollbar-width) + var(--dsx-rail-w, 220px));
+  right: calc(var(--dsh-scrollbar-width) + var(--dsx-rail-w, 0px));
 }
 
 /* Match the scroll body's padding-right transition (above) so the overlay seat
    glides in lockstep instead of snapping while the rail opens/closes. */
 [data-conversation-scroll]:has([data-conversation-composer-overlay])
 > [data-composer-seat] {
-  transition: right 0.2s ease;
+  transition: right var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
 body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   visibility: hidden !important;
+}
+
+/* Turn navigator vs the transcript's column-width drag band.
+ *
+ * The product paints the invisible 40px col-resize band at z-index 8 and the
+ * navigator's sticky slot at z-index 7, so wherever the two overlap the band
+ * wins the hit test: hovering the navigator shows the resize grip and a drag
+ * starts instead of a turn jump (reported with a screenshot). The overlap itself
+ * is the product's own geometry — its CONTENT_EDGE_BUDGET (176px per side,
+ * 24 + 40 + 24) reserves that gutter for the band and not for the navigator, so
+ * it also reproduces with this plugin's rail closed; and a rail that yields part
+ * of the gutter only changes how often it happens.
+ *
+ * Fix the ORDER, not the geometry: the navigator is the visible control, so it
+ * takes the hover, and the band keeps the rest of its width for dragging. The
+ * slot is addressed by what it contains (a `nav` carrying the navigator's
+ * aria-label) instead of its hashed class, so a product rebuild cannot silently
+ * drop the rule.
+ */
+[data-conversation-scroll] :has(> nav[aria-label]) {
+  z-index: 9;
+}
+
+/* No active session: the whole rail group leaves the screen in the beat the
+   session signal drops. Every rail surface is `position: fixed`, so an entry
+   that misses the session-loss emit keeps painting over the fresh-conversation
+   page and keeps capturing pointer events there (measured 2026-09-17: the rail
+   stayed painted over the hero for as long as it was observed). The client sets
+   this class from the module-level subscriber — the one path that always runs —
+   and toggles it off the moment a session is present again. `visibility` (not
+   `display`) keeps the leave transition irrelevant: a session hand-off hides
+   instantly, a user-initiated close still glides. */
+body.dsx-stats-no-session .dsx-stats-drawer {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* No room to draw and nothing covering it: the drawer is faded to opacity 0 but
+   stays in the layout, so its fixed box must stop being a hit target — an
+   invisible rail over the conversation's right edge would otherwise swallow
+   hovers and clicks meant for the transcript and for DSH's column-width drag
+   band. `!important` because the rail carries `pointer-events: auto` inline. */
+.dsx-stats-drawer[data-no-room] .dsx-stats-rail {
+  pointer-events: none !important;
 }
 
 /* Header occlusion is NOT this plugin's job: the session header's opaque
@@ -208,12 +325,12 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
    only make sure OUR top padding clears the enhancer card's top shadow (see
    the rail's `2px 4px ...` padding). No header rules live here. */
 
-/* 鈹€鈹€ Mac-Dock style card magnify + brand-blue edge line. 鈹€鈹€
+/* ── Mac-Dock style card magnify + brand-blue edge line. ──
    Cards keep their square shape (uniform scale, no distortion) and are laid out
    by a Dock-style neighbor reflow (absolute top + scaled width/height from JS),
-   so a magnified card pushes neighbors apart instead of overlapping them 鈥?the
+   so a magnified card pushes neighbors apart instead of overlapping them — the
    spacing between cards is preserved at every zoom. The CSS only animates the
-   reflow properties (top/width/height) and paints the brand-blue hover edge. 鈹€鈹€ */
+   reflow properties (top/width/height) and paints the brand-blue hover edge. ── */
 .dsx-stats-card-slot {
   transition: top 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out);
   /* No persistent will-change: every card slot used to hold a permanent
@@ -224,6 +341,22 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
 }
 .dsx-stats-card-slot .dsx-stats-card {
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+/* Static-deck fade while the magnification wave is engaged. Toggled as a CLASS on
+   the deck wrapper (not as an inline per-slot style): the deck element's identity
+   must stay stable so React bails out of the whole card subtree on hover frames —
+   re-rendering it per pointer frame is what made hovering the rail cost 12.5ms
+   p50 / 41.8ms p95 per frame (measured 2026-09-13). The magnified copies are
+   painted by the overlay layer instead. */
+.dsx-wave-deck .dsx-stats-card-slot,
+.dsx-wave-deck .dsx-stats-add {
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+.dsx-wave-deck.dsx-wave-on .dsx-stats-card-slot,
+.dsx-wave-deck.dsx-wave-on .dsx-stats-add {
+  opacity: 0;
 }
 .dsx-stats-card-slot:hover .dsx-stats-card {
   border-color: var(--dsw-alias-state-business-primary);
@@ -236,7 +369,7 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   transition: opacity 0.12s ease;
 }
 
-/* 鈹€鈹€ Bottom add button: same rounded-rect geometry as a card. 鈹€鈹€ */
+/* ── Bottom add button: same rounded-rect geometry as a card. ── */
 .dsx-stats-add {
   box-sizing: border-box;
   flex: none;
@@ -271,13 +404,13 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   font-weight: 500;
 }
 
-/* 鈹€鈹€ Temporary right-side add panel (fixed overlay, never affects layout).
+/* ── Temporary right-side add panel (fixed overlay, never affects layout).
    Always rendered so closing slides out via the .open flag. Its outer offsets
    follow the real geometry: the right edge sits exactly as far from the
    viewport right as the cards do (--dsh-sidebar-width + rail padding), and its
    bottom sits exactly as high as the input box's bottom gap (--dsx-input-bottom).
-   No opacity fade on close 鈥?only the horizontal slide, so it returns crisply;
-   visibility still flips so the closed overlay never intercepts pointer events. 鈹€鈹€ */
+   No opacity fade on close — only the horizontal slide, so it returns crisply;
+   visibility still flips so the closed overlay never intercepts pointer events. ── */
 .dsx-stats-addpanel {
   position: fixed;
   /* The rail drawer wrapper is pointer-events:none (it only slides); every
@@ -319,7 +452,7 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   width: 10px;
   cursor: ew-resize;
   z-index: 3;
-  /* invisible hit area 鈥?no visible bar, matching the product's sidebar
+  /* invisible hit area — no visible bar, matching the product's sidebar
      drag affordance */
 }
 .dsx-stats-addpanel-header {
@@ -475,7 +608,7 @@ body.dsx-stats-active [data-slot='conversation.composer.dock'] {
   margin-bottom: 10px;
 }
 
-/* Dropdown selector matching the DSH "selector" picker look (e.g. model/鍒涢€犳ā寮?:  */
+/* Dropdown selector matching the DSH "selector" picker look (e.g. model/创建模式:  */
 /* a bordered rounded control with a native chevron and a real popup menu. The
    chevron is a data-URI SVG — `fill='currentColor'` does NOT render there
    (SVG-as-background-image resolves in an isolated image context, so currentColor
@@ -624,7 +757,7 @@ body[data-ds-dark-theme] .dsx-select {
   background: var(--dsw-alias-brand-primary);
 }
 
-/* 鈹€鈹€ Switch (official settings-row checkbox-switch, adapted to --dsw-* tokens). 鈹€鈹€ */
+/* ── Switch (official settings-row checkbox-switch, adapted to --dsw-* tokens). ── */
 .dsx-switch-row {
   position: relative;
   display: inline-flex;
