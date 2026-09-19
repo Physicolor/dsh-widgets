@@ -20,7 +20,7 @@ window.DASH_I18N = (function () {
 
     /* WEBSITE-002: slimmed copy */
     p1b: 'Useful', p3b: 'Compact', p5b: 'Clear',
-    gSub: '全部 33 个正式组件。',
+    gSub: '全部 34 个正式组件。',
     gbGoodP: '一个主数字领衔，其余信息映衬——有限空间的正确打开方式。',
     gbBadP: '一次性塞满所有信息——读者看不出什么重要，于是什么都不重要。',
     makeTitle: '如何制作一个组件',
@@ -48,7 +48,7 @@ window.DASH_I18N = (function () {
     githubAria: 'GitHub 仓库',
 
     /* hero */
-    kicker: 'dsh-widgets · v1.6.0 · MIT · DeepSeek Harness 0.1.x',
+    kicker: 'dsh-widgets · v1.6.1 · MIT · DeepSeek Harness 0.1.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: '将对话区域中的留白空间，转化为高信息密度、可随时隐藏的辅助界面。',
@@ -77,7 +77,7 @@ window.DASH_I18N = (function () {
 
     /* gallery */
     gTitle: '组件画廊',
-    gSub: '全部 33 个正式组件——每一个都是 src/widgets/<id>/ 下独立、契约驱动的单元。',
+    gSub: '全部 34 个正式组件——每一个都是 src/widgets/<id>/ 下独立、契约驱动的单元。',
     gAll: '全部', gSystem: '系统', gCodingPlan: '用量热度', gCommandCode: 'Command Code', gOpenCodeGo: 'OpenCode Go', gPricing: '峰谷定价', gDevice: '设备状态', gOther: '其它',
     gEmpty: '该分类下暂无组件。',
     badgeBuiltin: '内置', badgeMarket: '市场', badgePre: '预装',
@@ -241,7 +241,7 @@ window.DASH_I18N = (function () {
     statUnit: 'px 网格单元', statRules: '条审计规则',
 
     pr1t: '有用', pr1p: '一个组件只回答一个问题。Turns · Steps 不做别的，只报当前会话的轮次与步数。', pr1e: '11 轮 · 137 步',
-    pr2t: '紧凑', pr2p: '150px 单元里放得下标题、主读数与图表：内边距 12、圆角 16、标题 13、主值 20、说明 10——全部按 scale = unit / 150 缩放。', pr2e: '12 · 16 · 13 · 20 · 10',
+    pr2t: '紧凑', pr2p: '150px 单元里放得下标题、主读数与图表：内边距 12、圆角 24（= 短边的 16%）、标题 13、主值 20、说明 10——尺寸按 scale = unit / 150 缩放，圆角按短边取比例。', pr2e: '12 · 24 · 13 · 20 · 10',
     pr3t: '清晰', pr3p: '主读数唯一且最大，明细退到说明字号。上下文水位里 42% 领衔，系统/工具/消息只在下面记账。', pr3e: '20px 主值 / 10px 明细',
     pr4t: '空间分组', pr4p: '卡片只有三层：标题行、可选说明、内容块；层与层之间固定 6px 节奏，说明行紧贴标题而不会挤走标题。', pr4e: 'gap 6px × 3 层',
     pr5t: '锚定', pr5p: '整列右缘锚定：卡片放大只向左生长，行距靠累加行高维持，右边缘永远齐平——所以放大时不会把栏推走。', pr5e: 'right-anchored reflow',
@@ -278,7 +278,7 @@ window.DASH_I18N = (function () {
     'an.box': '卡片盒',
 
     auTitle: 'DSH Visual Audit',
-    auSub: '几何告诉我们哪里没对齐，设计规则告诉我们那是否要紧。下面是全部 33 个组件按规则算出的结果——没有神经网络，只有测量与规则。',
+    auSub: '几何告诉我们哪里没对齐，设计规则告诉我们那是否要紧。下面是全部 34 个组件按规则算出的结果——没有神经网络，只有测量与规则。',
     auGeoTitle: 'Layer 1 · 几何测量',
     auGeoSub: '在浏览器里对真实渲染的卡片取 getBoundingClientRect：内边距、右槽对齐、块间距、溢出、动作区偏移。',
     auHeurTitle: 'Layer 2 · 设计规则',
@@ -294,7 +294,7 @@ window.DASH_I18N = (function () {
     'dim.alignment': '对齐', 'dim.spacing': '间距', 'dim.hierarchy': '层级', 'dim.density': '密度', 'dim.balance': '平衡',
     'state.pass': 'PASS', 'state.warn': 'WARN', 'state.fail': 'FAIL', 'state.na': 'N/A',
     'layer.geometry': '几何', 'layer.heuristic': '规则',
-    'rule.pad': '四边内边距等于 round(12·scale)',
+    'rule.pad': '四边内边距等于 round(12·scale)（与圆角档位无关）',
     'rule.titleInset': '标题左缘对齐内边距',
     'rule.rightSlot': '右槽右缘对齐内边距',
     'rule.blockAlign': '标题块与内容块左对齐',
@@ -319,7 +319,7 @@ window.DASH_I18N = (function () {
     'pattern.heat': '热度图', 'pattern.line': '折线', 'pattern.segments': '分段条', 'pattern.meter': '状态计量',
     'pattern.text': '文本块', 'pattern.status': '状态字', 'pattern.chart': '图表',
     'ia.readonly': '只读', 'ia.action': '一键动作', 'ia.cycle': '点击切换',
-    footNote: '紧凑组件设计系统：33 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。',
+    footNote: '紧凑组件设计系统：34 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。',
     footSource: '组件源码'
   };
 
@@ -329,7 +329,7 @@ window.DASH_I18N = (function () {
 
     /* WEBSITE-002: slimmed copy */
     p1b: 'Useful', p3b: 'Compact', p5b: 'Clear',
-    gSub: 'All 33 current widgets.',
+    gSub: 'All 34 current widgets.',
     gbGoodP: 'One primary number leads; everything else supports it — the right way to use a small space.',
     gbBadP: 'Everything crammed in at once — the reader cannot tell what matters, so nothing matters.',
     makeTitle: 'How to make a widget',
@@ -356,7 +356,7 @@ window.DASH_I18N = (function () {
     menuToggleAria: 'Toggle navigation menu',
     githubAria: 'GitHub repository',
 
-    kicker: 'dsh-widgets · v1.6.0 · MIT · DeepSeek Harness 0.1.x',
+    kicker: 'dsh-widgets · v1.6.1 · MIT · DeepSeek Harness 0.1.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: 'Turn the idle whitespace of the conversation area into a high-information-density, hideable companion surface.',
@@ -382,7 +382,7 @@ window.DASH_I18N = (function () {
     why3Title: 'Optional', why3Body: 'An auxiliary layer that never blocks a conversation — the “Components” capsule in the session header hides the whole rail at any time.',
 
     gTitle: 'Widget Gallery',
-    gSub: 'All 33 current widgets — each one an independent, contract-driven unit under src/widgets/<id>/.',
+    gSub: 'All 34 current widgets — each one an independent, contract-driven unit under src/widgets/<id>/.',
     gAll: 'All', gSystem: 'System', gCodingPlan: 'Coding Plan', gCommandCode: 'Command Code', gOpenCodeGo: 'OpenCode Go', gPricing: 'Pricing', gDevice: 'Device', gOther: 'Other',
     gEmpty: 'No widgets in this category.',
     badgeBuiltin: 'Built-in', badgeMarket: 'Market', badgePre: 'Pre-installed',
@@ -542,7 +542,7 @@ window.DASH_I18N = (function () {
     statUnit: 'px grid unit', statRules: 'audit rules',
 
     pr1t: 'Useful', pr1p: 'One widget answers one question. Turns · Steps does nothing else — it reports the session\'s turns and steps.', pr1e: '11 turns · 137 steps',
-    pr2t: 'Compact', pr2p: 'A 150px unit carries a title, a primary reading and a chart: padding 12, radius 16, title 13, value 20, caption 10 — all scaled by scale = unit / 150.', pr2e: '12 · 16 · 13 · 20 · 10',
+    pr2t: 'Compact', pr2p: 'A 150px unit carries a title, a primary reading and a chart: padding 12, radius 24 (16 % of the short side), title 13, value 20, caption 10 — sizes scale by unit / 150, the corner scales with the short side while the inset stays flat.', pr2e: '12 · 24 · 13 · 20 · 10',
     pr3t: 'Clear', pr3p: 'Exactly one primary reading, at the largest size; detail drops to caption scale. Context Level leads with 42% and books system/tools/messages underneath.', pr3e: '20px value / 10px detail',
     pr4t: 'Spatial grouping', pr4p: 'A card has three layers only: title row, optional caption, content block — with a fixed 6px step between them, and a caption that hugs the title instead of pushing it away.', pr4e: 'gap 6px × 3 layers',
     pr5t: 'Anchoring', pr5p: 'The whole rail is right-edge anchored: a magnified card only grows leftward, row pitch accumulates from the tallest card, so the right edge never moves.', pr5e: 'right-anchored reflow',
@@ -579,7 +579,7 @@ window.DASH_I18N = (function () {
     'an.box': 'card box',
 
     auTitle: 'DSH Visual Audit',
-    auSub: 'Geometry tells us what is misaligned; the design rules tell us whether it matters. Below is every one of the 33 widgets scored by rules — no neural network, just measurements and rules.',
+    auSub: 'Geometry tells us what is misaligned; the design rules tell us whether it matters. Below is every one of the 34 widgets scored by rules — no neural network, just measurements and rules.',
     auGeoTitle: 'Layer 1 · geometric measurement',
     auGeoSub: 'getBoundingClientRect on the real rendered card: padding, right-slot alignment, block rhythm, overflow, action inset.',
     auHeurTitle: 'Layer 2 · design rules',
@@ -595,7 +595,7 @@ window.DASH_I18N = (function () {
     'dim.alignment': 'Alignment', 'dim.spacing': 'Spacing', 'dim.hierarchy': 'Hierarchy', 'dim.density': 'Density', 'dim.balance': 'Balance',
     'state.pass': 'PASS', 'state.warn': 'WARN', 'state.fail': 'FAIL', 'state.na': 'N/A',
     'layer.geometry': 'geometry', 'layer.heuristic': 'rule',
-    'rule.pad': 'four-side padding equals round(12·scale)',
+    'rule.pad': 'four-side padding equals round(12·scale), independent of the corner gear',
     'rule.titleInset': 'title left edge sits on the padding',
     'rule.rightSlot': 'right slot aligns to the padding edge',
     'rule.blockAlign': 'title block and content block share a left edge',
@@ -620,7 +620,7 @@ window.DASH_I18N = (function () {
     'pattern.heat': 'Heatmap', 'pattern.line': 'Sparkline', 'pattern.segments': 'Segment bar', 'pattern.meter': 'State meter',
     'pattern.text': 'Text block', 'pattern.status': 'Status word', 'pattern.chart': 'Chart',
     'ia.readonly': 'Read-only', 'ia.action': 'One-tap action', 'ia.cycle': 'Tap to cycle',
-    footNote: 'A compact widget design system: 33 widgets, spatial grammar, rule-based visual audit — built for DeepSeek Harness.',
+    footNote: 'A compact widget design system: 34 widgets, spatial grammar, rule-based visual audit — built for DeepSeek Harness.',
     footSource: 'Widget source'
   };
 

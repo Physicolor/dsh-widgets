@@ -92,7 +92,12 @@
 .hero-left { min-width: 0; }
 
 .kicker {
-  display: inline-block;
+  /* inline-FLEX so the brand mark sits on the pill's own line: the icon adds no
+     height of its own (18px inside a ~28px pill), so the hero's rhythm and its
+     measured geometry stay put. */
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 16px;
   padding: 5px 14px;
   border-radius: 999px;
@@ -102,6 +107,12 @@
   font-family: var(--font-mono);
   font-size: 12.5px;
   letter-spacing: 0.02em;
+}
+
+.kicker-mark {
+  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 .hero-title {

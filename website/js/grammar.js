@@ -7,7 +7,15 @@
  *   BASE_SIDE 150 · cardSide 150 · panelPadding 24 · magnify 1.2 · columns 2
  *        ← src/client/index.ts:27,37,38,44,48 (DEFAULTS / BASE_SIDE)
  *   scale = unit / BASE_SIDE
- *   innerPad = round(12 * scale) · radius = round(16 * scale)
+ *   radius = round(unit · cornerPercent / 100) — cornerPercent is a GEAR of the
+ *        card's SHORT side (12/16/20/24 %), DEFAULT 16 ← components.tsx:28-35
+ *   innerPad = round(12 · scale)
+ *        ← components.tsx:36-42 — the inset does NOT follow the corner: the
+ *        reference ratio belongs to the CORNER (16 % of the short side), while
+ *        the content sits close to the card edge (12px at unit 150)
+ *        at unit 150 the default gear gives radius 24 · innerPad 12
+ *   corners are CONTINUOUS CURVATURE (`corner-shape: squircle`), default ON
+ *        ← src/client/widgets.module.css:72-74
  *   title 13 · value 20 · caption 10 · foot gap 6 · head gap 6
  *   corner inset 8 * scale · legend margin-top 2 · headAfter 2 · meter 4
  *        ← src/client/components.tsx:459-604 (CardBody)
@@ -40,9 +48,10 @@ window.DASH_GRAMMAR = (function () {
     rowTopOffset: 2,      // src/client/index.ts:1166     placeCards acc = 2
     influenceSteps: 3,    // src/client/index.ts:1056     t = 1 - d/3
     falloff: 1.6,         // src/client/index.ts:1058     pow(t, 1.6)
+    cornerPercent: 16,    // components.tsx:30  DEFAULT_CORNER_PERCENT (% of short side)
+    cornerGears: [12, 16, 20, 24], // components.tsx:28  CORNER_GEARS (%)
     ratios: {             // components.tsx CardBody
-      pad: 12 / 150,
-      radius: 16 / 150,
+      pad: 12 / 150,      // the whole inner inset (independent of the corner)
       title: 13 / 150,
       value: 20 / 150,
       caption: 10 / 150,
@@ -65,19 +74,38 @@ window.DASH_GRAMMAR = (function () {
 
   function px(v) { return Math.round(v); }
 
-  /** The card metrics at a given unit (unit 150 = the plugin default). */
-  function metric(unit) {
+  /** components.tsx cardRadius(): a PERCENT of the card's short side, with the
+   *  gear itself clamped to 8..28 (a hand-edited pref can hold anything). */
+  function cardRadius(unit, percent) {
+    var p = (percent === undefined || percent === null || !isFinite(percent))
+      ? C.cornerPercent : Math.max(8, Math.min(28, percent));
+    return Math.round((unit || C.baseSide) * (p / 100));
+  }
+
+  /** components.tsx cardInnerPad(): flat 12 · scale — the inset is deliberately
+   *  INDEPENDENT of the corner gear, so a bigger radius never pushes the content
+   *  away from the card edge. */
+  function cardInnerPad(unit) {
+    return px(C.ratios.pad * C.baseSide * ((unit || C.baseSide) / C.baseSide));
+  }
+
+  /** The card metrics at a given unit (unit 150 = the plugin default).
+   *  percent = the corner gear (12/16/20/24 %), default 16. */
+  function metric(unit, percent) {
     var scale = (unit || C.baseSide) / C.baseSide;
     var r = C.ratios;
-    var pad = px(r.pad * C.baseSide * scale);
+    var gear = (percent === undefined || percent === null) ? C.cornerPercent : percent;
+    var radius = cardRadius(unit, gear);
+    var pad = cardInnerPad(unit);
     var title = px(r.title * C.baseSide * scale);
     var value = px(r.value * C.baseSide * scale);
     var caption = px(r.caption * C.baseSide * scale);
     return {
       unit: unit,
       scale: scale,
+      cornerPercent: gear,
       pad: pad,
-      radius: px(r.radius * C.baseSide * scale),
+      radius: radius,
       title: title,
       value: value,
       caption: caption,
@@ -218,8 +246,9 @@ window.DASH_GRAMMAR = (function () {
       id: 'fit', layer: 'geometry', dim: 'spacing',
       run: function (m) {
         // "Fits" means inside the CARD box. The corner action deliberately lives
-        // in the padding area (8px inset vs 12px padding), so the padding box is
-        // not the constraint — the pad rule checks the padding discipline.
+        // in the padding area (8px inset vs the 12px inner pad at unit 150), so
+        // the padding box is not the constraint — the pad rule checks the
+        // padding discipline.
         var over = Math.max(0, m.scroll.w - m.client.w) + Math.max(0, m.scroll.h - m.client.h);
         var spill = 0;
         m.boxes.forEach(function (b) {
@@ -516,6 +545,8 @@ window.DASH_GRAMMAR = (function () {
     ANATOMY: ANATOMY,
     RAIL_IDS: RAIL_IDS,
     metric: metric,
+    cardRadius: cardRadius,
+    cardInnerPad: cardInnerPad,
     railWidth: railWidth,
     wideWidth: wideWidth,
     stepScale: stepScale,

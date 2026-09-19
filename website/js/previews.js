@@ -8,7 +8,10 @@
  *   - fmt* / buildRollingGrid / lastNDays* ← src/client/lib/format.ts;
  *   - per-widget render() ← each src/widgets/<id>/index.ts + lib/usage-view.ts;
  *   - card layout & typography ← components.tsx CardBody/ChartBlock (title 13,
- *     value 20, pad 12, radius 16 at unit 150 — all scaled by unit/150);
+ *     value 20 at unit 150; radius = round(unit · cornerPercent / 100) with
+ *     cornerPercent = 16 % of the card's SHORT side by default — gears
+ *     12/16/20/24 — and pad = round(12 · scale), independent of the corner;
+ *     corners are drawn as continuous curvature, `corner-shape: squircle`);
  *   - colors ← the real DSH tokens (tokens.css --dsw-* group, both themes).
  * Result: the website shows what the product shows — same data, same format,
  * same structure, same visual language.
@@ -777,7 +780,16 @@ window.DASH_PREVIEWS = (function () {
     var scale = unit / 150;
     var titlePx = Math.round(13 * scale);
     var valuePx = Math.round(20 * scale);
-    var radius = Math.round(16 * scale);
+    /* The card's REAL geometry, mirroring components.tsx cardRadius() /
+       cardInnerPad() (and website/js/grammar.js, which owns the published
+       constants): radius = round(unit · cornerPercent / 100) — a share of the
+       card's SHORT side, default gear 16 % — while the content inset stays flat
+       at round(12 · scale): the reference ratio is the CORNER's, so a bigger
+       radius must not push the content away from the card edge. Kept local
+       because this file is parsed BEFORE grammar.js, so the grammar module is
+       not a load-time dependency here. */
+    var cornerPercent = 16;
+    var radius = Math.round(unit * (cornerPercent / 100));
     var pad = Math.round(12 * scale);
     var num = function (v) { return Math.round(v * scale); };
     var wide = opts.size === '2x4';

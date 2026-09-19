@@ -242,7 +242,6 @@ section {
 .brand-mark {
   width: 22px;
   height: 22px;
-  fill: var(--brand);
   flex: none;
 }
 

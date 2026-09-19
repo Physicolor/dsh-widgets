@@ -45,7 +45,7 @@ const TEMPLATE = `<!DOCTYPE html>
     padding: 54px 64px 44px;
   }
   .og-top { display: flex; align-items: center; gap: 14px; }
-  .og-mark { width: 40px; height: 40px; color: #4176e6; }
+  .og-mark { width: 44px; height: 44px; display: block; }
   .og-brand { font-size: 20px; font-weight: 700; color: #0f1115; letter-spacing: -0.01em; }
   .og-brand small { display: block; font-size: 12.5px; font-weight: 500; color: #61666b; letter-spacing: 0; }
   h1 { margin: 22px 0 0; font-size: 54px; line-height: 1.06; letter-spacing: -0.035em; color: #0f1115; }
@@ -62,12 +62,7 @@ const TEMPLATE = `<!DOCTYPE html>
 <body>
   <div>
     <div class="og-top">
-      <svg class="og-mark" viewBox="0 0 24 24" aria-hidden="true">
-        <rect x="3" y="3" width="7" height="7" rx="2" fill="currentColor" />
-        <rect x="14" y="3" width="7" height="7" rx="2" fill="currentColor" opacity=".55" />
-        <rect x="3" y="14" width="7" height="7" rx="2" fill="currentColor" opacity=".55" />
-        <rect x="14" y="14" width="7" height="7" rx="2" fill="currentColor" />
-      </svg>
+      <img class="og-mark" src="assets/icon.svg" alt="" />
       <div class="og-brand">dsh-widgets<small>for DeepSeek Harness</small></div>
     </div>
     <h1>Widget <span>Design System</span></h1>

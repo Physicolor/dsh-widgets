@@ -41,7 +41,7 @@
       ['columns', String(G.C.columns), 'gr.cColumns'],
       ['scale', 'unit / 150', 'gr.cScale'],
       ['innerPad', 'round(12 · scale)', 'gr.cInner'],
-      ['radius', 'round(16 · scale)', 'gr.cRadius'],
+      ['radius', 'round(unit · 16 / 100)', 'gr.cRadius'],
       ['title · value · caption', '13 · 20 · 10', 'gr.cType'],
       ['foot gap', '6', 'gr.cFoot'],
       ['corner inset', 'round(8 · scale)', 'gr.cCorner'],
@@ -260,7 +260,7 @@
     function push(key, value, extra) { marks.push({ key: key, value: value, extra: extra || '' }); }
 
     push('an.outer', mtr.pad + 'px', 'round(12 · ' + mtr.scale.toFixed(2) + ')');
-    push('an.radius', mtr.radius + 'px', 'round(16 · ' + mtr.scale.toFixed(2) + ')');
+    push('an.radius', mtr.radius + 'px', 'unit ' + mtr.unit + ' · 16%');
     push('an.title', mtr.title + 'px', '13 · ' + mtr.scale.toFixed(2));
     push('an.value', (m.out.value != null || m.out.headAfter) ? mtr.value + 'px' : '—', '20 · ' + mtr.scale.toFixed(2));
     push('an.caption', mtr.caption + 'px', '10 · ' + mtr.scale.toFixed(2));
@@ -472,7 +472,7 @@
       ['geo.outer', [m.pad.t, m.pad.r, m.pad.b, m.pad.l].map(function (v) { return v + 'px'; }).join(' / '), 'T / R / B / L'],
       ['geo.card', Math.round(m.card.w) + ' × ' + Math.round(m.card.h), 'unit ' + m.unit + ' · ' + row.size.replace('x', '×')],
       ['geo.padBox', Math.round(m.card.w - 2 * m.metric.pad) + ' × ' + Math.round(m.card.h - 2 * m.metric.pad), 'content box'],
-      ['geo.radius', m.metric.radius + 'px', 'round(16 · ' + m.metric.scale.toFixed(2) + ')'],
+      ['geo.radius', m.metric.radius + 'px', 'unit ' + m.unit + ' · 16%'],
       ['geo.rhythm', m.footKids.length > 1 ? '6px × ' + m.footKids.length : '—', 'content block step'],
       ['geo.type', m.metric.title + ' / ' + m.metric.value + ' / ' + m.metric.caption, 'title / value / caption'],
       ['geo.zoom', '×' + G.C.magnify + ' → ' + m.zoom.h.toFixed(0) + 'px', 'height @ magnified unit']

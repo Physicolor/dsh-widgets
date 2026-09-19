@@ -20,6 +20,12 @@
   border: 1px solid var(--dsw-card-border);
   background: var(--dsw-card-bg);
   box-shadow: var(--dsw-card-shadow);
+  /* Continuous-curvature corners, exactly as the product draws them
+     (src/client/widgets.module.css: .dsx-stats-card.dsx-squircle). The radius
+     itself comes from the inline style (round(unit · 16 / 100)); this property
+     only changes the SHAPE of that corner. Engines without corner-shape fall
+     back to a circular arc. */
+  corner-shape: squircle;
 }
 
 /* Real slot hover: brand-blue edge + glow ring (dsx-stats-card-slot:hover) */

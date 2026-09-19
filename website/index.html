@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>dsh-widgets — DeepSeek Harness Widget Design System &amp; Component Library</title>
-  <meta name="description" content="dsh-widgets 是面向 DeepSeek Harness 的紧凑组件设计系统：33 个真实 Widget、连续放大的空间几何、基于几何测量的视觉审计（Visual Audit），以及 Agent 生产流程。A compact widget design system and component library for DeepSeek Harness — 33 real dashboard widgets, geometry-based UI auditing, and an agent production pipeline." />
+  <meta name="description" content="dsh-widgets 是面向 DeepSeek Harness 的紧凑组件设计系统：34 个真实 Widget、连续放大的空间几何、基于几何测量的视觉审计（Visual Audit），以及 Agent 生产流程。A compact widget design system and component library for DeepSeek Harness — 33 real dashboard widgets, geometry-based UI auditing, and an agent production pipeline." />
   <link rel="canonical" href="https://physicolor.github.io/dsh-widgets/" />
   <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
   <meta name="author" content="Physicolor" />
@@ -14,7 +14,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="dsh-widgets" />
   <meta property="og:title" content="dsh-widgets — DeepSeek Harness Widget Design System" />
-  <meta property="og:description" content="33 real compact widgets for DeepSeek Harness, with the spatial geometry behind them, a measured visual audit, and an agent production pipeline." />
+  <meta property="og:description" content="34 real compact widgets for DeepSeek Harness, with the spatial geometry behind them, a measured visual audit, and an agent production pipeline." />
   <meta property="og:url" content="https://physicolor.github.io/dsh-widgets/" />
   <meta property="og:image" content="https://physicolor.github.io/dsh-widgets/assets/og.png" />
   <meta property="og:image:width" content="1200" />
@@ -24,11 +24,11 @@
   <meta property="og:locale:alternate" content="en_US" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="dsh-widgets — DeepSeek Harness Widget Design System" />
-  <meta name="twitter:description" content="33 real compact widgets for DeepSeek Harness — spatial design grammar, measured visual audit, agent production pipeline." />
+  <meta name="twitter:description" content="34 real compact widgets for DeepSeek Harness — spatial design grammar, measured visual audit, agent production pipeline." />
   <meta name="twitter:image" content="https://physicolor.github.io/dsh-widgets/assets/og.png" />
 
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="assets/og.png" />
+  <link rel="apple-touch-icon" href="assets/icon-180.png" />
   <link rel="stylesheet" href="css/tokens.css" />
   <link rel="stylesheet" href="css/base.css" />
   <link rel="stylesheet" href="css/widgets.css" />
@@ -62,9 +62,9 @@
         "codeRepository": "https://github.com/Physicolor/dsh-widgets",
         "programmingLanguage": "TypeScript",
         "author": { "@type": "Person", "name": "Physicolor" },
-        "description": "A right-hand widget rail for the DeepSeek Harness Web UI: 33 compact dashboard widgets on a 150px grid with a continuous magnification wave, per-instance sizing, and a geometry-based visual audit.",
+        "description": "A right-hand widget rail for the DeepSeek Harness Web UI: 34 compact dashboard widgets on a 150px grid with a continuous magnification wave, per-instance sizing, and a geometry-based visual audit.",
         "featureList": [
-          "33 compact widgets on a 150px grid",
+          "34 compact widgets on a 150px grid",
           "Continuous dock-style magnification (peak 1.2, 3-step influence)",
           "Right-anchored reflow that keeps the rail edge flush",
           "Rule-based geometry + layout-heuristic visual audit",
@@ -83,7 +83,7 @@
     "@id": "https://physicolor.github.io/dsh-widgets/#widgets",
     "name": "dsh-widgets widget library",
     "description": "Every widget unit shipped by dsh-widgets, generated from the src/widgets unit manifests.",
-    "numberOfItems": 33,
+    "numberOfItems": 34,
     "itemListOrder": "https://schema.org/ItemListOrderAscending",
     "itemListElement": [
             {
@@ -159,160 +159,167 @@
             {
               "@type": "ListItem",
               "position": 11,
+              "name": "对话轨迹 / Trajectory",
+              "description": "官方「轨迹」三色泳道的卡片版：输入 / 模型 / 工具 每次触发一根色条，随模型调用工具实时右移滚动 The official 轨迹 rail as a card: one colored bar per input / model / tool beat, rolling right as the model keeps calling tools",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/trajectory"
+            },
+            {
+              "@type": "ListItem",
+              "position": 12,
               "name": "今日寄语 / Daily Quote",
               "description": "显示你自定义的一句话（未填写文本时不显示内容） Shows a custom sentence you typed (hidden while empty)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/quote"
             },
             {
               "@type": "ListItem",
-              "position": 12,
+              "position": 13,
               "name": "用量热度图 / Token Heatmap",
               "description": "每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；大小可在市场左右切换 Daily token usage heatmap (self-accounted). 2×2 shows a ~3-month calendar, 2×4 the ~half-year history; switch size in the market",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/heatmap"
             },
             {
               "@type": "ListItem",
-              "position": 13,
+              "position": 14,
               "name": "用量柱状图 / Token Bars",
               "description": "最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致 Vertical bars of the last 7 days of token usage; same height as the calendar view",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/heatmap-bars"
             },
             {
               "@type": "ListItem",
-              "position": 14,
+              "position": 15,
               "name": "额度管理 / Quota Manager",
               "description": "按账期趋势预测月末用量百分比，并给出今日 token 用量与今日推荐用量 Projects the month-end usage percent from the billing period's pace, with today's tokens vs the recommended budget",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/quota-manage"
             },
             {
               "@type": "ListItem",
-              "position": 15,
+              "position": 16,
               "name": "用量对比 / Usage Bars",
               "description": "OpenCode 滚动/周/月三窗口用量柱状图 OpenCode rolling/weekly/monthly usage bars",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-bars"
             },
             {
               "@type": "ListItem",
-              "position": 16,
+              "position": 17,
               "name": "用量环图 / Usage Rings",
               "description": "OpenCode 滚动/周/月三窗口用量环形图 OpenCode rolling/weekly/monthly usage rings",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-rings"
             },
             {
               "@type": "ListItem",
-              "position": 17,
+              "position": 18,
               "name": "滚动用量 / Rolling Usage",
               "description": "OpenCode Go 滚动窗口用量配额 OpenCode Go rolling-window usage quota",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-rolling"
             },
             {
               "@type": "ListItem",
-              "position": 18,
+              "position": 19,
               "name": "每周用量 / Weekly Usage",
               "description": "OpenCode Go 每周用量配额 OpenCode Go weekly usage quota",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-weekly"
             },
             {
               "@type": "ListItem",
-              "position": 19,
+              "position": 20,
               "name": "每月用量 / Monthly Usage",
               "description": "OpenCode Go 每月用量配额 OpenCode Go monthly usage quota",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-monthly"
             },
             {
               "@type": "ListItem",
-              "position": 20,
+              "position": 21,
               "name": "账户 / Account",
               "description": "当前 Command Code 账户身份（用户名 / 邮箱 / 组织） Current Command Code account identity (name / email / org)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-whoami"
             },
             {
               "@type": "ListItem",
-              "position": 21,
+              "position": 22,
               "name": "峰谷定价 / Peak Pricing",
               "description": "DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰） DeepSeek V4 peak pricing: whether now is a peak window (Beijing time, weekdays 09:00–12:00 & 14:00–18:00 are peak)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/peak-pricing"
             },
             {
               "@type": "ListItem",
-              "position": 22,
+              "position": 23,
               "name": "CPU 状态 / CPU Status",
               "description": "本机 CPU 利用率与内存占用 Local CPU utilization and memory usage",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-cpu"
             },
             {
               "@type": "ListItem",
-              "position": 23,
+              "position": 24,
               "name": "用量 / Usage",
               "description": "账期内的请求数、成功率、Token 与消费摘要 Requests, success rate, tokens and spend for the billing period",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-usage"
             },
             {
               "@type": "ListItem",
-              "position": 24,
+              "position": 25,
               "name": "GPU 状态 / GPU Status",
               "description": "本机 NVIDIA GPU 显存、利用率与温度 Local NVIDIA GPU VRAM, utilization and temperature",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-gpu"
             },
             {
               "@type": "ListItem",
-              "position": 25,
+              "position": 26,
               "name": "额度 / Credits",
               "description": "Credits 余额与 5h / 周额度窗口用量 Credit balance with 5h / weekly window usage",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-credits"
             },
             {
               "@type": "ListItem",
-              "position": 26,
+              "position": 27,
               "name": "CPU·GPU 环图 / CPU · GPU Rings",
               "description": "CPU / GPU 利用率双环形图 CPU / GPU utilization twin rings",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-rings"
             },
             {
               "@type": "ListItem",
-              "position": 27,
+              "position": 28,
               "name": "窗口 / Windows",
               "description": "5h / 周 / 月 三窗口用量环图 5h / weekly / monthly usage as rings",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-windows"
             },
             {
               "@type": "ListItem",
-              "position": 28,
+              "position": 29,
               "name": "系统监控 / System Monitor",
               "description": "CPU/内存/GPU 显存与利用率全指标环形看板 CPU / memory / GPU VRAM and utilization dashboard rings",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-board"
             },
             {
               "@type": "ListItem",
-              "position": 29,
+              "position": 30,
               "name": "套餐 / Plan",
               "description": "当前套餐、状态与账期结束时间 Current plan, status and billing period end",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-subscription"
             },
             {
               "@type": "ListItem",
-              "position": 30,
+              "position": 31,
               "name": "GPU 利用率 / GPU Utilization",
               "description": "GPU 利用率折线（最近约 20 分钟） GPU utilization sparkline (last ~20 min)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-gpu-line"
             },
             {
               "@type": "ListItem",
-              "position": 31,
+              "position": 32,
               "name": "5h 窗口 / 5h window",
               "description": "5 小时额度窗口用量百分比与重置时间 5-hour quota window usage percent and reset time",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-window-5h"
             },
             {
               "@type": "ListItem",
-              "position": 32,
+              "position": 33,
               "name": "周窗口 / Weekly window",
               "description": "周额度窗口用量百分比与重置时间 Weekly quota window usage percent and reset time",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-window-weekly"
             },
             {
               "@type": "ListItem",
-              "position": 33,
+              "position": 34,
               "name": "月窗口 / Monthly window",
               "description": "账期月额度用量百分比（额度 − 剩余 / 额度）与账期结束时间 Billing-period usage percent ((allowance − remaining) / allowance) and period end",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-window-monthly"
@@ -329,9 +336,7 @@
   <header class="nav" id="top-nav">
     <div class="nav-inner">
       <a class="brand" href="#home" data-i18n-aria="brandLabel" aria-label="dsh-widgets — 返回顶部">
-        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" opacity=".55" /><rect x="3" y="14" width="7" height="7" rx="2" opacity=".55" /><rect x="14" y="14" width="7" height="7" rx="2" />
-        </svg>
+        <img class="brand-mark" src="assets/icon.svg" alt="" width="24" height="24" />
         <span class="brand-name">dsh-widgets</span>
       </a>
 
@@ -383,7 +388,7 @@
       <div class="hero-body reveal">
         <div class="hero-grid">
           <div class="hero-left">
-            <p class="kicker" data-i18n="kicker">dsh-widgets · v1.6.0 · MIT · DeepSeek Harness 0.1.x</p>
+            <p class="kicker"><img class="kicker-mark" src="assets/icon.svg" alt="" width="18" height="18" /><span data-i18n="kicker">dsh-widgets · v1.6.0 · MIT · DeepSeek Harness 0.1.x</span></p>
             <h1 class="hero-title">
               <span class="hero-line" data-i18n="heroLine1">DeepSeek Harness</span>
               <span class="hero-line hero-brand" data-i18n="heroLine2">Widgets</span>
@@ -391,14 +396,14 @@
             <p class="hero-tagline" data-i18n="heroTagline">紧凑组件设计系统 · 空间几何 · 可测量的视觉审计</p>
             <div class="hero-desc">
               <p class="lead-main" data-i18n="heroLead1">将对话区域中的留白空间，转化为高信息密度、可随时隐藏的辅助界面。</p>
-              <p class="lead-en" data-i18n="heroLead2">33 compact widgets for DeepSeek Harness on a 150px grid — with the spatial geometry behind them, a measured visual audit, and the agent pipeline that produces each unit.</p>
+              <p class="lead-en" data-i18n="heroLead2">34 compact widgets for DeepSeek Harness on a 150px grid — with the spatial geometry behind them, a measured visual audit, and the agent pipeline that produces each unit.</p>
             </div>
             <div class="hero-cta">
               <a class="btn btn-primary" href="#widgets" data-i18n="ctaWidgets">浏览全部组件</a>
               <a class="btn btn-ghost" href="#grammar" data-i18n="ctaGrammar">看设计语法</a>
             </div>
             <dl class="hero-stats">
-              <div class="hero-stat"><dt>33</dt><dd data-i18n="statWidgets">组件</dd></div>
+              <div class="hero-stat"><dt>34</dt><dd data-i18n="statWidgets">组件</dd></div>
               <div class="hero-stat"><dt>7</dt><dd data-i18n="statCats">分类</dd></div>
               <div class="hero-stat"><dt>150</dt><dd data-i18n="statUnit">px 网格单元</dd></div>
               <div class="hero-stat"><dt>13</dt><dd data-i18n="statRules">条审计规则</dd></div>
@@ -559,7 +564,7 @@
     <section class="audit" id="audit" aria-label="视觉审计">
       <div class="wrap">
         <h2 class="section-title reveal" data-i18n="auTitle">DSH Visual Audit</h2>
-        <p class="section-sub reveal" data-i18n="auSub">几何告诉我们哪里没对齐，设计规则告诉我们那是否要紧。下面是全部 33 个组件按规则算出的结果——没有神经网络，只有测量与规则。</p>
+        <p class="section-sub reveal" data-i18n="auSub">几何告诉我们哪里没对齐，设计规则告诉我们那是否要紧。下面是全部 34 个组件按规则算出的结果——没有神经网络，只有测量与规则。</p>
 
         <div class="au-method reveal">
           <div class="au-layer-card">
@@ -579,7 +584,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
         </div>
 
         <div class="au-layout reveal">
-          <div class="au-list" id="au-list" role="table" aria-label="33 个组件的规则化审计"></div>
+          <div class="au-list" id="au-list" role="table" aria-label="34 个组件的规则化审计"></div>
           <div class="au-detail" id="au-detail"></div>
         </div>
         <div class="au-cases reveal" id="au-cases"></div>
@@ -592,7 +597,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
     <section class="gallery" id="widgets" aria-label="组件画廊">
       <div class="wrap">
         <h2 class="section-title reveal" data-i18n="gTitle">组件画廊</h2>
-        <p class="section-sub reveal" data-i18n="gSub">全部 33 个正式组件：真实渲染、真实数据格式、真实尺寸。点开任意一个可以看它的解剖与审计。</p>
+        <p class="section-sub reveal" data-i18n="gSub">全部 34 个正式组件：真实渲染、真实数据格式、真实尺寸。点开任意一个可以看它的解剖与审计。</p>
         <div class="filters reveal" role="group" aria-label="按分类筛选组件">
           <button class="filter is-active" data-filter="all" type="button" data-i18n="gAll">全部</button>
           <button class="filter" data-filter="system" type="button" data-i18n="gSystem">系统</button>
@@ -792,6 +797,25 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
                 
                 <button type="button" class="widget-open" data-widget="task" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="system" data-widget="trajectory" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="trajectory" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">对话轨迹<span class="widget-name-en">Trajectory</span></span>
+                <span class="widget-id">trajectory</span>
+              </div>
+              <p class="widget-desc">官方「轨迹」三色泳道的卡片版：输入 / 模型 / 工具 每次触发一根色条，随模型调用工具实时右移滚动<span class="widget-desc-en"> The official 轨迹 rail as a card: one colored bar per input / model / tool beat, rolling right as the model keeps calling tools</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="trajectory" data-i18n="openDetail">解剖 / 审计</button>
               </div>
             </div>
           </article>
@@ -1401,8 +1425,8 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
         <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
           <rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" opacity=".55" /><rect x="3" y="14" width="7" height="7" rx="2" opacity=".55" /><rect x="14" y="14" width="7" height="7" rx="2" />
         </svg>
-        <span><b>dsh-widgets</b> v1.6.0 · MIT</span>
-        <p class="footer-note" data-i18n="footNote">紧凑组件设计系统：33 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。</p>
+        <span><b>dsh-widgets</b> v1.6.1 · MIT</span>
+        <p class="footer-note" data-i18n="footNote">紧凑组件设计系统：34 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。</p>
       </div>
       <nav class="footer-links" aria-label="页脚">
         <a href="https://github.com/Physicolor/dsh-widgets" target="_blank" rel="noopener">GitHub</a>

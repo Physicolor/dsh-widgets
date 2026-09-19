@@ -33,7 +33,7 @@
     return [
       ['geo.card', Math.round(m.card.w) + ' × ' + Math.round(m.card.h), 'unit ' + m.unit],
       ['geo.outer', [m.pad.t, m.pad.r, m.pad.b, m.pad.l].join(' / ') + 'px', 'T / R / B / L'],
-      ['geo.radius', m.metric.radius + 'px', 'round(16 · ' + m.metric.scale.toFixed(2) + ')'],
+      ['geo.radius', m.metric.radius + 'px', 'unit ' + m.unit + ' · 16%'],
       ['geo.rhythm', (m.title && m.foot ? (m.foot.top - m.title.bottom).toFixed(1) : '—') + 'px', 'title → content'],
       ['geo.type', m.metric.title + ' / ' + m.metric.value + ' / ' + m.metric.caption + 'px', 'title / value / caption'],
       ['geo.textLeft', m.title ? (m.title.left - m.card.left).toFixed(1) + 'px' : '—', 'title inset'],

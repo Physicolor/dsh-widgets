@@ -241,7 +241,7 @@ async function openPage(url) {
   await cdp.send('Network.enable');
   await cdp.send('Log.enable');
   await cdp.send('Page.navigate', { url });
-  await waitFor(cdp, `document.readyState === 'complete' && document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 33`);
+  await waitFor(cdp, `document.readyState === 'complete' && document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 34`);
   await new Promise((r) => setTimeout(r, 400));
   return { edge, cdp };
 }
@@ -312,7 +312,7 @@ try {
 
   /* crawlability: the widget list must exist in the HTML source itself */
   const staticCards = (html.match(/<article class="widget-card"/g) || []).length;
-  check('Gallery is in the HTML source (33 static cards)', staticCards === 33, `found ${staticCards}`);
+  check('Gallery is in the HTML source (34 static cards)', staticCards === 34, `found ${staticCards}`);
   check('Static gallery carries names + descriptions', /widget-name/.test(html) && /widget-desc/.test(html) &&
     html.includes('轮次·步数') && html.includes('上下文水位'));
 
@@ -350,8 +350,8 @@ try {
     if (g['@graph']) graphs.push(...g['@graph']);
     if (g['@type'] === 'ItemList') ld = g;
   }
-  check('JSON-LD parses and lists all 33 widgets',
-    !!ld && ld.itemListElement.length === 33 && ld.numberOfItems === 33 && !ldErr,
+  check('JSON-LD parses and lists all 34 widgets',
+    !!ld && ld.itemListElement.length === 34 && ld.numberOfItems === 34 && !ldErr,
     ldErr || (ld ? `${ld.itemListElement.length} items in ${ldBlocks.length} block(s)` : 'no ItemList block'));
 
   /* serve + browser */
@@ -372,7 +372,7 @@ try {
     'All sections present': `['home','widgets','design','create','contribute','grammar','audit','anatomy'].every(id => !!document.getElementById(id))`,
     'Old sentence-sections removed': `!document.getElementById('why') && !document.getElementById('philosophy') && !document.getElementById('workflow')`,
     'No Playground/Demo residue': `!document.getElementById('playground') && !document.getElementById('deploy-modal') && !document.querySelector('.pg-deck') && !document.querySelector('.hs-sim') && !document.querySelector('.badge-demo')`,
-    '33 gallery cards': `document.getElementById('gallery-grid').children.length === 33`,
+    '34 gallery cards': `document.getElementById('gallery-grid').children.length === 34`,
     'Rails + hero showcase populated': `['rail-a','rail-b','rail-c'].every(id => document.getElementById(id).children.length >= 6) && document.getElementById('hs-cards').children.length === 7`
   };
   for (const [name, expr] of Object.entries(checks)) {
@@ -412,8 +412,12 @@ try {
   })()`));
   check('Grammar: grid formulas match the plugin defaults', await evalJs(cdp, `(() => {
     const G = window.DASH_GRAMMAR;
+    // radius = round(unit · 16 / 100) — a share of the SHORT side — while the
+    // content inset stays FLAT at round(12 · scale) and never follows the corner.
     return G.railWidth(150, 24, 2) === 372 && G.wideWidth(150, 24) === 324 &&
-      G.metric(150).pad === 12 && G.metric(150).radius === 16 && G.metric(300).pad === 24 && G.metric(300).title === 26;
+      G.metric(150).radius === 24 && G.metric(150).pad === 12 &&
+      G.metric(300).radius === 48 && G.metric(300).pad === 24 && G.metric(300).title === 26 &&
+      G.metric(150, 12).radius === 18 && G.metric(150, 24).radius === 36;
   })()`));
 
   const railMove = await evalJs(cdp, `(() => {
@@ -471,8 +475,8 @@ try {
     document.body.removeChild(host);
     return res;
   })()`);
-  check('Audit engine measures the real DOM (12px @150 → 24px @300)', measured.pad150 === 12 && measured.pad300 === 24 &&
-    measured.radius150 === 16 && measured.radius300 === 32 && measured.titleDelta <= 1,
+  check('Audit engine measures the real DOM (12px @150 → 24px @300, corners 24 → 48)', measured.pad150 === 12 && measured.pad300 === 24 &&
+    measured.radius150 === 24 && measured.radius300 === 48 && measured.titleDelta <= 1,
     JSON.stringify(measured));
 
   /* ── Visual Audit ── */
@@ -483,7 +487,7 @@ try {
     const flagged = document.querySelector('#au-list .au-row[data-w="cc-window-monthly"] .au-flag');
     return { rows: rows.length, dims: dims.length, scored: scored, flagged: !!flagged };
   })()`);
-  check('Audit: all 33 widgets scored on 5 dimensions', audit.rows === 33 && audit.dims === 5 && audit.scored === 33, JSON.stringify(audit));
+  check('Audit: all 34 widgets scored on 5 dimensions', audit.rows === 34 && audit.dims === 5 && audit.scored === 34, JSON.stringify(audit));
   check('Audit: the real copy/implementation finding is flagged', audit.flagged === true);
 
   const auditDetail = await evalJs(cdp, `(() => {
@@ -525,7 +529,7 @@ try {
   check('Detail: closes cleanly', closed === true);
 
   /* gallery hydration */
-  check('Gallery: every card hydrated with the real widget render', await evalJs(cdp, `document.querySelectorAll('#gallery-grid .widget-stage-lg .wg-card').length === 33`));
+  check('Gallery: every card hydrated with the real widget render', await evalJs(cdp, `document.querySelectorAll('#gallery-grid .widget-stage-lg .wg-card').length === 34`));
 
   /* regression: one wide (2×4) preview must never widen its grid column */
   const columns = await evalJs(cdp, `(() => {
@@ -556,7 +560,7 @@ try {
     document.documentElement.getAttribute('lang') === 'en' &&
     document.getElementById('nav-links').querySelector('a').textContent === 'Home' &&
     document.querySelector('.filter[data-filter="all"]').textContent === 'All' &&
-    document.getElementById('gallery-grid').children.length === 33
+    document.getElementById('gallery-grid').children.length === 34
   `);
   check('Language toggle → English (nav/gallery/filter)', enState === true);
   await screenshot(cdp, join(OUT, 'light-en.png'));
@@ -669,7 +673,7 @@ try {
   /* mobile */
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await cdp.send('Page.navigate', { url });
-  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 33`);
+  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 34`);
   await new Promise((r) => setTimeout(r, 500));
   const burgerVisible = await evalJs(cdp, `getComputedStyle(document.getElementById('nav-burger')).display !== 'none'`);
   check('Mobile: burger visible', burgerVisible === true);
@@ -694,12 +698,12 @@ try {
     return { svg: svg, principles: grid, rows: rows, overflow: document.documentElement.scrollWidth <= window.innerWidth + 1 };
   })()`);
   check('Mobile: anatomy labels + audit table survive the narrow layout',
-    mobileOk.svg >= 8 && mobileOk.principles === 1 && mobileOk.rows === 33 && mobileOk.overflow === true, JSON.stringify(mobileOk));
+    mobileOk.svg >= 8 && mobileOk.principles === 1 && mobileOk.rows === 34 && mobileOk.overflow === true, JSON.stringify(mobileOk));
 
   /* desktop 1920×1080 viewport */
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
   await cdp.send('Page.navigate', { url });
-  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 33`);
+  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 34`);
   await new Promise((r) => setTimeout(r, 500));
   const wideOk = await evalJs(cdp, `
     document.documentElement.scrollWidth <= window.innerWidth + 1 &&

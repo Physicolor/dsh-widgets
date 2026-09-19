@@ -2,7 +2,7 @@
 
 A single-page, static showcase for **dsh-widgets**: what it is, the real
 widgets, the spatial grammar behind them, an anatomy view of a real card, a
-rule-based visual audit of all 33 widgets, how to make and contribute one, and a
+rule-based visual audit of all 34 widgets, how to make and contribute one, and a
 requirement-form → specification generator.
 
 - **Stack:** plain HTML + CSS + vanilla JS. No framework, no build step.
@@ -62,7 +62,7 @@ writes it into the page, so the site is readable **without JavaScript**
 
 | artifact | source of truth |
 | --- | --- |
-| `js/data.js` (widget table) | `src/widgets/<id>/manifest.json` (33 units) |
+| `js/data.js` (widget table) | `src/widgets/<id>/manifest.json` (34 units) |
 | the gallery markup in `index.html` (between `gen:gallery` markers) | the same manifests + `js/previews.js` for the primary pattern / interaction |
 | the JSON-LD `ItemList` (between `gen:jsonld` markers) | the same manifests |
 
@@ -119,7 +119,7 @@ plus the `copyTruth` mismatch and the `sys-board` 2×4-only size contract).
 
 - `<title>` / `meta description` name the project, DeepSeek Harness, the design-system and component-library framing.
 - `canonical` + `og:*` + `twitter:card` point at the real Pages URL; `assets/og.png` is a real 1200×630 render of the site's own cards.
-- JSON-LD: `WebSite` + `SoftwareApplication` (static) and a generated `ItemList` of all 33 widgets.
+- JSON-LD: `WebSite` + `SoftwareApplication` (static) and a generated `ItemList` of all 34 widgets.
 - `robots.txt` (allow all + sitemap) and `sitemap.xml`.
 - The gallery is **in the HTML source**, so the widget names, ids, categories, sizes and descriptions are crawlable without JS — which is also why the static markup is generated rather than rendered at runtime.
 
@@ -143,7 +143,7 @@ asset references, `gen-site --check`, the SEO surface (title/description/canonic
 static gallery crawlability, theme toggle + persistence, language toggle, i18n
 completeness in both languages, gallery filters and equal columns, the grammar
 rail (curve + reflow + slider formulas), anatomy annotations and measurement,
-the audit (33 widgets scored, exceptions listed), the component detail dialog,
+the audit (34 widgets scored, exceptions listed), the component detail dialog,
 responsive checks at 390/1440/1920, console/network monitoring, and desktop +
 mobile screenshots of every section.
 
