@@ -13,6 +13,28 @@ Where each kind of detail lives:
 
 Entries up to v1.5.0 mix English and Chinese: they are carried over from the README exactly as they were written at the time, measurements and all.
 
+## v1.6.1 — the rail scrolls by whole rows, stops at its own content, and releases the hover every time
+
+> A fix release. Three rail defects that survived v1.6.0 are gone: the wheel scrolled in pixels (and could strand a row half up, or refuse to move at all), the deck could be scrolled past its last component into empty space, and the magnification wave could stay engaged after the pointer had left the widgets. Every claim below was measured against the live GUI at 1578×1000 (15 widgets, 2 columns, pitch 184px) and is re-checked by three probe scripts that ship in `scripts/`.
+
+### Fixed — the wheel scrolls in whole rows
+
+- **The last rows could never reach the top.** The rail's scrollable range was the deck's own height minus the viewport, which is shorter than the last row's offset (measured: range 750px with 8 rows × pitch 184), so the browser clamped the final detents and the deck stopped moving while the wheel kept turning. The scrollable content is now derived from the geometry — `contentH = max(rows · pitch, stackHeight) + railViewportHeight` — with the difference reserved by a non-interactive tail inside the rail, so every row can top out and the last one does.
+- **Half-scrolled rests.** The wheel's own native scroll lands on the compositor *before* the event reaches the main thread (measured: `scrollTop` was already 120 when the handler ran), so an interrupted animation could leave the deck a third of a row up. The rail now runs its own 240ms tween that always ends on a detent, plus a row guard that snaps any off-grid rest position back onto `2 + row · pitch`.
+- **The dependency array that cancelled the tween.** The wheel effect listed `railElRef` — a plain `{ current }` object rebuilt on every parent render — so every parent re-render tore the effect down and its cleanup called `stopTween()` mid-flight. The ref is a real `React.useRef` now and the effect depends only on the card size and gap.
+- **Line- and page-mode wheels did nothing or jumped nine rows.** LINE/PAGE deltas are discrete: exactly one event is one detent, whatever its magnitude. Previously a 3-line event (48px) fell below the pixel threshold and a page event (raw `clientHeight`) skipped nine rows.
+- **Verified** by `scripts/verify-rail-wheel-matrix.cjs` (single event, a notch split in two, small trackpad ticks, a flick, line mode, page mode, upward flick, long flick to the end) and `scripts/verify-rail-scroll.cjs` (each notch = one pitch, every rest position a whole row, a whole row at the top everywhere, the last row reachable).
+
+### Added — the scroll stops when the components end
+
+- **A threshold instead of an endless tail.** A row may top out only while its own cards still reach into the viewport: `lastRow = ceil((contentBottom + viewportHeight − rowSeat) / pitch) − 1`. Measured: 8 rows, deepest card bottom 1450px, viewport 936px → the deck stops at the 7th detent (1290px) and further notches change nothing (`1290 → 1290`). Before this, four extra detents pulled up nothing but blank space.
+
+### Fixed — the magnification wave always ends when the pointer leaves
+
+- **The safety net was cancelling itself.** A window-level `mousemove` guard had been added to end the wave when the pointer is no longer over a tile — but its effect had no dependency array, so while the wave was live (a re-render per frame) every cleanup cleared the pending release timer. It could never fire. The guard now mounts once and reads its state from refs.
+- **"On the widgets" now means ON A TILE, not "inside the rail".** The rail's box is 372 × 936 and mostly empty — its padding, the 24px gaps between cards and every blank run below the last row are all inside it — so the old box test kept the wave alive over gaps, above the first row and right of the last card. Tiles are tested individually with a 7px halo (the gap is 24px, magnified neighbours float ~12px apart), which covers a gap crossing without swallowing the blank areas.
+- **Verified on six exit paths** by `scripts/verify-rail-interaction.cjs` — out of the leftmost card, out of the rightmost, down an empty column, down into the band below the deck, above the first row, and a fast diagonal — each one checked with `document.elementFromPoint` so an endpoint that is genuinely over a card is never mistaken for a defect.
+
 ## v1.6.0 — the rail obeys the transcript measure, and the panel truly swallows it
 
 > This release ships everything that was tracked as "unreleased" in the previous README — the rail layout rewrite and the measurement/hit-test fixes measured against the live GUI on 2026-09-13 and 2026-09-17 — plus two commits that had been pushed to GitHub but never published (the `context-water` 2×2 slot fix and the website design-audit refactor). It is the first release where the rail derives its own width from the product's transcript measure instead of claiming a fixed 372 px.

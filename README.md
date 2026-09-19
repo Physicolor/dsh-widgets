@@ -33,10 +33,14 @@ A self-contained showcase site lives in [`website/`](website/) and is live at **
 
 | Item | Detail |
 | --- | --- |
-| Columns | 1 / 2 / 4 (dropdown in settings, 2 by default) |
+| Max columns | 1 / 2 / 3 / 4 (dropdown in settings, 2 by default). An UPPER BOUND: the deck steps down automatically when space runs short and never exceeds it when space is plentiful |
+| Base card size | The MINIMUM card side (150px by default). The rail is a fluid grid: within a column count the cards share the available width evenly, in 10px tiers, up to the size at which **five card rows still fit the rail with the last row's bottom gap equal to the right gap** (150 → 160 at a 1578×1000 window) — anything beyond that goes back to the transcript |
 | 2×4 tiles | Twice the width of a 2×2 plus a gap, same height; the same widget can be installed in both sizes at once |
-| Gap-free packing | Widgets pack by best-fit; gaps left by 2×4 tiles are backfilled by later 2×2s, so drag-reorder never leaves holes |
+| Gap-free packing | Widgets pack by best-fit; gaps left by 2×4 tiles are backfilled by later 2×2s, so drag-reorder never leaves holes. In a 3-column deck a 2×4 that would strand itself moves one slot earlier and the 2×2 it displaces moves one slot later (rounding), so a wide tile is never left hanging |
+| Live width response | While the conversation width is dragged the available width is recomputed every frame and the cards change TIER the moment a boundary is crossed (the transcript inset is untweened for the drag's duration, so it tracks the conversation exactly); the column count steps at its thresholds. An all-2×4 deck skips the 3-column DEGRADATION step (2 ⇄ 4); an explicit 3-column preference is always honoured |
+| Transition feel | Both a size-tier change and a column change glide with a slight REBOUND (a ~4% overshoot spring) into their new size/cell, plus a small settle wave staggered in packing order (about 1.6% amplitude, 30ms per card) — never one whole-block pulse. The rail's own width and the transcript inset run on the SAME spring, so container, cards and conversation move together instead of the box jumping ahead of the cards |
 | Magnification | Works in multi-column grids too; magnified rows/columns yield by planar distance with constant spacing |
+| Wheel = row detents | The wheel steps whole ROWS (every offset is a multiple of the row pitch = card side + gap), so the top row is never cut in half and one notch pulls the next row up to where the first one was; overflow at the bottom is expected (the default viewport shows five whole rows plus a sliver of the sixth). Scrolling always uses the browser's own smooth scrolling and behaves identically whether the pointer is on a card, in a gap, or on empty rail — never a per-notch hard jump |
 
 ### Continuous Magnification
 
@@ -46,6 +50,16 @@ macOS-Dock-style hover magnification with two modes (toggle in **Settings → Co
 - **Discrete (default)**: reuses the same continuous geometry but snaps the pointer onto a quantized grid (row/column centres + the midpoints between adjacent ones: 2·rows−1 Y points, 2·cols−1 X points), with a 0.2s tween gliding the peak between grid points.
 
 In both modes the magnified deck is painted by a fixed overlay **outside** the rail's scroll-clip box, so leftward growth escapes clipping while the resting rail width (and the conversation column distance) never changes. Scaling preserves the square card shape and constant spacing; magnification is adjustable in settings (`1.0–1.4`).
+
+Entering and leaving a card is **one continuous move**, not two decks cross-fading: at rest the overlay is pixel-identical to the real cards, so the hand-over happens when both agree exactly (invisible), and the following 0.2s tweens every card's top/right/width/height together with its scale into the wave — and back out on leave, returning to the resting geometry before the real deck takes over. The hovered card keeps its brand-blue outline inside the magnified layer.
+
+The overlay's raster is **prewarmed while the rail is idle** (the two decks are pixel-identical at rest, so the prewarm frames are invisible), which is what keeps the enter from repainting 15 cards on its first visible frame — measured before: a 50–68ms paint-only first long frame with no script time; after the prewarm plus a compositing hint on the layer: zero long frames across repeated runs.
+
+The rail and the magnify overlay are driven by **ONE shared pointer surface** (they are siblings by necessity — the overlay must escape the rail's scroll-clip box), and that surface is **geometrically continuous**: while the wave is live the layer itself is hit-capable and its hit box is widened leftwards by the maximum amount the cards overhang the rail (with the left padding compensated so the cards do not move). Cards, the gaps between them, and the strip a magnified card opens past the rail's left edge therefore all stay on the surface — otherwise a gap resolves to the conversation behind, which showed up as "hovering exactly in the gap cancels the wave" and "at the edge it keeps zooming in and out". A genuine leave still ends the wave (with a 6px tolerance so a pixel of jitter cannot flip it), and **the wheel over a magnified card still scrolls the rail** (intercepted as row-detent scrolling and stopped from reaching the conversation behind).
+
+### Loading skeletons
+
+While an external source (OpenCode usage / Command Code / system monitor) has not answered, a card no longer shows an empty or zeroed body: it paints **placeholder pills** in the real card's rhythm — the title stays the widget's real name, the figure and body rows become rounded fills with a 1.5s sweep (static under `prefers-reduced-motion`). When the data lands it replaces the pills in place, with no size or position jump.
 
 ### Built-in Widgets
 
@@ -63,6 +77,7 @@ In both modes the magnified deck is painted by a fixed overlay **outside** the r
 | Tasks | in-progress / done / todo counts |
 | Usage heatmap | GitHub-style calendar heatmap, self-tracked daily usage; 2×2 = ~3-month calendar, 2×4 = half-year all-points view |
 | Last-7-days bars | vertical bars for the last 7 days; bar area height matches the calendar grid |
+| Trajectory | the official 轨迹 rail as a card: one colored bar per input / model / tool beat, rolling right through the newest 30 beats as the model keeps calling tools. **Lane width** is a per-card switch in the component config: `By duration` (default — each beat's width is proportional to how long it took, and an instantaneous input degenerates to a minimum-width tick) or `Equal width` (the fixed-slot window, whose slot freezes at 30 beats and stops re-scaling as the window rolls) |
 | Quote of the day | random motivational quote; text/alignment/wrapping customizable |
 
 ### Quota Manager (Coding Plan group, 2×2)
@@ -114,7 +129,7 @@ A 2×2-only peak-pricing card showing whether the current moment is inside a Dee
 - **Host half**: `webServer` + `credentials` services; registers the `/api/opencode-usage` / `/api/opencode-usage-multi` same-origin proxy routes and the `/api/widgets-state` store (widget-rail configuration persisted to `profiles/web/dsh-widgets-state.json` — the authoritative copy that survives browser origin switches, private mode and site-data clearing);
 - **Reversible cleanup**: all registrations are managed by the fiber-effect lifecycle; uninstalling restores everything;
 - **Slot integration**: `conversation.input.overlay` (the rail drawer, the magnify overlay and the settings drawer — deliberately inside the conversation subtree, which paints *below* the official right panel so the panel can swallow the rail), `conversation.session.header.utilities` (the Components capsule, registered at `order: 5` so its place cannot tie with `dsh-better-sidebar`'s bottom-panel toggle), `conversation.composer.dock` (the collector), `settings.section` (the settings page);
-- **Space contract**: the rail never claims a fixed width. Its budget is `official conversation column width − official transcript measure − 74px box inset`, read from the product's own variables with a geometric fallback, and it degrades (fewer columns → narrower column → yield) so the transcript always keeps the product's measure; see [CHANGELOG.md](CHANGELOG.md) for the measurements.
+- **Space contract**: the rail never claims a fixed width. Its budget is `official conversation column width − official transcript measure − 74px box inset`, read from the product's own variables with a geometric fallback, and inside that budget it behaves as a fluid grid (the semantics of `repeat(auto-fill, minmax(base, 1fr))`: the column count auto-fills against the base size up to the user's cap, and the card side is that column count's even share, quantised onto 10px tiers and clamped between the automatic floor and the "five rows fit" ceiling), so the transcript always keeps the product's measure; only when even a single column no longer fits does the rail yield; see [CHANGELOG.md](CHANGELOG.md) for the measurements.
 
 ## Installation
 
@@ -153,19 +168,15 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 Every release, entry by entry — including the measurement behind each change — lives in **[`CHANGELOG.md`](CHANGELOG.md)** ([中文](CHANGELOG.zh-CN.md)); each version is also published as a [GitHub Release](https://github.com/Physicolor/dsh-widgets/releases) anchored to the commit that shipped it. Raw evidence (CDP probes, screenshots, JSON receipts, per-incident fix records) lives under [`docs/`](docs/). This README keeps only the current release at a glance.
 
-### Latest — v1.6.0
+### Latest — v1.6.1
 
-**The rail derives its width from the product's own transcript measure.** Budget = conversation column width − transcript measure − 74px box inset, with a ladder (preferred layout → fewer columns → narrower single column → yield) instead of a fixed 372px claim. The transcript keeps the product's own measure at every viewport — 748px at 1578/1400/1280 and 664px at 1120, where the rail takes 372/198/154/0 — and the header capsule reads "no room" rather than opening empty.
+**The wheel scrolls in whole rows, and stops when the components end.** One notch moves the deck exactly one row (`2 + row · pitch`, measured 184px at the default tier) on a 240ms tween of its own, with a row guard that snaps any off-grid rest position back onto the grid; LINE/PAGE-mode wheels are discrete (one event = one row) instead of doing nothing or jumping nine. The scrollable content is derived from the geometry so every row can top out — including the last one, which the previous range clamped — and a threshold (`lastRow`) stops the deck once its deepest card can no longer reach the viewport: at 1578×1000 with 8 rows the deck rests at the 7th detent (1290px) and further notches change nothing.
 
-**The right panel now swallows the rail.** The rail's host moved into the conversation subtree, i.e. below the panel's layer (verified with `elementFromPoint`), and pins to the viewport's right edge while a panel exists, so the panel's edge sweeps across the rail and uncovers it on the way back. The official layout package's "track and occupant share one curve" invariant is honored — the transcript inset uses the official 0.3s duration/easing tokens instead of `0.2s ease`.
+**The magnification wave now ends every time.** "On the widgets" means *on a tile*: each card is hit-tested with a 7px halo instead of testing the rail's mostly-empty 372×936 box, and a window-level pointer guard — which had been cancelling its own release timer on every re-render — now mounts once and reads its state from refs. Verified across six exit paths with `document.elementFromPoint` (`scripts/verify-rail-interaction.cjs`).
 
-**Native follow.** CSS anchor positioning (`anchor-name` on the conversation host) makes the rail ride the shell's own style→layout pass: measured per-frame `|column right − rail right| = 0.00px`. The `ResizeObserver` that had been observing **zero** elements (it was constructed before the shell mounted its frame) is now re-bound lazily and self-heals, and the rail predicts the track's final width from the AppFrame's `transitionrun`, so it no longer trails the panel by ~100ms.
+**Shipped with the release:** the `trajectory` widget (官方「轨迹」三色泳道的卡片版) that had been sitting in the tree since the previous version, plus the earlier `context-water` slot fix.
 
-**Hovering the rail costs nothing.** The magnification wave became its own component and scales through `transform` instead of width/height: p50 frame 12.5ms → 4.2ms, p95 41.8ms → 8.3ms, frames > 26ms 15 → 1, JS during 2.6s of hovering 598ms → 193ms.
-
-**Fixed.** A new conversation could leave the rail painted over the hero (the bridge now runs on `useSyncExternalStore` plus an instant-hide class); the turn navigator lost its hover and click to the product's invisible 40px column-width drag band (the hit-test order is fixed, not the geometry); `heatmap-bars` first/last date labels wrapped in their ~14px column and pushed the bars out of the 150px card (`white-space: nowrap`); `context-water` 2×2 burst its 150px slot by 6px; the Components capsule changed place after a bundle reload (`order: 10` collided with `dsh-better-sidebar`).
-
-**Website.** The showcase is now a design-system site — design principles bound to real widgets, the DSH Widget Design Grammar with an interactive rail running the plugin's own magnification curve, Widget Anatomy annotated from measured DOM rectangles, and a 13-rule visual audit scored over all 33 widgets — with real SEO (canonical, Open Graph, JSON-LD `ItemList`, sitemap) generated from the manifests by `website/gen-site.mjs`.
+**Fixed.** The wheel effect listed a rebuilt-on-every-render ref in its dependencies, so its cleanup cancelled the tween mid-flight (rows came to rest a third of the way up, or would not move at all); the rail's scroll range could never reach the last rows; the overlay layer's inflated padding box kept the wave engaged over the transcript; the row guard and the wheel disagreed about where a row sits by 2px.
 
 > Known cost, documented in the changelog: with the rail open at ≤1600px the transcript scroller drops below the product's `900px` container query, so DSH hides its own turn navigator.
 
