@@ -200,9 +200,40 @@ export interface WidgetStats {
   armedAction?: string | null
   /** Current task list (todos projection): status is pending | in_progress | completed. */
   todos?: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed' }> | null
+  /** Rolling window of the live conversation trajectory (oldest first, newest
+   *  last, at most `TRAJECTORY_WINDOW` beats). Re-derived on every node/timeline
+   *  change, so in-flight model steps and tool calls appear as they run. */
+  trajectory?: TrajectoryBeat[]
   /** Per-instance config merged by the shell (typed any: widgets with a
    *  configSchema read their keys from the same record the collector feeds). */
   [key: string]: unknown
+}
+
+/** One beat of the conversation trajectory: which lane fired, and how long it
+ *  took. Mirrors the official 轨迹 timeline's three lanes (输入 / 模型 / 工具):
+ *  an input message has no duration of its own (0), a model step spans its
+ *  stepStartTime → completedTime, a tool call spans callTime → result. */
+export interface TrajectoryBeat {
+  kind: 'input' | 'model' | 'tool'
+  /** Duration in ms; 0 for a user/steering message (the input lane is instant). */
+  ms: number
+}
+
+/** Size of the rolling trajectory window: how many beats a 对话轨迹 card shows
+ *  and therefore how many fixed slots the lanes chart draws. The collector
+ *  trims to it and the renderer keeps the slot width stable at it. */
+export const TRAJECTORY_WINDOW = 30
+
+/** One traced segment of a `lanes` chart: a beat plus its identity in the
+ *  rolling window (the widget passes beats oldest→newest; the renderer derives
+ *  the slot from the ARRAY INDEX, so index 0 is the oldest beat shown). */
+export interface LaneDatum {
+  kind: TrajectoryBeat['kind']
+  /** Hover tooltip text (e.g. `模型 3.2s`); the widget owns its wording. */
+  label?: string
+  /** Beat duration in ms. Read only when the chart asks for `laneSizing: 'time'`
+   *  (0 for an input, which then collapses to a minimum-width tick). */
+  ms?: number
 }
 
 /** One bar for a mini bar chart. */
@@ -216,8 +247,21 @@ export interface BarDatum {
 
 /** A chart block a card body can render (declarative, theme tokens only). */
 export interface WidgetChart {
-  kind: 'bars' | 'ring' | 'rings' | 'line' | 'segments' | 'heatmap' | 'barsV' | 'figures'
+  kind: 'bars' | 'ring' | 'rings' | 'line' | 'segments' | 'heatmap' | 'barsV' | 'figures' | 'lanes'
   bars?: BarDatum[]
+  /** Trajectory lanes (对话轨迹): one bar per beat, newest at the RIGHT, colored
+   *  by the official 轨迹 lane colors (输入 / 模型 / 工具). No axes, no corner
+   *  labels — the bars own the whole remaining card height. */
+  lanes?: LaneDatum[]
+  /** How `lanes` distributes width along the shared time axis (per-instance
+   *  choice in the widget's own config):
+   *   - 'time'  (default) — each beat's width is proportional to its duration, so
+   *     a long tool call visibly owns more of the lane than a quick model step
+   *     (an input, ~0ms, collapses to a minimum-width tick);
+   *   - 'equal' — the fixed-slot window: every beat is one slot wide, the slot
+   *     freezes at TRAJECTORY_WINDOW beats, and the row stops re-scaling as the
+   *     window rolls. */
+  laneSizing?: 'equal' | 'time'
   /** Donut row (e.g. OpenCode rolling/weekly/monthly, Command Code 5h/weekly/
    *  monthly). `label` renders as a SMALL GREY caption beside the percent —
    *  leave it empty when the figure should stand alone; `name` then carries the
@@ -346,6 +390,19 @@ export interface WidgetRenderOut {
    *  'poolView'); sys widgets use their own field (e.g. 'bigMetric') so their
    *  cycle never collides with the usage pool view nor fires multikey calls. */
   cycle?: { modes: string[]; current: string; hint: string; store?: string }
+  /**
+   * The card's data source has not answered yet: paint the LOADING SKELETON
+   * (rounded placeholder pills in the card's own layout rhythm) instead of the
+   * body. Only `title` is read from the render in that state.
+   *
+   * The SHELL decides this, not the widget: a widget cannot tell "my data
+   * source is still in flight" from "my data source answered with nothing", and
+   * those two deserve different cards (placeholder vs 数据不足).
+   */
+  skeleton?: boolean
+  /** Placeholder body rows the skeleton draws under the title/value pills.
+   *  Default 2; the shell picks a shape that matches the card family. */
+  skeletonRows?: number
 }
 
 /** A per-card configuration field rendered in the 组件配置 tab. Text fields

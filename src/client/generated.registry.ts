@@ -20,6 +20,7 @@ import w_tokens from '../widgets/tokens'
 import w_context from '../widgets/context'
 import w_context_water from '../widgets/context-water'
 import w_task from '../widgets/task'
+import w_trajectory from '../widgets/trajectory'
 import w_quote from '../widgets/quote'
 import w_heatmap from '../widgets/heatmap'
 import w_heatmap_bars from '../widgets/heatmap-bars'
@@ -56,6 +57,7 @@ export const WIDGETS: import('./lib/contract').Widget[] = [
   w_context,
   w_context_water,
   w_task,
+  w_trajectory,
   w_quote,
   w_heatmap,
   w_heatmap_bars,
@@ -93,6 +95,7 @@ export const ALL_IDS: string[] = [
   'context',
   'context-water',
   'task',
+  'trajectory',
   'quote',
   'heatmap',
   'heatmap-bars',
@@ -131,6 +134,7 @@ export const ALL_INSTANCES: string[] = [
   `context-water@2x2`,
   `context-water@2x4`,
   `task@2x2`,
+  `trajectory@2x2`,
   `quote@2x2`,
   `heatmap@2x2`,
   `heatmap@2x4`,
@@ -268,6 +272,15 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "card.task.done": "{n} 已完成",
     "card.task.none": "暂无任务",
     "card.task.sub": "{doing} 进行中 · {pending} 待办",
+    "widget.trajectory.name": "对话轨迹",
+    "widget.trajectory.desc": "官方「轨迹」三色泳道的卡片版：输入 / 模型 / 工具 每次触发一根色条，随模型调用工具实时右移滚动",
+    "card.trajectory.legend": "输入 {input}  模型 {model}  工具 {tool}",
+    "card.trajectory.input": "输入",
+    "card.trajectory.model": "模型",
+    "card.trajectory.tool": "工具",
+    "config.laneSizing": "泳道宽度",
+    "config.laneSizing.time": "按时长",
+    "config.laneSizing.equal": "等宽",
     "widget.quote.name": "今日寄语",
     "widget.quote.desc": "显示你自定义的一句话（未填写文本时不显示内容）",
     "card.quote.title": "今日寄语",
@@ -426,6 +439,15 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "card.task.done": "{n} done",
     "card.task.none": "No tasks",
     "card.task.sub": "{doing} in progress · {pending} pending",
+    "widget.trajectory.name": "Trajectory",
+    "widget.trajectory.desc": "The official 轨迹 rail as a card: one colored bar per input / model / tool beat, rolling right as the model keeps calling tools",
+    "card.trajectory.legend": "In {input}  Model {model}  Tool {tool}",
+    "card.trajectory.input": "Input",
+    "card.trajectory.model": "Model",
+    "card.trajectory.tool": "Tool",
+    "config.laneSizing": "Lane Width",
+    "config.laneSizing.time": "By duration",
+    "config.laneSizing.equal": "Equal width",
     "widget.quote.name": "Daily Quote",
     "widget.quote.desc": "Shows a custom sentence you typed (hidden while empty)",
     "card.quote.title": "Daily Quote",

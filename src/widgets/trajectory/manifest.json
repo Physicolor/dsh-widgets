@@ -1,0 +1,31 @@
+{
+  "id": "trajectory",
+  "order": 23,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.trajectory.name": "对话轨迹",
+      "widget.trajectory.desc": "官方「轨迹」三色泳道的卡片版：输入 / 模型 / 工具 每次触发一根色条，随模型调用工具实时右移滚动",
+      "card.trajectory.legend": "输入 {input}  模型 {model}  工具 {tool}",
+      "card.trajectory.input": "输入",
+      "card.trajectory.model": "模型",
+      "card.trajectory.tool": "工具",
+      "config.laneSizing": "泳道宽度",
+      "config.laneSizing.time": "按时长",
+      "config.laneSizing.equal": "等宽"
+    },
+    "en": {
+      "widget.trajectory.name": "Trajectory",
+      "widget.trajectory.desc": "The official 轨迹 rail as a card: one colored bar per input / model / tool beat, rolling right as the model keeps calling tools",
+      "card.trajectory.legend": "In {input}  Model {model}  Tool {tool}",
+      "card.trajectory.input": "Input",
+      "card.trajectory.model": "Model",
+      "card.trajectory.tool": "Tool",
+      "config.laneSizing": "Lane Width",
+      "config.laneSizing.time": "By duration",
+      "config.laneSizing.equal": "Equal width"
+    }
+  }
+}

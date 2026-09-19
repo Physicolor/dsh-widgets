@@ -10,7 +10,7 @@ import * as React from 'react'
 import { WIDGETS } from './generated.registry'
 import {
   badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf,
-  widgetName, widgetDesc, widgetSimToggle, fieldLabel, optionLabel,
+  widgetName, widgetDesc, widgetSimToggle, fieldLabel, optionLabel, TRAJECTORY_WINDOW,
   type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize, type WidgetRenderMeta,
 } from './lib/contract'
 import { fmtShortDate, buildRollingGrid } from './lib/format'
@@ -67,6 +67,14 @@ const PREVIEW_STATS: WidgetStats = {
   heatmapGrid: buildRollingGrid(PREVIEW_RAW, 13),
   heatmapRaw: PREVIEW_RAW,
   armedAction: null,
+  // 对话轨迹 preview: a plausible 30-beat rhythm (inputs are instantaneous,
+  // model steps 0.6–4 s, tool calls 0.2–9 s) so the lanes render in the market
+  // and config previews without a live session.
+  trajectory: Array.from({ length: 30 }, (_, i) => {
+    const kind = (['input', 'model', 'tool', 'model', 'tool', 'model', 'input', 'model', 'tool', 'tool'] as const)[(i * 7) % 10]!
+    const ms = kind === 'input' ? 0 : Math.round(kind === 'model' ? 600 + ((i * 977) % 3400) : 200 + ((i * 613) % 8800))
+    return { kind, ms }
+  }),
   // Machine snapshot mock for the System widget previews (values mirror a real
   // mid-load laptop so the preview looks live, not synthetic).
   sysinfo: {
@@ -109,7 +117,7 @@ export interface Prefs {
   cardConfigs: Record<string, Record<string, unknown>>
   /** Maximum number of installed widgets shown in the rail. */
   maxWidgets: number
-  /** Number of card columns in the rail (1 / 2 / 4). Default 2. */
+  /** Number of card columns in the rail (1 / 2 / 3 / 4). Default 2. */
   columns: number
   /** Hide the official composer stats line under the input box (personal
    *  preference — the rail widgets can show the same data). Default OFF so
@@ -147,6 +155,32 @@ const CHART_TONES: Record<string, string> = {
   danger: 'var(--dsw-alias-state-error-primary)',
   muted: 'var(--dsw-alias-label-tertiary)',
 }
+
+/** 对话轨迹 lane colors — EXACTLY the official 轨迹 timeline's three lanes
+ *  (TrajectoryTimeline.module.css `[data-timeline-span=…]`): 输入 = business
+ *  primary, 模型 = the assistant span's decoding color (brand blue 60% mixed
+ *  with the error red), 工具 = the warn label. Keeping the expressions (not
+ *  resolved hex) means the card follows light/dark and future token changes. */
+const LANE_TONES: Record<string, string> = {
+  input: 'var(--dsw-alias-state-business-primary)',
+  model: 'color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 60%, var(--dsw-alias-state-error-secondary))',
+  tool: 'var(--dsw-alias-state-warn-label)',
+}
+
+/** Lane draw order, top→bottom — the SAME order as the subtitle's counts
+ *  (输入 / 模型 / 工具), which is also the official 轨迹 rail's order. */
+const LANE_ORDER: Array<'input' | 'model' | 'tool'> = ['input', 'model', 'tool']
+
+/** The trajectory window is a FIXED slot count: bars keep a constant width as
+ *  the window rolls (newest entering at the right), instead of the whole row
+ *  re-scaling every time a beat arrives. Until the window fills, the beats SHARE
+ *  the lane instead (n beats → 100/n % each), so a lone segment owns its lane. */
+const LANE_SLOTS = TRAJECTORY_WINDOW
+
+/** The lane block's height as a fraction of the card side: "at most up to the
+ *  50% line" — the chart lives in the card's middle/lower band and leaves a
+ *  clear gap under the title+subtitle row instead of filling the whole card. */
+const LANE_HEIGHT_RATIO = 0.5
 
 function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; width?: number }): React.ReactElement | null {
   const scale = side / BASE_SIDE
@@ -214,6 +248,77 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
     })
     return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 4, height: `${barAreaH}px`, marginTop: `${Math.round(4 * scale)}px` } }, bars)
   }
+  if (chart.kind === 'lanes' && chart.lanes) {
+    // 对话轨迹 — the official 轨迹 rail as a card: THREE horizontal lanes
+    // (输入 / 模型 / 工具, same order as the subtitle), one segment per beat at
+    // its window position, left→right = oldest→newest.
+    //
+    // WIDTH is per-instance (`chart.laneSizing`, a config switch on the card):
+    //  - 'time' (default): each beat owns a share of the lane proportional to its
+    //    DURATION, so the shape of the strip is the actual rhythm of the session
+    //    (a 9s tool call is visibly longer than a 0.6s model step). A beat with
+    //    no duration of its own (an input message) keeps a minimum-width tick
+    //    instead of vanishing.
+    //  - 'equal': the original fixed-slot window — every beat is one slot wide,
+    //    the slot freezes at TRAJECTORY_WINDOW beats, and the row stops
+    //    re-scaling as the window rolls (n beats share the lane while it fills).
+    //
+    // Height rule (both modes): at most 50% of the card, so the block sits in
+    // the card's middle band with a real gap under the title/legend row (the
+    // card's own `marginTop:auto` foot pushes it down). No axis, no corner
+    // labels.
+    const lanes = chart.lanes
+    const n = lanes.length
+    const timeMode = chart.laneSizing !== 'equal' && lanes.some((l) => (l.ms ?? 0) > 0)
+    const spans: Array<[number, number]> = []
+    if (timeMode) {
+      const total = lanes.reduce((sum, l) => sum + Math.max(0, l.ms ?? 0), 0) || 1
+      let acc = 0
+      for (const l of lanes) {
+        const w = (Math.max(0, l.ms ?? 0) / total) * 100
+        spans.push([acc, w])
+        acc += w
+      }
+    } else {
+      const slots = Math.max(1, Math.min(LANE_SLOTS, n))
+      const slotPct = 100 / slots
+      for (let i = 0; i < n; i++) spans.push([i * slotPct, slotPct])
+    }
+    const rows = LANE_ORDER.map((kind) => {
+      const segs = lanes
+        .map((l, i) => ({ l, i }))
+        .filter((e) => e.l.kind === kind)
+        .map((e) => React.createElement('div', {
+          key: e.i,
+          className: 'dsx-lane-seg',
+          title: e.l.label,
+          style: {
+            position: 'absolute',
+            left: `${spans[e.i][0].toFixed(4)}%`,
+            // 1px shaved off the slot so neighbouring beats stay visually apart;
+            // one beat alone still spans the full lane (100% - 1px). A
+            // duration-proportional slice can be smaller than that 1px, so it
+            // falls back to the 2px minimum instead of collapsing to zero.
+            width: `calc(${spans[e.i][1].toFixed(4)}% - 1px)`,
+            minWidth: 2,
+            top: 0,
+            bottom: 0,
+            borderRadius: 2,
+            background: LANE_TONES[kind] ?? LANE_TONES.input,
+            opacity: 0.9,
+          },
+        }))
+      return React.createElement('div', {
+        key: kind,
+        className: 'dsx-lane-row',
+        style: { position: 'relative', flex: 1, minHeight: 0 },
+      }, ...segs)
+    })
+    return React.createElement('div', {
+      className: 'dsx-lanes',
+      style: { width: '100%', height: `${Math.round(side * LANE_HEIGHT_RATIO)}px`, display: 'flex', flexDirection: 'column', gap: Math.max(3, Math.round(4 * scale)) },
+    }, ...rows)
+  }
   if (chart.kind === 'segments' && chart.segments && chart.totalTokens) {
     // Strictly mirrors the official ContextMeter (JObwrW) colors + layout:
     // system = bluish-neutral, tools = violet literal, messages = blue.
@@ -251,11 +356,11 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
     const rows = chart.segments.map((s, i) => {
       const tint = officialColors[i % officialColors.length] ?? officialColors[0]
       return React.createElement('div', { key: i, style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '2px 0', fontSize: `${Math.round(12 * scale)}px`, lineHeight: 1.2 } },
-        React.createElement('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--dsw-alias-label-secondary)' } },
+        React.createElement('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--dsw-alias-label-secondary)' } },
           React.createElement('span', { 'aria-hidden': true, style: { width: 8, height: 8, borderRadius: 2, background: tint, flex: 'none' } }),
           s.label,
         ),
-        React.createElement('span', { style: { fontVariantNumeric: 'tabular-nums', color: 'var(--dsw-alias-label-primary)' } }, fmt(s.tokens)),
+        React.createElement('span', { style: { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none', color: 'var(--dsw-alias-label-primary)' } }, fmt(s.tokens)),
       )
     })
     const bh = Math.max(4, Math.round(5 * scale))
@@ -292,7 +397,12 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
             React.createElement('span', { style: { fontSize: `${Math.round(11 * scale)}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 } }, valueText),
             React.createElement('span', { style: { fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1, overflow: 'hidden', textOverflow: 'ellipsis' } }, rg.label),
           )
-        : React.createElement('div', { style: { fontSize: `${Math.round(11 * scale)}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 } }, valueText)
+        // nowrap: the percent sits in a ~34px cell on a 3-ring card, and "25.4%"
+        // is ~32px wide — without nowrap the "%" breaks onto a second line, which
+        // both doubles the caption's height (the ring row is bottom-aligned, so it
+        // pushed the whole chart up) and read as a malformed figure. Measured on
+        // the Command Code 窗口 card at 150px: value box 11px/1 → 2 lines.
+        : React.createElement('div', { style: { fontSize: `${Math.round(11 * scale)}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1, whiteSpace: 'nowrap' } }, valueText)
       // Ring → caption spacing: 4px (same rhythm as bar → label in the bars
       // charts). The 2px gap used to glue the percent text to the ring; the
       // thicker visual breathing matters most on the 2×4 board's small rings.
@@ -461,6 +571,35 @@ function RichBlock({ rich, scale }: { rich: WidgetRich; scale: number }): React.
   return React.createElement(React.Fragment)
 }
 
+/**
+ * Loading skeleton: the card frame plus rounded placeholder pills in the SAME
+ * vertical rhythm as a real body (figure line, body rows), so the card's size
+ * and shape are already correct while the data source is still in flight and
+ * nothing re-flows when the real content lands.
+ *
+ * The TITLE stays real text: it comes from the widget descriptor (its name),
+ * not from the data source, so it is already known — and a rail of tiles that
+ * still say which widget they are reads as loading, while a rail of nameless
+ * grey pills reads as broken. Only the DATA (figure + body) is placeholder.
+ */
+function SkeletonBody({ out, unit, width, rows = 2 }: { out: WidgetRenderOut; unit: number; width?: number; rows?: number }): React.ReactElement {
+  const scale = unit / BASE_SIDE
+  const boxW = width ?? unit
+  const count = Math.max(1, Math.min(4, Math.round(rows)))
+  const pill = (key: string, w: string, h: number, mt: number): React.ReactElement =>
+    React.createElement('div', { key, className: 'dsx-sk', style: { width: w, height: `${h}px`, borderRadius: `${Math.max(3, Math.round(h / 2))}px`, marginTop: `${mt}px` } })
+  return React.createElement('div', {
+    className: 'dsx-stats-card dsx-sk-card',
+    style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, borderRadius: `${Math.round(16 * scale)}px`, padding: `${Math.round(12 * scale)}px` },
+  },
+    React.createElement('div', { className: 'dsx-stats-card-title', style: { fontSize: `${Math.round(13 * scale)}px`, minWidth: 0 } }, out.title),
+    React.createElement('div', { style: { marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: Math.round(8 * scale) } },
+      pill('v', '44%', Math.round(20 * scale), 0),
+      ...Array.from({ length: count }, (_, i) => pill(`r${i}`, `${Math.round(92 - i * 26)}%`, Math.round(10 * scale), 0)),
+    ),
+  )
+}
+
 export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetRenderOut; unit: number; width?: number; onAction?: (id: string) => void; onCycle?: (out: WidgetRenderOut) => void }): React.ReactElement {
   const scale = unit / BASE_SIDE
   const boxW = width ?? unit
@@ -480,6 +619,9 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
     if (pressTimer.current !== undefined) window.clearTimeout(pressTimer.current)
     pressTimer.current = window.setTimeout(() => setPressed(false), 190)
   }
+  // Loading skeleton (see SkeletonBody): declared AFTER the hooks so the hook
+  // order stays unconditional across the loading → loaded transition.
+  if (out.skeleton) return React.createElement(SkeletonBody, { out, unit, width: boxW, rows: out.skeletonRows })
   // Head row = two INDEPENDENT slots: the title box (which ellipsizes rather
   // than pushing the figures out) and — when `headRight` is DEFINED, even as ''
   // — a right slot holding the optional big value plus the small caption, hard
@@ -515,9 +657,12 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
   ]
   if (out.headAfter) {
     // Prominent figure + small figures on their own row under the title.
-    headEls.push(React.createElement('div', { key: 'ha', className: 'dsx-stats-card-headafter', style: { display: 'flex', alignItems: 'baseline', gap: 6, marginTop: `${Math.round(2 * scale)}px` } },
-      out.headAfter.big != null ? React.createElement('span', { style: { fontSize: `${valuePx}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums' } }, out.headAfter.big) : null,
-      out.headAfter.small != null ? React.createElement('span', { style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, out.headAfter.small) : null,
+    // nowrap on the ROW (not just the small text): the big figure is a single
+    // token ("64%", "12.2K") that must never break, and the whole row is
+    // bottom-anchored on several cards, so a wrap would shift the chart up.
+    headEls.push(React.createElement('div', { key: 'ha', className: 'dsx-stats-card-headafter', style: { display: 'flex', alignItems: 'baseline', gap: 6, marginTop: `${Math.round(2 * scale)}px`, minWidth: 0, whiteSpace: 'nowrap' } },
+      out.headAfter.big != null ? React.createElement('span', { style: { fontSize: `${valuePx}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.25, whiteSpace: 'nowrap' } }, out.headAfter.big) : null,
+      out.headAfter.small != null ? React.createElement('span', { style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' } }, out.headAfter.small) : null,
     ))
   }
   if (out.legend) {
@@ -532,13 +677,16 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
     // active row lights up brand-blue and scales up slightly, the idle row
     // keeps the faint legend look. Both use the same font as the token-bar
     // legend so the format stays consistent across cards.
-    headEls.push(React.createElement('div', { key: 'mt', className: 'dsx-stats-card-meter', style: { display: 'flex', flexDirection: 'column', gap: 3, marginTop: `${Math.round(4 * scale)}px` } },
+    headEls.push(React.createElement('div', { key: 'mt', className: 'dsx-stats-card-meter', style: { display: 'flex', flexDirection: 'column', gap: 3, marginTop: `${Math.round(4 * scale)}px`, minWidth: 0 } },
       out.meter.map((m, i) => React.createElement('div', { key: i, style: {
         fontSize: `${m.active ? Math.round(12 * scale) : Math.round(10 * scale)}px`,
         fontWeight: m.active ? 600 : 500,
         color: m.active ? 'var(--dsw-alias-state-business-primary)' : 'var(--dsw-alias-label-tertiary)',
         lineHeight: 1.2,
         fontVariantNumeric: 'tabular-nums',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
         transition: 'color 0.25s ease, font-size 0.25s ease, font-weight 0.25s ease',
       } }, m.label)),
     ))
@@ -1012,7 +1160,7 @@ function Row({ title, desc, children }: { title: string; desc: string; children:
 
 export function SettingsPanel({ controller }: { controller: WidgetsController }): React.ReactElement {
   const { prefs, setPrefs } = controller
-  const colValue = [1, 2, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
+  const colValue = [1, 2, 3, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
     React.createElement(Row, {
       title: t('settings.columns.title'), desc: t('settings.columns.desc'),
@@ -1020,7 +1168,7 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
         className: 'dsx-select', value: colValue,
         onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setPrefs({ columns: Number(e.target.value) }),
       },
-        [1, 2, 4].map((c) => React.createElement('option', { key: c, value: c }, t('settings.columns.option', { n: c }))),
+        [1, 2, 3, 4].map((c) => React.createElement('option', { key: c, value: c }, t('settings.columns.option', { n: c }))),
       ),
     }),
     React.createElement(Row, {
