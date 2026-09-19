@@ -1,5 +1,9 @@
 <p align="right"><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
 
+<p align="center">
+  <img src="docs/icon/icon.svg" alt="dsh-widgets" width="104" height="104">
+</p>
+
 <h1 align="center">DeepSeek-Harness Widgets</h1>
 
 <p align="center">
