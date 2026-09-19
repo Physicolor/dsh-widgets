@@ -6,8 +6,17 @@
  * font-size (the 10-11px grey legends, date labels) then inherits a 24px line
  * box, blowing up the card's text height. Pin the app-level typography here
  * (measured on the app root: 16px / line-height: normal) so nothing from the
- * transcript can leak in; card rules that declare their own line-height win. */
-.dsx-stats-rail {
+ * transcript can leak in; card rules that declare their own line-height win.
+ *
+ * The MAGNIFY OVERLAY needs the SAME pin, and is listed here for exactly that
+ * reason: it is a fixed SIBLING of the rail (it has to escape the rail's
+ * scroll-clip box), so it does not inherit the rail's typography — it inherits
+ * the conversation's. Without this second selector the magnified copies laid
+ * their legends/subtitles out with a 24px line box while the resting cards used
+ * `normal`, so hovering visibly shifted the 账期 / 已完成·进行中·待办 / 系统提示词
+ * rows of nearly every card (reported 2026-09-19 with a photo). */
+.dsx-stats-rail,
+.dsx-magnify-layer {
   font-family: var(--dsw-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif);
   font-size: 16px;
   line-height: normal;
@@ -67,6 +76,55 @@
 .dsx-stats-card-title {
   color: var(--dsw-alias-state-business-primary);
   line-height: 1.2;
+}
+
+/* Text inside a card holds its SHAPE. The card is a fixed-size tile: a wrapped
+   label does not make it taller, it pushes its own content out of the tile's
+   floor (the ring rows are bottom-aligned) and reads as a malformed figure.
+   Measured 2026-09-19 on the Command Code 窗口 card: "25.4%" wrapped at the "%"
+   in its 34px ring cell, doubling the caption's height. Every single-line text
+   node therefore refuses to wrap and ellipsizes instead; blocks that are meant
+   to wrap opt back in explicitly (the quote block sets white-space itself). */
+.dsx-stats-card-title,
+.dsx-stats-card-value,
+.dsx-stats-card-sub,
+.dsx-stats-card-legend,
+.dsx-stats-card-headafter,
+.dsx-stats-card-meter {
+  white-space: nowrap;
+}
+.dsx-stats-card-value,
+.dsx-stats-card-sub,
+.dsx-stats-card-legend {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Loading skeleton ─────────────────────────────────────────────────────
+   Placeholder pills in the card's own rhythm: same insets, same line heights
+   as the real title / figure / body rows, so nothing re-flows when the data
+   lands. The shimmer is a background sweep (compositor-only, no layout) and is
+   disabled under reduced motion, where the pill keeps its flat tint. */
+.dsx-sk {
+  background: linear-gradient(
+    90deg,
+    var(--dsw-alias-interactive-bg-hover) 0%,
+    color-mix(in srgb, var(--dsw-alias-interactive-bg-hover) 45%, var(--dsw-alias-bg-layer-1)) 50%,
+    var(--dsw-alias-interactive-bg-hover) 100%
+  );
+  background-size: 200% 100%;
+  animation: dsx-sk-sweep 1.5s var(--ds-ease-in-out) infinite;
+}
+@keyframes dsx-sk-sweep {
+  0% { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dsx-sk { animation: none; }
+}
+.dsx-sk-card {
+  /* No interactive affordance while there is nothing to interact with. */
+  pointer-events: none;
 }
 
 .dsx-stats-card-value {
@@ -129,6 +187,17 @@
      the transcript's inset and the panel's push start and end together. 0.2s/ease
      here was visibly out of step with the 0.3s track. */
   transition: padding-right var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+}
+
+/* A conversation-width handle is HELD: the rail's claim is recomputed every
+   frame. The inset must NOT run on the shell's 0.3s track curve here (it would
+   spend the whole drag chasing a moving target — the original "the widget area
+   lags behind the conversation" report), but it must not be INSTANT either: the
+   card size now moves in tiers, so every claim change is a discrete hop that the
+   cards animate. Using the cards' own spring keeps the rail, the cards and the
+   transcript on ONE curve (see SLOT_SPRING in the client half). */
+html.dsx-live-width [data-conversation-scroll] {
+  transition: padding-right 0.26s cubic-bezier(0.34, 1.36, 0.52, 1);
 }
 
 /* Yielded (the panel owns the space): the drawer is faded out but stays
@@ -332,7 +401,19 @@ body.dsx-stats-no-session .dsx-stats-drawer {
    spacing between cards is preserved at every zoom. The CSS only animates the
    reflow properties (top/width/height) and paints the brand-blue hover edge. ── */
 .dsx-stats-card-slot {
-  transition: top 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out);
+  /* `right` is part of the glide: a column-count change re-seats cards
+     horizontally as well as vertically (the deck is right-anchored), and without
+     it the horizontal move cut while top/width/height tweened — measured
+     2026-09-18 on a 4→3 column step.
+     A SPRING curve (slight overshoot, ~4%) on purpose: card size moves in
+     CARD_SIZE_STEP tiers and the column count in discrete steps, and this is
+     what makes each hop read as the iOS/iPadOS window-resize rebound the user
+     asked for — the card overshoots its new cell by a few px, then settles. */
+  transition:
+    top 0.26s cubic-bezier(0.34, 1.36, 0.52, 1),
+    right 0.26s cubic-bezier(0.34, 1.36, 0.52, 1),
+    width 0.26s cubic-bezier(0.34, 1.36, 0.52, 1),
+    height 0.26s cubic-bezier(0.34, 1.36, 0.52, 1);
   /* No persistent will-change: every card slot used to hold a permanent
      compositing layer (two decks × N cards), inflating GPU memory and the
      per-frame composite cost while the right sidebar animates. Browsers
@@ -343,20 +424,76 @@ body.dsx-stats-no-session .dsx-stats-drawer {
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-/* Static-deck fade while the magnification wave is engaged. Toggled as a CLASS on
-   the deck wrapper (not as an inline per-slot style): the deck element's identity
-   must stay stable so React bails out of the whole card subtree on hover frames —
-   re-rendering it per pointer frame is what made hovering the rail cost 12.5ms
-   p50 / 41.8ms p95 per frame (measured 2026-09-13). The magnified copies are
-   painted by the overlay layer instead. */
+/* Static-deck visibility while the magnification overlay is live.
+   NOT a cross-fade: the overlay is pixel-identical to this deck at rest (same
+   geometry, scale 1), so the swap between "real cards" and "overlay cards" is
+   invisible when it happens at that instant. Fading the two decks against each
+   other is what made the hover read as a cut instead of a move (measured
+   2026-09-19: the two decks were both ~50% opaque at different geometries for
+   ~150ms).
+   And NOT `opacity: 0` either: an opacity change on a non-composited subtree
+   forces the browser to paint those 15 cards into a transparency layer first —
+   measured with the Long Animation Frame API as a 50-68ms paint-only stall on
+   every enter (no script time, ~1ms style/layout). `visibility` is a discrete
+   paint property: the subtree is skipped, nothing is re-rastered, and the swap
+   still lands on the frame that matters because both decks agree geometrically
+   there. It also stops the hidden cards from stealing clicks for affordances the
+   user cannot see. */
 .dsx-wave-deck .dsx-stats-card-slot,
 .dsx-wave-deck .dsx-stats-add {
-  opacity: 1;
-  transition: opacity 0.15s ease;
+  visibility: visible;
 }
 .dsx-wave-deck.dsx-wave-on .dsx-stats-card-slot,
 .dsx-wave-deck.dsx-wave-on .dsx-stats-add {
-  opacity: 0;
+  visibility: hidden;
+}
+
+/* ── Deck rearrangement wave ──
+   A column-count change re-seats every card (the slot transitions below glide
+   them to their new top/right/width/height). That glide alone reads as a
+   mechanical slide; this adds a small per-card settle — a 1.5% vertical bob
+   with a light overshoot — staggered by the card's position in the NEW grid, so
+   the deck settles like a wave travelling left→right / top→bottom instead of
+   breathing as one block (the previous whole-deck `scale(0.93 → 1.035)` jelly
+   moved the entire rail as a single object, ±3.5%).
+   The stagger delay is stamped per slot as --dsx-wave-delay; amplitude stays
+   small on purpose (2% translate, 1% scale). Compositor-only. */
+@keyframes dsx-card-wave {
+  0% { transform: translateY(-1.6%) scale(0.99); }
+  55% { transform: translateY(0.5%) scale(1.003); }
+  100% { transform: translateY(0) scale(1); }
+}
+.dsx-wave-run .dsx-stats-card-slot {
+  animation: dsx-card-wave 0.34s var(--ds-ease-in-out) both;
+  animation-delay: var(--dsx-wave-delay, 0ms);
+}
+/* Wave stagger: index by DOM order, which IS the deck's row-major order (the
+   packing seats cards left→right, row by row). 30ms per step, capped after 12
+   (~360ms) so a long deck still settles as one gesture. */
+.dsx-wave-run .dsx-stats-card-slot:nth-child(1) { --dsx-wave-delay: 0ms; }
+.dsx-wave-run .dsx-stats-card-slot:nth-child(2) { --dsx-wave-delay: 30ms; }
+.dsx-wave-run .dsx-stats-card-slot:nth-child(3) { --dsx-wave-delay: 60ms; }
+.dsx-wave-run .dsx-stats-card-slot:nth-child(4) { --dsx-wave-delay: 90ms; }
+.dsx-wave-run .dsx-stats-card-slot:nth-child(5) { --dsx-wave-delay: 120ms; }
+.dsx-wave-run .dsx-stats-card-slot:nth-child(6) { --dsx-wave-delay: 150ms; }
+.dsx-wave-run .dsx-stats-card-slot:nth-child(7) { --dsx-wave-delay: 180ms; }
+.dsx-wave-run .dsx-stats-card-slot:nth-child(8) { --dsx-wave-delay: 210ms; }
+.dsx-wave-run .dsx-stats-card-slot:nth-child(9) { --dsx-wave-delay: 240ms; }
+.dsx-wave-run .dsx-stats-card-slot:nth-child(10) { --dsx-wave-delay: 270ms; }
+.dsx-wave-run .dsx-stats-card-slot:nth-child(11) { --dsx-wave-delay: 300ms; }
+.dsx-wave-run .dsx-stats-card-slot:nth-child(n+12) { --dsx-wave-delay: 330ms; }
+@media (prefers-reduced-motion: reduce) {
+  .dsx-wave-run .dsx-stats-card-slot { animation: none; }
+}
+/* The magnified overlay paints its own copy of the card, and that copy cannot
+   use :hover (the layer is pointer-events:none — the pointer stays on the rail).
+   Without this the blue hover outline vanished the moment the wave engaged, so
+   the card you are pointing at was the only one with no hover feedback. */
+.dsx-slot-focused .dsx-stats-card {
+  border-color: var(--dsw-alias-state-business-primary);
+  box-shadow:
+    0 0 0 1px var(--dsw-alias-state-business-primary),
+    0 10px 28px color-mix(in srgb, var(--dsw-alias-state-business-primary) 26%, transparent);
 }
 .dsx-stats-card-slot:hover .dsx-stats-card {
   border-color: var(--dsw-alias-state-business-primary);
