@@ -7,11 +7,13 @@
   "locale": {
     "zh": {
       "widget.cc-subscription.name": "套餐",
-      "widget.cc-subscription.desc": "当前套餐、状态与账期结束时间"
+      "widget.cc-subscription.desc": "当前套餐等级（GOAT / Pro / Max …）与账期结束时间",
+      "widget.cc-subscription.simToggle": "切换套餐等级预览"
     },
     "en": {
       "widget.cc-subscription.name": "Plan",
-      "widget.cc-subscription.desc": "Current plan, status and billing period end"
+      "widget.cc-subscription.desc": "Current plan tier (GOAT / Pro / Max …) and the billing period end",
+      "widget.cc-subscription.simToggle": "Cycle the plan tier"
     }
   }
 }

@@ -43,6 +43,8 @@ function main() {
     check(`host: endpoint ${ep}`, ok, ok ? 'present' : 'missing')
   }
   check('host: COMMANDCODE_API_KEY credential ref', host.includes('COMMANDCODE_API_KEY'))
+  check('host: pooled spare refs (…_API_KEY_2 …)', host.includes('COMMANDCODE_POOL_ENVS') && /COMMANDCODE_KEY_ENV\}_2/.test(host), 'pool env list present in lib/index.js')
+  check('host: pool members serialized as `keys`', host.includes('keys'), 'keys payload present')
 
   // 2) client bundle 静态检查
   const client = readFileSync(join(ROOT, 'lib', 'client.js'), 'utf8')
@@ -53,6 +55,8 @@ function main() {
   }
   check('client: commandCode stats key', client.includes('commandCode'))
   check('client: shared card title "Command Code"', client.includes('cc.title'))
+  check('client: pool view field `ccView` (separate from the OpenCode poolView)', client.includes('ccView'))
+  check('client: generic AllUser label', client.includes('AllUser'))
 
   // 3) 本机 DSH web 实测聚合路由（失败仅提示，不 fail 静态检查）
   const https = BASE.startsWith('https')
@@ -80,6 +84,20 @@ function main() {
         check('live: usage slice', payload.usage && typeof payload.usage.totalCount === 'number', `totalCount=${payload.usage?.totalCount}`)
         check('live: credits slice', payload.credits && payload.credits.credits, `monthlyCredits=${payload.credits?.credits?.monthlyCredits}`)
         check('live: subscription slice', payload.subscription && payload.subscription.data, `planId=${payload.subscription?.data?.planId}`)
+        // Pool payload: the card family's switcher source. One entry per
+        // configured key, each with its own four slices and its account label.
+        // Rendering (all views + the AllUser sums) is covered separately by
+        // `node docs/probe-cc-pool.mjs`, which does not need a restart.
+        const keys = Array.isArray(payload.keys) ? payload.keys : []
+        check('live: pool `keys` present', keys.length >= 1, `keys=${keys.length}`)
+        check('live: every pool member carries its own four slices',
+          keys.length >= 1 && keys.every((k) => k.data && 'whoami' in k.data && 'usage' in k.data && 'credits' in k.data && 'subscription' in k.data),
+          keys.map((k) => `${k.ref}:${k.label}`).join(', '))
+        check('live: pool members have unique account labels',
+          keys.length >= 1 && new Set(keys.map((k) => k.label)).size === keys.length, keys.map((k) => k.label).join(' / '))
+        check('live: top-level slices stay the first member (back-compatible)',
+          keys.length >= 1 && JSON.stringify(payload.whoami?.user ?? null) === JSON.stringify(keys[0]?.data?.whoami?.user ?? null),
+          `${payload.whoami?.user?.name} vs ${keys[0]?.data?.whoami?.user?.name}`)
       } else {
         check('live: payload JSON', false, body.slice(0, 200))
       }

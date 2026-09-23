@@ -95,32 +95,72 @@ function locales() {
   check('widget name resolves from the manifest locale', widget.name() === '额度管理', widget.name())
 
   // ── real payloads ──
-  const [cc, dailyPayload] = await Promise.all([
-    fetch(`${ORIGIN}/api/commandcode-usage`).then((r) => r.json()),
-    fetch(`${ORIGIN}/api/widgets-usage-daily`).then((r) => r.json()),
-  ])
-  const stats = { commandCode: cc, heatmapRaw: dailyPayload.daily ?? {} }
+  // The host route fetches the four upstream endpoints independently: retry when
+  // a slice is missing (the API is rate-limited and this probe shares it with the
+  // agent's own traffic) instead of judging a half-arrived payload.
+  //
+  // TWO day maps: the machine-wide one (other cards) and the Command
+  // Code-scoped one the 额度管理 card reads. The scoped request must be answered
+  // with a `provider` echo — a host that has not been restarted ignores
+  // `?provider=` and hands back the machine-wide map, which is exactly the
+  // caliber mismatch this card had (2026-09-20: 758M vs the route's own 474M).
+  let cc = null
+  let dailyPayload = null
+  let scopedPayload = null
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const [c, d, s] = await Promise.all([
+      fetch(`${ORIGIN}/api/commandcode-usage`).then((r) => r.json()),
+      fetch(`${ORIGIN}/api/widgets-usage-daily`).then((r) => r.json()),
+      fetch(`${ORIGIN}/api/widgets-usage-daily?provider=commandcode`).then((r) => r.json()),
+    ])
+    cc = c
+    dailyPayload = d
+    scopedPayload = s
+    if (c !== null && c.usage != null && c.credits != null && c.subscription != null) break
+    console.log(`(attempt ${attempt + 1}: the host payload came back incomplete — retrying)`)
+    await new Promise((r) => setTimeout(r, 2000))
+  }
+  const stats = { commandCode: cc, commandCodeDaily: scopedPayload?.daily ?? {} }
+  check('the scoped day map echoes provider=commandcode (needs the restarted host)',
+    scopedPayload?.available === true && scopedPayload?.provider === 'commandcode',
+    JSON.stringify(scopedPayload && { available: scopedPayload.available, provider: scopedPayload.provider, reason: scopedPayload.reason }).slice(0, 140))
 
-  // ── 1. live render: percent top-right, period line under the title ──
+  // ── 1. live render: big figure UNDER the title, grey block to its right ──
   const live = widget.render(stats)
   check('title is 额度管理', live.title === '额度管理', live.title)
-  check('value is the projected month-end percent', /^\d+%$/.test(live.value), live.value)
-  check('the percent is parked in the top-right slot', live.headRight === '', JSON.stringify(live.headRight))
-  check('second line is the SHORT billing period (账期 M-D)', /^账期 \d{1,2}-\d{1,2}$/.test(live.legend), live.legend)
-  check('no more body sub line (the period moved up)', live.sub === undefined, String(live.sub))
+  check('the big figure is the projected month-end percent', /^\d+(\.\d+)?%$/.test(live.headAfter?.big ?? ''), String(live.headAfter?.big))
+  check('the figure rides the headAfter row, not the title row', live.headAfter !== undefined && live.headRight === undefined && live.value === undefined,
+    `headAfter=${JSON.stringify(live.headAfter)} headRight=${JSON.stringify(live.headRight)} value=${JSON.stringify(live.value)}`)
+  check('the grey slot carries the 账期 line ALONE — no pool view name any more',
+    live.headAfter.smallLines === undefined && /^账期 \d{1,2}-\d{1,2}$/.test(live.headAfter.small ?? ''),
+    JSON.stringify(live.headAfter))
+  check('the 账期 line asks to sit on the head row\'s FLOOR (bottom-aligned with the figure)',
+    live.headAfter.smallAlign === 'bottom', String(live.headAfter.smallAlign))
+  check('no legend line and no body sub line any more', live.legend === undefined && live.sub === undefined, `${live.legend} / ${live.sub}`)
   check('no ring any more — the block is a pair of figures', live.chart.kind === 'figures' && live.chart.figures.length === 2, live.chart.kind)
   check('figures are 今日用量 + 今日推荐', live.chart.figures[0].label === '今日用量' && live.chart.figures[1].label === '今日推荐',
     live.chart.figures.map((f) => `${f.label} ${f.value}`).join(' | '))
   check('figure values are compact M/B numbers', /^[\d.]+[BMK]$/.test(live.chart.figures[0].value) && /^[\d.]+[BMK]$/.test(live.chart.figures[1].value),
     live.chart.figures.map((f) => f.value).join(' / '))
-  console.log(`      live card: ${live.title} … ${live.value} | ${live.legend} | ${live.chart.figures.map((f) => `${f.label} ${f.value}`).join(' / ')}`)
+  console.log(`      live card: ${live.title} | ${live.headAfter.big} + ${JSON.stringify(live.headAfter.small ?? live.headAfter.smallLines)} | ${live.chart.figures.map((f) => `${f.label} ${f.value}`).join(' / ')}`)
 
   // ── 2. the percent equals an independent recompute through cc-view ──
   const month = monthlyWindow(cc)
   const now = new Date()
   const dayMs = 86_400_000
   const tzKey = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(d)
-  const dailyMap = dailyPayload.daily ?? {}
+  const dailyMap = scopedPayload?.daily ?? {}
+  // The card's token side must be the SCOPED map. Compare at the card's own
+  // display precision (fmtQuota truncates), and prove the machine-wide figure
+  // would have printed something DIFFERENT whenever a second plan ran today.
+  const { fmtQuota } = require(path.join(TMP, 'client', 'lib', 'quota-math.js'))
+  const allMap = dailyPayload?.daily ?? {}
+  const scopedToday = dailyMap[tzKey(now)] ?? 0
+  const allToday = allMap[tzKey(now)] ?? 0
+  check("今日用量 is the Command Code route's own tokens, not the machine-wide day",
+    live.chart.figures[0].value === fmtQuota(scopedToday) &&
+      (allToday === scopedToday || live.chart.figures[0].value !== fmtQuota(allToday)),
+    `card ${live.chart.figures[0].value} | scoped ${fmtQuota(scopedToday)} | machine-wide ${fmtQuota(allToday)}`)
   const elapsed = (now.getTime() - Date.parse(cc.subscription.data.currentPeriodStart)) / dayMs
   const total = (Date.parse(cc.subscription.data.currentPeriodEnd) - Date.parse(cc.subscription.data.currentPeriodStart)) / dayMs
   const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -132,59 +172,99 @@ function locales() {
   const periodTokens = Object.entries(dailyMap)
     .filter(([k]) => k >= tzKey(new Date(cc.subscription.data.currentPeriodStart)) && k <= tzKey(now))
     .reduce((a, [, v]) => a + v, 0)
-  const tokensPerCredit = periodTokens / cc.usage.totalCost
+  // The card measures the POOL's month (cc-view sums the members field by field),
+  // so the independent side must sum the members' spend too — the top-level slice
+  // is the primary member alone and drifts as soon as the pool's second key serves
+  // traffic (measured 2026-09-20: primary 0.47 vs pool 11.2 credits).
+  const consumedTotal = Array.isArray(cc.keys) && cc.keys.length > 0
+    ? cc.keys.reduce((a, k) => a + (k.data?.usage?.totalCost ?? 0), 0)
+    : cc.usage.totalCost
+  const tokensPerCredit = periodTokens / consumedTotal
   const expected = month.pct + ((pace / tokensPerCredit) * (total - elapsed) / month.cap) * 100
-  const shown = Number(live.value.replace('%', ''))
-  check('projected percent == independent recent-pace recompute',
-    Math.abs(shown - expected) <= 0.5,
-    `${live.value} vs ${expected.toFixed(1)}% (used ${month.pct.toFixed(2)}%, pace ${(pace / 1e6).toFixed(1)}M/d)`)
+  const shown = Number((live.headAfter?.big ?? '').replace('%', ''))
+  // The card prints a WHOLE percent and the recompute below re-derives the pace
+  // from the raw day map (its own tz/day-boundary arithmetic), so a ~1pp gap is
+  // the legitimate width of this cross-check. The EXACT contract — the card's
+  // math against an independent recompute to 1e-6, and "projected > 100% ⇔ pace >
+  // budget" as an identity — is `docs/probe-quota-manage.mjs`
+  // (measured 2026-09-20: card 64% vs recompute 63.18%).
+  check('projected percent agrees with the independent recent-pace recompute (±1pp)',
+    Math.abs(shown - expected) <= 1.5,
+    `${live.headAfter.big} vs ${expected.toFixed(2)}% (used ${month.pct.toFixed(2)}%, pace ${(pace / 1e6).toFixed(1)}M/d)`)
   check('escalation follows the 100% rule',
     (shown > 100) === (live.valuePulse === true) && (live.valuePulse === true) === (live.valueTone === 'danger'),
-    `${live.value} tone=${live.valueTone} pulse=${live.valuePulse}`)
+    `${live.headAfter.big} tone=${live.valueTone} pulse=${live.valuePulse}`)
   // The card must not contradict itself: "today is under budget" and "the month
   // lands under 100%" are the same statement, because both derive from the pace.
   const budget = Number(live.chart.figures[1].value.replace(/[^\d.]/g, '')) * (/B$/.test(live.chart.figures[1].value) ? 1e9 : /M$/.test(live.chart.figures[1].value) ? 1e6 : 1e3)
   check('percent and budget tell ONE story (pace ≤ budget ⇔ projected ≤ 100%)',
     Math.abs(pace - budget) < 1e6 || ((pace <= budget) === (shown <= 100)),
-    `pace ${(pace / 1e6).toFixed(1)}M vs budget ${(budget / 1e6).toFixed(1)}M, projected ${live.value}`)
+    `pace ${(pace / 1e6).toFixed(1)}M vs budget ${(budget / 1e6).toFixed(1)}M, projected ${live.headAfter.big}`)
 
-  // ── 3. missing data ──
+  // ── 3. missing data is FILLED, never announced ──
   const empty = widget.render({})
-  check('no account payload -> 数据不足, no figures', empty.value === '数据不足' && empty.chart === undefined, `${empty.value} / ${empty.chart}`)
-  check('missing data keeps the same top-right slot', empty.headRight === '')
+  check('no payload -> the layout stays, the figure is -% (never 数据不足)',
+    empty.headAfter?.big === '-%' && !JSON.stringify(empty).includes('数据不足'), JSON.stringify(empty.headAfter))
+  check('no payload -> the two figures still render, as —', empty.chart?.figures?.length === 2 && empty.chart.figures.every((f) => f.value === '—'),
+    JSON.stringify(empty.chart?.figures))
+  check('no payload -> no 账期 line and no view line (there is no period to print)',
+    empty.headAfter.small === undefined && empty.headAfter.smallLines === undefined && empty.headAfter.smallAlign === undefined,
+    JSON.stringify(empty.headAfter))
   check('missing data never pulses', empty.valuePulse === undefined && empty.valueTone === undefined)
+
+  // ── 3b. an unused pool member: zeros everywhere, a real period, a real budget ──
+  const unused = (cc.keys ?? []).find((k) => (k.data?.usage?.totalCount ?? 0) === 0)
+  if (unused) {
+    // Rendered through the REAL pool view (the card only borrows the pool's rate
+    // for a per-account view, exactly as the rail does).
+    const solo = widget.render({ commandCode: cc, commandCodeDaily: scopedPayload?.daily ?? {}, ccView: unused.label })
+    console.log(`      unused member ${unused.label}: ${solo.headAfter.big} | ${JSON.stringify(solo.headAfter.small)} | ${solo.chart.figures.map((f) => `${f.label} ${f.value}`).join(' / ')}`)
+    check(`unused member ${unused.label}: the consumed percent is printed, not an error`, /^0(\.0)?%$/.test(solo.headAfter.big), solo.headAfter.big)
+    check(`unused member ${unused.label}: 0 tokens used (the local log is not its own)`, solo.chart.figures[0].value === '0', solo.chart.figures[0].value)
+    check(`unused member ${unused.label}: it still gets a real budget`, /^[\d.]+[BMK]$/.test(solo.chart.figures[1].value), solo.chart.figures[1].value)
+    check(`unused member ${unused.label}: its own 账期 line is printed`, /^账期 \d{1,2}-\d{1,2}$/.test(solo.headAfter.small ?? ''), JSON.stringify(solo.headAfter.small))
+  }
 
   // ── 4. the market / 组件配置 preview ──
   const preview = widget.render(widget.example.stats({}))
-  check('preview default is the calm state (no red, no pulse)', preview.valuePulse !== true && preview.valueTone === undefined, preview.value)
+  check('preview default is the calm state (no red, no pulse)', preview.valuePulse !== true && preview.valueTone === undefined, preview.headAfter.big)
   check('preview shows real M figures', /^[\d.]+M$/.test(preview.chart.figures[0].value) && /^[\d.]+M$/.test(preview.chart.figures[1].value),
     preview.chart.figures.map((f) => f.value).join(' / '))
   const previewOver = widget.render(widget.example.stats({}), { sim: { over: true } })
   check('preview over-budget state is toggleable (>=135%, red, pulsing)',
-    previewOver.valueTone === 'danger' && previewOver.valuePulse === true && Number(previewOver.value.replace('%', '')) >= 135,
-    `${previewOver.value} pulse=${previewOver.valuePulse}`)
+    previewOver.valueTone === 'danger' && previewOver.valuePulse === true && Number(previewOver.headAfter.big.replace('%', '')) >= 135,
+    `${previewOver.headAfter.big} pulse=${previewOver.valuePulse}`)
   check('simToggle label resolves', widget.simToggle() === '超额状态', widget.simToggle())
 
   // ── 5. the actual React tree ──
   const htmlOf = (out) => renderToStaticMarkup(React.createElement(CardBody, { out, unit: 150 }))
   const overHtml = htmlOf(previewOver)
   const liveHtml = htmlOf(live)
-  // The head row is everything between the title div and the legend line.
+  // The head row is everything between the title div and the first body node.
   const headRow = (markup) => {
     const start = markup.indexOf('dsx-stats-card-title')
-    const end = markup.indexOf('dsx-stats-card-legend')
-    return start >= 0 && end > start ? markup.slice(start, end) : ''
+    const end = markup.indexOf('dsx-stats-card-headafter')
+    return start >= 0 && end > start ? markup.slice(start, end) : markup.slice(start)
   }
-  const bodyAfterLegend = (markup) => markup.slice(markup.indexOf('dsx-stats-card-legend'))
-  check('the percent renders INSIDE the title row (top-right)', headRow(liveHtml).includes(live.value), '')
-  check('the period line renders right under the title', headRow(liveHtml + live.legend).includes(live.legend) || liveHtml.includes(live.legend), live.legend)
-  check('the body no longer repeats the percent', !bodyAfterLegend(liveHtml).includes('dsx-stats-card-value'))
-  check('over budget renders the pulsing red value in the title row',
-    headRow(overHtml).includes('dsx-value-pulse') && headRow(overHtml).includes('dsx-stats-card-value'), '')
+  const headAfterBlock = (markup) => {
+    const start = markup.indexOf('dsx-stats-card-headafter')
+    if (start < 0) return ''
+    const foot = markup.indexOf('dsx-stats-card-figure')
+    return markup.slice(start, foot > start ? foot : undefined)
+  }
+  check('the big figure does NOT render in the title row', !headRow(liveHtml).includes(live.headAfter.big), '')
+  check('the big figure renders inside the headAfter row', headAfterBlock(liveHtml).includes(live.headAfter.big), live.headAfter.big)
+  check('the 账期 line renders as ONE grey line inside the same row (no stacked block)',
+    headAfterBlock(liveHtml).includes(live.headAfter.small) && !headAfterBlock(liveHtml).includes('dsx-stats-card-headafter-lines'),
+    JSON.stringify(live.headAfter.small))
+  check('the head row bottom-aligns that line with the figure (align-items: flex-end)',
+    /align-items:flex-end/.test(headAfterBlock(liveHtml)), headAfterBlock(liveHtml).slice(0, 160))
+  check('over budget renders the pulsing red value in the headAfter row',
+    headAfterBlock(overHtml).includes('dsx-value-pulse') && headAfterBlock(overHtml).includes('dsx-stats-card-value'), '')
   const calmHtml = htmlOf(preview)
   check('calm card does NOT pulse', !calmHtml.includes('dsx-value-pulse'))
-  check('calm card paints the value black, not the inherited title blue',
-    headRow(calmHtml).includes('color:var(--dsw-alias-label-primary)') && headRow(calmHtml).includes(preview.value), preview.value)
+  check('calm card paints the figure black, not the inherited title blue',
+    headAfterBlock(calmHtml).includes('color:var(--dsw-alias-label-primary)') && headAfterBlock(calmHtml).includes(preview.headAfter.big), preview.headAfter.big)
   check('the two figures render as label + value columns', calmHtml.includes('今日用量') && calmHtml.includes('今日推荐'), '')
   check('NO card paints the old red glow any more', !overHtml.includes('dsx-peak-alert') && !calmHtml.includes('dsx-peak-alert') && !liveHtml.includes('dsx-peak-alert'))
 

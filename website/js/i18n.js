@@ -48,7 +48,7 @@ window.DASH_I18N = (function () {
     githubAria: 'GitHub 仓库',
 
     /* hero */
-    kicker: 'dsh-widgets · v1.6.1 · MIT · DeepSeek Harness 0.1.x',
+    kicker: 'dsh-widgets · v1.7.0 · MIT · DeepSeek Harness 0.1.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: '将对话区域中的留白空间，转化为高信息密度、可随时隐藏的辅助界面。',
@@ -356,7 +356,7 @@ window.DASH_I18N = (function () {
     menuToggleAria: 'Toggle navigation menu',
     githubAria: 'GitHub repository',
 
-    kicker: 'dsh-widgets · v1.6.1 · MIT · DeepSeek Harness 0.1.x',
+    kicker: 'dsh-widgets · v1.7.0 · MIT · DeepSeek Harness 0.1.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: 'Turn the idle whitespace of the conversation area into a high-information-density, hideable companion surface.',

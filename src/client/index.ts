@@ -12,10 +12,11 @@ import { createPortal } from 'react-dom'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import './widgets.module.css'
 import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES } from './generated.registry'
-import { instanceKey, parseInstanceKey, sizesOf, widgetName, TRAJECTORY_WINDOW, type CommandCodeData, type SysInfo, type TrajectoryBeat, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
+import { instanceKey, parseInstanceKey, sizesOf, widgetName, TRAJECTORY_WINDOW, type CommandCodeData, type SkeletonShape, type SysInfo, type TrajectoryBeat, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
 import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
+import { springSettleMs, springValue, WAVE_SPRING } from './lib/morph-spring'
 import { SYS_WIDGET_IDS, ingestSysInfo, resolveInterval } from './lib/sys-view'
-import { CardBody, WidgetsPage, type Prefs } from './components'
+import { CardBody, DEFAULT_CORNER_PERCENT, WidgetsPage, type Prefs } from './components'
 import { t, installLocale, onLocaleChange } from './i18n'
 
 const STORAGE_KEY = 'harness-widgets.state'
@@ -459,31 +460,67 @@ const DEFAULTS: Prefs = {
   maxWidgets: 10,
   columns: 2,
   hideStatsLine: false,
+  // 连续曲率圆角 is ON by default (see the Prefs doc): the rail cards and the
+  // previews share the same corner gear, so the setting is read from one place.
+  squircle: true,
+  cornerPercent: DEFAULT_CORNER_PERCENT,
 }
 
 /** Required services: the slot registry (React is a platform module). */
 export const inject = ['slots']
 
-/** One card placement of the wave deck (right-anchored, rail-content coords). */
+/* ── Enter-stall post-mortem (2026-09-20) ──
+ *
+ * The reported "the grow stutters on the way in, the shrink is smooth on the way
+ * back" was attributed with the Long Animation Frame API
+ * (scripts/diag-hover-loaf.cjs) to a paint-only frame — 51ms with ~0ms script and
+ * ~1ms style/layout — and the isolation probe (scripts/diag-hover-isolate.cjs)
+ * then pinned it on promoting the overlay's 15 slots into compositing layers on
+ * the hover frame itself: the very same enter with the slots ALREADY promoted
+ * stayed under 16ms with zero dropped frames (P4 = 63ms vs P5 = 16ms, real GPU;
+ * headless/SwiftShader exaggerates every one of these numbers).
+ *
+ * The fix is therefore the PERMANENT `will-change: transform` on those slots
+ * (see `slotStyle`) — not a raster prewarm and not the overlay's own
+ * `will-change: opacity`: keeping the overlay painted at a low opacity instead
+ * (0.001, which quantizes to 0 in 8-bit alpha, then 0.01) measured no better on
+ * the GPU, and the prewarm flip almost never coincided with a real hover.
+ *
+ * Residual, accepted: the FIRST hover after the rail opens still pays ~65ms
+ * (round 1 of scripts/diag-hover-enter.cjs, reproducible) because nothing has
+ * ever been painted into those layers yet; both low-opacity veils and the old
+ * prewarm flip failed to move it (veil made the first enter's p95 WORSE, 43ms vs
+ * 14ms), so it is left as the one-off cost of opening the rail. Later hovers then
+ * land in a 13–26ms p95 band (rounds 2–4), with an occasional ~50ms frame while a
+ * card that was never magnified before is rasterized for the first time. ── */
 interface WavePlace { s: number; top: number; right: number; w: number; h: number }
 
-/**
- * Idle delay before the overlay's raster is prewarmed, and how long it is held
- * visible (see RailWave's prewarm effect). Long enough that a live drag or a
- * rapid geometry change never triggers it, short enough that the next hover
- * almost always finds a warm layer.
+/* ── The wave's morph is a SPRING, computed per frame (see RailWave) ──
+ *
+ * It used to be a CSS transition on the overlay slots, in two phases: a 200ms
+ * `settle` tween, then an untweened `follow`. That structure could not survive a
+ * MOVING target, and the two failures below are why it is gone:
+ *
+ *  1. Writing a new focus on every pointer frame RETARGETS a CSS transition, so it
+ *     restarts from the current value each time and never gets past the slow start
+ *     of the ease curve. Measured frame by frame (scripts/diag-morph-frames.cjs,
+ *     real GPU): walking the pointer onto a card gave 0.02–1.1 scale/s while a
+ *     single jump gave 3.5 — the enter animated at whatever speed the mouse was
+ *     moved at.
+ *  2. Freezing the target instead (so the tween could finish) fixed the curve but
+ *     left the geometry stale while the pointer kept moving, so the moment the
+ *     freeze ended the card SNAPPED to the live position — the reported "wrong
+ *     position as soon as I move over the widgets".
+ *
+ * So the progress is now an explicit factor written every frame:
+ *
+ *     displayed[i] = 1 + (target[i] − 1) · p
+ *
+ * `target` is the live pointer geometry (always current, never a reason to restart
+ * anything) and `p` is `WAVE_SPRING`'s value between rest (`0`) and engaged (`1`).
+ * Both are continuous, so their product is, and enter/follow/leave become one
+ * uninterrupted motion on one curve in both directions.
  */
-const PREWARM_IDLE_MS = 140
-const PREWARM_HOLD_MS = 64
-
-/**
- * Length of the enter/leave MORPH (ms) —the overlay's geometry tween from the
- * resting layout into the magnified wave and back. Matches the card slots' own
- * 0.2s glide so every surface moves on one curve.
- */
-const MORPH_MS = 200
-/** The overlay tween itself: geometry AND scale, one curve (see MORPH_MS). */
-const OVERLAY_TWEEN = `top 0.2s var(--ds-ease-in-out), right 0.2s var(--ds-ease-in-out), width 0.2s var(--ds-ease-in-out), height 0.2s var(--ds-ease-in-out), transform 0.2s var(--ds-ease-in-out)`
 /**
  * The card SIZE/COLUMN spring, as a CSS transition value.
  *
@@ -565,8 +602,50 @@ const WIDGET_SOURCE: Record<string, 'usage' | 'cc' | 'sys'> = {
   'quota-manage': 'cc',
   'sys-cpu': 'sys', 'sys-gpu': 'sys', 'sys-gpu-line': 'sys', 'sys-rings': 'sys', 'sys-board': 'sys',
 }
-/** Skeleton body rows per source: how much body the family normally draws. */
-const SKELETON_ROWS: Record<'usage' | 'cc' | 'sys', number> = { usage: 2, cc: 2, sys: 2 }
+/**
+ * The SILHOUETTE each loading skeleton draws, per widget id (see
+ * `WidgetRenderOut.skeletonShape`): a rail of identical grey pills says
+ * "something is loading here" but not WHICH card, and the loading → loaded swap
+ * then re-shapes the tile. Every family with a live source therefore declares
+ * the body it normally draws — three rings, one bar block, a figures row, three
+ * stacked quota bars, a sparkline — and the skeleton paints that silhouette.
+ *
+ * Shell-owned like WIDGET_SOURCE, and for the same reason: the shape has to be
+ * known while the widget's own render has no data to derive it from. `count` is
+ * the number of repeated units (rings / figures / quota rows); omitted = the
+ * SkeletonBody default of 3. `rows` is the body-line count of a `text` card and
+ * is NOT declared per family: every one of them draws a single grey line under
+ * the figure (a reset date, a period, a memory line), so one row is the honest
+ * placeholder and two would promise content that never arrives.
+ */
+const SKELETON_SHAPE: Record<string, { shape: SkeletonShape; count?: number; rows?: number }> = {
+  // OpenCode Go usage: one payload, three bodies — three donuts, a three-column
+  // bar chart, or a single-window percent card.
+  'usage-rings': { shape: 'rings', count: 3 },
+  'usage-bars': { shape: 'bars' },
+  'usage-rolling': { shape: 'text' },
+  'usage-weekly': { shape: 'text' },
+  'usage-monthly': { shape: 'text' },
+  // Command Code: usage puts a three-figure row on the floor, credits stacks
+  // three quota bars, windows is three rings; the rest are big-figure cards
+  // (one value + one grey line).
+  'cc-usage': { shape: 'figures', count: 3 },
+  'cc-credits': { shape: 'quotas', count: 3 },
+  'cc-windows': { shape: 'rings', count: 3 },
+  'cc-whoami': { shape: 'text' },
+  'cc-subscription': { shape: 'text' },
+  'cc-window-5h': { shape: 'text' },
+  'cc-window-weekly': { shape: 'text' },
+  'cc-window-monthly': { shape: 'text' },
+  'quota-manage': { shape: 'figures', count: 2 },
+  // System monitor: rings (two on sys-rings, four on the 2×4 board), one
+  // sparkline, and two big-figure cards.
+  'sys-rings': { shape: 'rings', count: 2 },
+  'sys-board': { shape: 'rings', count: 4 },
+  'sys-gpu-line': { shape: 'line' },
+  'sys-cpu': { shape: 'text' },
+  'sys-gpu': { shape: 'text' },
+}
 
 /**
  * Is this family's live source still in flight? (see WIDGET_SOURCE)
@@ -709,42 +788,16 @@ function RailWave(props: RailWaveProps): React.ReactElement {
   //      centres + midpoints) so the peak glides between cards and gaps.
   const [focusY, setFocusY] = React.useState<number | null>(null)
   const [focusX, setFocusX] = React.useState<number | null>(null)
-  // Animation phase for the overlay's CSS size tween: entering/leaving uses a
-  // short grow/shrink; FOLLOWING the pointer disables the transition so every
-  // frame lands on the steady-state right-anchored geometry (a live tween would
-  // linger in intermediate geometry: misaligned right edges, uneven gaps).
-  const [animPhase, setAnimPhase] = React.useState<'idle' | 'settle' | 'follow' | 'return'>('idle')
-  const animPhaseRef = React.useRef<'idle' | 'settle' | 'follow' | 'return'>('idle')
-  const phaseTimer = React.useRef<number | undefined>(undefined)
-  const clearPhaseTimer = (): void => {
-    if (phaseTimer.current !== undefined) { window.clearTimeout(phaseTimer.current); phaseTimer.current = undefined }
-  }
   /**
-   * Two SEPARATE primitives, never one function that does both.
+   * The morph progress, `0` at rest and `1` fully engaged — the `p` of
+   * `displayed = 1 + (target − 1) · p` (see the note above `SLOT_SPRING`).
    *
-   * The earlier single `schedulePhase(next, afterMs)` set the phase immediately
-   * AND scheduled a second set, so the idiomatic pair of calls —
-   * `schedulePhase('settle', 0); schedulePhase('follow', 170)` —had the second
-   * call overwrite the first on the spot: the 'settle' phase never existed, the
-   * overlay's geometry tween was therefore never active on engage, and both the
-   * enter and the leave SNAPPED into place (measured 2026-09-19: overlay opacity
-   * flipped with the geometry already at its final value, and the leave dropped
-   * the overlay on the same frame the pointer left).
+   * Written every frame while it is moving, by a spring whose TARGET is just
+   * "engaged or not". The pointer only ever changes `target`, never the curve, so
+   * moving the mouse mid-enter neither restarts nor interrupts anything.
    */
-  const setPhaseNow = (next: 'idle' | 'settle' | 'follow' | 'return'): void => {
-    clearPhaseTimer()
-    animPhaseRef.current = next
-    setAnimPhase(next)
-  }
-  const setPhaseAfter = (ms: number, next: 'idle' | 'settle' | 'follow' | 'return'): void => {
-    clearPhaseTimer()
-    phaseTimer.current = window.setTimeout(() => {
-      phaseTimer.current = undefined
-      animPhaseRef.current = next
-      setAnimPhase(next)
-    }, ms)
-  }
-  React.useEffect(() => () => { if (phaseTimer.current !== undefined) window.clearTimeout(phaseTimer.current) }, [])
+  const [morphP, setMorphP] = React.useState(0)
+  const morphRef = React.useRef({ p: 0, from: 0, to: 0, t0: 0, raf: 0 })
   // Rail content scroll offset (px), synced to the fixed magnify overlay so it
   // tracks the scrolled deck instead of sitting at the rail's viewport top.
   const [railScrollTop, setRailScrollTop] = React.useState(0)
@@ -824,7 +877,9 @@ function RailWave(props: RailWaveProps): React.ReactElement {
   const onCard = (clientX: number, clientY: number): boolean => {
     const rail = railElement()
     if (rail === null) return false
-    const overlaid = morph || prewarm
+    // The overlay is the painted surface exactly while `morph`: at rest it is
+    // fully transparent and the static deck is what the user sees and touches.
+    const overlaid = morph
     const layout = overlaid ? focusLayout : restLayout
     const add = overlaid ? focusedAdd : restAdd
     const box = rail.getBoundingClientRect()
@@ -854,12 +909,9 @@ function RailWave(props: RailWaveProps): React.ReactElement {
     if (rafRef.current) return
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = 0
-      if (animPhaseRef.current === 'idle' || animPhaseRef.current === 'return') {
-        // settle: the overlay is live and its geometry tweens from rest into the
-        // wave; then (realtime only) hand over to the untweened follow phase.
-        setPhaseNow('settle')
-        setPhaseAfter(MORPH_MS, 'follow')
-      }
+      // The pointer only writes the TARGET geometry. The engage/disengage curve is
+      // `morphP`, which this frame cannot disturb — moving the mouse mid-enter
+      // neither restarts nor interrupts it (see the note above `SLOT_SPRING`).
       setFocusX(contentXRef.current)
       setFocusY(contentYRef.current)
     })
@@ -869,14 +921,18 @@ function RailWave(props: RailWaveProps): React.ReactElement {
     if (lastClientXYRef.current === null) return
     moveRailFocus(lastClientXYRef.current.x, lastClientXYRef.current.y, el)
   }
-  React.useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }, [])
+  React.useEffect(() => () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    if (morphRef.current.raf) cancelAnimationFrame(morphRef.current.raf)
+  }, [])
   React.useEffect(() => {
     if (live) return
     setFocusY(null); setFocusX(null)
     armedRef.current = false
-    clearPhaseTimer()
-    animPhaseRef.current = 'idle'
-    setAnimPhase('idle')
+    const st = morphRef.current
+    if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0 }
+    st.p = 0; st.from = 0; st.to = 0
+    setMorphP(0)
   }, [live])
   // ---- Wave geometry (pure, recomputed per frame). ----
   const engaged = focusX !== null && focusY !== null && armedRef.current
@@ -884,14 +940,63 @@ function RailWave(props: RailWaveProps): React.ReactElement {
   // padding (card cell centres are content-relative); rawY already is.
   const rawX = (focusX ?? 0) - pad
   const rawY = focusY ?? 0
-  let scaleArr = new Array(n).fill(1)
+  /**
+   * The LIVE target: the scale every card would have if the wave were fully
+   * engaged right now. Updated on every render while engaged, and deliberately
+   * LEFT ALONE once the pointer is gone — the leave must animate away from the
+   * geometry that was on screen, not from the rest layout (a frozen-at-1 target
+   * would make `displayed = 1 + (1 − 1)·p` collapse to rest on the first frame).
+   */
+  const targetRef = React.useRef<number[]>(new Array(n).fill(1))
   if (engaged && n > 0) {
-    scaleArr = active ? scaleFor(rawX, rawY) : scaleFor(nearest(rawX, xPts), nearest(rawY, yPts))
+    targetRef.current = active ? scaleFor(rawX, rawY) : scaleFor(nearest(rawX, xPts), nearest(rawY, yPts))
   }
-  const focusLayout = placeCards(engaged ? scaleArr : new Array(n).fill(1))
+  const target = targetRef.current.length === n ? targetRef.current : new Array(n).fill(1)
+  // `p` = the spring's progress; 1 is the wave, 0 is the resting deck.
+  const p = n > 0 ? morphP : 0
+  const scaleArr = p === 1 ? target : target.map((v) => 1 + (v - 1) * p)
+  const focusLayout = placeCards(scaleArr)
   const focusedAdd = addSlotFor(focusLayout)
   const addCenter = { x: railW - 2 * pad - focusedAdd.right - side / 2, y: focusedAdd.top + side / 2 }
-  const addScale = engaged && n > 0 ? stepScale(Math.hypot(addCenter.x - rawX, addCenter.y - rawY) / (side + pad)) : 1
+  const addTarget = engaged && n > 0 ? stepScale(Math.hypot(addCenter.x - rawX, addCenter.y - rawY) / (side + pad)) : 1
+  const addScale = 1 + (addTarget - 1) * p
+  /**
+   * Drive `morphP` with WAVE_SPRING towards "engaged".
+   *
+   * ONE spring, ONE curve, either direction: engaging runs it 0 → 1, releasing
+   * runs the same formula back 1 → 0 from wherever it currently is (`from` is the
+   * live value, so an interrupted enter reverses without a jump). The pointer is
+   * not an input here at all — it only moves `target` — which is what keeps the
+   * motion continuous while the mouse keeps moving.
+   *
+   * A rAF loop rather than a transition or a timer: the value is written every
+   * frame, so a dropped frame costs a frame of progress and nothing else, and
+   * there is no "tween finished?" boundary to land on the wrong side of.
+   */
+  React.useEffect(() => {
+    const st = morphRef.current
+    const to = engaged ? 1 : 0
+    if (REDUCE_MOTION) {
+      if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0 }
+      st.p = to; st.from = to; st.to = to
+      setMorphP(to)
+      return
+    }
+    if (Math.abs(to - st.p) < 0.0005) return
+    st.from = st.p
+    st.to = to
+    st.t0 = performance.now()
+    if (st.raf) return
+    const settleMs = springSettleMs(WAVE_SPRING)
+    const tick = (): void => {
+      const elapsed = performance.now() - st.t0
+      const done = elapsed >= settleMs
+      st.p = done ? st.to : st.from + (st.to - st.from) * springValue(elapsed, WAVE_SPRING)
+      setMorphP(st.p)
+      st.raf = done ? 0 : requestAnimationFrame(tick)
+    }
+    st.raf = requestAnimationFrame(tick)
+  }, [engaged])
   // Keep the rail's scroll ROW-ALIGNED across a layout change (a card-size tier
   // or a column step): the detents are `row 路 (side + gap)`, so after the pitch
   // moves the current offset must be pulled onto the new grid —otherwise the
@@ -912,46 +1017,18 @@ function RailWave(props: RailWaveProps): React.ReactElement {
   // geometry is bit-identical to the static deck (scale 1, same top/right, same
   // unit size), so the overlay can be swapped in and out at that instant with
   // nothing visible. That is what makes the hover read as one continuous move
-  // (rest −wave −rest) instead of two decks fading against each other:
-  //   settle  —the overlay is live and its geometry is transitioning from rest
-  //             into the wave (0.2s, same curve as the slot glide);
-  //   follow  —realtime mode only: geometry is written per frame, no tween;
-  //   return  —the pointer left: the geometry tweens BACK to rest, the overlay
-  //             stays live until it lands, and only then the static deck returns.
-  // Before this the overlay faded in/out on a 0.15s opacity while its top/right
-  // SNAPPED (only `transform` was transitioned) and the static deck cross-faded
-  // underneath it —the reported "the whole process is not continuous".
-  const morph = engaged || animPhase !== 'idle'
-  /**
-   * Raster PREWARM.
-   *
-   * The overlay's first visible frame has to rasterize all 15 card subtrees;
-   * attributed with the Long Animation Frame API that is a 50—8ms paint-only
-   * frame (no script time, ~1ms style/layout) landing exactly when the enter
-   * tween starts —the "drops frames on the way in, smooth on the way back"
-   * asymmetry (the way out re-uses an already-rasterized layer).
-   *
-   * The resting overlay is PIXEL-IDENTICAL to the resting deck (same geometry,
-   * scale 1), so flipping the overlay visible for a few frames while the rail is
-   * idle is invisible to the user and leaves the layer rasterized. The flip is
-   * debounced until things are quiet and is skipped for the whole duration of a
-   * width drag, so a drag never pays a raster per tier.
-   */
-  const [prewarm, setPrewarm] = React.useState(false)
-  const layerLive = morph || prewarm
-  React.useEffect(() => {
-    if (!live || morph) return
-    const timer = window.setTimeout(() => {
-      if (document.documentElement.classList.contains('dsx-live-width')) return
-      setPrewarm(true)
-    }, PREWARM_IDLE_MS)
-    return () => window.clearTimeout(timer)
-  }, [live, morph, side, columns, railW, shiftX, railScrollTop])
-  React.useEffect(() => {
-    if (!prewarm) return
-    const timer = window.setTimeout(() => setPrewarm(false), PREWARM_HOLD_MS)
-    return () => window.clearTimeout(timer)
-  }, [prewarm])
+  // (rest −wave −rest) instead of two decks fading against each other. There is
+  // no longer a settle/follow/return phase machine: the overlay is live while the
+  // wave is (engaged, or still springing home), and every frame of that is the
+  // same code path — the geometry is written from `scaleArr` above.
+  const morph = engaged || morphP > 0.0005
+  // (A "raster prewarm" used to live here: flip the overlay visible for 64ms,
+  // 140ms after the rail went idle, to keep its tree rasterized. It has been
+  // REMOVED — it is not what makes the enter cheap. It almost never coincided
+  // with a real hover, and measured on every enter the stall came back
+  // (scripts/diag-hover-enter.cjs, 2026-09-20). What actually fixes the enter is
+  // the permanent `will-change: transform` on the overlay slots; see the
+  // post-mortem above `WavePlace` and the note on `slotStyle`.)
   /**
    * The overlay card BODIES arrive as a prop, built by the parent at the resting
    * unit and ALWAYS mounted while the rail is open.
@@ -1003,9 +1080,13 @@ function RailWave(props: RailWaveProps): React.ReactElement {
     const timer = window.setTimeout(() => el.classList.remove('dsx-wave-run'), 900)
     return () => window.clearTimeout(timer)
   }, [columns])
-  // Geometry tween for the overlay: top/right/width/height AND transform share
-  // one curve, so a neighbleness push and a card's own growth arrive together.
-  const overlayTransition = active && animPhase === 'follow' ? 'none' : OVERLAY_TWEEN
+  /**
+   * The overlay slots carry NO transition: every frame of the morph is written
+   * from `scaleArr` (spring progress × live target). `none` is also load-bearing
+   * — the overlay's slots share the `.dsx-stats-card-slot` class, whose CSS
+   * transition belongs to the STATIC deck's re-seating, so leaving it in place
+   * would re-introduce exactly the retargeting this design removes.
+   */
   /**
    * 鈹€鈹€ SCROLL GEOMETRY: the one place that decides how far the rail can travel 鈹€鈹€
    *
@@ -1052,9 +1133,9 @@ function RailWave(props: RailWaveProps): React.ReactElement {
     // stable, so engaging the wave never reconciles the card DOM. The hide/show
     // itself has no transition —see the CSS note: the swap is invisible only
     // because both decks agree on the geometry at that instant.
-    // The static deck hides only while the morph is REAL (`morph`, not
-    // `layerLive`): during a prewarm both decks paint the same pixels and the
-    // deck keeps its interactive affordances (they live on the real cards).
+    // The static deck hides only while the morph is REAL: at rest the deck is the
+    // painted surface and keeps its interactive affordances (they live on the
+    // real cards), while the transparent overlay only stays composited.
     React.createElement('div', { ref: deckWrapRef, className: morph ? 'dsx-wave-deck dsx-wave-on' : 'dsx-wave-deck' }, deck),
     // ── SCROLL TAIL: the room the LAST row needs in order to top out ──
     //
@@ -1133,14 +1214,11 @@ function RailWave(props: RailWaveProps): React.ReactElement {
   const nearSurface = (x: number, y: number): boolean => onCard(x, y)
   const leaveRail = (x?: number, y?: number): void => {
     if (typeof x === 'number' && typeof y === 'number' && nearSurface(x, y)) return
+    // Disengaging is only a state change: dropping `engaged` reverses the same
+    // spring from wherever it currently is, and the overlay stays live (morph)
+    // until it lands back on the rest layout and the static deck takes over.
     armedRef.current = false
     setFocusY(null); setFocusX(null)
-    if (animPhaseRef.current === 'idle') return
-    // return: keep the overlay live while its geometry tweens back to the
-    // resting layout, then hand the deck back. The extra 40ms covers the last
-    // frame of the tween so the swap never lands mid-slide.
-    setPhaseNow('return')
-    setPhaseAfter(MORPH_MS + 40, 'idle')
   }
   /**
    * ── POINTER WATCHER: the wave can never outlive the hover ──
@@ -1406,19 +1484,18 @@ function RailWave(props: RailWaveProps): React.ReactElement {
   const overhang = morph && engaged
     ? Math.max(0, Math.ceil(focusLayout.reduce((m, c, i) => Math.max(m, c.right + items[i].baseW * c.s), 0) - (railW - 2 * pad)))
     : 0
-  const magnifyLayer = React.createElement('div', { key: '__magnify', ref: magnifyLayerRef, className: 'dsx-magnify-layer', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: RAIL_RIGHT_VAR, width: `${railW + overhang}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad + overhang}px`, zIndex: 25, overflow: 'visible', background: 'transparent', transform: `translateX(${shiftX}px)`, opacity: layerLive ? 1 : 0,
+  const magnifyLayer = React.createElement('div', { key: '__magnify', ref: magnifyLayerRef, className: 'dsx-magnify-layer', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: RAIL_RIGHT_VAR, width: `${railW + overhang}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad + overhang}px`, zIndex: 25, overflow: 'visible', background: 'transparent', transform: `translateX(${shiftX}px)`, opacity: morph ? 1 : 0,
     // While the wave is live the LAYER ITSELF is hit-capable, not just the cards:
     // that is what covers the gaps between cards (and the strip the overhang
     // opens up) so the pointer never falls through the surface mid-move.
     pointerEvents: morph ? 'auto' : 'none',
-    // Keep the layer COMPOSITED across the idle−攍ive flip. Measured with the Long
-    // Animation Frame API on the enter (2026-09-19, headless): a 68ms frame with
-    // NO script time and 1ms of style/layout —i.e. all of it was the first
-    // PAINT of the overlay's 15 card subtrees when opacity went 0 −1, which is
-    // the stutter the user reports on the way in (the way out only tweens
-    // already-painted cards, hence smooth). A permanent compositing hint lets the
-    // raster survive the flip, so entering costs a compositor opacity change
-    // instead of a full re-raster of the deck.
+    // Keep the layer COMPOSITED across the idle−攍ive flip, so revealing it is a
+    // compositor property change instead of a fresh layer promotion.
+    //
+    // This hint is NOT the enter fix (it was tried as one and measured no better
+    // than nothing): the enter stall comes from promoting the 15 SLOTS, see the
+    // `will-change: transform` note on `slotStyle` and the post-mortem above
+    // `WavePlace`.
     willChange: 'opacity' } },
     React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${scrollContentH}px` } },
       (() => {
@@ -1433,7 +1510,21 @@ function RailWave(props: RailWaveProps): React.ReactElement {
         // snapping into place while the scales glided (the other half of the
         // "not continuous" report).
         const focused = engaged && peak > 1.001 && c.s >= peak - 0.0005
-        const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${baseW}px`, height: `${side}px`, transformOrigin: 'top right', transform: `scale(${c.s.toFixed(4)})`, transition: overlayTransition, willChange: morph ? 'transform' : undefined, zIndex: Math.round((c.s - 1) * 50), pointerEvents: morph ? 'auto' as const : 'none' as const }
+        // `will-change: transform` is PERMANENT here, not gated on `morph`.
+        //
+        // Promoting these slots IS the enter's cost. Measured on the real GPU
+        // (scripts/diag-hover-isolate.cjs, 2026-09-20): a natural enter hit a 63ms
+        // frame, while the same enter with the slots already promoted stayed under
+        // 16ms with zero dropped frames (P4 vs P5). Gated on `morph`, Chrome has
+        // to build 15 compositing layers AND rasterize them inside the hover
+        // frame — the reported "grows with a stutter, shrinks smoothly".
+        //
+        // The old objection to a persistent hint (30 permanent layers across two
+        // decks, GPU memory) does not apply: only the OVERLAY's slots carry it,
+        // and the static deck stays unpromoted. Rail scrolling was re-measured
+        // with the hint resident (scripts/diag-rail-scroll-perf.cjs) and shows no
+        // regression (p95 28ms / 55 slow frames vs p95 30ms / 62 without it).
+        const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${baseW}px`, height: `${side}px`, transformOrigin: 'top right', transform: `scale(${c.s.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: Math.round((c.s - 1) * 50), pointerEvents: morph ? 'auto' as const : 'none' as const }
         return React.createElement('div', {
           key: it.w.id,
           className: 'dsx-stats-card-slot' + (focused ? ' dsx-slot-focused' : ''),
@@ -1450,7 +1541,7 @@ function RailWave(props: RailWaveProps): React.ReactElement {
       // wave factor —it displaces with the magnified deck like a card. It is the
       // ONLY add button reachable while the wave is live (the deck's copy is
       // visibility:hidden), so it carries the real click handler.
-      React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), tabIndex: morph ? 0 : -1, onClick: onAddClick, style: { position: 'absolute', top: `${focusedAdd.top.toFixed(2)}px`, right: `${focusedAdd.right.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, transformOrigin: 'top right', transform: `scale(${addScale.toFixed(4)})`, transition: overlayTransition, willChange: morph ? 'transform' : undefined, zIndex: 30, pointerEvents: morph ? 'auto' as const : 'none' as const } },
+      React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), tabIndex: morph ? 0 : -1, onClick: onAddClick, style: { position: 'absolute', top: `${focusedAdd.top.toFixed(2)}px`, right: `${focusedAdd.right.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, transformOrigin: 'top right', transform: `scale(${addScale.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: 30, pointerEvents: morph ? 'auto' as const : 'none' as const } },
         React.createElement('span', { className: 'dsx-stats-add-icon' },
           React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
         ),
@@ -2937,7 +3028,13 @@ export function apply(ctx: ClientContext): void {
           // skeleton is a SHELL decision —see WIDGET_SOURCE.
           const source = WIDGET_SOURCE[widgetId]
           if (source !== undefined && isSourcePending(source, snap)) {
-            out = { title: out?.title ?? widgetName(w), skeleton: true, skeletonRows: SKELETON_ROWS[source] }
+            const silhouette = SKELETON_SHAPE[widgetId]
+            out = {
+              title: out?.title ?? widgetName(w),
+              skeleton: true,
+              skeletonRows: silhouette?.rows ?? 1,
+              ...(silhouette === undefined ? {} : { skeletonShape: silhouette.shape, skeletonCount: silhouette.count }),
+            }
           }
           if (!out) return null
           // 2脳4 is exactly two 2脳2 widths plus one inter-card gap.
@@ -3268,7 +3365,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       // the real handlers —action, pooled-view cycle and the bottom-left resize
       // grip —instead of being a dead picture.
       const cardBodyFor = (it: RailItem, width: number): React.ReactNode[] => [
-        React.createElement(CardBody, { key: 'b', out: it.out, unit: side, width, onAction: handleAction, onCycle: cyclePool(it.key) }),
+        React.createElement(CardBody, { key: 'b', out: it.out, unit: side, width, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent, onAction: handleAction, onCycle: cyclePool(it.key) }),
         React.createElement('span', { key: 'r', className: 'dsx-stats-resize', 'aria-label': t('ui.rail.resizeAria'), onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = prefs.cardSide; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
       ]
       // The overlay's bodies are built ONCE per render of this (parent) component —
@@ -3389,6 +3486,52 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       return React.createElement(WidgetsPage, { controller: { prefs: snap.prefs, setPrefs } })
     },
   ))
+
+  // ---- Official settings-nav glyph for our section. ----
+  // The shell's settings nav picks its glyph from the section ID and only knows
+  // its three built-in IDs ("models" / "agent-presets" / "plugins"); every other
+  // section —ours included —falls back to the generic settings gear. The section
+  // contract carries no icon field (only id / order / label), so the client half
+  // marks OUR row with `data-dsx-nav` and widgets.module.css swaps the gear for
+  // the app icon's four-tile glyph. The row is matched by our own registered
+  // label, and the mark is removed with the owning effect.
+  ctx.effect(() => {
+    const ATTR = 'data-dsx-nav'
+    const mark = (): void => {
+      const label = t('ui.section.label')
+      for (const list of document.querySelectorAll('[class$="_navList"]')) {
+        for (const row of list.querySelectorAll(':scope > button')) {
+          if ((row.textContent ?? '').trim() === label) row.setAttribute(ATTR, 'widgets')
+          else row.removeAttribute(ATTR)
+        }
+      }
+    }
+    // Only the settings panel ever inserts a `_navList`, and the row must be
+    // marked the moment that panel opens (before the user could pick our cell),
+    // so watch for that one node instead of re-scanning on every transcript
+    // mutation.
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (!(node instanceof Element)) continue
+          if (node.matches('[class$="_navList"]') || node.querySelector('[class$="_navList"]') !== null) {
+            mark()
+            return
+          }
+        }
+      }
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+    // The label is localized, so a language switch re-renders the row's text and
+    // the match has to run again.
+    const offLocale = onLocaleChange(mark)
+    mark()
+    return () => {
+      observer.disconnect()
+      offLocale()
+      for (const row of document.querySelectorAll(`[${ATTR}]`)) row.removeAttribute(ATTR)
+    }
+  })
 
   // ---- Rail width + stats-line toggle. ----
   ctx.effect(() => {

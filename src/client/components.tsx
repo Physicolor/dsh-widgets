@@ -11,13 +11,64 @@ import { WIDGETS } from './generated.registry'
 import {
   badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf,
   widgetName, widgetDesc, widgetSimToggle, fieldLabel, optionLabel, TRAJECTORY_WINDOW,
-  type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize, type WidgetRenderMeta,
+  type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize, type WidgetRenderMeta, type WidgetExample,
 } from './lib/contract'
 import { fmtShortDate, buildRollingGrid } from './lib/format'
 import { t } from './i18n'
 
 /** The base card side all scales derive from. */
 const BASE_SIDE = 150
+
+/** The standard gap between a card's title row and the row under it (the
+ *  `headAfter` figure row), in px at side 150 — the 4px step of the app's
+ *  4/8/12/16 spacing rhythm. It is DELIBERATELY bigger than the 2px a grey
+ *  caption needs: a 20px figure directly under the title reads as cramped, and
+ *  the user asked for the same "standard spacing" the 上下文水位 card uses. */
+const HEAD_GAP_PX = 4
+
+/** Corner-radius gears, as a PERCENT of the card's short side (Settings →
+ *  圆角档位). Percent, not px: the reference (an iOS-style widget) keeps the
+ *  corner-to-side RELATION fixed, so a 150px card and a magnified 190px card
+ *  must not get the same corner. 12% ≈ the old fixed 16px at side 150 and the
+ *  reference card's own ratio; 16% is the default because the same ratio reads
+ *  sharper on a small card than on the ~480px card the reference is drawn at. */
+export const CORNER_GEARS: number[] = [12, 16, 20, 24]
+/** Default corner gear (%). */
+export const DEFAULT_CORNER_PERCENT = 16
+/** Corner radius in px for a card of short side `unit`. */
+export function cardRadius(unit: number, percent: number = DEFAULT_CORNER_PERCENT): number {
+  const p = Number.isFinite(percent) ? Math.max(8, Math.min(28, percent)) : DEFAULT_CORNER_PERCENT
+  return Math.round(unit * (p / 100))
+}
+/** Content inset. It does NOT follow the corner: the card's reference ratio is
+ *  the CORNER's (16% of the short side), while the content sits close to the
+ *  edge — a padded-out inset pushed the title visibly away from the card's left
+ *  and top edges, which is the relationship the reference card does not have.
+ *  Flat 12 · scale, i.e. 12px at the plugin's 150px default, as it always was. */
+function cardInnerPad(unit: number): number {
+  return Math.round(12 * (unit / BASE_SIDE))
+}
+
+/**
+ * Advance a preview's simulated state by ONE click.
+ *
+ * A widget with `example.simSteps` cycles through them (the 套餐 card walks the
+ * plan tiers so every badge can be seen); everything else keeps the original
+ * single-boolean flip (peak-pricing's peak/cheap, quota-manage's over-budget).
+ * Shared by the config preview and the market preview so both surfaces step the
+ * same way.
+ */
+function nextSim(w: { example?: WidgetExample } | undefined, current: Record<string, unknown> | null): Record<string, unknown> | null {
+  if (w === undefined) return current
+  const base = current ?? w.example?.sim ?? {}
+  const steps = w.example?.simSteps
+  if (Array.isArray(steps) && steps.length > 0) {
+    const at = steps.findIndex((s) => JSON.stringify(s) === JSON.stringify(base))
+    return steps[(at + 1) % steps.length]
+  }
+  const boolKey = Object.keys(base).find((k) => typeof base[k] === 'boolean')
+  return boolKey !== undefined ? { ...base, [boolKey]: !base[boolKey] } : { ...base }
+}
 
 /** Realistic non-zero preview stats so every card renders (none return null). */
 /** Raw preview usage log: derived once so BOTH the 2×2 grid and the 2×4 / bar
@@ -123,6 +174,12 @@ export interface Prefs {
    *  preference — the rail widgets can show the same data). Default OFF so
    *  other users keep their stats bar. */
   hideStatsLine: boolean
+  /** 连续曲率圆角: draw the card corners as superellipses (`corner-shape:
+   *  squircle`) instead of circular arcs. Default ON — the squircle reads as
+   *  softer at the same radius, and the setting lets a user compare. */
+  squircle: boolean
+  /** Corner-radius gear in PERCENT of the card's short side (see CORNER_GEARS). */
+  cornerPercent: number
 }
 
 /** The controller handed to every component. */
@@ -182,7 +239,7 @@ const LANE_SLOTS = TRAJECTORY_WINDOW
  *  clear gap under the title+subtitle row instead of filling the whole card. */
 const LANE_HEIGHT_RATIO = 0.5
 
-function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; width?: number }): React.ReactElement | null {
+function ChartBlock({ chart, side, width, pad }: { chart: WidgetChart; side: number; width?: number; pad?: number }): React.ReactElement | null {
   const scale = side / BASE_SIDE
   const h = Math.round(56 * scale)
   if (chart.kind === 'bars' && chart.bars) {
@@ -319,6 +376,47 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
       style: { width: '100%', height: `${Math.round(side * LANE_HEIGHT_RATIO)}px`, display: 'flex', flexDirection: 'column', gap: Math.max(3, Math.round(4 * scale)) },
     }, ...rows)
   }
+  if (chart.kind === 'quotas' && chart.quotas && chart.quotas.length > 0) {
+    // The official site's limit rows (user's reference, 2026-09-20): each window
+    // is a line with its NAME on the left and its PERCENT hard right, over a
+    // SEGMENTED bar — 24 cells, the used share filled at the window's urgency
+    // tone, the rest a pale wash of the same tone (not a grey track: the site's
+    // empty cells read as "quota left", not as a different widget). Discrete
+    // cells make the reading coarse on purpose: 1% of a 5-hour window is one
+    // cell, which a smooth 126px bar could not show at all.
+    const CELLS = 24
+    const cellH = Math.max(5, Math.round(9 * scale))
+    const rows = chart.quotas.map((q, i) => {
+      const pct = Math.max(0, Math.min(100, q.pct))
+      const filled = Math.max(0, Math.min(CELLS, Math.round((pct / 100) * CELLS)))
+      const tone = CHART_TONES[q.tone ?? 'primary'] ?? CHART_TONES.primary
+      const cells = Array.from({ length: CELLS }, (_, c) => React.createElement('div', {
+        key: c,
+        style: {
+          flex: 1,
+          minWidth: 0,
+          height: `${cellH}px`,
+          borderRadius: 2,
+          background: tone,
+          opacity: c < filled ? 0.92 : 0.14,
+        },
+      }))
+      // Height budget (2×2 = 150px): padding 24 + title 16 + headAfter 4+25 = 69,
+      // leaving 81 for the three rows — so each row is a 9px label line, a 2px
+      // gap and a 9px bar ≈ 21px, and the rows are 5px apart (3·21 + 2·5 = 73).
+      // A 10/3/7 version measured 100px and clipped the last bar against the
+      // card floor. At side 200 (the market stage) every term scales with it.
+      return React.createElement('div', { key: i, style: { display: 'flex', flexDirection: 'column', gap: Math.round(2 * scale) } },
+        React.createElement('div', { style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, minWidth: 0 } },
+          React.createElement('span', { style: { fontSize: `${Math.round(9 * scale)}px`, lineHeight: 1.15, fontWeight: 500, color: 'var(--dsw-alias-label-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, q.label),
+          React.createElement('span', { style: { fontSize: `${Math.round(9 * scale)}px`, lineHeight: 1.15, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none' } }, `${Math.round(pct)}%`),
+        ),
+        React.createElement('div', { style: { display: 'flex', gap: 2, width: '100%' } }, ...cells),
+      )
+    })
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: Math.round(5 * scale), width: '100%' } }, ...rows)
+  }
+
   if (chart.kind === 'segments' && chart.segments && chart.totalTokens) {
     // Strictly mirrors the official ContextMeter (JObwrW) colors + layout:
     // system = bluish-neutral, tools = violet literal, messages = blue.
@@ -432,7 +530,15 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
     const vals = chart.line.values
     const W = Math.max(1, vals.length - 1)
     const X = (i: number): number => (W === 0 ? 0 : (i / W) * 100)
-    const Y = (v: number): number => 100 - (Math.max(0, Math.min(max, v)) / max) * 100
+    // The stroke must never ride the plot's edge. A 0% sample (an idle GPU is the
+    // every-day case) put the polyline EXACTLY on the box's bottom, and the
+    // box's overflow:hidden cut its lower half — measured 2026-09-20 on the live
+    // 利用率 card: polyline bottom 754.0 == svg bottom 754.0 with a 2px stroke,
+    // i.e. the "截断" the user reported. The line therefore lives inside
+    // [PAD, 100 − PAD] while the AREA still closes on the true floor (y = 100),
+    // so the fill reaches the box and the stroke stays whole.
+    const PAD = 3
+    const Y = (v: number): number => PAD + (100 - 2 * PAD) * (1 - (Math.max(0, Math.min(max, v)) / max))
     const segs: Array<Array<[number, number]>> = []
     let cur: Array<[number, number]> = []
     vals.forEach((v, i) => {
@@ -508,8 +614,11 @@ function ChartBlock({ chart, side, width }: { chart: WidgetChart; side: number; 
     // width and is horizontally centred; the 2×2 grid keeps fixed cells.
     const weeks = chart.heatmap[0]?.length ?? 13
     const isWide = weeks >= 20
-    const pad = Math.round(12 * scale)
-    const availW = (width ?? side) - 2 * pad
+    // The card's OWN content inset (passed in), never a second constant: a
+    // bigger corner gear widens the card's padding, and a heatmap still sized
+    // against the old 12px would push its widest grid past the card edge.
+    const inset = pad ?? Math.round(12 * scale)
+    const availW = (width ?? side) - 2 * inset
     const gap = 2
     const wideCell = isWide ? Math.max(3, Math.floor((availW - (weeks - 1) * gap) / weeks)) : Math.round((6 + 2) * scale)
     const cell = wideCell
@@ -572,41 +681,95 @@ function RichBlock({ rich, scale }: { rich: WidgetRich; scale: number }): React.
 }
 
 /**
- * Loading skeleton: the card frame plus rounded placeholder pills in the SAME
- * vertical rhythm as a real body (figure line, body rows), so the card's size
- * and shape are already correct while the data source is still in flight and
- * nothing re-flows when the real content lands.
+ * Loading skeleton: the card frame plus rounded placeholder blocks in the SAME
+ * vertical rhythm — and the SAME SILHOUETTE — as the real body, so the card's
+ * size, shape AND identity are already correct while the data source is still
+ * in flight and nothing re-flows when the real content lands.
  *
  * The TITLE stays real text: it comes from the widget descriptor (its name),
  * not from the data source, so it is already known — and a rail of tiles that
  * still say which widget they are reads as loading, while a rail of nameless
- * grey pills reads as broken. Only the DATA (figure + body) is placeholder.
+ * grey pills reads as broken. Only the DATA is placeholder.
+ *
+ * The BODY follows `out.skeletonShape` (declared by the shell per widget, see
+ * SKELETON_SHAPE): a ring card draws N square rounded blocks, a bar chart ONE
+ * wide rounded block, a heatmap ONE wide block, a figure row N short blocks and
+ * a quota card N stacked bars. A generic stack of thin pills was wrong for all
+ * of them — the placeholder has to be recognisable as the card it stands in
+ * for, not merely as "some card".
  */
-function SkeletonBody({ out, unit, width, rows = 2 }: { out: WidgetRenderOut; unit: number; width?: number; rows?: number }): React.ReactElement {
+function SkeletonBody({ out, unit, width, squircle, cornerPercent = DEFAULT_CORNER_PERCENT }: { out: WidgetRenderOut; unit: number; width?: number; squircle?: boolean; cornerPercent?: number }): React.ReactElement {
   const scale = unit / BASE_SIDE
   const boxW = width ?? unit
-  const count = Math.max(1, Math.min(4, Math.round(rows)))
-  const pill = (key: string, w: string, h: number, mt: number): React.ReactElement =>
-    React.createElement('div', { key, className: 'dsx-sk', style: { width: w, height: `${h}px`, borderRadius: `${Math.max(3, Math.round(h / 2))}px`, marginTop: `${mt}px` } })
+  const rows = Math.max(1, Math.min(4, Math.round(out.skeletonRows ?? 2)))
+  const count = Math.max(1, Math.min(6, Math.round(out.skeletonCount ?? 3)))
+  // The placeholder card carries the SAME outline and inset as the real one it
+  // stands in for: a radius/padding jump at the loading → loaded swap would
+  // read as the card resizing itself.
+  const radius = cardRadius(unit, cornerPercent)
+  const pad = cardInnerPad(unit)
+  /** One shimmering rounded block; every silhouette is built from these. */
+  const block = (key: string, style: React.CSSProperties): React.ReactElement =>
+    React.createElement('div', { key, className: 'dsx-sk', style })
+  /** A block that spans the card's content width. */
+  const fill = (key: string, h: number, r: number): React.ReactElement =>
+    block(key, { width: '100%', flex: 1, minHeight: `${h}px`, borderRadius: `${r}px` })
+  /** A row of `n` equal blocks (rings are square, figures are short bars). */
+  const row = (key: string, n: number, square: boolean, hm: number, r: string, gap: number): React.ReactElement =>
+    React.createElement('div', { key, style: { display: 'flex', alignItems: square ? 'center' : 'flex-end', justifyContent: 'space-between', gap, width: '100%' } },
+      ...Array.from({ length: n }, (_, i) => block(`${key}${i}`, square
+        ? { flex: 1, minWidth: 0, aspectRatio: '1 / 1', borderRadius: r }
+        : { flex: 1, minWidth: 0, height: `${hm}px`, borderRadius: r })))
+  const shape = out.skeletonShape ?? 'text'
+  let body: React.ReactNode[]
+  if (shape === 'rings') {
+    // N donuts → N square rounded blocks. Square, because a ring is as tall as
+    // it is wide; the row keeps the real chart's spacing so the block count is
+    // readable at a glance.
+    body = [row('rg', count, true, 0, '30%', Math.round(10 * scale))]
+  } else if (shape === 'bars') {
+    // A bar chart: ONE wide rounded block standing for the plot area (the user's
+    // rule — 一个柱状图就是一个大圆角矩形).
+    body = [fill('bar', Math.round(40 * scale), Math.max(6, Math.round(8 * scale)))]
+  } else if (shape === 'line') {
+    // A sparkline: one wide block, a little taller than the bar block (a line
+    // card is elastic and owns the whole remaining height).
+    body = [fill('ln', Math.round(48 * scale), Math.max(6, Math.round(8 * scale)))]
+  } else if (shape === 'heatmap') {
+    // The calendar grid: one wide, nearly square block.
+    body = [fill('hm', Math.round(44 * scale), Math.max(6, Math.round(8 * scale)))]
+  } else if (shape === 'figures') {
+    body = [row('fg', count, false, Math.round(18 * scale), `${Math.max(4, Math.round(6 * scale))}px`, Math.round(8 * scale))]
+  } else if (shape === 'quotas') {
+    // The segmented quota rows: N stacked bars, same step as the real rows.
+    body = [React.createElement('div', { key: 'qt', style: { display: 'flex', flexDirection: 'column', gap: Math.round(8 * scale), width: '100%' } },
+      ...Array.from({ length: count }, (_, i) => block(`q${i}`, { width: '100%', height: `${Math.max(6, Math.round(9 * scale))}px`, borderRadius: `${Math.max(4, Math.round(5 * scale))}px` })))]
+  } else {
+    // Text-only card: the figure pill + its body rows, exactly as before.
+    body = [
+      block('v', { width: '44%', height: `${Math.round(20 * scale)}px`, borderRadius: `${Math.max(3, Math.round(10 * scale))}px` }),
+      ...Array.from({ length: rows }, (_, i) => block(`r${i}`, { width: `${Math.round(92 - i * 26)}%`, height: `${Math.round(10 * scale)}px`, borderRadius: `${Math.max(3, Math.round(5 * scale))}px` })),
+    ]
+  }
   return React.createElement('div', {
-    className: 'dsx-stats-card dsx-sk-card',
-    style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, borderRadius: `${Math.round(16 * scale)}px`, padding: `${Math.round(12 * scale)}px` },
+    className: 'dsx-stats-card dsx-sk-card' + (squircle ? ' dsx-squircle' : ''),
+    style: { position: 'relative', display: 'flex', flexDirection: 'column', width: `${boxW}px`, minHeight: `${unit}px`, borderRadius: `${radius}px`, padding: `${pad}px` },
   },
     React.createElement('div', { className: 'dsx-stats-card-title', style: { fontSize: `${Math.round(13 * scale)}px`, minWidth: 0 } }, out.title),
-    React.createElement('div', { style: { marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: Math.round(8 * scale) } },
-      pill('v', '44%', Math.round(20 * scale), 0),
-      ...Array.from({ length: count }, (_, i) => pill(`r${i}`, `${Math.round(92 - i * 26)}%`, Math.round(10 * scale), 0)),
-    ),
+    // The body owns the card's remaining height (so a chart block reads as a
+    // chart area), and its content sits on the card's floor: the same posture
+    // the real cards use.
+    React.createElement('div', { style: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: Math.round(8 * scale), marginTop: Math.round(6 * scale) } }, ...body),
   )
 }
 
-export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetRenderOut; unit: number; width?: number; onAction?: (id: string) => void; onCycle?: (out: WidgetRenderOut) => void }): React.ReactElement {
+export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, onAction, onCycle }: { out: WidgetRenderOut; unit: number; width?: number; squircle?: boolean; cornerPercent?: number; pinBox?: boolean; onAction?: (id: string) => void; onCycle?: (out: WidgetRenderOut) => void }): React.ReactElement {
   const scale = unit / BASE_SIDE
   const boxW = width ?? unit
   const titlePx = Math.round(13 * scale)
   const valuePx = Math.round(20 * scale)
-  const radius = Math.round(16 * scale)
-  const innerPad = Math.round(12 * scale)
+  const radius = cardRadius(unit, cornerPercent)
+  const innerPad = cardInnerPad(unit)
   // Whole-card cycle (pooled usage widgets): a press plays a short press-down
   // (scale dip) and, on click, cycles the view; the release springs back.
   const cyclable = out.cycle !== undefined
@@ -621,7 +784,7 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
   }
   // Loading skeleton (see SkeletonBody): declared AFTER the hooks so the hook
   // order stays unconditional across the loading → loaded transition.
-  if (out.skeleton) return React.createElement(SkeletonBody, { out, unit, width: boxW, rows: out.skeletonRows })
+  if (out.skeleton) return React.createElement(SkeletonBody, { out, unit, width: boxW, squircle, cornerPercent })
   // Head row = two INDEPENDENT slots: the title box (which ellipsizes rather
   // than pushing the figures out) and — when `headRight` is DEFINED, even as ''
   // — a right slot holding the optional big value plus the small caption, hard
@@ -656,13 +819,43 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
     headFlex,
   ]
   if (out.headAfter) {
-    // Prominent figure + small figures on their own row under the title.
+    // Prominent figure + the grey subtitle on their own row under the title.
     // nowrap on the ROW (not just the small text): the big figure is a single
     // token ("64%", "12.2K") that must never break, and the whole row is
     // bottom-anchored on several cards, so a wrap would shift the chart up.
-    headEls.push(React.createElement('div', { key: 'ha', className: 'dsx-stats-card-headafter', style: { display: 'flex', alignItems: 'baseline', gap: 6, marginTop: `${Math.round(2 * scale)}px`, minWidth: 0, whiteSpace: 'nowrap' } },
-      out.headAfter.big != null ? React.createElement('span', { style: { fontSize: `${valuePx}px`, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.25, whiteSpace: 'nowrap' } }, out.headAfter.big) : null,
-      out.headAfter.small != null ? React.createElement('span', { style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' } }, out.headAfter.small) : null,
+    //
+    // The subtitle has THREE shapes, all riding the SAME row to the RIGHT of the
+    // figure: one grey line on the figure's baseline (`small`, e.g. 上下文水位's
+    // "~638K / 1M"), that same line dropped to the row's FLOOR
+    // (`small`+`smallAlign: 'bottom'`, e.g. 额度管理's `账期 10-10`), or a stacked
+    // grey block (`smallLines`) that is CENTRED on the figure's line box.
+    const haLines = Array.isArray(out.headAfter.smallLines) && out.headAfter.smallLines.length > 0 ? out.headAfter.smallLines : []
+    headEls.push(React.createElement('div', { key: 'ha', className: 'dsx-stats-card-headafter', style: {
+      display: 'flex',
+      // ONE grey line rides the figure's baseline by default, or sits on the row's
+      // floor when it asks to (`smallAlign: 'bottom'` — the line's bottom edge
+      // then lines up with the figure's). A STACKED block is CENTRED on the
+      // figure's line box instead: baseline-aligning the block put its second
+      // line below the figure's floor and left only ~12px to the figures row
+      // underneath (measured 2026-09-20 on the live 额度管理 card).
+      alignItems: haLines.length > 0 ? 'center' : out.headAfter.smallAlign === 'bottom' ? 'flex-end' : 'baseline',
+      gap: HEAD_GAP_PX,
+      marginTop: `${Math.round(HEAD_GAP_PX * scale)}px`,
+      minWidth: 0,
+      whiteSpace: 'nowrap',
+    } },
+      out.headAfter.big != null ? React.createElement('span', {
+        // The figure keeps the escalation's identity (`dsx-stats-card-value` +
+        // the pulse class) wherever a card puts it: the red/breathe rules key off
+        // that class, and valueTone's red is applied inline exactly as the title
+        // row's copy does.
+        className: headValueTone ? 'dsx-stats-card-value' + (out.valuePulse ? ' dsx-value-pulse' : '') : undefined,
+        style: { fontSize: `${valuePx}px`, fontWeight: 600, color: headValueTone ? 'var(--dsw-alias-state-error-primary)' : 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.25, whiteSpace: 'nowrap' },
+      }, out.headAfter.big) : null,
+      haLines.length > 0
+        ? React.createElement('span', { className: 'dsx-stats-card-headafter-lines', style: { display: 'flex', flexDirection: 'column', minWidth: 0 } },
+          haLines.map((line, i) => React.createElement('span', { key: i, style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, line)))
+        : out.headAfter.small != null ? React.createElement('span', { style: { fontSize: `${Math.round(10 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' } }, out.headAfter.small) : null,
     ))
   }
   if (out.legend) {
@@ -704,7 +897,7 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
   if (out.value != null && out.headRight === undefined) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value' + (out.valuePulse ? ' dsx-value-pulse' : ''), style: { fontSize: `${valuePx}px`, color: out.valueTone === 'danger' ? 'var(--dsw-alias-state-error-primary)' : undefined } }, out.value))
   if (out.sub) body.push(React.createElement('div', { key: 's', className: 'dsx-stats-card-sub', style: { fontSize: `${Math.round(10 * scale)}px` } }, out.sub))
   if (out.chart) {
-    const c = ChartBlock({ chart: out.chart, side: unit, width: boxW })
+    const c = ChartBlock({ chart: out.chart, side: unit, width: boxW, pad: innerPad })
     if (c) body.push(React.createElement('div', {
       key: 'c',
       // The stretch wrapper owns the card's remaining height so an elastic
@@ -736,19 +929,33 @@ export function CardBody({ out, unit, width, onAction, onCycle }: { out: WidgetR
   const vj = out.rich?.valign === 'bottom' ? 'flex-end' : out.rich?.valign === 'center' ? 'center' : undefined
   // (stretchChart is declared above with the body assembly — it is read here
   // AND by the chart push, which precedes this line.)
-  const topAligned = vj || out.headAfter || stretchChart
+  //
+  // A headAfter row normally means "the body starts right under the head"
+  // (elastic charts and rich blocks need that). `bodyAnchor: 'bottom'` opts a
+  // card back into the EVERY-OTHER-CARD posture: the short figure row stays on
+  // the card's floor with the head above it (measured on the live 额度管理 card:
+  // top-aligned, its two figures sat 12px under the 账期 line, leaving 55px of
+  // empty tile below them).
+  const headAnchorsTop = out.headAfter !== undefined && out.bodyAnchor !== 'bottom'
+  const topAligned = vj || headAnchorsTop || stretchChart
   const footStyle: React.CSSProperties = topAligned
     ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: vj ?? 'flex-start' }
     : { marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }
   return React.createElement('div', {
-    className: 'dsx-stats-card' + (cyclable ? (pressed ? ' dsx-cyclable dsx-cycle-pressed' : ' dsx-cyclable') : ''),
+    className: 'dsx-stats-card' + (squircle ? ' dsx-squircle' : '') + (cyclable ? (pressed ? ' dsx-cyclable dsx-cycle-pressed' : ' dsx-cyclable') : ''),
     // minHeight is the resting contract for every card; the ELASTIC line card
     // (sys-gpu-line) additionally pins a FIXED height so its flex body (chart
     // eats the leftover space) compresses inside the box instead of letting
     // content drive the card taller than the slot (the old card swelled to
     // ≈178px and burst the 150px box on hover magnification).
-    style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, height: stretchChart ? `${unit}px` : undefined, borderRadius: `${radius}px`, padding: `${innerPad}px` },
-    title: out.cycle?.hint,
+    //
+    // `pinBox` is what a PREVIEW passes: the card is pinned to the unit square
+    // (and its own overflow:hidden clips the rest), so the market/组件配置 stage
+    // shows the tile the rail actually seats instead of whatever height the
+    // content asks for — measured 2026-09-20: the credits card rendered 200×250
+    // in the market and read as a non-square rounded rectangle.
+    style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, height: pinBox || stretchChart ? `${unit}px` : undefined, borderRadius: `${radius}px`, padding: `${innerPad}px` },
+    title: out.cardHint ?? out.cycle?.hint,
     onClick: cyclable ? () => { pressDown(); if (onCycle) onCycle(out) } : undefined,
     onPointerDown: cyclable ? pressDown : undefined,
   },
@@ -866,10 +1073,7 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
   React.useEffect(() => { setPreviewSim(null) }, [selected])
   const toggleSim = (): void => {
     if (!selWidget || !widgetSimToggle(selWidget)) return
-    const base = previewSim ?? selWidget.example?.sim ?? {}
-    const boolKey = Object.keys(base).find((k) => typeof base[k] === 'boolean')
-    if (!boolKey) { setPreviewSim({ ...base }); return }
-    setPreviewSim({ ...base, [boolKey]: !base[boolKey] })
+    setPreviewSim(nextSim(selWidget, previewSim))
   }
   // There is no separate "uninstalled" zone any more: everything ships bundled
   // and the market only ADDS instances. Removing a row deletes it entirely
@@ -953,7 +1157,7 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
         (() => {
           const u = 150
           const isWide = selSize === '2x4'
-          const pv = out ? React.createElement(CardBody, { out, unit: u, width: isWide ? 2 * u + 12 : undefined }) : null
+          const pv = out ? React.createElement(CardBody, { out, unit: u, width: isWide ? 2 * u + 12 : undefined, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent, pinBox: true }) : null
           const simTip = widgetSimToggle(selWidget)
             ? React.createElement('div', { key: 'simtip', style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', marginTop: 8, textAlign: 'center' } }, t('config.simTip', { label: widgetSimToggle(selWidget) }))
             : null
@@ -1034,10 +1238,7 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     }
     const toggleSim = (): void => {
       if (!widgetSimToggle(w)) return
-      const base = previewSim ?? ex?.sim ?? {}
-      const boolKey = Object.keys(base).find((k) => typeof base[k] === 'boolean')
-      if (!boolKey) { setPreviewSim({ ...base }); return }
-      setPreviewSim({ ...base, [boolKey]: !base[boolKey] })
+      setPreviewSim(nextSim(w, previewSim))
     }
     // Everything ships bundled: the market only ADDS the selected instance
     // (widget@size) to the rail. Already-added instances show as disabled.
@@ -1076,7 +1277,7 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
                 title: widgetSimToggle(w) ? t('config.simTitle') : undefined,
                 onClick: widgetSimToggle(w) ? toggleSim : undefined,
               },
-                React.createElement(CardBody, { out, unit: 200, width: curSize === '2x4' ? 412 : undefined }),
+                React.createElement(CardBody, { out, unit: 200, width: curSize === '2x4' ? 412 : undefined, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent, pinBox: true }),
                 w && widgetSimToggle(w) ? React.createElement('div', { style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', whiteSpace: 'nowrap' } }, t('config.simTip', { label: widgetSimToggle(w) })) : null,
               )
             : null,
@@ -1161,6 +1362,9 @@ function Row({ title, desc, children }: { title: string; desc: string; children:
 export function SettingsPanel({ controller }: { controller: WidgetsController }): React.ReactElement {
   const { prefs, setPrefs } = controller
   const colValue = [1, 2, 3, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
+  // A stored value outside the gear table (hand-edited prefs) must still show a
+  // selected option, so fall back to the default gear.
+  const gearValue = CORNER_GEARS.indexOf(prefs.cornerPercent) !== -1 ? prefs.cornerPercent : DEFAULT_CORNER_PERCENT
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
     React.createElement(Row, {
       title: t('settings.columns.title'), desc: t('settings.columns.desc'),
@@ -1181,6 +1385,22 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
     React.createElement(Row, { title: t('settings.magnify.title'), desc: t('settings.magnify.desc'), children: React.createElement(Slider, { min: 1, max: 1.4, step: 0.05, value: prefs.magnify, unit: 'x', onChange: (v) => setPrefs({ magnify: v }) }) }),
     React.createElement(Row, { title: t('settings.padding.title'), desc: t('settings.padding.desc'), children: React.createElement(Slider, { min: 4, max: 40, value: prefs.panelPadding, unit: 'px', onChange: (v) => setPrefs({ panelPadding: v }) }) }),
     React.createElement(Row, { title: t('settings.cardSide.title'), desc: t('settings.cardSide.desc'), children: React.createElement(Slider, { min: 100, max: 220, value: prefs.cardSide, unit: 'px', onChange: (v) => setPrefs({ cardSide: v }) }) }),
+    React.createElement(Row, {
+      title: t('settings.squircle.title'), desc: t('settings.squircle.desc'),
+      children: React.createElement('label', { className: 'dsx-switch-row' },
+        React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: prefs.squircle, onChange: (e) => setPrefs({ squircle: e.target.checked }) }),
+        React.createElement('span', { className: 'dsx-switch-track' }, React.createElement('span', { className: 'dsx-switch-thumb' })),
+      ),
+    }),
+    React.createElement(Row, {
+      title: t('settings.corner.title'), desc: t('settings.corner.desc'),
+      children: React.createElement('select', {
+        className: 'dsx-select', value: gearValue,
+        onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setPrefs({ cornerPercent: Number(e.target.value) }),
+      },
+        CORNER_GEARS.map((g) => React.createElement('option', { key: g, value: g }, t('settings.corner.option', { p: g }))),
+      ),
+    }),
     React.createElement(Row, { title: t('settings.panelWidth.title'), desc: t('settings.panelWidth.desc'), children: React.createElement(Slider, { min: 260, max: 760, value: prefs.panelWidth, unit: 'px', onChange: (v) => setPrefs({ panelWidth: v }) }) }),
     React.createElement(Row, { title: t('settings.maxWidgets.title'), desc: t('settings.maxWidgets.desc'), children: React.createElement(Slider, { min: 1, max: 20, value: prefs.maxWidgets, unit: t('settings.maxWidgets.unit'), onChange: (v) => setPrefs({ maxWidgets: v }) }) }),
     React.createElement(Row, {

@@ -11,7 +11,6 @@
       "widget.quota-manage.periodEnd": "账期 {m}-{d}",
       "widget.quota-manage.used": "今日用量",
       "widget.quota-manage.recommend": "今日推荐",
-      "widget.quota-manage.insufficient": "数据不足",
       "widget.quota-manage.simToggle": "超额状态"
     },
     "en": {
@@ -20,7 +19,6 @@
       "widget.quota-manage.periodEnd": "Ends {m}-{d}",
       "widget.quota-manage.used": "Today",
       "widget.quota-manage.recommend": "Budget",
-      "widget.quota-manage.insufficient": "No data",
       "widget.quota-manage.simToggle": "Over budget"
     }
   }

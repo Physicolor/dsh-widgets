@@ -133,8 +133,15 @@ async function loadReal(key) {
   for (const [id, o] of Object.entries(cards)) {
     check(`title is exactly "Command Code" (${id})`, o.title === 'Command Code', JSON.stringify(o.title))
   }
-  check('role words on the grey legend line', cards['cc-whoami'].legend === '账户' && cards['cc-usage'].legend === '用量' && cards['cc-credits'].legend.startsWith('额度') && cards['cc-windows'].legend === '窗口' && cards['cc-subscription'].legend === '套餐',
-    [cards['cc-whoami'].legend, cards['cc-usage'].legend, cards['cc-credits'].legend, cards['cc-windows'].legend, cards['cc-subscription'].legend].join(' / '))
+  check('role words on the grey legend line (用量/额度 carry their unit, 套餐 its period)',
+    cards['cc-whoami'].legend === '账户' && cards['cc-usage'].legend === undefined && cards['cc-credits'].legend === undefined && cards['cc-windows'].legend === '窗口' && /^账期 \d{1,2}-\d{1,2}$/.test(cards['cc-subscription'].legend),
+    [cards['cc-whoami'].legend, cards['cc-usage'].legend, cards['cc-credits'].legend, cards['cc-windows'].legend, cards['cc-subscription'].legend].map(String).join(' / '))
+  check('用量 shows its three facts as a figures row, 额度 as three quota rows',
+    cards['cc-usage'].chart?.kind === 'figures' && cards['cc-usage'].chart.figures.length === 3 && cards['cc-credits'].chart?.kind === 'quotas' && cards['cc-credits'].chart.quotas.length === 3,
+    `${cards['cc-usage'].chart?.kind}(${cards['cc-usage'].chart?.figures?.length}) / ${cards['cc-credits'].chart?.kind}(${cards['cc-credits'].chart?.quotas?.length})`)
+  check('套餐 shows a tier badge, never the raw plan id',
+    cards['cc-subscription'].value === 'GOAT' && !JSON.stringify(cards['cc-subscription']).includes('individual-'),
+    `${cards['cc-subscription'].value} | ${cards['cc-subscription'].legend}`)
   check('cc-windows renders THREE rings', Array.isArray(cards['cc-windows'].chart?.rings) && cards['cc-windows'].chart.rings.length === 3,
     (cards['cc-windows'].chart?.rings || []).map((r) => `${r.name}:${r.value}%`).join(' '))
   const rings = cards['cc-windows'].chart?.rings || []
@@ -146,12 +153,17 @@ async function loadReal(key) {
     check(`${id} shows a percent to ONE decimal`, /^\d+\.\d%$/.test(String(cards[id].value)), cards[id].value)
     check(`${id} shows a reset/period line`, typeof cards[id].sub === 'string' && cards[id].sub.length > 0, cards[id].sub)
   }
-  const used = data.usage?.totalMonthlyCredits
+  // The monthly figure is the plan's published allowance minus the remaining
+  // balance — NOT used/(used+remaining). The probe asserted the old formula and
+  // had been failing since the fix: that denominator is the sum of two unrelated
+  // snapshots (measured 17.26 + 59.01 = 76.27 against a $70 plan), so it read
+  // 34.8% where the account page read ~28.9%.
   const remaining = data.credits?.credits?.monthlyCredits
-  if (typeof used === 'number' && typeof remaining === 'number') {
-    const expected = ((used / (used + remaining)) * 100).toFixed(1) + '%'
-    check('monthly percent = used/(used+remaining)', cards['cc-window-monthly'].value === expected, `rendered ${cards['cc-window-monthly'].value}, expected ${expected}`)
+  if (typeof remaining === 'number') {
+    const expected = (((70 - remaining) / 70) * 100).toFixed(1) + '%'
+    check('monthly percent = plan allowance - remaining (GOAT $70)', cards['cc-window-monthly'].value === expected, `rendered ${cards['cc-window-monthly'].value}, expected ${expected}`)
   }
+  check('single-key payload carries NO pool switcher (keys absent)', cards['cc-windows'].cycle === undefined, String(cards['cc-windows'].cycle))
 
   const fails = results.filter((r) => !r.ok).length
   fs.writeFileSync(OUT_FILE, JSON.stringify({ generatedAt: new Date().toISOString(), keySource: resolved.source, results, fails }, null, 2))

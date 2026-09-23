@@ -122,15 +122,41 @@ export interface CommandCodeSubscription {
   } | null
 }
 
-/** The aggregated Command Code account payload from the host
- *  `/api/commandcode-usage` route (the four official endpoints). Every slice
+/** The four official endpoint slices of ONE Command Code account. Every slice
  *  is nullable: the host fetches them independently, so one failing endpoint
  *  never blanks the others. */
-export interface CommandCodeData {
+export interface CommandCodeAccount {
   whoami: CommandCodeWhoami | null
   usage: CommandCodeUsageSummary | null
   credits: CommandCodeCredits | null
   subscription: CommandCodeSubscription | null
+}
+
+/** One Command Code pool member: the credential ref it came from, the account
+ *  label the card's pool switcher shows, and its own four slices. */
+export interface CommandCodeKeyEntry {
+  ref: string
+  /** The account's own name, read from THIS key's `/alpha/whoami`
+   *  (`name` -> `userName`), or `Key N` when that call did not answer. The card
+   *  family shows it as the pool view (`Command Code` / legend `账户 · Physicolor`). */
+  label: string
+  /** Last 4 characters of the key, used to disambiguate two pools that resolve
+   *  to the same account name. Never the full secret. */
+  tail?: string
+  /** This member's own four slices; null when every endpoint failed for it. */
+  data: CommandCodeAccount | null
+}
+
+/** The Command Code payload from the host `/api/commandcode-usage` route: the
+ *  FIRST pool member's own slices (the back-compatible shape every card read
+ *  before pools existed) PLUS every configured pool member, in order.
+ *
+ *  `keys` is what makes the family switchable: one entry -> nothing to switch to
+ *  and the top-level slices are the whole answer; two or more -> the cards cycle
+ *  `AllUser` -> each account, and `AllUser` is summed client-side (the plan ->
+ *  monthly-allowance table lives in `cc-view`). */
+export interface CommandCodeData extends CommandCodeAccount {
+  keys?: CommandCodeKeyEntry[]
 }
 
 /** One hardware snapshot from the Host `/api/sysinfo` route (machine-local
@@ -180,6 +206,11 @@ export interface WidgetStats {
    *  'unavailable') when it did not, so cards can say WHY instead of a bare
    *  「未配置」 (the key is auto-read host-side, never user-entered). */
   commandCodeError?: string | null
+  /** Current Command Code pool view: 'AllUser' or a pooled account's label.
+   *  Written per instance by the card's own tap-to-cycle (the `ccView` field of
+   *  that instance's cardConfigs — deliberately NOT the OpenCode pool's
+   *  `poolView`, so the two families never share a view). */
+  ccView?: string
   /** Current pooled view selection: 'total' or a `poolModes` entry ('Key 1'…). */
   poolView?: string
   /** Selectable pooled views in cycle order; first entry must be 'total'. */
@@ -196,6 +227,12 @@ export interface WidgetStats {
    *  half-year) and bar (last-7-day) variants can derive their own grids from
    *  the same source the 2×2 calendar uses. */
   heatmapRaw?: Record<string, number>
+  /** The same daily log RESTRICTED to the Command Code route (`commandcode`),
+   *  served by `/api/widgets-usage-daily?provider=commandcode`. 「额度管理」reads
+   *  only this map: its credits and billing period describe that one plan, so
+   *  folding the machine-wide `heatmapRaw` in charged the plan for every other
+   *  provider's tokens too (measured 2026-09-20: 758M vs the plan's own 474M). */
+  commandCodeDaily?: Record<string, number>
   /** Id of the currently armed (awaiting second tap) action, if any. */
   armedAction?: string | null
   /** Current task list (todos projection): status is pending | in_progress | completed. */
@@ -247,8 +284,12 @@ export interface BarDatum {
 
 /** A chart block a card body can render (declarative, theme tokens only). */
 export interface WidgetChart {
-  kind: 'bars' | 'ring' | 'rings' | 'line' | 'segments' | 'heatmap' | 'barsV' | 'figures' | 'lanes'
+  kind: 'bars' | 'ring' | 'rings' | 'line' | 'segments' | 'heatmap' | 'barsV' | 'figures' | 'lanes' | 'quotas'
   bars?: BarDatum[]
+  /** Quota ROWS in the official site's shape: the window name on the left, its
+   *  percent hard right, and a SEGMENTED bar under them (filled cells = used) —
+   *  the 套餐/额度 card family's window trio. */
+  quotas?: Array<{ label: string; pct: number; tone?: BarDatum['tone'] }>
   /** Trajectory lanes (对话轨迹): one bar per beat, newest at the RIGHT, colored
    *  by the official 轨迹 lane colors (输入 / 模型 / 工具). No axes, no corner
    *  labels — the bars own the whole remaining card height. */
@@ -351,6 +392,21 @@ export function parseInstanceKey(key: string): { widgetId: string; size: WidgetS
   return size === '2x4' ? { widgetId: key.slice(0, at), size: '2x4' } : { widgetId: key.slice(0, at), size: '2x2' }
 }
 
+/**
+ * The silhouette a loading skeleton draws (see `WidgetRenderOut.skeletonShape`).
+ *
+ * One case per card BODY the rail actually seats, so the placeholder wears the
+ * shape of the content it stands in for — never a generic stack of grey lines:
+ *  - `text`     title + figure pill + body rows (a text-only card);
+ *  - `rings`    N square rounded blocks in a row (N donuts / rings);
+ *  - `bars`     ONE wide rounded block (a bar chart's plot area);
+ *  - `line`     ONE wide rounded block (a sparkline's plot area);
+ *  - `heatmap`  ONE wide rounded block (the calendar grid);
+ *  - `figures`  N short rounded blocks in a row (a label-over-figure row);
+ *  - `quotas`   N wide rounded bars stacked (the segmented quota rows).
+ */
+export type SkeletonShape = 'text' | 'rings' | 'bars' | 'line' | 'heatmap' | 'figures' | 'quotas'
+
 /** The card shape a widget render produces. */
 export interface WidgetRenderOut {
   title: string
@@ -361,18 +417,45 @@ export interface WidgetRenderOut {
    *  top-right corner with no extra caption of its own. */
   headRight?: string
   /** Optional prominent figure rendered on its own row UNDER the title (e.g. the
-   *  context percent, with small figures beside it). Pushes content top-aligned. */
-  headAfter?: { big?: string; small?: string }
+   *  context percent, with small figures beside it).
+   *
+   *  `small` is ONE grey line to the RIGHT of the figure, sharing its baseline
+   *  (`smallAlign: 'bottom'` drops it to the row's floor instead, so the line's
+   *  bottom edge lines up with the figure's — the 额度管理 card's `账期 10-10`
+   *  reads that way); `smallLines` is a STACKED grey block in that same slot, for
+   *  a subtitle that is too long to sit beside the figure — the block is CENTRED
+   *  on the figure's line box, so its last line never dangles below the figure and
+   *  crowds the row underneath. When both are given, `smallLines` wins. */
+  headAfter?: { big?: string; small?: string; smallLines?: string[]; smallAlign?: 'baseline' | 'bottom' }
+  /** Where the card BODY (the foot: figures, charts, sub) sits once a `headAfter`
+   *  row has made the head taller than one line. Default `'top'`: the body starts
+   *  right under the head — what an elastic chart (sys-gpu-line) and a rich block
+   *  need. `'bottom'` keeps the pre-headAfter posture: the body stays on the
+   *  card's floor (`marginTop: auto`) with the head above it, which is what a
+   *  short figure row (额度管理) wants. */
+  bodyAnchor?: 'top' | 'bottom'
   /** Optional small caption directly under the title that does NOT affect the
    *  vertical alignment (unlike headAfter) — for subtitles like "今日 12.2K". */
   legend?: string
+  /**
+   * Card-level hover tooltip: a diagnostic that must NOT be printed on the tile.
+   *
+   * The Command Code "not configured" hint is a full sentence (~90 chars); as a
+   * `legend` it ellipsized to `未配置 COMMANDCODE…` on every 150px card, which
+   * reads as a truncated error rather than a label. The card now keeps a short,
+   * honest label (the pool view, e.g. `AllUser`) and the sentence rides here,
+   * one hover away. Falls back to `cycle.hint` when both exist.
+   */
+  cardHint?: string
   /** Optional two-line meter under the title (e.g. peak-pricing windows). The
    *  active line lights up (brand blue, slightly enlarged); idle lines keep the
    *  faint legend look. */
   meter?: Array<{ label: string; active?: boolean }>
   value?: string
   /** Value color override (e.g. 'danger' renders the value in the error red,
-   *  used by the peak-pricing EXPENSIVE state). */
+   *  used by the peak-pricing EXPENSIVE state). It follows the figure into
+   *  whichever slot that card renders it in — the title row, `headAfter.big`, or
+   *  the body. */
   valueTone?: 'danger'
   /** Slow red blink on the VALUE itself (e.g. peak pricing is live, or a plan
    *  projected past 100%): the text pulses between full and ~35% opacity in the
@@ -400,8 +483,25 @@ export interface WidgetRenderOut {
    * those two deserve different cards (placeholder vs 数据不足).
    */
   skeleton?: boolean
-  /** Placeholder body rows the skeleton draws under the title/value pills.
-   *  Default 2; the shell picks a shape that matches the card family. */
+  /**
+   * The SILHOUETTE the loading skeleton draws (see SkeletonBody).
+   *
+   * The placeholder must stand in for the CONTENT, not just the card: a rail of
+   * identical grey pills says "something is loading here" but not WHICH card,
+   * and the loading → loaded swap then re-shapes the tile. So every family with
+   * a live source declares the shape its real body has — three rings, one bar
+   * block, one sparkline, a heatmap block, a row of figures, three quota bars —
+   * and the skeleton draws that silhouette as rounded blocks.
+   *
+   * Default `'text'` (title + figure pill + body rows), which is what a
+   * text-only card actually looks like.
+   */
+  skeletonShape?: SkeletonShape
+  /** How many repeated units the silhouette has (rings / figures / quota rows).
+   *  Default 3. */
+  skeletonCount?: number
+  /** Placeholder body rows a `'text'` skeleton draws under the value pill.
+   *  Default 2. */
   skeletonRows?: number
 }
 
@@ -437,6 +537,13 @@ export interface WidgetExample {
   stats?: Partial<WidgetStats> | ((config: Record<string, unknown>) => Partial<WidgetStats>)
   /** Initial simulated state served to `render(meta.sim)`. */
   sim?: Record<string, unknown>
+  /** Preview states a click ADVANCES through, in order and cyclically. Present
+   *  for widgets whose preview has more than two states — the 套餐 card cycles
+   *  the plan tiers (GOAT → Pro → Max → …) so every badge can be eyeballed
+   *  without a subscription for it. When omitted, a click keeps the original
+   *  behaviour: flip the single boolean field of `sim`. `simToggle` is the label
+   *  the preview shows either way. */
+  simSteps?: Array<Record<string, unknown>>
   /** Optional hint shown under the preview card. */
   note?: string
 }

@@ -77,11 +77,13 @@ function locales() {
   const React = tmpRequire('react')
   const { renderToStaticMarkup } = tmpRequire('react-dom/server')
 
-  const [cc, daily] = await Promise.all([
+  const [cc, daily, scoped] = await Promise.all([
     fetch('http://127.0.0.1:3080/api/commandcode-usage').then((r) => r.json()),
     fetch('http://127.0.0.1:3080/api/widgets-usage-daily').then((r) => r.json()),
+    // The 额度管理 card's own caliber: the log folded to the Command Code route.
+    fetch('http://127.0.0.1:3080/api/widgets-usage-daily?provider=commandcode').then((r) => r.json()),
   ])
-  const stats = { commandCode: cc, heatmapRaw: daily.daily ?? {} }
+  const stats = { commandCode: cc, heatmapRaw: daily.daily ?? {}, commandCodeDaily: scoped.daily ?? {} }
   const calm = renderToStaticMarkup(React.createElement(CardBody, { out: widget.render(widget.example.stats({})), unit: 150 }))
   const over = renderToStaticMarkup(React.createElement(CardBody, { out: widget.render(widget.example.stats({}), { sim: { over: true } }), unit: 150 }))
   const live = renderToStaticMarkup(React.createElement(CardBody, { out: widget.render(stats), unit: 150 }))

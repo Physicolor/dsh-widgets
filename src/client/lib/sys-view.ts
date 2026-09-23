@@ -33,6 +33,45 @@ export function sysInfo(stats: WidgetStats): SysInfo | null {
 const CLIENT_HIST_CAP = 120
 let clientHist: { ts: number[]; gpu: Array<number | null> } = { ts: [], gpu: [] }
 
+/** Max null run the sparkline carries ACROSS instead of breaking at (see below). */
+const CHART_GAP_MAX = 4
+
+/**
+ * Utilization samples ready to plot.
+ *
+ * A `null` in the host history means "the driver did not answer this poll" (the
+ * host's nvidia-smi query has a 3s timeout), NOT "0 %". The chart's x axis is
+ * sample ORDER, so a hole used to be drawn as a break: measured on the live
+ * 利用率 card 2026-09-20 — `history.gpu` held 26 nulls against 0 in
+ * `history.cpu`, and the card rendered TWO polylines (15 + 3 points), which is
+ * exactly the dashed, "cut off" sparkline the user reported while their GPU sat
+ * completely idle at 0 %.
+ *
+ * So a short miss carries the last known value forward (the poll window IS the
+ * averaging window, and the previous reading is the best estimate for a
+ * utilization graph — Windows' own graph does the same). A LONG run (more than
+ * CHART_GAP_MAX samples, i.e. a device that really went away) still breaks the
+ * line, and the card's own no-GPU state reports that case in words. Leading
+ * nulls (before the first reading) are dropped rather than fabricated.
+ */
+export function plotSamples(vals: Array<number | null | undefined>): Array<number | null> {
+  const out: Array<number | null> = []
+  let last: number | null = null
+  let gap = 0
+  for (const v of vals) {
+    if (typeof v === 'number' && Number.isFinite(v)) {
+      out.push(v)
+      last = v
+      gap = 0
+      continue
+    }
+    if (last === null) continue // nothing to carry yet
+    gap += 1
+    out.push(gap <= CHART_GAP_MAX ? last : null)
+  }
+  return out
+}
+
 /** Feed one successful snapshot into the client-side fallback history. */
 export function ingestSysInfo(s: SysInfo): void {
   if (s === null || typeof s !== 'object') return
@@ -228,37 +267,44 @@ export function sysBoardRender(stats: WidgetStats): WidgetRenderOut | null {
   }
 }
 
-/** sys-gpu-line: GPU utilization sparkline (Windows-task-manager style) with
- *  the current utilization as the big figure. The card body carries
- *  value + sub + sparkline, and the sparkline is ELASTIC (CardBody gives the
- *  line chart the remaining vertical space, ChartBlock renders it at
- *  flex:1/100%) — so the card's intrinsic height stays inside the 2×2 box at
- *  ANY side size or magnification factor (the old fixed 68px sparkline
- *  totalled ≈178px and burst the 150px box on hover). */
+/** sys-gpu-line: GPU utilization sparkline (Windows-task-manager style) with the
+ *  current utilization as the big figure. The head follows the 上下文水位 shape the
+ *  user asked for: the blue title on top, the big percent on the NEXT row, and
+ *  the grey `°C · GB` facts to its RIGHT on that same row. The card body carries
+ *  the sparkline, which is ELASTIC (CardBody gives the line chart the remaining
+ *  vertical space, ChartBlock renders it at flex:1/100%) — so the card's
+ *  intrinsic height stays inside the 2×2 box at ANY side size or magnification
+ *  factor (the old fixed 68px sparkline totalled ≈178px and burst the 150px box
+ *  on hover). */
 export function sysGpuLineRender(stats: WidgetStats): WidgetRenderOut | null {
   const s = sysInfo(stats)
   if (s === null) return sysUnavailable('widget.sys-gpu-line.name')
   if (s.gpu === null) return { title: t('widget.sys-gpu-line.name'), value: '—', legend: t('sysinfo.noGpu') }
+  const g = s.gpu
+  // The facts line is the same on every branch, so it is built once.
+  const facts = `${Math.round(g.temp)}°C · ${fmtGb(g.memUsed)}`
   const hist = historyOf(s)
-  const allVals = hist ? hist.gpu : []
+  // Misses are carried forward instead of breaking the line (see plotSamples).
+  const allVals = hist ? plotSamples(hist.gpu) : []
   const allTs = hist ? hist.ts : []
   if (allVals.length < 2) {
-    return { title: t('widget.sys-gpu-line.name'), value: `${Math.round(s.gpu.util)}%`, legend: t('sysinfo.waiting') }
+    // Not enough history to DRAW a line yet: the current utilization and the
+    // card's facts are both known, so the card shows them (text fill) instead of
+    // a waiting notice — the sparkline appears in place on the next samples.
+    return { title: t('widget.sys-gpu-line.name'), headAfter: { big: `${Math.round(g.util)}%`, small: facts } }
   }
   // Sample window (10..30, default 20): draw only the most recent N points so
   // the line keeps its shape no matter how long the host has been sampling.
   const N = resolveSparkPoints(stats)
   const vals = allVals.slice(-N)
   const ts = allTs.slice(-N)
-  const g = s.gpu
   const fmtT = (tms: number): string => {
     const d = new Date(tms)
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
   return {
     title: t('widget.sys-gpu-line.name'),
-    value: `${Math.round(g.util)}%`,
-    sub: `${Math.round(g.temp)}°C · ${fmtGb(g.memUsed)}`,
+    headAfter: { big: `${Math.round(g.util)}%`, small: facts },
     chart: { kind: 'line', line: { values: vals, max: 100, labels: [fmtT(ts[0]), fmtT(ts[ts.length - 1])] } },
   }
 }

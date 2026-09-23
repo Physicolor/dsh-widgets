@@ -118,6 +118,11 @@ const ZH: Record<string, string> = {
   'settings.maxWidgets.unit': '个',
   'settings.hideStatsLine.title': '隐藏输入框下方文字条',
   'settings.hideStatsLine.desc': '隐藏输入框下方状态统计条的文字（保留原空间）',
+  'settings.squircle.title': '连续曲率圆角',
+  'settings.squircle.desc': '组件卡片用超椭圆（squircle）圆角，曲率从直边连续过渡，而非直接接一段圆弧',
+  'settings.corner.title': '圆角档位',
+  'settings.corner.desc': '圆角半径占卡片短边的比例（内容内间距同步变化）；12% 约等于旧的固定 16px',
+  'settings.corner.option': '{p}%',
 
   // Align/valign labels (generic control labels)
   'align.left': '左',
@@ -193,6 +198,11 @@ const EN: Record<string, string> = {
   'settings.maxWidgets.unit': '',
   'settings.hideStatsLine.title': 'Hide Stats Line',
   'settings.hideStatsLine.desc': 'Hide the text of the status stats bar under the input box (its space is kept)',
+  'settings.squircle.title': 'Continuous corner curvature',
+  'settings.squircle.desc': 'Draw card corners as superellipses (squircle): the curvature ramps in from the straight edges instead of meeting a circular arc',
+  'settings.corner.title': 'Corner radius',
+  'settings.corner.desc': 'Corner radius as a share of the card’s short side (the content inset follows it); 12% ≈ the old fixed 16px',
+  'settings.corner.option': '{p}%',
 
   'align.left': 'Left',
   'align.center': 'Center',

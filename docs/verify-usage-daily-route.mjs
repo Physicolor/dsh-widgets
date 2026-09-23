@@ -39,12 +39,12 @@ function harness(service) {
 }
 
 /** Invoke one captured route and parse its JSON answer. */
-async function callRoute(routes, path) {
+async function callRoute(routes, path, url) {
   const route = routes.get(path)
   if (route === undefined) throw new Error(`route ${path} not registered`)
   let status = 0
   let body = ''
-  await route.handler({ method: 'GET' }, {
+  await route.handler({ method: 'GET', url: url ?? path }, {
     writeHead(code) { status = code; return this },
     end(text) { body = text ?? ''; return this },
   })
@@ -66,6 +66,33 @@ check('day map passes the service totals through unchanged',
   present.json.daily?.['2026-09-11'] === 569_960_185 && present.json.daily?.['2026-09-12'] === 0,
   JSON.stringify(present.json.daily))
 check('day count is reported for diagnostics', present.json.days === 3, String(present.json.days))
+check('no provider asked -> the fold stays machine-wide (no `only` filter)',
+  present.json.provider === undefined, JSON.stringify(present.json.provider))
+
+// 1b. `?provider=<route>` scopes the fold to ONE provider. 「额度管理」needs this:
+// its credits describe the Command Code plan alone, so a machine-wide day map
+// charged it for every other provider's tokens (measured 2026-09-20: 758M shown
+// against 474M the route itself served).
+const calls = []
+const scopedRoutes = harness({
+  getActivity: (provider, model, mode) => {
+    calls.push([provider, model, mode])
+    return { days: 366, activity: [{ date: '2026-09-20', totalTokens: 473_748_376 }] }
+  },
+})
+const scoped = await callRoute(scopedRoutes, '/api/widgets-usage-daily', '/api/widgets-usage-daily?provider=commandcode&refresh=1')
+check('?provider=X asks usage-center for that route in `only` mode (all/merge keep the whole window)',
+  JSON.stringify(calls) === JSON.stringify([['commandcode', undefined, 'only']]), JSON.stringify(calls))
+check('the scoped answer carries only that route\'s days',
+  scoped.json.daily?.['2026-09-20'] === 473_748_376 && scoped.json.provider === 'commandcode',
+  JSON.stringify(scoped.json).slice(0, 160))
+check('an empty provider value behaves as machine-wide',
+  await (async () => {
+    const seen = []
+    const routes = harness({ getActivity: (provider) => { seen.push(provider); return { activity } } })
+    await callRoute(routes, '/api/widgets-usage-daily', '/api/widgets-usage-daily?provider=%20')
+    return seen.length === 1 && seen[0] === undefined
+  })(), 'whitespace-only provider is not a route name')
 
 // 2. usage-center absent → the client must fall back to its own accounting.
 const absent = await callRoute(harness(undefined), '/api/widgets-usage-daily')
