@@ -14,6 +14,7 @@ import './widgets.module.css'
 import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES } from './generated.registry'
 import { instanceKey, parseInstanceKey, sizesOf, widgetName, TRAJECTORY_WINDOW, type CommandCodeData, type SkeletonShape, type SysInfo, type TrajectoryBeat, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
 import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
+import { ccPayloadDegraded } from './lib/cc-view'
 import { springSettleMs, springValue, WAVE_SPRING } from './lib/morph-spring'
 import { SYS_WIDGET_IDS, ingestSysInfo, resolveInterval } from './lib/sys-view'
 import { CardBody, DEFAULT_CORNER_PERCENT, WidgetsPage, type Prefs } from './components'
@@ -227,6 +228,9 @@ interface BridgeSnapshot {
   commandCode: CommandCodeData | null
   commandCodeError: string | null
   usageDaily: Record<string, number> | null
+  /** The same daily log RESTRICTED to the `commandcode` route — 「额度管理」's
+   *  token side. Separate from `usageDaily` because that one is machine-wide. */
+  commandCodeDaily: Record<string, number> | null
   sysinfo: SysInfo | null
   prefs: Prefs
   railBudget: number
@@ -1829,7 +1833,7 @@ export function apply(ctx: ClientContext): void {
   // loads —and it must never touch live-accumulated days.
   try { loadHeatmapStore() } catch { /* best-effort */ }
   let prefs = loadState()
-  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null }
+  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, commandCodeDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null }
 
   const listeners = new Set<() => void>()
   /**
@@ -2522,6 +2526,103 @@ export function apply(ctx: ClientContext): void {
       // on mount AND whenever a turn settles (`running` flips true −false).
       // The `conversation.composer.dock` component is reused across sessions, so
       // a mount-only fetch leaves the quota stale until a reload/new session.
+      // ---- Live pulls, shared by the turn-settle refresh and the slow polls ----
+      // Command Code account usage (whoami / summary / credits / plan).
+      // Error-aware: a 404 host route (dsh web not restarted) vs a 503 missing-key
+      // vs a network failure each produce a stable code the widgets render as
+      // an accurate hint - the key itself is auto-read host-side (env -
+      // .credentials.yaml -.env), never user-entered in this UI.
+      // Self-reference for the degraded-payload retry below: a useCallback body
+      // may not name its own const in the initializer, so the timer calls through
+      // this ref (reassigned on every render, so it is never stale).
+      const ccPullRef = React.useRef<() => void>(() => {})
+      const ccRetryPending = React.useRef(false)
+      const pullCommandCode = React.useCallback((): void => {
+        fetch('/api/commandcode-usage')
+          .then(async (r) => {
+            const data = (await r.json().catch(() => null)) as CommandCodeData | { error?: string } | null
+            if (!r.ok) {
+              // STALE-WHILE-ERROR: the error code is recorded, the last good
+              // payload is KEPT. A poll that fails must not blank a card that was
+              // already showing a number — `-` means "this account has no such
+              // figure", and a blip is not that. The skeleton still resolves on a
+              // first-load failure (commandCode is still null there).
+              const error = (data as { error?: string } | null)?.error
+              if (r.status === 404) setState({ commandCodeError: 'unloaded' })
+              else if (r.status === 503) setState({ commandCodeError: 'unconfigured' })
+              else setState({ commandCodeError: error ? `http:${r.status}:${error}` : `http:${r.status}` })
+              return
+            }
+            const next = data as CommandCodeData
+            // STALE-WHILE-DEGRADED. A 200 with a `null` slice (one upstream call
+            // dropped) is NOT a complete answer, and it is not harmless either:
+            // `monthlyWindow` returns null on purpose when a member's slices are
+            // missing — a partial sum would read LOW — so the monthly ring vanished
+            // and 「额度管理」 fell to `-%` until the next settle. Measured
+            // 2026-09-23: one poll in three answered exactly that way, and because
+            // the old collector only re-asked on mount/turn-settle, the degraded
+            // payload stayed on screen for the rest of the session. So: a degraded
+            // reply never REPLACES a complete one, it schedules one extra look 5 s
+            // out (`ccPayloadDegraded` was exported for this and never called), and
+            // the 30 s poll covers a provider that stays down.
+            if (ccPayloadDegraded(next) && state.commandCode !== null && !ccPayloadDegraded(state.commandCode)) {
+              if (!ccRetryPending.current) {
+                ccRetryPending.current = true
+                window.setTimeout(() => { ccRetryPending.current = false; ccPullRef.current() }, 5000)
+              }
+              return
+            }
+            setState({ commandCode: next, commandCodeError: null })
+          })
+          .catch(() => setState({ commandCodeError: 'unavailable' }))
+      }, [])
+      ccPullRef.current = pullCommandCode
+      // Authoritative per-day token totals, in TWO scopes: the heatmap cards read
+      // the machine-wide map, 「额度管理」 reads the `commandcode`-scoped one (its
+      // credits and billing period describe that ONE plan, so a machine-wide
+      // figure charges it for every other provider the harness used that day).
+      // Both are dsh-usage-center's log fold re-served by the host route;
+      // `available: false` (missing service, empty index, dsh web not restarted)
+      // leaves the cards on their own live accounting. `refreshNow` (the
+      // turn-settle path) asks the host to fold the logs immediately instead of
+      // waiting for usage-center's next ~30 s pass, so the day's figure moves
+      // with the turn that just finished.
+      // The MACHINE-WIDE day map only. Cheap: it is the same map dsh-usage-center
+      // folds for its own heatmap, so it is normally warm (~30 ms measured). It
+      // feeds the heatmap cards; `refreshNow` is the turn-settle path, which asks
+      // the host to fold the logs now instead of waiting for its next ~30 s pass.
+      const pullUsageDaily = React.useCallback((refreshNow: boolean): void => {
+        fetch(`/api/widgets-usage-daily${refreshNow ? '?refresh=1' : ''}`)
+          .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
+          .then((data: { available?: boolean; daily?: Record<string, number> } | null) => {
+            setState({ usageDaily: data?.available === true && data.daily !== null && data.daily !== undefined ? data.daily : null })
+          })
+          .catch(() => { /* keep the last authoritative map (or the fallback) */ })
+      }, [])
+      // The `commandcode`-SCOPED day map — 「额度管理」's token side (its credits and
+      // billing period describe that ONE plan, so a machine-wide figure would
+      // charge it for every other provider the harness used that day).
+      //
+      // Deliberately NOT on a timer. Measured 2026-09-23 on this machine: the
+      // scoped filter is a memo key nothing else asks for, so a cold call re-folds
+      // the session logs — 10.6 s and 21.2 s observed against 34 ms warm — and a
+      // 60 s poll of it would burn seconds of CPU every minute for a figure that
+      // can only move when THIS machine finishes a turn. So it runs on the
+      // turn-settle path and on mount, never in a poll loop.
+      const pullCommandCodeDaily = React.useCallback((refreshNow: boolean): void => {
+        fetch(`/api/widgets-usage-daily?provider=commandcode${refreshNow ? '&refresh=1' : ''}`)
+          .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
+          .then((data: { available?: boolean; daily?: Record<string, number> } | null) => {
+            const daily = data?.available === true && data.daily !== null && data.daily !== undefined ? data.daily : null
+            // Stale-while-error, same rule as the account payload: `available: false`
+            // (usage-center mid-rescan, host just restarted, service absent) leaves
+            // the last good map in place. Blanking it would print `-` for the 今日用量
+            // of a plan that plainly HAS a figure — the exact symptom (reported
+            // 2026-09-23) this scoped map was wired up to fix.
+            if (daily !== null) setState({ commandCodeDaily: daily })
+          })
+          .catch(() => { /* keep the last scoped map */ })
+      }, [])
       const prevRunningRef = React.useRef(running)
       React.useEffect(() => {
         const refresh = (): void => {
@@ -2534,38 +2635,10 @@ export function apply(ctx: ClientContext): void {
           .then((r) => r.json())
           .then((data: UsageMulti) => setState({ usageMulti: data }))
           .catch(() => { /* pool endpoint optional: cards fall back to single-key */ })
-        // Command Code account usage (whoami / summary / credits / plan).
-        // Error-aware: a 404 host route (dsh web not restarted) vs a 503 missing-key
-        // vs a network failure each produce a stable code the widgets render as
-        // an accurate hint −the key itself is auto-read host-side (env −
-        // .credentials.yaml −.env), never user-entered in this UI.
-        fetch('/api/commandcode-usage')
-          .then(async (r) => {
-            const data = (await r.json().catch(() => null)) as CommandCodeData | { error?: string } | null
-            if (!r.ok) {
-              const error = (data as { error?: string } | null)?.error
-              if (r.status === 404) setState({ commandCode: null, commandCodeError: 'unloaded' })
-              else if (r.status === 503) setState({ commandCode: null, commandCodeError: 'unconfigured' })
-              else setState({ commandCode: null, commandCodeError: error ? `http:${r.status}:${error}` : `http:${r.status}` })
-              return
-            }
-            setState({ commandCode: data as CommandCodeData, commandCodeError: null })
-          })
-          .catch(() => setState({ commandCode: null, commandCodeError: 'unavailable' }))
-        // Authoritative per-day token totals for the heatmap cards. The host
-        // route re-serves dsh-usage-center's log-folded days when that plugin is
-        // installed; `available: false` (missing service, empty index, dsh web
-        // not restarted) simply leaves the cards on their own live accounting.
-        // `refresh=1` (this path runs when a turn SETTLES) makes the host fold
-        // the logs immediately instead of waiting for usage-center's next ~30 s
-        // pass, so the day's figure moves with the turn that just finished.
-        fetch('/api/widgets-usage-daily?refresh=1')
-          .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
-          .then((data: { available?: boolean; daily?: Record<string, number> } | null) => {
-            const daily = data?.available === true && data.daily !== null && data.daily !== undefined ? data.daily : null
-            setState({ usageDaily: daily })
-          })
-          .catch(() => { /* keep the last authoritative map (or the fallback) */ })
+        // Command Code account usage + both authoritative day maps.
+        pullCommandCode()
+        pullUsageDaily(true)
+        pullCommandCodeDaily(true)
         }
         // Pull on mount (both false −first render); afterwards only a
         // completed turn (true −false) refetches, an in-flight turn does not.
@@ -2578,22 +2651,39 @@ export function apply(ctx: ClientContext): void {
       // "today" cell. One tiny same-origin JSON per minute; a missing service or
       // an unrestarted host simply keeps answering `available: false`.
       React.useEffect(() => {
-        const pull = (): void => {
-          fetch('/api/widgets-usage-daily')
-            .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
-            .then((data: { available?: boolean; daily?: Record<string, number> } | null) => {
-              const daily = data?.available === true && data.daily !== null && data.daily !== undefined ? data.daily : null
-              setState({ usageDaily: daily })
-            })
-            .catch(() => { /* keep the last authoritative map (or the fallback) */ })
-        }
-        const id = window.setInterval(pull, 60_000)
         // Immediate pull too: the mount-time fetch above can land before
         // usage-center has finished its first scan, and this converges the card
         // within seconds instead of waiting for the next turn.
-        pull()
+        pullUsageDaily(false)
+        const id = window.setInterval(() => { if (!document.hidden) pullUsageDaily(false) }, 60_000)
         return () => window.clearInterval(id)
-      }, [])
+      }, [pullUsageDaily])
+      // Command Code account usage DRIFTS while this page sits idle: the 5h /
+      // weekly / monthly windows are ACCOUNT-wide, so another client spending
+      // against the same pool moves them with no turn HERE to hang a refetch on.
+      // A turn-settle-only fetch therefore left every cc-* card and 「额度管理」
+      // frozen on its mount-time numbers — reported 2026-09-23 as 今日用量 /
+      // 今日推荐 stuck on `-` and the monthly ring missing entirely.
+      const ccOnRail = snap.open && (snap.prefs.installed ?? []).some((key) => WIDGET_SOURCE[parseInstanceKey(key).widgetId] === 'cc')
+      React.useEffect(() => {
+        if (!ccOnRail) return
+        // Cost control (measured 2026-09-23): ONE tick is four upstream reads per
+        // pooled key — 8 reads, 1.6 s, 4.7 KB on this two-key pool — and it is the
+        // only upstream traffic this rail generates at all. Three rules keep it
+        // honest:
+        //   * only while the rail is ON SCREEN and a Command Code card is installed;
+        //   * never while the tab is HIDDEN — a background tab has no reader, and
+        //     Chrome throttles its timers anyway;
+        //   * 60 s, not 30 s: these are $14–$70 subscription windows, and nobody
+        //     can act on a 30 s difference. A turn settling here still refreshes
+        //     on its own path, and returning to the tab refreshes at once.
+        const tick = (): void => { if (!document.hidden) pullCommandCode() }
+        const onVisible = (): void => { if (!document.hidden) pullCommandCode() }
+        pullCommandCode()
+        const id = window.setInterval(tick, 60_000)
+        document.addEventListener('visibilitychange', onVisible)
+        return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
+      }, [ccOnRail, pullCommandCode])
       // Hardware snapshot (System widgets): the installed sys-* instances drive
       // ONE shared poll loop —the effective cadence is the SHORTEST refresh
       // interval among them (5/10/30/60 s presets + custom numeric, clamped
@@ -3017,7 +3107,7 @@ export function apply(ctx: ClientContext): void {
           // a placeholder instead; the error stays visible in the console.
           let out: ReturnType<typeof w.render>
           try {
-            out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, commandCode: snap.commandCode, commandCodeError: snap.commandCodeError, sysinfo: snap.sysinfo, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
+            out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, commandCode: snap.commandCode, commandCodeError: snap.commandCodeError, commandCodeDaily: snap.commandCodeDaily, sysinfo: snap.sysinfo, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
           } catch (error) {
             console.error(`[dsh-widgets] widget ${widgetId}@${size} render crashed:`, error)
             out = { title: widgetName(w), value: '—', legend: t('ui.renderError') }
