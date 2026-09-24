@@ -54,6 +54,49 @@ const COMMANDCODE_RETRY_TIMEOUT_MS = 4000
 const POOL_KEY_ENVS = ['OPENCODE_GO_API_KEY', 'OPENCODE_GO_POOL_2', 'OPENCODE_GO_POOL_3', 'OPENCODE_GO_POOL_4', 'OPENCODE_GO_POOL_5', 'OPENCODE_GO_POOL_6', 'OPENCODE_GO_POOL_7', 'OPENCODE_GO_POOL_8', 'OPENCODE_GO_POOL_9']
 /** Max accepted PUT body (a prefs JSON is a few KB; this is a hard safety cap). */
 const MAX_STATE_BYTES = 2 * 1024 * 1024
+/** How long a JSON route body may be re-served without recomputing it.
+ *
+ *  The rail is allowed to poll (a Command Code window moves while the reader
+ *  watches), and a reader may keep several tabs open, so without a cache every
+ *  tab buys its own round of upstream calls and its own log fold. 20 s is short
+ *  enough that no client sees a stale number it could have acted on, and long
+ *  enough to collapse a burst — including the degraded-payload retry — into one
+ *  upstream pass. Errors are never cached. */
+const ROUTE_CACHE_MS = 20_000
+
+/** A route answer that must NOT be cached and that carries its own status. */
+class RouteError extends Error {
+  constructor(readonly status: number, readonly body: string) {
+    super(`route responded ${status}`)
+  }
+}
+
+/**
+ * Per-key TTL + single-flight memo for a route body.
+ *
+ * `force` (the `?refresh=1` path) skips the TTL but still JOINS an in-flight
+ * computation, so two tabs asking at the same instant still produce one fold.
+ * A rejected computation is never stored.
+ *
+ * @param ttlMs - how long a stored value stays fresh.
+ * @returns a reader that computes on miss and shares one promise on a burst.
+ */
+function memoTtl<T>(ttlMs: number): (key: string, compute: () => Promise<T> | T, force?: boolean) => Promise<T> {
+  const values = new Map<string, { at: number; value: T }>()
+  const inflight = new Map<string, Promise<T>>()
+  return (key, compute, force = false) => {
+    const hit = values.get(key)
+    if (!force && hit !== undefined && Date.now() - hit.at < ttlMs) return Promise.resolve(hit.value)
+    const pending = inflight.get(key)
+    if (pending !== undefined) return pending
+    const next = Promise.resolve().then(compute).then(
+      (value) => { values.set(key, { at: Date.now(), value }); inflight.delete(key); return value },
+      (error) => { inflight.delete(key); throw error },
+    )
+    inflight.set(key, next)
+    return next
+  }
+}
 
 /**
  * The slice of the `usageCenter` service (dsh-usage-center) this plugin reads.
@@ -162,6 +205,111 @@ interface ServerResponseLike {
 interface ReqLike {
   method?: string
   url?: string
+}
+
+/** The credentials seam this route needs (a slice of the injected context). */
+interface CredentialsCtx {
+  credentials: { resolve(ref: string): Promise<{ value: string; source: string } | undefined> }
+}
+
+/**
+ * Build the `/api/commandcode-usage` body: the four official account endpoints
+ * for EVERY configured pool key, aggregated into one same-origin payload.
+ *
+ *   { ...fourSlices,                        // = the first pool member
+ *     keys: [{ ref, label, tail, data }] }  // every member, in pool order
+ *
+ * The browser never talks to api.commandcode.ai directly. The top-level slices
+ * keep their pre-pool shape (the first member), so a single-pool install — and
+ * any consumer written before pools existed — reads exactly what it read
+ * before. `keys` is what makes the card family switchable; each member's label
+ * is the account name from ITS OWN `/alpha/whoami`, so the card subtitle reads
+ * the real account (`Physicolor` / `Sparxie`) rather than `Key 2`. The AllUser
+ * total is deliberately NOT computed here: the plan -> monthly-allowance table
+ * lives in the client (`cc-view`), which is the only side that can size a
+ * two-plan allowance correctly.
+ *
+ * Each endpoint is fetched and timed out independently: one failing endpoint
+ * yields null for that slice, one failing KEY yields `data: null` for that
+ * member, and the rest still render. A missing pool is a `RouteError` (503) so
+ * the memo above never caches it as an answer.
+ *
+ * @param ctx - host context carrying the credentials seam.
+ * @returns the JSON body.
+ */
+async function buildCommandCodeBody(ctx: CredentialsCtx): Promise<string> {
+  // Resolve every configured pool key, in order. A missing spare is normal.
+  const pool: Array<{ ref: string; key: string }> = []
+  for (const ref of COMMANDCODE_POOL_ENVS) {
+    const resolved = await ctx.credentials.resolve(ref).catch(() => undefined)
+    const key = resolved?.value
+    if (key !== undefined && key !== '') pool.push({ ref, key })
+  }
+  if (pool.length === 0) {
+    throw new RouteError(503, JSON.stringify({ error: `${COMMANDCODE_KEY_ENV} is not configured` }))
+  }
+  // One upstream call, tagged so the caller knows whether a failure is worth
+  // another round trip. A 4xx (a revoked key, a plan-less account) is an
+  // ANSWER and retrying it only burns the shared rate limit; a timeout, a
+  // connection reset, a 5xx or a truncated body is the transient kind.
+  const fetchSliceOnce = async (key: string, name: keyof typeof COMMANDCODE_ENDPOINTS, timeoutMs: number): Promise<{ value: unknown; retryable: boolean }> => {
+    try {
+      const ctrl = new AbortController()
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+      try {
+        const upstream = await fetch(COMMANDCODE_ENDPOINTS[name], { headers: { Authorization: `Bearer ${key}` }, signal: ctrl.signal })
+        const text = await upstream.text()
+        if (!upstream.ok) return { value: null, retryable: upstream.status >= 500 || upstream.status === 429 }
+        try { return { value: JSON.parse(text), retryable: false } } catch { return { value: null, retryable: true } }
+      } finally { clearTimeout(timer) }
+    } catch { return { value: null, retryable: true } }
+  }
+  // A dropped slice used to be final for the whole poll: the browser only
+  // re-asks on mount and when a turn settles, so a transient failure left the
+  // card family reading a partial pool for the rest of the session (measured
+  // 2026-09-20: the 额度管理 card answered 20.2% / `账期 10-20` / `今日推荐
+  // 59.9M` where the full payload says 16.6% / `账期 10-10` / 645M). One
+  // retry turns that into a blip — but only when the first attempt failed
+  // FAST, because a retry after a full timeout would push the whole payload
+  // past the rail's patience.
+  const fetchSlice = async (key: string, name: keyof typeof COMMANDCODE_ENDPOINTS): Promise<unknown> => {
+    const started = Date.now()
+    const first = await fetchSliceOnce(key, name, COMMANDCODE_TIMEOUT_MS)
+    if (first.value !== null || !first.retryable) return first.value
+    if (Date.now() - started > COMMANDCODE_TIMEOUT_MS / 2) return null
+    await new Promise((resolve) => setTimeout(resolve, COMMANDCODE_RETRY_DELAY_MS))
+    return (await fetchSliceOnce(key, name, COMMANDCODE_RETRY_TIMEOUT_MS)).value
+  }
+  const readAccount = async (key: string): Promise<Record<string, unknown>> => {
+    const [whoami, usage, credits, subscription] = await Promise.all([
+      fetchSlice(key, 'whoami'),
+      fetchSlice(key, 'usage'),
+      fetchSlice(key, 'credits'),
+      fetchSlice(key, 'subscription'),
+    ])
+    return { whoami, usage, credits, subscription }
+  }
+  const members = await Promise.all(pool.map(async ({ ref, key }) => ({
+    ref,
+    tail: key.slice(-4),
+    data: await readAccount(key),
+  })))
+  // Switcher labels: the account's own name, else `Key N` when that member's
+  // whoami did not answer. A name that repeats (two pools on one account)
+  // gets its masked tail appended, so the cycle can never show two
+  // indistinguishable entries.
+  const used = new Set<string>()
+  const keys = members.map(({ ref, tail, data }, i) => {
+    const user = (data.whoami as { user?: { name?: unknown; userName?: unknown } } | null)?.user
+    const name = typeof user?.name === 'string' && user.name !== '' ? user.name
+      : typeof user?.userName === 'string' && user.userName !== '' ? user.userName : ''
+    const base = name !== '' ? name : `Key ${i + 1}`
+    const label = used.has(base) ? `${base} (${tail})` : base
+    used.add(base)
+    return { ref, label, tail, data }
+  })
+  const primary = keys[0]?.data ?? { whoami: null, usage: null, credits: null, subscription: null }
+  return JSON.stringify({ ...primary, keys })
 }
 
 export function apply(ctx: {
@@ -286,85 +434,31 @@ export function apply(ctx: {
   // Each endpoint is fetched and timed out independently: one failing endpoint
   // yields null for that slice, one failing KEY yields `data: null` for that
   // member, and the rest still render.
+  // The pool payload is the only route here that costs real upstream traffic
+  // (four reads per pooled key) and the rail polls it while it is open, so it
+  // gets the memo: N tabs — and the client's degraded-payload retry — collapse
+  // into one upstream pass per ROUTE_CACHE_MS.
+  const commandCodeBody = memoTtl<string>(ROUTE_CACHE_MS)
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: '/api/commandcode-usage',
     handler: async (_req, res) => {
-      // Resolve every configured pool key, in order. A missing spare is normal.
-      const pool: Array<{ ref: string; key: string }> = []
-      for (const ref of COMMANDCODE_POOL_ENVS) {
-        const resolved = await ctx.credentials.resolve(ref).catch(() => undefined)
-        const key = resolved?.value
-        if (key !== undefined && key !== '') pool.push({ ref, key })
+      try {
+        const body = await commandCodeBody('pool', () => buildCommandCodeBody(ctx))
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(body)
+      } catch (error) {
+        // A missing key is a statement about THIS install, not a payload: the
+        // `RouteError` stays out of the memo, so configuring the key recovers on
+        // the very next request instead of after a TTL.
+        if (error instanceof RouteError) {
+          res.writeHead(error.status, { 'Content-Type': 'application/json' })
+          res.end(error.body)
+          return
+        }
+        res.writeHead(502, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))
       }
-      if (pool.length === 0) {
-        res.writeHead(503, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: `${COMMANDCODE_KEY_ENV} is not configured` }))
-        return
-      }
-      // One upstream call, tagged so the caller knows whether a failure is worth
-      // another round trip. A 4xx (a revoked key, a plan-less account) is an
-      // ANSWER and retrying it only burns the shared rate limit; a timeout, a
-      // connection reset, a 5xx or a truncated body is the transient kind.
-      const fetchSliceOnce = async (key: string, name: keyof typeof COMMANDCODE_ENDPOINTS, timeoutMs: number): Promise<{ value: unknown; retryable: boolean }> => {
-        try {
-          const ctrl = new AbortController()
-          const timer = setTimeout(() => ctrl.abort(), timeoutMs)
-          try {
-            const upstream = await fetch(COMMANDCODE_ENDPOINTS[name], { headers: { Authorization: `Bearer ${key}` }, signal: ctrl.signal })
-            const text = await upstream.text()
-            if (!upstream.ok) return { value: null, retryable: upstream.status >= 500 || upstream.status === 429 }
-            try { return { value: JSON.parse(text), retryable: false } } catch { return { value: null, retryable: true } }
-          } finally { clearTimeout(timer) }
-        } catch { return { value: null, retryable: true } }
-      }
-      // A dropped slice used to be final for the whole poll: the browser only
-      // re-asks on mount and when a turn settles, so a transient failure left the
-      // card family reading a partial pool for the rest of the session (measured
-      // 2026-09-20: the 额度管理 card answered 20.2% / `账期 10-20` / `今日推荐
-      // 59.9M` where the full payload says 16.6% / `账期 10-10` / 645M). One
-      // retry turns that into a blip — but only when the first attempt failed
-      // FAST, because a retry after a full timeout would push the whole payload
-      // past the rail's patience.
-      const fetchSlice = async (key: string, name: keyof typeof COMMANDCODE_ENDPOINTS): Promise<unknown> => {
-        const started = Date.now()
-        const first = await fetchSliceOnce(key, name, COMMANDCODE_TIMEOUT_MS)
-        if (first.value !== null || !first.retryable) return first.value
-        if (Date.now() - started > COMMANDCODE_TIMEOUT_MS / 2) return null
-        await new Promise((resolve) => setTimeout(resolve, COMMANDCODE_RETRY_DELAY_MS))
-        return (await fetchSliceOnce(key, name, COMMANDCODE_RETRY_TIMEOUT_MS)).value
-      }
-      const readAccount = async (key: string): Promise<Record<string, unknown>> => {
-        const [whoami, usage, credits, subscription] = await Promise.all([
-          fetchSlice(key, 'whoami'),
-          fetchSlice(key, 'usage'),
-          fetchSlice(key, 'credits'),
-          fetchSlice(key, 'subscription'),
-        ])
-        return { whoami, usage, credits, subscription }
-      }
-      const members = await Promise.all(pool.map(async ({ ref, key }) => ({
-        ref,
-        tail: key.slice(-4),
-        data: await readAccount(key),
-      })))
-      // Switcher labels: the account's own name, else `Key N` when that member's
-      // whoami did not answer. A name that repeats (two pools on one account)
-      // gets its masked tail appended, so the cycle can never show two
-      // indistinguishable entries.
-      const used = new Set<string>()
-      const keys = members.map(({ ref, tail, data }, i) => {
-        const user = (data.whoami as { user?: { name?: unknown; userName?: unknown } } | null)?.user
-        const name = typeof user?.name === 'string' && user.name !== '' ? user.name
-          : typeof user?.userName === 'string' && user.userName !== '' ? user.userName : ''
-        const base = name !== '' ? name : `Key ${i + 1}`
-        const label = used.has(base) ? `${base} (${tail})` : base
-        used.add(base)
-        return { ref, label, tail, data }
-      })
-      const primary = keys[0]?.data ?? { whoami: null, usage: null, credits: null, subscription: null }
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ ...primary, keys }))
     },
   }))
 
@@ -387,6 +481,13 @@ export function apply(ctx: {
   // instead of every provider the machine used that day); absent = machine-wide,
   // which is what the heatmap cards want.
   let lastRefreshAt = 0
+  // The day maps are computed from usage-center's index and the PROVIDER-SCOPED
+  // variant is genuinely expensive: its filter is a memo key nothing else asks
+  // for, so a cold call re-folds the session logs (measured 2026-09-23: 10.6 s
+  // and 21.2 s against 34 ms warm). The memo means a burst — several tabs, the
+  // retry after a degradation, the two scopes a settling turn asks for — folds
+  // ONCE, and `refresh=1` still gets its fresh number.
+  const dailyBody = memoTtl<string>(ROUTE_CACHE_MS)
   ctx.effect(() => ctx.webServer.register({
     kind: 'exact',
     path: '/api/widgets-usage-daily',
@@ -396,15 +497,17 @@ export function apply(ctx: {
       try {
         provider = new URL(url, 'http://localhost').searchParams.get('provider')?.trim() || undefined
       } catch { provider = undefined }
-      if (url.includes('refresh=1') && Date.now() - lastRefreshAt >= REFRESH_THROTTLE_MS) {
+      const force = url.includes('refresh=1')
+      if (force && Date.now() - lastRefreshAt >= REFRESH_THROTTLE_MS) {
         lastRefreshAt = Date.now()
         const service = ctx.get?.('usageCenter') as UsageCenterLike | undefined
         try {
           await service?.refresh?.()
         } catch { /* a stale number beats no number */ }
       }
+      const body = await dailyBody(provider ?? '*', () => JSON.stringify(readAuthoritativeDaily(ctx, provider)), force)
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify(readAuthoritativeDaily(ctx, provider)))
+      res.end(body)
     },
   }))
 
