@@ -470,7 +470,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     st.raf = requestAnimationFrame(tick)
   }, [engaged])
   // Keep the rail's scroll ROW-ALIGNED across a layout change (a card-size tier
-  // or a column step): the detents are `row 路 (side + gap)`, so after the pitch
+  // or a column step): the detents are `row · (side + gap)`, so after the pitch
   // moves the current offset must be pulled onto the new grid —otherwise the
   // top row would be left half-cut, which is exactly what the detents exist to
   // prevent.
@@ -562,14 +562,14 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
   /**
    * 鈹€鈹€ SCROLL GEOMETRY: the one place that decides how far the rail can travel 鈹€鈹€
    *
-   * The deck's rows are seated at `rowTop(r) = 2 + r 路 pitch` (see placeCards), and
+   * The deck's rows are seated at `rowTop(r) = 2 + r · pitch` (see placeCards), and
    * the rail's scroll range is `scrollContentH –clientH`. For every row to be
    * able to TOP OUT the viewport, the range must reach `rowTop(rows –1) + 2`,
-   * i.e. the content needs `rows 路 pitch` of height —one extra row-pitch worth of
+   * i.e. the content needs `rows · pitch` of height —one extra row-pitch worth of
    * padding under the last row. Without it the browser CLAMPS the last detents
    * and the deck simply stops moving (see the tail element's note).
    *
-   * So: contentH = max(rows 路 pitch, deckBottom) + clientH, and `clientH` is
+   * So: contentH = max(rows · pitch, deckBottom) + clientH, and `clientH` is
    * measured live (the rail is viewport-tall, so it changes with the window).
    */
   const rail = React.createElement('div', {
@@ -743,7 +743,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
    *  - the rail scrolls in ROW steps, never in pixels: the visible top row is
    *    never cut, one notch pulls the next row up to where the first row was, and
    *    the deck may overflow at the bottom (by design). Scroll positions are
-   *    therefore always `row 路 (side + gap)`, which is also why the first frame
+   *    therefore always `row · (side + gap)`, which is also why the first frame
    *    (offset 0) shows whole rows with the next one peeking;
    *  - it is ALWAYS animated. The previous `scrollTop += deltaY` per wheel event
    *    was an instant jump per notch —the "sometimes it scrolls harshly instead

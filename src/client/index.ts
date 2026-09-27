@@ -308,7 +308,7 @@ export function apply(ctx: ClientContext): void {
    * (the claim is the resolved layout's width, which only moves at a threshold);
    * an unconditional `setProperty` invalidates every dependent declaration, and
    * during a drag that means re-resolving the transcript's padding every frame
-   * for no change. Measured 2026-09-18 (1578脳1000, long conversation): guarding
+   * for no change. Measured 2026-09-18 (1578×1000, long conversation): guarding
    * the writes cut the rail's drag cost at p99 from 62ms to ~30ms.
    */
   function setVar(name: string, value: string): void {
@@ -327,7 +327,7 @@ export function apply(ctx: ClientContext): void {
    * ≤px at four), and the slots' own 0.2s top/right/width/height transition
    * turns those steps into one continuous glide.
    *
-   * Cost, measured 2026-09-19 over one 216px handle drag at 1578脳1000 with the
+   * Cost, measured 2026-09-19 over one 216px handle drag at 1578×1000 with the
    * same drag run rail-open and rail-closed (rAF deltas): p50 17ms in both, and
    * the rail adds single-digit janky frames over 33ms plus a couple of long
    * tasks on top of the shell's own per-frame reflow. Host load moves these
@@ -697,7 +697,7 @@ export function apply(ctx: ClientContext): void {
   // only on a tie. dsh-better-sidebar registers its bottom-panel toggle at
   // order 10, so sharing 10 tied the two entries and the capsule's place
   // followed whichever fiber re-registered last —a reload of this bundle
-  // (tsdown/HMR, market toggle) pushed 缁勪欢 past the toggle to the row's right
+  // (tsdown/HMR, market toggle) pushed 组件 past the toggle to the row's right
   // end. 5 keeps it right of the official export control (order 0) and
   // open-in-app (order -10), and left of that toggle, independent of load order.
   ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register(
@@ -1010,12 +1010,12 @@ export function apply(ctx: ClientContext): void {
             }
           }
           if (!out) return null
-          // 2脳4 is exactly two 2脳2 widths plus one inter-card gap.
+          // 2×4 is exactly two 2×2 widths plus one inter-card gap.
           const baseW = size === '2x4' ? 2 * side + pad : side
           return { key, size, w, out, baseW }
         })
         .filter((it): it is RailItem => it !== null)
-        // In a 1-column layout a 2脳4 tile (two cells wide) cannot fit the single
+        // In a 1-column layout a 2×4 tile (two cells wide) cannot fit the single
         // rail column, so its instances are hidden —TEMPORARILY blocklisted,
         // not removed: switching back to 2/4 columns restores them from
         // installed/order as-is. The market marks those entries in the same state
@@ -1070,10 +1070,10 @@ export function apply(ctx: ClientContext): void {
       }
       const active = prefs.realTime
       // Row-band packing (P2, no gaps): every card is one grid-unit tall
-      // (2脳2 and 2脳4 share the same height). A 2脳4 spans two cells in width, a
-      // 2脳2 spans one. Cards pack left-to-right through the row's cell budget;
-      // when the current row cannot fit a card (e.g. a 2脳4 with only one cell
-      // left), it moves to the next row, so a later 2脳2 always back-fills the gap.
+      // (2×2 and 2×4 share the same height). A 2×4 spans two cells in width, a
+      // 2×2 spans one. Cards pack left-to-right through the row's cell budget;
+      // when the current row cannot fit a card (e.g. a 2×4 with only one cell
+      // left), it moves to the next row, so a later 2×2 always back-fills the gap.
       const spanOf = (i: number): number => (items[i].size === '2x4' ? 2 : 1)
       const baseWOf = (i: number): number => items[i].baseW
       const rowIndexOf: number[] = []
@@ -1089,16 +1089,16 @@ export function apply(ctx: ClientContext): void {
           const place = (i: number, allowRound: boolean): void => {
             const sp = spanOf(i)
             // Greedy best-fit: the EARLIEST row that still has room for the span.
-            // A later 2脳2 always back-fills a hole a 2脳4 left behind.
+            // A later 2×2 always back-fills a hole a 2×4 left behind.
             for (let r = 0; r < rowItems.length; r++) {
               if (rowUsed(r) + sp <= columns) { rowItems[r].push(i); return }
             }
-            // 3-column rounding ("绫讳技鍥涜垗浜斿叆", user decision 2026-09-18): with
-            // three cells, a 2脳4 that cannot start in the cells left in the last
+            // 3-column rounding ("类似四舍五入", user decision 2026-09-18): with
+            // three cells, a 2×4 that cannot start in the cells left in the last
             // row moves ONE SLOT EARLIER —it takes the first narrow card's place
             // and the narrow card(s) it displaces are re-booked behind it (they
             // back-fill the next row). Without this the wide card opens a new row
-            // and the row above keeps a hole, which reads as "the 2脳4 got cut off".
+            // and the row above keeps a hole, which reads as "the 2×4 got cut off".
             const last = rowItems.length - 1
             if (allowRound && columns === 3 && sp === 2 && rowUsed(last) === columns - 1) {
               const row = rowItems[last]
@@ -1140,7 +1140,7 @@ export function apply(ctx: ClientContext): void {
       //  - Stepless (`active`):   focus = the pointer's live coordinates.
       //  - Discrete (`!active`):  focus = the pointer coordinates SNAPPED onto a
       //    discrete grid —the row/column centres plus the midpoints between each
-      //    adjacent pair (rows −2路rows– Y points, cols −2路cols– X points).
+      //    adjacent pair (rows −2·rows– Y points, cols −2·cols– X points).
       //    The 0.2s tween then glides the peak between those grid points.
       const cellW = side + pad
       const rowH = side + pad
@@ -1177,8 +1177,8 @@ export function apply(ctx: ClientContext): void {
       // Engagement / focus geometry lives in RailWave (see the component): this
       // component only owns the resting deck and the persisted prefs.
       // --- build actual reflow (right-edge anchored) for a given scale array.
-      //   Each card is one grid-unit tall (2脳2 and 2脳4 share the same height =
-      //   side 脳 scale); only the width differs (2脳4 is two units plus the gap).
+      //   Each card is one grid-unit tall (2×2 and 2×4 share the same height =
+      //   side × scale); only the width differs (2×4 is two units plus the gap).
       //   Within each row cards place right-to-left (rightmost at right:0, each
       //   next pushed left by prev width + pad); row top accumulates by the
       //   tallest scaled height in the row (+pad), so a magnified row pushes the
@@ -1206,7 +1206,7 @@ export function apply(ctx: ClientContext): void {
               }
             }
           } else {
-            // Single column, right-anchored (2脳4 collapses to 2脳2 width here since
+            // Single column, right-anchored (2×4 collapses to 2×2 width here since
             // a single column has no room for a two-cell-wide card).
             let acc = 2
             for (let i = 0; i < n; i++) { const h = side * sc[i]; place[i] = { s: sc[i], top: acc, right: 0, w: h, h }; acc += h + pad }
@@ -1389,7 +1389,7 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       }
       // The add panel is PORTALED to <body> —deliberately OUT of the drawer.
       //
-      // Why (measured 2026-09-18, 1578脳1022 and 1280脳760): the drawer lives in
+      // Why (measured 2026-09-18, 1578×1022 and 1280×760): the drawer lives in
       // `conversation.input.overlay`, whose stacking ancestor chain is the
       // composer seat (z-index 7). Within that context the panel's own z-index 30
       // is meaningless: the official composer's input row / send button and the

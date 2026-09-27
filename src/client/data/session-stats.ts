@@ -39,8 +39,8 @@ function timelineTime(value: unknown): number | null {
 }
 
 /**
- * Project the live conversation into the official 杞ㄨ抗 layout's three lanes:
- * 杈撳叆 (user/steering message) 路 妯″瀷 (assistant step) 路 宸ュ叿 (tool call).
+ * Project the live conversation into the official 轨迹 layout's three lanes:
+ * 输入 (user/steering message) · 模型 (assistant step) · 工具 (tool call).
  *
  * Beats are ordered by their START time and trimmed to the newest
  * `TRAJECTORY_WINDOW`. In-flight work is included as it happens —running tool

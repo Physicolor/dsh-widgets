@@ -79,10 +79,10 @@ const RAIL_MIN_ROWS = 6
 /**
  * Card ROWS that must stay on screen at the AUTOMATIC CEILING —and therefore
  * the hard upper bound on how far a card may grow past the user's base size
- * (user decision 2026-09-19, replacing the flat 1.35脳 multiplier, which read as
+ * (user decision 2026-09-19, replacing the flat 1.35× multiplier, which read as
  * "way too big"): the largest allowed card is the one where FIVE rows still fit
  * the rail with the last row's bottom gap equal to the right gap. At a 1000px
- * window that is (936 –6 –5路24)/5 = 162px for a 150px base —an 8% growth
+ * window that is (936 –6 –5·24)/5 = 162px for a 150px base —an 8% growth
  * range instead of 35%, and it makes the deck's own height the thing that
  * decides, so a short window simply stops growing earlier.
  */
@@ -307,8 +307,8 @@ export function readMaxCardSide(pad: number, base: number): number {
  * Card side at which `rows` card rows exactly fill the rail with the last row's
  * bottom gap equal to the right gap (both are `pad`):
  *
- *   rows路side + (rows –1)路pad + 2 (deck base) + 4 (rail top padding) + pad = railHeight
- *   side = (railHeight –6 –rows路pad) / rows
+ *   rows·side + (rows –1)·pad + 2 (deck base) + 4 (rail top padding) + pad = railHeight
+ *   side = (railHeight –6 –rows·pad) / rows
  */
 function rowFitSide(rows: number, pad: number): number {
   const rail = document.querySelector('.dsx-stats-rail')
@@ -322,7 +322,7 @@ function rowFitSide(rows: number, pad: number): number {
 }
 
 /**
- * True when every installed tile is a 2脳4 (two cells wide).
+ * True when every installed tile is a 2×4 (two cells wide).
  *
  * A 3-column deck fits only ONE of them per row (2 cells used, 1 wasted), so for
  * such a deck the automatic fill skips the 3-column stage and steps 2 ⇄4
@@ -347,7 +347,7 @@ function allWideItems(prefs: Prefs): boolean {
  *
  * The two settings + the gap therefore compose into ONE rule:
  *
- *   side = clamp(autoFloor, tier((room –(n+1)路gap) / n), fiveRowCeiling)
+ *   side = clamp(autoFloor, tier((room –(n+1)·gap) / n), fiveRowCeiling)
  *
  * with `pref.columns` an UPPER BOUND (a wider window never opens more columns
  * than the user asked for —their decision 2026-09-19: "设置成 2 列，即便对话区
@@ -363,7 +363,7 @@ function allWideItems(prefs: Prefs): boolean {
  *
  * Why the older rule went: "keep the column count, shrink the card to fit" pinned
  * every card at exactly the base size across wide budget ranges (measured
- * 2026-09-19 at 1578脳1000: `side` stayed 150px while the budget moved
+ * 2026-09-19 at 1578×1000: `side` stayed 150px while the budget moved
  * 372−89px), which is the reported "the widgets do not resize while I drag the
  * conversation width".
  */
@@ -379,7 +379,7 @@ export function resolveRailLayout(prefs: Prefs, budget: number, minSide: number,
   // 1. auto-fill: the most columns whose cells still hold the base size.
   let columns = 1
   while (columns < maxCols && widthOf(columns + 1, base) <= room) columns++
-  // A 3-column deck of 2脳4 tiles seats only ONE per row (2 cells used, 1
+  // A 3-column deck of 2×4 tiles seats only ONE per row (2 cells used, 1
   // wasted), which reads as a hole. That is a DEGRADATION case only: it applies
   // when the user asked for more (4) and the auto-fill landed on 3.
   if (columns === 3 && maxCols > 3 && allWideItems(prefs)) columns = 2
@@ -395,7 +395,7 @@ export function resolveRailLayout(prefs: Prefs, budget: number, minSide: number,
   // 3. tiers: the share above the base snaps to CARD_SIZE_STEP steps (150 −160
   // −170 — and the five-row ceiling gets the last word —the CEILING itself is
   // snapped onto the same tier grid, so a card never lands on an off-tier size
-  // like 162 (the user's "妗ｄ綅" reading: every size is a tier).
+  // like 162 (the user's "档位" reading: every size is a tier).
   const ceiling = base + Math.floor((maxSide - base) / CARD_SIZE_STEP) * CARD_SIZE_STEP
   const side = Math.min(base + Math.floor((fluid - base) / CARD_SIZE_STEP) * CARD_SIZE_STEP, ceiling)
   return { side, columns, railW: widthOf(columns, side), constrained: false }
