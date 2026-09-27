@@ -4,6 +4,8 @@
   "group": "opencode-go",
   "builtin": false,
   "sizes": ["2x2"],
+  "source": "usage",
+  "skeleton": { "shape": "text" },
   "locale": {
     "zh": {
       "widget.usage-weekly.name": "每周用量",

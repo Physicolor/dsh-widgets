@@ -11,12 +11,12 @@ import * as React from 'react'
 import { createPortal } from 'react-dom'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import './widgets.module.css'
-import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES } from './generated.registry'
-import { instanceKey, parseInstanceKey, sizesOf, widgetName, TRAJECTORY_WINDOW, type CommandCodeData, type GitHubData, type SkeletonShape, type SysInfo, type TrajectoryBeat, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
+import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES, WIDGET_RUNTIME } from './generated.registry'
+import { instanceKey, parseInstanceKey, sizesOf, widgetName, TRAJECTORY_WINDOW, type CommandCodeData, type GitHubData, type SysInfo, type TrajectoryBeat, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
 import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
 import { ccPayloadDegraded } from './lib/cc-view'
 import { springSettleMs, springValue, WAVE_SPRING } from './lib/morph-spring'
-import { SYS_WIDGET_IDS, ingestSysInfo, resolveInterval } from './lib/sys-view'
+import { ingestSysInfo, resolveInterval } from './lib/sys-view'
 import { CardBody, cardRadius, COL_GAP, DEFAULT_CORNER_PERCENT, DETAIL_W, LIST_W, WidgetsPage, type Prefs } from './components'
 import { t, installLocale, onLocaleChange } from './i18n'
 
@@ -597,78 +597,20 @@ const REDUCE_MOTION = typeof window !== 'undefined' && typeof window.matchMedia 
   && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /**
- * Which live source each data-backed widget family reads, and how many body
- * rows its loading skeleton draws.
+ * Which live source each data-backed widget family reads, and what its loading
+ * skeleton looks like, are declared by the UNIT’s own manifest.json and reach
+ * the shell as `WIDGET_RUNTIME` (see the generated registry).
  *
- * The SHELL owns this mapping (not the widget): a widget cannot distinguish
- * "my source is still in flight" from "my source answered with nothing", and
- * those two states deserve different cards —placeholder pills vs 鏁版嵁涓嶈冻.
- * Widgets that only read session-local projections (counts, tokens, task,
- * heatmap, trajectory, peak-pricing) are absent: their data is derived
- * synchronously and is never "loading".
+ * The SHELL still owns the loading DECISION — a widget cannot distinguish "my
+ * source is still in flight" from "my source answered with nothing", and those
+ * two states deserve different cards (placeholder pills vs an honest empty
+ * state) — but it no longer owns the DATA: adding a widget with a live source
+ * means declaring `source` + `skeleton` in that unit’s manifest, and
+ * `pnpm check:registry` fails the build if the declaration drifts.
  */
-const WIDGET_SOURCE: Record<string, 'usage' | 'cc' | 'sys' | 'github'> = {
-  'usage-rings': 'usage', 'usage-bars': 'usage', 'usage-rolling': 'usage', 'usage-weekly': 'usage', 'usage-monthly': 'usage',
-  'cc-whoami': 'cc', 'cc-usage': 'cc', 'cc-credits': 'cc', 'cc-subscription': 'cc',
-  'cc-windows': 'cc', 'cc-window-5h': 'cc', 'cc-window-weekly': 'cc', 'cc-window-monthly': 'cc',
-  'quota-manage': 'cc',
-  'sys-cpu': 'sys', 'sys-gpu': 'sys', 'sys-gpu-line': 'sys', 'sys-rings': 'sys', 'sys-board': 'sys',
-  'github-contrib': 'github', 'github-stars': 'github', 'github-issues': 'github', 'github-push': 'github', 'github-board': 'github',
-}
-/**
- * The SILHOUETTE each loading skeleton draws, per widget id (see
- * `WidgetRenderOut.skeletonShape`): a rail of identical grey pills says
- * "something is loading here" but not WHICH card, and the loading → loaded swap
- * then re-shapes the tile. Every family with a live source therefore declares
- * the body it normally draws — three rings, one bar block, a figures row, three
- * stacked quota bars, a sparkline — and the skeleton paints that silhouette.
- *
- * Shell-owned like WIDGET_SOURCE, and for the same reason: the shape has to be
- * known while the widget's own render has no data to derive it from. `count` is
- * the number of repeated units (rings / figures / quota rows); omitted = the
- * SkeletonBody default of 3. `rows` is the body-line count of a `text` card and
- * is NOT declared per family: every one of them draws a single grey line under
- * the figure (a reset date, a period, a memory line), so one row is the honest
- * placeholder and two would promise content that never arrives.
- */
-const SKELETON_SHAPE: Record<string, { shape: SkeletonShape; count?: number; rows?: number }> = {
-  // OpenCode Go usage: one payload, three bodies — three donuts, a three-column
-  // bar chart, or a single-window percent card.
-  'usage-rings': { shape: 'rings', count: 3 },
-  'usage-bars': { shape: 'bars' },
-  'usage-rolling': { shape: 'text' },
-  'usage-weekly': { shape: 'text' },
-  'usage-monthly': { shape: 'text' },
-  // Command Code: usage puts a three-figure row on the floor, credits stacks
-  // three quota bars, windows is three rings; the rest are big-figure cards
-  // (one value + one grey line).
-  'cc-usage': { shape: 'figures', count: 3 },
-  'cc-credits': { shape: 'quotas', count: 3 },
-  'cc-windows': { shape: 'rings', count: 3 },
-  'cc-whoami': { shape: 'text' },
-  'cc-subscription': { shape: 'text' },
-  'cc-window-5h': { shape: 'text' },
-  'cc-window-weekly': { shape: 'text' },
-  'cc-window-monthly': { shape: 'text' },
-  'quota-manage': { shape: 'figures', count: 2 },
-  // System monitor: rings (two on sys-rings, four on the 2×4 board), one
-  // sparkline, and two big-figure cards.
-  'sys-rings': { shape: 'rings', count: 2 },
-  'sys-board': { shape: 'rings', count: 4 },
-  'sys-gpu-line': { shape: 'line' },
-  'sys-cpu': { shape: 'text' },
-  'sys-gpu': { shape: 'text' },
-  // GitHub: the calendar is one wide block; the board is a four-figure row; the
-  // three single-figure cards are one value + one grey line.
-  'github-contrib': { shape: 'heatmap' },
-  'github-board': { shape: 'figures', count: 4 },
-  'github-stars': { shape: 'text' },
-  'github-issues': { shape: 'text' },
-  'github-push': { shape: 'text' },
-}
 
 /**
- * Is this family's live source still in flight? (see WIDGET_SOURCE)
+ * Is this family's live source still in flight? (see WIDGET_RUNTIME)
  *
  * `commandCodeError` is deliberately part of the test: once the host route has
  * ANSWERED with an error the card must show its real "not configured" state,
@@ -2688,7 +2630,7 @@ export function apply(ctx: ClientContext): void {
       // A turn-settle-only fetch therefore left every cc-* card and 「额度管理」
       // frozen on its mount-time numbers — reported 2026-09-23 as 今日用量 /
       // 今日推荐 stuck on `-` and the monthly ring missing entirely.
-      const ccOnRail = snap.open && (snap.prefs.installed ?? []).some((key) => WIDGET_SOURCE[parseInstanceKey(key).widgetId] === 'cc')
+      const ccOnRail = snap.open && (snap.prefs.installed ?? []).some((key) => WIDGET_RUNTIME[parseInstanceKey(key).widgetId]?.source === 'cc')
       React.useEffect(() => {
         if (!ccOnRail) return
         // Cost control (measured 2026-09-23): ONE tick is four upstream reads per
@@ -2722,7 +2664,7 @@ export function apply(ctx: ClientContext): void {
       // re-runs the effect), every 10 minutes while the tab is visible, and on
       // return to the tab. Nothing here hangs off a turn — GitHub does not
       // move when this conversation does.
-      const ghKeys = (snap.prefs.installed ?? []).filter((key) => WIDGET_SOURCE[parseInstanceKey(key).widgetId] === 'github')
+      const ghKeys = (snap.prefs.installed ?? []).filter((key) => WIDGET_RUNTIME[parseInstanceKey(key).widgetId]?.source === 'github')
       const ghUser = ghKeys
         .map((key) => (snap.prefs.cardConfigs?.[key]?.user as string | undefined) ?? '')
         .map((s) => s.trim())
@@ -2768,7 +2710,8 @@ export function apply(ctx: ClientContext): void {
       // 5..60, default 10). The host route caches ~1s, so every widget sharing
       // the same tick still triggers a single nvidia-smi spawn.
       React.useEffect(() => {
-        const sysKeys = (snap.prefs.installed ?? []).filter((key) => SYS_WIDGET_IDS.some((id) => key === id || key.startsWith(id + '@')))
+        const sysIds = Object.keys(WIDGET_RUNTIME).filter((id) => WIDGET_RUNTIME[id]?.source === 'sys')
+        const sysKeys = (snap.prefs.installed ?? []).filter((key) => sysIds.some((id) => key === id || key.startsWith(id + '@')))
         const secs = sysKeys.length === 0 ? 0 : Math.min(...sysKeys.map((key) => resolveInterval(snap.prefs.cardConfigs?.[key])))
         if (!(secs > 0)) return
         const refresh = (): void => {
@@ -3223,10 +3166,10 @@ export function apply(ctx: ClientContext): void {
           // Loading skeleton: the widget's live source has not answered yet, so
           // the card keeps its slot (and therefore the deck's shape) with
           // placeholder pills instead of flashing an empty/0-valued body. The
-          // skeleton is a SHELL decision —see WIDGET_SOURCE.
-          const source = WIDGET_SOURCE[widgetId]
+          // skeleton is a SHELL decision —see WIDGET_RUNTIME.
+          const source = WIDGET_RUNTIME[widgetId]?.source
           if (source !== undefined && isSourcePending(source, snap)) {
-            const silhouette = SKELETON_SHAPE[widgetId]
+            const silhouette = WIDGET_RUNTIME[widgetId]?.skeleton
             out = {
               title: out?.title ?? widgetName(w),
               skeleton: true,

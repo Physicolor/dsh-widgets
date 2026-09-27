@@ -4,6 +4,8 @@
   "group": "github",
   "builtin": false,
   "sizes": ["2x2", "2x4"],
+  "source": "github",
+  "skeleton": { "shape": "heatmap" },
   "locale": {
     "zh": {
       "widget.github-contrib.name": "提交热度图",

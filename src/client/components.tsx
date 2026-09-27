@@ -783,8 +783,8 @@ function RichBlock({ rich, scale }: { rich: WidgetRich; scale: number }): React.
  * still say which widget they are reads as loading, while a rail of nameless
  * grey pills reads as broken. Only the DATA is placeholder.
  *
- * The BODY follows `out.skeletonShape` (declared by the shell per widget, see
- * SKELETON_SHAPE): a ring card draws N square rounded blocks, a bar chart ONE
+ * The BODY follows `out.skeletonShape` (declared by the widget's own manifest and
+ * surfaced as WIDGET_RUNTIME): a ring card draws N square rounded blocks, a bar chart ONE
  * wide rounded block, a heatmap ONE wide block, a figure row N short blocks and
  * a quota card N stacked bars. A generic stack of thin pills was wrong for all
  * of them — the placeholder has to be recognisable as the card it stands in

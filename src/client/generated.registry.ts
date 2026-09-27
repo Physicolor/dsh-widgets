@@ -95,6 +95,50 @@ export const WIDGETS: import('./lib/contract').Widget[] = [
   w_github_board,
 ]
 
+/**
+ * Per-widget RUNTIME metadata, generated from each unit's manifest.json.
+ *
+ * WHAT vs HOW: a manifest declares what the widget IS — which live data source it
+ * waits on, and what its body looks like while that source is still in flight.
+ * The SHELL decides HOW that becomes a loading card, because a widget cannot tell
+ * "my source is still in flight" from "my source answered with nothing", and
+ * those two states deserve different cards (placeholder pills vs an honest
+ * empty state).
+ *
+ * Declaring it in the manifest is what keeps a new widget unit to ONE directory:
+ * there is no central id→source map to edit, and `check:registry` fails the build
+ * when a manifest drifts from the generated file.
+ */
+export const WIDGET_RUNTIME: Record<string, {
+  source?: 'usage' | 'cc' | 'sys' | 'github'
+  skeleton?: { shape: import('./lib/contract').SkeletonShape; count?: number; rows?: number }
+}> = {
+  "quota-manage": { source: "cc", skeleton: { shape: "figures", count: 2 } },
+  "usage-bars": { source: "usage", skeleton: { shape: "bars" } },
+  "usage-rings": { source: "usage", skeleton: { shape: "rings", count: 3 } },
+  "usage-rolling": { source: "usage", skeleton: { shape: "text" } },
+  "usage-weekly": { source: "usage", skeleton: { shape: "text" } },
+  "usage-monthly": { source: "usage", skeleton: { shape: "text" } },
+  "cc-whoami": { source: "cc", skeleton: { shape: "text" } },
+  "sys-cpu": { source: "sys", skeleton: { shape: "text" } },
+  "cc-usage": { source: "cc", skeleton: { shape: "figures", count: 3 } },
+  "sys-gpu": { source: "sys", skeleton: { shape: "text" } },
+  "cc-credits": { source: "cc", skeleton: { shape: "quotas", count: 3 } },
+  "sys-rings": { source: "sys", skeleton: { shape: "rings", count: 2 } },
+  "cc-windows": { source: "cc", skeleton: { shape: "rings", count: 3 } },
+  "sys-board": { source: "sys", skeleton: { shape: "rings", count: 4 } },
+  "cc-subscription": { source: "cc", skeleton: { shape: "text" } },
+  "sys-gpu-line": { source: "sys", skeleton: { shape: "line" } },
+  "cc-window-5h": { source: "cc", skeleton: { shape: "text" } },
+  "cc-window-weekly": { source: "cc", skeleton: { shape: "text" } },
+  "cc-window-monthly": { source: "cc", skeleton: { shape: "text" } },
+  "github-contrib": { source: "github", skeleton: { shape: "heatmap" } },
+  "github-stars": { source: "github", skeleton: { shape: "text" } },
+  "github-issues": { source: "github", skeleton: { shape: "text" } },
+  "github-push": { source: "github", skeleton: { shape: "text" } },
+  "github-board": { source: "github", skeleton: { shape: "figures", count: 4 } },
+}
+
 /** All widget ids, in registry order. */
 export const ALL_IDS: string[] = [
   'counts',

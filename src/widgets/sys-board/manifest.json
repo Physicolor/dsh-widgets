@@ -4,6 +4,8 @@
   "group": "system",
   "builtin": false,
   "sizes": ["2x4"],
+  "source": "sys",
+  "skeleton": { "shape": "rings", "count": 4 },
   "locale": {
     "zh": {
       "widget.sys-board.name": "系统监控",

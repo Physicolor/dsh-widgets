@@ -4,6 +4,8 @@
   "group": "opencode-go",
   "builtin": false,
   "sizes": ["2x2"],
+  "source": "usage",
+  "skeleton": { "shape": "rings", "count": 3 },
   "locale": {
     "zh": {
       "widget.usage-rings.name": "用量环图",

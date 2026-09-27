@@ -4,6 +4,8 @@
   "group": "github",
   "builtin": false,
   "sizes": ["2x4"],
+  "source": "github",
+  "skeleton": { "shape": "figures", "count": 4 },
   "locale": {
     "zh": {
       "widget.github-board.name": "仓库脉搏",

@@ -4,6 +4,8 @@
   "group": "coding-plan",
   "builtin": true,
   "sizes": ["2x2"],
+  "source": "cc",
+  "skeleton": { "shape": "figures", "count": 2 },
   "locale": {
     "zh": {
       "widget.quota-manage.name": "额度管理",

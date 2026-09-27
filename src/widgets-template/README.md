@@ -22,7 +22,7 @@
 
 | 文件 | 必填 | 作用 |
 | --- | --- | --- |
-| `manifest.json` | 必须 | 机器可读契约：id / order / group / builtin / sizes / defaultInstalled / locale |
+| `manifest.json` | 必须 | 机器可读契约：id / order / group / builtin / sizes / defaultInstalled / locale / source / skeleton |
 | `index.ts` | 必须 | `defineWidget({...})` 默认导出描述符：render + name/desc thunk + configSchema + example |
 | `README.md` | 可选 | 该 Widget 的说明文档 |
 | `index.module.css` | 可选 | 该 Widget 专属样式（tag 按 src 相对路径隔离，不会与其他 Widget 冲突） |
@@ -39,9 +39,24 @@
   "builtin": true,              // 缺省 true；市场组件（如 usage/peak）为 false
   "sizes": ["2x2"],             // 可选 ["2x2", "2x4"]
   "defaultInstalled": false,    // 仅 stats 家族为 true（首次安装预载）
+  "source": "cc",               // 可选：该卡等待的实时数据源 usage|cc|sys|github（无源=同步投影）
+  "skeleton": { "shape": "figures", "count": 3 },  // 可选：有 source 时声明加载骨架轮廓
   "locale": { "zh": {}, "en": {} } // 该 Widget 专属文案；家族共享文案放 src/widgets/_shared/locales.json
 }
 ```
+
+**`source` / `skeleton`（运行时元数据，Phase 1 起由 manifest 声明）**
+
+`source` 说明这张卡等待哪个实时数据源；`skeleton` 说明「源还在飞」时占位骨架长什么样。
+骨架必须长得像这张卡本身（`shape`: `text` | `rings` | `bars` | `line` | `heatmap` | `figures` |
+`quotas`；`count` = 重复单元数，缺省 3；`rows` = `text` 卡正文行数，缺省 1），否则加载完成的
+瞬间卡片会突然变形。
+
+**为什么写进 manifest**：shell 曾经手工维护 `id → 数据源 / 骨架` 两张中央映射表，新增一个有
+异步源的 Widget 必须回头改 `src/client/index.ts`——这正是「伪模块化」。现在这两项由生成器
+汇总成 `WIDGET_RUNTIME`，`pnpm check:registry` 在 manifest 与生成物不一致时直接让构建失败。
+**只有真的存在异步数据源时才声明**：只读会话内同步投影的卡（counts / tokens / task /
+trajectory / peak-pricing / heatmap 等）不要写 `source`，它们的 render 永远不是「加载中」。
 
 **`index.ts` 描述符要点**：
 

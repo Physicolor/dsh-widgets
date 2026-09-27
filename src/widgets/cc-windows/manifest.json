@@ -4,6 +4,8 @@
   "group": "commandcode",
   "builtin": false,
   "sizes": ["2x2"],
+  "source": "cc",
+  "skeleton": { "shape": "rings", "count": 3 },
   "locale": {
     "zh": {
       "widget.cc-windows.name": "窗口",

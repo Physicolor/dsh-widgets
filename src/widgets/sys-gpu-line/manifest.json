@@ -4,6 +4,8 @@
   "group": "device",
   "builtin": false,
   "sizes": ["2x2"],
+  "source": "sys",
+  "skeleton": { "shape": "line" },
   "locale": {
     "zh": {
       "widget.sys-gpu-line.name": "GPU 利用率",

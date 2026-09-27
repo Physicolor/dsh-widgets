@@ -4,6 +4,8 @@
   "group": "system",
   "builtin": false,
   "sizes": ["2x2"],
+  "source": "sys",
+  "skeleton": { "shape": "text" },
   "locale": {
     "zh": {
       "widget.sys-cpu.name": "CPU 状态",

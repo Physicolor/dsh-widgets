@@ -4,6 +4,8 @@
   "group": "commandcode",
   "builtin": false,
   "sizes": ["2x2"],
+  "source": "cc",
+  "skeleton": { "shape": "text" },
   "locale": {
     "zh": {
       "widget.cc-subscription.name": "套餐",

@@ -4,6 +4,8 @@
   "group": "opencode-go",
   "builtin": false,
   "sizes": ["2x2"],
+  "source": "usage",
+  "skeleton": { "shape": "bars" },
   "locale": {
     "zh": {
       "widget.usage-bars.name": "用量对比",

@@ -33,6 +33,13 @@ const WIDGETS_DIR = join(ROOT, 'src', 'widgets')
 const OUT_FILE = join(ROOT, 'src', 'client', 'generated.registry.ts')
 const ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const SIZES = ['2x2', '2x4']
+/** Live data sources a unit may declare (absent = session-local data only). */
+const SOURCES = ['usage', 'cc', 'sys', 'github']
+/** Loading-skeleton silhouettes a unit may declare (see SkeletonShape). */
+const SKELETON_SHAPES = ['text', 'rings', 'bars', 'line', 'heatmap', 'figures', 'quotas']
+/** Every manifest key the generator understands. An unknown key is a typo, not a
+ *  feature, so it fails the build instead of being silently ignored. */
+const MANIFEST_KEYS = new Set(['id', 'order', 'group', 'builtin', 'defaultInstalled', 'sizes', 'locale', 'source', 'skeleton'])
 
 /** Load + parse JSON, dying with a readable path-tagged error. */
 function readJson(file) {
@@ -120,6 +127,32 @@ function main() {
       failures.push(`${id}: descriptor sizes [${dSizes.join(', ')}] !== manifest sizes [${sizes.join(', ')}] (sizesOf() reads the descriptor — keep both in sync)`)
       continue
     }
+    // Runtime metadata: WHAT this widget is. The manifest may declare which live
+    // source it waits on and what its body looks like while that source is still
+    // in flight; the shell owns HOW that becomes a loading card. Keeping it in the
+    // manifest is what lets a new unit stay one directory (see WIDGET_RUNTIME).
+    for (const k of Object.keys(m)) {
+      if (!MANIFEST_KEYS.has(k)) failures.push(`${id}: unknown manifest key "${k}" (known: ${[...MANIFEST_KEYS].join(', ')})`)
+    }
+    if (m.source !== undefined && !SOURCES.includes(m.source)) {
+      failures.push(`${id}: manifest.source "${m.source}" is not one of ${SOURCES.join(' | ')}`)
+    }
+    if (m.skeleton !== undefined) {
+      if (typeof m.skeleton !== 'object' || m.skeleton === null || Array.isArray(m.skeleton)) {
+        failures.push(`${id}: manifest.skeleton must be an object like { "shape": "figures", "count": 3 }`)
+      } else {
+        if (!SKELETON_SHAPES.includes(m.skeleton.shape)) {
+          failures.push(`${id}: manifest.skeleton.shape "${m.skeleton.shape}" is not one of ${SKELETON_SHAPES.join(' | ')}`)
+        }
+        for (const k of Object.keys(m.skeleton)) {
+          if (!['shape', 'count', 'rows'].includes(k)) failures.push(`${id}: unknown manifest.skeleton key "${k}" (known: shape, count, rows)`)
+        }
+        for (const k of ['count', 'rows']) {
+          const v = m.skeleton[k]
+          if (v !== undefined && (!Number.isInteger(v) || v < 1)) failures.push(`${id}: manifest.skeleton.${k} must be a positive integer`)
+        }
+      }
+    }
     for (const loc of ['zh', 'en']) {
       const dict = m.locale?.[loc]
       if (dict !== undefined && (typeof dict !== 'object' || Array.isArray(dict))) {
@@ -129,7 +162,16 @@ function main() {
     const order = m.order !== undefined ? m.order : 1000
     if (!Number.isInteger(order)) { failures.push(`${id}: order must be an integer`); continue }
 
-    widgets.push({ id, manifest: m, sizes, order, defaultInstalled: m.defaultInstalled === true, builtin: m.builtin !== false })
+    widgets.push({
+      id,
+      manifest: m,
+      sizes,
+      order,
+      defaultInstalled: m.defaultInstalled === true,
+      builtin: m.builtin !== false,
+      source: m.source,
+      skeleton: m.skeleton,
+    })
   }
   if (failures.length > 0) {
     console.error('[gen-registry] discovery failed:')
@@ -164,6 +206,20 @@ function main() {
     .flatMap((w) => w.sizes.map((s) => (s === '2x4' ? `\`${w.id}@2x4\`` : `\`${w.id}@2x2\``)))
   const statsIds = widgets.filter((w) => w.defaultInstalled).map((w) => `'${w.id}'`)
   const defaultInstalled = widgets.filter((w) => w.defaultInstalled).map((w) => `\`${w.id}@2x2\``)
+  // Runtime metadata, one line per unit that declares any (source / skeleton).
+  const runtimeEntries = widgets
+    .filter((w) => w.source !== undefined || w.skeleton !== undefined)
+    .map((w) => {
+      const parts = []
+      if (w.source !== undefined) parts.push(`source: ${JSON.stringify(w.source)}`)
+      if (w.skeleton !== undefined) {
+        const inner = [`shape: ${JSON.stringify(w.skeleton.shape)}`]
+        if (w.skeleton.count !== undefined) inner.push(`count: ${w.skeleton.count}`)
+        if (w.skeleton.rows !== undefined) inner.push(`rows: ${w.skeleton.rows}`)
+        parts.push(`skeleton: { ${inner.join(', ')} }`)
+      }
+      return `  ${JSON.stringify(w.id)}: { ${parts.join(', ')} },`
+    })
 
   const out = `/**
  * dsh-widgets — GENERATED widget registry. DO NOT EDIT BY HAND.
@@ -183,6 +239,27 @@ ${imports}
 export const WIDGETS: import('./lib/contract').Widget[] = [
 ${widgets.map((w) => `  ${identFor(w.id)},`).join('\n')}
 ]
+
+/**
+ * Per-widget RUNTIME metadata, generated from each unit's manifest.json.
+ *
+ * WHAT vs HOW: a manifest declares what the widget IS — which live data source it
+ * waits on, and what its body looks like while that source is still in flight.
+ * The SHELL decides HOW that becomes a loading card, because a widget cannot tell
+ * "my source is still in flight" from "my source answered with nothing", and
+ * those two states deserve different cards (placeholder pills vs an honest
+ * empty state).
+ *
+ * Declaring it in the manifest is what keeps a new widget unit to ONE directory:
+ * there is no central id→source map to edit, and \`check:registry\` fails the build
+ * when a manifest drifts from the generated file.
+ */
+export const WIDGET_RUNTIME: Record<string, {
+  source?: 'usage' | 'cc' | 'sys' | 'github'
+  skeleton?: { shape: import('./lib/contract').SkeletonShape; count?: number; rows?: number }
+}> = {
+${runtimeEntries.join('\n')}
+}
 
 /** All widget ids, in registry order. */
 export const ALL_IDS: string[] = [

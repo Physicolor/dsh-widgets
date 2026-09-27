@@ -14,10 +14,6 @@
 import { t } from '../i18n'
 import type { ConfigField, SysInfo, WidgetRenderOut, WidgetStats } from './contract'
 
-/** The five system (hardware) widget ids — the client collector uses this list
- *  to find which installed instances drive the `/api/sysinfo` polling cadence. */
-export const SYS_WIDGET_IDS = ['sys-cpu', 'sys-gpu', 'sys-rings', 'sys-board', 'sys-gpu-line']
-
 /** Read the machine snapshot from the stats passed to a widget render. */
 export function sysInfo(stats: WidgetStats): SysInfo | null {
   const s = stats.sysinfo

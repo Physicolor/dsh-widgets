@@ -4,6 +4,8 @@
   "group": "github",
   "builtin": false,
   "sizes": ["2x2"],
+  "source": "github",
+  "skeleton": { "shape": "text" },
   "locale": {
     "zh": {
       "widget.github-issues.name": "问题",
