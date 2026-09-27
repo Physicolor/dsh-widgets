@@ -7,7 +7,8 @@
  */
 
 import { WIDGETS } from '../../generated.registry'
-import { instanceKey, type WidgetRenderOut, type WidgetSize } from '../../lib/contract'
+import { instanceKey } from '../../lib/contract/helpers'
+import type { WidgetRenderOut, WidgetSize } from '../../lib/contract/types'
 import { PREVIEW_STATS } from './preview-stats'
 import type { Prefs } from '../../runtime/prefs'
 

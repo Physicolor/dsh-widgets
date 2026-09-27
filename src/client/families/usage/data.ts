@@ -1,5 +1,5 @@
 import { t } from '../../i18n'
-import type { UsageData, WidgetRenderOut, WidgetStats } from '../../lib/contract'
+import type { UsageData, WidgetRenderOut, WidgetStats } from '../../lib/contract/types'
 
 /**
  * dsh-widgets — OpenCode Go usage shared render layer (widget-family shared).

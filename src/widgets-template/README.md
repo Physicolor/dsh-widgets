@@ -61,7 +61,8 @@ trajectory / peak-pricing / heatmap 等）不要写 `source`，它们的 render 
 **`index.ts` 描述符要点**：
 
 ```ts
-import { defineWidget } from '../../client/lib/contract'
+import { defineWidget } from '../../client/lib/contract/helpers'
+import type { WidgetRenderMeta, WidgetStats } from '../../client/lib/contract/types'
 import { t } from '../../client/i18n'
 
 export default defineWidget({

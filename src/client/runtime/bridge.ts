@@ -11,7 +11,7 @@
  * without importing back into their own caller (which would be a cycle).
  */
 
-import type { CommandCodeData, GitHubData, SysInfo, UsageData, UsageMulti } from '../lib/contract'
+import type { CommandCodeData, GitHubData, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
 import type { Stats } from '../data/session-stats'
 import type { Prefs } from './prefs'
 

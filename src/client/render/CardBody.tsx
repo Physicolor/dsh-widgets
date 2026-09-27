@@ -14,7 +14,7 @@ import { BASE_SIDE, HEAD_GAP_PX, cardInnerPad, cardRadius } from './card-geometr
 import { CHART_FILLS_BODY, renderChart } from './charts/registry'
 import { DEFAULT_CORNER_PERCENT } from '../runtime/prefs'
 import { t } from '../i18n'
-import type { WidgetAction, WidgetRenderOut, WidgetRich } from '../lib/contract'
+import type { WidgetAction, WidgetRenderOut, WidgetRich } from '../lib/contract/types'
 
 function ActionsBlock({ actions, onAction, scale }: { actions: WidgetAction[]; onAction?: (id: string) => void; scale: number }): React.ReactElement {
   const btnStyle: React.CSSProperties = {

@@ -4,7 +4,7 @@
  * Calls each registered widget's `render(PREVIEW_STATS, { size, sim })` for every
  * shipped size and every preview state, and returns the resulting
  * `WidgetRenderOut` as plain data. No React, no DOM: a widget render is a pure
- * data description (see `lib/contract.ts`), which is what makes this gate
+ * data description (see `lib/contract/types.ts`), which is what makes this gate
  * possible.
  *
  * This is the behaviour-preservation net for the architecture refactor: moving
@@ -12,7 +12,7 @@
  */
 
 import { WIDGETS, WIDGET_LOCALES } from '../../src/client/generated.registry'
-import { sizesOf } from '../../src/client/lib/contract'
+import { sizesOf } from '../../src/client/lib/contract/helpers'
 import { setExtraLocales } from '../../src/client/i18n'
 import { PREVIEW_STATS } from '../../src/client/render/preview/preview-stats'
 

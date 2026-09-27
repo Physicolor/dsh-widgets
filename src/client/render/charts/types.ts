@@ -10,7 +10,7 @@
  * the dispatcher so every renderer shares it instead of re-deriving it.
  */
 
-import type { WidgetChart } from '../../lib/contract'
+import type { WidgetChart } from '../../lib/contract/types'
 
 /** What every chart renderer receives. */
 export interface ChartProps {

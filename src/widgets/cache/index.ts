@@ -1,4 +1,4 @@
-import { defineWidget } from '../../client/lib/contract'
+import { defineWidget } from '../../client/lib/contract/helpers'
 import { t } from '../../client/i18n'
 
 /** Cache hit — input cache-hit ratio (hidden until a cache read is observed). */

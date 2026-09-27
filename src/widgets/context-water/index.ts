@@ -1,4 +1,5 @@
-import { defineWidget, type WidgetRenderMeta } from '../../client/lib/contract'
+import { defineWidget } from '../../client/lib/contract/helpers'
+import type { WidgetRenderMeta } from '../../client/lib/contract/types'
 import { t } from '../../client/i18n'
 
 /** Context water level card — official JObwrW template: title「上下文已用」with

@@ -1,4 +1,4 @@
-import { defineWidget } from '../../client/lib/contract'
+import { defineWidget } from '../../client/lib/contract/helpers'
 import { t } from '../../client/i18n'
 
 /** One-click compaction: shows context usage percent (bottom-left) and a

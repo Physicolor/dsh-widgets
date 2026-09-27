@@ -1,4 +1,4 @@
-﻿import { defineWidget } from '../../client/lib/contract'
+﻿import { defineWidget } from '../../client/lib/contract/helpers'
 import { t } from '../../client/i18n'
 import { gpuMetricOptions, intervalSchema, bigMetricSchema } from '../../client/families/sys/data'
 import { sysGpuRender } from '../../client/families/sys/renders'

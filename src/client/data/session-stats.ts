@@ -10,7 +10,7 @@
  * for a given input, which is what makes the numbers testable in isolation.
  */
 
-import { TRAJECTORY_WINDOW, type TrajectoryBeat } from '../lib/contract'
+import { TRAJECTORY_WINDOW, type TrajectoryBeat } from '../lib/contract/types'
 
 /** Session stats shape collected by the dock collector. */
 export interface Stats {

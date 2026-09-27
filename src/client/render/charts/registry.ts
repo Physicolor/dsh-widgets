@@ -7,7 +7,7 @@
  */
 
 import type { ReactElement } from 'react'
-import type { WidgetChart } from '../../lib/contract'
+import type { WidgetChart } from '../../lib/contract/types'
 import type { ChartProps } from './types'
 import { BarsChart } from './bars'
 import { BarsVChart } from './barsV'

@@ -1,4 +1,4 @@
-import { type WidgetRenderMeta, type WidgetRenderOut, type WidgetStats } from '../../lib/contract'
+import type { WidgetRenderMeta, WidgetRenderOut, WidgetStats } from '../../lib/contract/types'
 import { t } from '../../i18n'
 import { buildGitHubGrid, fmtAgo, sumGrid } from '../../lib/format'
 import { repoShort, selectedRepo, repoCycle, emptyHint } from './data'

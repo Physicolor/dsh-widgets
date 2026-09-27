@@ -1,5 +1,5 @@
 import { t } from '../../i18n'
-import type { ConfigField, SysInfo, WidgetStats } from '../../lib/contract'
+import type { ConfigField, SysInfo, WidgetStats } from '../../lib/contract/types'
 
 /**
  * dsh-widgets — Machine/system (SysInfo) shared render layer (widget-family

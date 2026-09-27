@@ -54,11 +54,12 @@ if (WRITE || !existsSync(BASELINE)) {
 
 const base = JSON.parse(readFileSync(BASELINE, 'utf8'))
 /**
- * Missing-DECLARATION errors are counted PER IMPORTING MODULE, so splitting a file
- * legitimately multiplies them (`node:os` imported by two modules is two errors, not
- * one). Their count therefore says nothing about type health — the root cause is the
- * absent `@types/node` / `react-dom` types, one item in the report's open list. Growth
- * in these codes is reported and tolerated; everything else stays strict.
+ * An EXISTING missing-declaration error may appear in more modules after a split:
+ * `Cannot find module 'node:os'` is counted per importing module, so one file
+ * becoming two raises it — the root cause is the absent `@types/node` / react-dom
+ * types, one item in the report's open list. Growth of such a signature is reported
+ * and tolerated. A signature that did NOT exist at all stays fatal whatever its code:
+ * `Cannot find module './contract'` is a real breakage, not a counting artefact.
  */
 const COUNT_SCALES_WITH_IMPORTS = /^(TS2307|TS2580|TS7016)\b/
 const added = []
@@ -66,7 +67,7 @@ const tolerated = []
 for (const [key, n] of Object.entries(current.signatures)) {
   const was = base.signatures[key] ?? 0
   if (n <= was) continue
-  if (COUNT_SCALES_WITH_IMPORTS.test(key)) tolerated.push(`${key}  (${was} -> ${n})`)
+  if (was > 0 && COUNT_SCALES_WITH_IMPORTS.test(key)) tolerated.push(`${key}  (${was} -> ${n})`)
   else added.push(`${key}  (${was} -> ${n})`)
 }
 const fixed = Object.entries(base.signatures)

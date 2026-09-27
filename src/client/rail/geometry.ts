@@ -7,7 +7,7 @@
  * no state beyond `engagedPanelW`, which only `resolveRailSpace` touches.
  */
 
-import { parseInstanceKey } from '../lib/contract'
+import { parseInstanceKey } from '../lib/contract/helpers'
 import type { Prefs } from '../runtime/prefs'
 
 /**

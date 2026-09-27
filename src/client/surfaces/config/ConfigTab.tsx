@@ -8,7 +8,8 @@
 
 import * as React from 'react'
 import { WIDGETS } from '../../generated.registry'
-import { parseInstanceKey, sizesOf, widgetName, widgetSimToggle, fieldLabel, optionLabel, type ConfigField, type WidgetRenderOut, type WidgetSize } from '../../lib/contract'
+import { parseInstanceKey, sizesOf, widgetName, widgetSimToggle, fieldLabel, optionLabel } from '../../lib/contract/helpers'
+import type { ConfigField, WidgetRenderOut, WidgetSize } from '../../lib/contract/types'
 import { PREVIEW_STATS } from '../../render/preview/preview-stats'
 import { nextSim } from '../../render/preview/sim'
 import { CardBody } from '../../render/CardBody'

@@ -1,4 +1,5 @@
-import { defineWidget, type WidgetRenderMeta, type WidgetStats } from '../../client/lib/contract'
+import { defineWidget } from '../../client/lib/contract/helpers'
+import type { WidgetRenderMeta, WidgetStats } from '../../client/lib/contract/types'
 import { t } from '../../client/i18n'
 import { buildRollingGrid, dayKey, fmtTokens } from '../../client/lib/format'
 

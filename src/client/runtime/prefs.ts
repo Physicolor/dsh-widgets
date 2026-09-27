@@ -12,7 +12,7 @@
  */
 
 import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS } from '../generated.registry'
-import { instanceKey, parseInstanceKey, sizesOf } from '../lib/contract'
+import { instanceKey, parseInstanceKey, sizesOf } from '../lib/contract/helpers'
 
 /** Persisted preferences shared by every surface. */
 export interface Prefs {

@@ -1,4 +1,5 @@
-import { defineWidget, type WidgetStats } from '../../client/lib/contract'
+import { defineWidget } from '../../client/lib/contract/helpers'
+import type { WidgetStats } from '../../client/lib/contract/types'
 import { t } from '../../client/i18n'
 
 /** A quote card only renders content when the user typed a custom text — no

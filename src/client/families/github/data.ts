@@ -1,4 +1,4 @@
-import { type ConfigField, type GitHubContribDay, type GitHubRepo, type WidgetRenderOut, type WidgetStats } from '../../lib/contract'
+import type { ConfigField, GitHubContribDay, GitHubRepo, WidgetRenderOut, WidgetStats } from '../../lib/contract/types'
 import { t } from '../../i18n'
 import { dayKey } from '../../lib/format'
 import { figure } from './renders'

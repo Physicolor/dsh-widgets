@@ -10,7 +10,7 @@
  * same way.
  */
 
-import type { WidgetExample } from '../../lib/contract'
+import type { WidgetExample } from '../../lib/contract/types'
 
 export function nextSim(w: { example?: WidgetExample } | undefined, current: Record<string, unknown> | null): Record<string, unknown> | null {
   if (w === undefined) return current

@@ -8,7 +8,8 @@
  * The full contract guide is src/widgets-template/README.md.
  */
 
-import { defineWidget, type WidgetRenderMeta, type WidgetStats } from '../../client/lib/contract'
+import { defineWidget } from '../../client/lib/contract/helpers'
+import type { WidgetRenderMeta, WidgetStats } from '../../client/lib/contract/types'
 import { t } from '../../client/i18n'
 
 function templateRender(stats: WidgetStats, meta?: WidgetRenderMeta): ReturnType<NonNullable<ReturnType<typeof defineWidget>['render']>> {

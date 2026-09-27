@@ -1,4 +1,4 @@
-﻿import { defineWidget } from '../../client/lib/contract'
+﻿import { defineWidget } from '../../client/lib/contract/helpers'
 import { t } from '../../client/i18n'
 import { cpuMetricOptions, intervalSchema, bigMetricSchema } from '../../client/families/sys/data'
 import { sysCpuRender } from '../../client/families/sys/renders'

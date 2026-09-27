@@ -16,16 +16,24 @@
  *   node scripts/snapshot-render.mjs            # same as --check
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const TSC = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc')
 const BASELINE = join(ROOT, 'docs', 'architecture', 'baseline', 'render-snapshot.json')
+const OUT_DIR = join(ROOT, '.tmp-snapshot')
 const WRITE = process.argv.includes('--write')
 
 function die(msg) { console.error(`[snapshot-render] ${msg}`); process.exit(1) }
+
+// 0) Clean the output dir first. `tsc` does not remove stale files, so a module
+//    DELETED by a refactor would leave its old .js behind — and a broken import
+//    would then resolve against that ghost and pass. (Observed for real: the
+//    contract split left .tmp-snapshot/.../lib/contract.js satisfying the
+//    harness's old import while the source file was gone.)
+rmSync(OUT_DIR, { recursive: true, force: true })
 
 // 1) Compile the render closure to CommonJS. Type errors inside the closure are
 //    reported but do not block emission (the repo has pre-existing tsc errors).

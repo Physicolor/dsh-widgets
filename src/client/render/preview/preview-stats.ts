@@ -8,7 +8,7 @@
  */
 
 import { buildRollingGrid } from '../../lib/format'
-import type { WidgetStats } from '../../lib/contract'
+import type { WidgetStats } from '../../lib/contract/types'
 
 /** Realistic non-zero preview stats so every card renders (none return null). */
 /** Raw preview usage log: derived once so BOTH the 2×2 grid and the 2×4 / bar

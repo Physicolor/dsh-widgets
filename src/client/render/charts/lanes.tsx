@@ -8,7 +8,7 @@
  */
 
 import * as React from 'react'
-import { TRAJECTORY_WINDOW } from '../../lib/contract'
+import { TRAJECTORY_WINDOW } from '../../lib/contract/types'
 import type { ChartProps } from './types'
 
 /** 对话轨迹 lane colors — EXACTLY the official 轨迹 timeline's three lanes

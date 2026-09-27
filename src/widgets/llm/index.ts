@@ -1,4 +1,4 @@
-import { defineWidget } from '../../client/lib/contract'
+import { defineWidget } from '../../client/lib/contract/helpers'
 import { t } from '../../client/i18n'
 import { fmtDuration } from '../../client/lib/format'
 

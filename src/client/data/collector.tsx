@@ -17,7 +17,8 @@
 
 import * as React from 'react'
 import { WIDGET_RUNTIME } from '../generated.registry'
-import { type CommandCodeData, type GitHubData, type SysInfo, type UsageData, type UsageMulti, parseInstanceKey } from '../lib/contract'
+import { parseInstanceKey } from '../lib/contract/helpers'
+import type { CommandCodeData, GitHubData, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
 import { DEFAULT_TZ, accumulateHeatmap, buildHeatmapGrid, dateKey, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from '../lib/heatmap-accounting'
 import { ccPayloadDegraded } from '../families/cc/data'
 import { ingestSysInfo, resolveInterval } from '../families/sys/data'

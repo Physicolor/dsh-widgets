@@ -42,7 +42,8 @@
  * figures print `—`, never a number measured on the wrong traffic.
  */
 
-import { defineWidget, type WidgetRenderMeta, type WidgetStats } from '../../client/lib/contract'
+import { defineWidget } from '../../client/lib/contract/helpers'
+import type { WidgetRenderMeta, WidgetStats } from '../../client/lib/contract/types'
 import { t } from '../../client/i18n'
 import { ccView, cycleFor, monthlyWindow } from '../../client/families/cc/data'
 import { fmtQuota, localDayKey, logCoversSince, loggedTokensIn, planQuota } from '../../client/lib/quota-math'

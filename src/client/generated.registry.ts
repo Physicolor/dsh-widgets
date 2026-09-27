@@ -52,7 +52,7 @@ import w_github_push from '../widgets/github-push'
 import w_github_board from '../widgets/github-board'
 
 /** Every discovered widget, in manifest display order (then by id). */
-export const WIDGETS: import('./lib/contract').Widget[] = [
+export const WIDGETS: import('./lib/contract/types').Widget[] = [
   w_counts,
   w_llm,
   w_tool,
@@ -111,7 +111,7 @@ export const WIDGETS: import('./lib/contract').Widget[] = [
  */
 export const WIDGET_RUNTIME: Record<string, {
   source?: 'usage' | 'cc' | 'sys' | 'github'
-  skeleton?: { shape: import('./lib/contract').SkeletonShape; count?: number; rows?: number }
+  skeleton?: { shape: import('./lib/contract/types').SkeletonShape; count?: number; rows?: number }
 }> = {
   "quota-manage": { source: "cc", skeleton: { shape: "figures", count: 2 } },
   "usage-bars": { source: "usage", skeleton: { shape: "bars" } },

@@ -1,5 +1,5 @@
 import { t } from '../../i18n'
-import type { CommandCodeAccount, CommandCodeCredits, CommandCodeData, CommandCodeKeyEntry, CommandCodeSubscription, CommandCodeWindow, WidgetRenderOut, WidgetStats } from '../../lib/contract'
+import type { CommandCodeAccount, CommandCodeCredits, CommandCodeData, CommandCodeKeyEntry, CommandCodeSubscription, CommandCodeWindow, WidgetRenderOut, WidgetStats } from '../../lib/contract/types'
 import { title, winPct } from './renders'
 
 /**

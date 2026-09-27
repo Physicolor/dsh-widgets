@@ -13,7 +13,7 @@
 
 import * as React from 'react'
 import { WAVE_SPRING, springSettleMs, springValue } from '../../lib/morph-spring'
-import { type WidgetRenderOut, type WidgetSize } from '../../lib/contract'
+import type { WidgetRenderOut, WidgetSize } from '../../lib/contract/types'
 import { ANCHOR_FOLLOW, RAIL_ROW_SEAT, type WavePlace } from '../geometry'
 import { t } from '../../i18n'
 

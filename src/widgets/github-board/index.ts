@@ -1,4 +1,4 @@
-import { defineWidget } from '../../client/lib/contract'
+import { defineWidget } from '../../client/lib/contract/helpers'
 import { t } from '../../client/i18n'
 import { githubConfigSchema, githubPreviewStats } from '../../client/families/github/data'
 import { githubBoardRender } from '../../client/families/github/renders'

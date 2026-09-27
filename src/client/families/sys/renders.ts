@@ -1,5 +1,5 @@
 import { t } from '../../i18n'
-import type { WidgetRenderOut, WidgetStats } from '../../lib/contract'
+import type { WidgetRenderOut, WidgetStats } from '../../lib/contract/types'
 import { sysInfo, plotSamples, historyOf, resolveSparkPoints, GPU_METRIC_OPTS, CPU_METRIC_OPTS, bigHint, bigMetricOf } from './data'
 
 /** Bytes → human GB ("17.4 GB"), one decimal below 10 GB, integer above. */

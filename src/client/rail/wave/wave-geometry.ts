@@ -11,7 +11,7 @@
  * caller owns the layout), so the maths is the natural seam between them.
  */
 
-import type { WidgetSize } from '../../lib/contract'
+import type { WidgetSize } from '../../lib/contract/types'
 
 /** One card in a laid-out deck: scale and the resulting box, right-edge anchored. */
 export interface RailPlace { s: number; top: number; right: number; w: number; h: number }

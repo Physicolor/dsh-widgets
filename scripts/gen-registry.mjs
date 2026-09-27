@@ -236,7 +236,7 @@ function main() {
 ${imports}
 
 /** Every discovered widget, in manifest display order (then by id). */
-export const WIDGETS: import('./lib/contract').Widget[] = [
+export const WIDGETS: import('./lib/contract/types').Widget[] = [
 ${widgets.map((w) => `  ${identFor(w.id)},`).join('\n')}
 ]
 
@@ -256,7 +256,7 @@ ${widgets.map((w) => `  ${identFor(w.id)},`).join('\n')}
  */
 export const WIDGET_RUNTIME: Record<string, {
   source?: 'usage' | 'cc' | 'sys' | 'github'
-  skeleton?: { shape: import('./lib/contract').SkeletonShape; count?: number; rows?: number }
+  skeleton?: { shape: import('./lib/contract/types').SkeletonShape; count?: number; rows?: number }
 }> = {
 ${runtimeEntries.join('\n')}
 }

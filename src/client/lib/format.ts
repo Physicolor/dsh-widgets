@@ -4,7 +4,7 @@
  * Nothing here touches React or i18n; any widget unit may import these.
  */
 
-import type { BarDatum } from './contract'
+import type { BarDatum } from './contract/types'
 
 /** Compact duration: 45.2s under a minute, 2m42s from there. */
 export function fmtDuration(ms: number): string {

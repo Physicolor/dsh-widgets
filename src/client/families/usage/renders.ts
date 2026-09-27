@@ -1,5 +1,5 @@
 import { t } from '../../i18n'
-import type { BarDatum, UsageData, UsageMulti, WidgetRenderOut, WidgetStats } from '../../lib/contract'
+import type { BarDatum, UsageData, UsageMulti, WidgetRenderOut, WidgetStats } from '../../lib/contract/types'
 import { usageView, cycleFor, modeLabel, winPct } from './data'
 
 export function usageRender(key: 'rolling' | 'weekly' | 'monthly', nameKey: string): (stats: WidgetStats) => WidgetRenderOut | null {
@@ -66,5 +66,5 @@ export function usageRingsRender(stats: WidgetStats): WidgetRenderOut | null {
 }
 
 /** Types the host multi-key payload shape re-exported for convenience. */
-export type { UsageData, UsageMulti } from '../../lib/contract'
+export type { UsageData, UsageMulti } from '../../lib/contract/types'
 

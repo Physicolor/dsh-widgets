@@ -1,6 +1,6 @@
 import { t } from '../../i18n'
 import { fmtTokens } from '../../lib/format'
-import type { BarDatum, WidgetChart, WidgetRenderMeta, WidgetRenderOut, WidgetStats } from '../../lib/contract'
+import type { BarDatum, WidgetChart, WidgetRenderMeta, WidgetRenderOut, WidgetStats } from '../../lib/contract/types'
 import { cc, hint, CC_ALL, CcViewState, ccView, cycleFor, WindowInfo, fiveHourWindow, weeklyWindow, monthlyWindow } from './data'
 
 function ccLegend(role: string, view: CcViewState): string {
