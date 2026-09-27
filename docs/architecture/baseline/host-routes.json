@@ -1,0 +1,313 @@
+{
+ "/api/opencode-usage": {
+  "status": 200,
+  "shape": {
+   "usage": {
+    "monthly": {
+     "percent": 0,
+     "resetsAt": "s",
+     "status": "s"
+    },
+    "rolling": {
+     "percent": 0,
+     "resetsAt": "s",
+     "status": "s"
+    },
+    "weekly": {
+     "percent": 0,
+     "resetsAt": "s",
+     "status": "s"
+    }
+   }
+  }
+ },
+ "/api/opencode-usage-multi": {
+  "status": 200,
+  "shape": {
+   "keys": [
+    {
+     "data": {
+      "usage": {
+       "monthly": {
+        "percent": 0,
+        "resetsAt": "s",
+        "status": "s"
+       },
+       "rolling": {
+        "percent": 0,
+        "resetsAt": "s",
+        "status": "s"
+       },
+       "weekly": {
+        "percent": 0,
+        "resetsAt": "s",
+        "status": "s"
+       }
+      }
+     },
+     "label": "s",
+     "ref": "s",
+     "tail": "s"
+    }
+   ],
+   "total": {
+    "usage": {
+     "monthly": {
+      "percent": 0,
+      "resetsAt": "s",
+      "status": "s"
+     },
+     "rolling": {
+      "percent": 0,
+      "resetsAt": "s",
+      "status": "s"
+     },
+     "weekly": {
+      "percent": 0,
+      "resetsAt": "s",
+      "status": "s"
+     }
+    }
+   }
+  }
+ },
+ "/api/commandcode-usage": {
+  "status": 200,
+  "shape": {
+   "credits": {
+    "credits": 0,
+    "currency": "s"
+   },
+   "keys": [
+    {
+     "data": {
+      "credits": {
+       "credits": 0,
+       "currency": "s"
+      },
+      "subscription": {
+       "subscriptions": [
+        {
+         "id": "s",
+         "status": "s"
+        }
+       ]
+      },
+      "usage": {
+       "usage": {
+        "percent": 0,
+        "periodStart": "s",
+        "plan": "s"
+       }
+      },
+      "whoami": {
+       "email": "s",
+       "name": "s"
+      }
+     },
+     "label": "s",
+     "ref": "s",
+     "tail": "s"
+    }
+   ],
+   "subscription": {
+    "subscriptions": [
+     {
+      "id": "s",
+      "status": "s"
+     }
+    ]
+   },
+   "usage": {
+    "usage": {
+     "percent": 0,
+     "periodStart": "s",
+     "plan": "s"
+    }
+   },
+   "whoami": {
+    "email": "s",
+    "name": "s"
+   }
+  }
+ },
+ "/api/widgets-usage-daily": {
+  "status": 200,
+  "shape": {
+   "available": true,
+   "daily": {
+    "2026-01-01": 0,
+    "2026-01-02": 0
+   },
+   "days": 0,
+   "source": "s"
+  }
+ },
+ "/api/widgets-usage-daily?provider=commandcode": {
+  "status": 200,
+  "shape": {
+   "available": true,
+   "daily": {
+    "2026-01-02": 0
+   },
+   "days": 0,
+   "provider": "s",
+   "source": "s"
+  }
+ },
+ "/api/widgets-usage-daily?refresh=1": {
+  "status": 200,
+  "shape": {
+   "available": true,
+   "daily": {
+    "2026-01-02": 0
+   },
+   "days": 0,
+   "provider": "s",
+   "source": "s"
+  }
+ },
+ "/api/github (empty request)": {
+  "status": 200,
+  "shape": {
+   "auth": "s",
+   "contributions": {
+    "days": [
+     {
+      "count": 0,
+      "date": "s",
+      "level": 0
+     }
+    ],
+    "login": "s",
+    "longest": 0,
+    "source": "s",
+    "streak": 0,
+    "total": 0
+   },
+   "errors": {},
+   "login": "s",
+   "repos": [
+    {
+     "forks": 0,
+     "fullName": "s",
+     "issueCountCapped": false,
+     "newestIssue": {
+      "comments": 0,
+      "number": 0,
+      "title": "s",
+      "updatedAt": "s"
+     },
+     "openIssues": 0,
+     "pushedAt": "s",
+     "release": {
+      "name": "s",
+      "publishedAt": "s",
+      "tag": "s"
+     },
+     "stars": 0,
+     "unanswered": 0
+    }
+   ]
+  }
+ },
+ "/api/github?user=acme&repos=acme/widgets": {
+  "status": 200,
+  "shape": {
+   "auth": "s",
+   "contributions": {
+    "days": [
+     {
+      "count": 0,
+      "date": "s",
+      "level": 0
+     }
+    ],
+    "login": "s",
+    "longest": 0,
+    "source": "s",
+    "streak": 0,
+    "total": 0
+   },
+   "errors": {},
+   "login": "s",
+   "repos": [
+    {
+     "forks": 0,
+     "fullName": "s",
+     "issueCountCapped": false,
+     "newestIssue": {
+      "comments": 0,
+      "number": 0,
+      "title": "s",
+      "updatedAt": "s"
+     },
+     "openIssues": 0,
+     "pushedAt": "s",
+     "release": {
+      "name": "s",
+      "publishedAt": "s",
+      "tag": "s"
+     },
+     "stars": 0,
+     "unanswered": 0
+    }
+   ]
+  }
+ },
+ "/api/widgets-state GET (fresh dir)": {
+  "status": 200,
+  "shape": {
+   "savedAt": 0,
+   "state": {}
+  }
+ },
+ "/api/widgets-state PUT": {
+  "status": 200,
+  "shape": {
+   "ok": true
+  }
+ },
+ "/api/widgets-state GET (after PUT)": {
+  "status": 200,
+  "shape": {
+   "savedAt": 0,
+   "state": {
+    "order": [
+     "s"
+    ],
+    "railOpen": true
+   }
+  }
+ },
+ "/api/widgets-state DELETE (405)": {
+  "status": 405,
+  "shape": {
+   "error": "s"
+  }
+ },
+ "/api/sysinfo (first sample)": {
+  "status": 200,
+  "shape": {
+   "keys": [
+    "cpu",
+    "gpu",
+    "history",
+    "mem",
+    "ts"
+   ]
+  }
+ },
+ "/api/sysinfo (cache hit)": {
+  "status": 200,
+  "shape": {
+   "keys": [
+    "cpu",
+    "gpu",
+    "history",
+    "mem",
+    "ts"
+   ]
+  }
+ }
+}
