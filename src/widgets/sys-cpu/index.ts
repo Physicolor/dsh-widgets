@@ -1,6 +1,7 @@
 ﻿import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { cpuMetricOptions, intervalSchema, bigMetricSchema, sysCpuRender } from '../../client/lib/sys-view'
+import { cpuMetricOptions, intervalSchema, bigMetricSchema } from '../../client/families/sys/data'
+import { sysCpuRender } from '../../client/families/sys/renders'
 
 /** CPU utilization as a big number with a memory line (title + number card). */
 export default defineWidget({
@@ -11,4 +12,4 @@ export default defineWidget({
   group: 'device',
   configSchema: [ ...intervalSchema(), bigMetricSchema(cpuMetricOptions()) ],
   render: sysCpuRender,
-})
+})

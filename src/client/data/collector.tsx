@@ -19,8 +19,8 @@ import * as React from 'react'
 import { WIDGET_RUNTIME } from '../generated.registry'
 import { type CommandCodeData, type GitHubData, type SysInfo, type UsageData, type UsageMulti, parseInstanceKey } from '../lib/contract'
 import { DEFAULT_TZ, accumulateHeatmap, buildHeatmapGrid, dateKey, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from '../lib/heatmap-accounting'
-import { ccPayloadDegraded } from '../lib/cc-view'
-import { ingestSysInfo, resolveInterval } from '../lib/sys-view'
+import { ccPayloadDegraded } from '../families/cc/data'
+import { ingestSysInfo, resolveInterval } from '../families/sys/data'
 import { type Stats, deriveStats, deriveTrajectory } from './session-stats'
 import { type BridgeSnapshot, type BridgeState } from '../runtime/bridge'
 import { type Prefs } from '../runtime/prefs'
@@ -498,4 +498,4 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
       }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now, snap.usageDaily, deps.getPrefs().cardConfigs?.heatmap?.monthMode, deps.getPrefs().cardConfigs?.heatmap?.timeZone])
       return null
   }
-}
+}

@@ -1,6 +1,6 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { ccUsageRender } from '../../client/lib/cc-view'
+import { ccUsageRender } from '../../client/families/cc/renders'
 
 /** Command Code usage summary (requests / success / tokens / spend). */
 export default defineWidget({
@@ -11,4 +11,4 @@ export default defineWidget({
   group: 'commandcode',
   badgeLabel: () => t('badge.commandcode'),
   render: ccUsageRender,
-})
+})

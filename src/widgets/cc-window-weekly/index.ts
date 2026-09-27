@@ -1,6 +1,6 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { ccWindowValueRender } from '../../client/lib/cc-view'
+import { ccWindowValueRender } from '../../client/families/cc/renders'
 
 /** Command Code weekly window usage percent. */
 export default defineWidget({
@@ -11,4 +11,4 @@ export default defineWidget({
   group: 'commandcode',
   badgeLabel: () => t('badge.commandcode'),
   render: ccWindowValueRender('weekly'),
-})
+})

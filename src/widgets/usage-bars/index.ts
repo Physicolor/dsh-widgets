@@ -1,6 +1,6 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { usageBarsRender } from '../../client/lib/usage-view'
+import { usageBarsRender } from '../../client/families/usage/renders'
 
 /** OpenCode Go dosage as one bar chart across the three windows. */
 export default defineWidget({
@@ -11,4 +11,4 @@ export default defineWidget({
   group: 'opencode-go',
   badgeLabel: () => t('badge.opencode'),
   render: usageBarsRender,
-})
+})

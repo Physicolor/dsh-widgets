@@ -1,6 +1,7 @@
 ﻿import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { intervalSchema, sysRingsRender } from '../../client/lib/sys-view'
+import { intervalSchema } from '../../client/families/sys/data'
+import { sysRingsRender } from '../../client/families/sys/renders'
 
 /** CPU + GPU utilization as two side-by-side donuts (ring placeholder card). */
 export default defineWidget({
@@ -11,4 +12,4 @@ export default defineWidget({
   group: 'device',
   configSchema: intervalSchema(),
   render: sysRingsRender,
-})
+})

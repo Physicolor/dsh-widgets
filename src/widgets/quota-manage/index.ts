@@ -44,7 +44,7 @@
 
 import { defineWidget, type WidgetRenderMeta, type WidgetStats } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { ccView, cycleFor, monthlyWindow } from '../../client/lib/cc-view'
+import { ccView, cycleFor, monthlyWindow } from '../../client/families/cc/data'
 import { fmtQuota, localDayKey, logCoversSince, loggedTokensIn, planQuota } from '../../client/lib/quota-math'
 
 const DAY_MS = 86_400_000
@@ -246,3 +246,4 @@ export default defineWidget({
   simToggle: () => t('widget.quota-manage.simToggle'),
   example: { stats: previewStats, sim: { over: false } },
 })
+

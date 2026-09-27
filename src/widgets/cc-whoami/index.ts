@@ -1,6 +1,6 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { ccWhoamiRender } from '../../client/lib/cc-view'
+import { ccWhoamiRender } from '../../client/families/cc/renders'
 
 /** Command Code account identity (whoami). */
 export default defineWidget({
@@ -11,4 +11,4 @@ export default defineWidget({
   group: 'commandcode',
   badgeLabel: () => t('badge.commandcode'),
   render: ccWhoamiRender,
-})
+})

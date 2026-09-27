@@ -1,6 +1,7 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { intervalSchema, SPARK_POINTS_OPTS, sysGpuLineRender } from '../../client/lib/sys-view'
+import { intervalSchema, SPARK_POINTS_OPTS } from '../../client/families/sys/data'
+import { sysGpuLineRender } from '../../client/families/sys/renders'
 
 /** GPU utilization sparkline (Windows-task-manager style) with the current
  *  utilization as the big figure. */
@@ -20,4 +21,4 @@ export default defineWidget({
     { key: 'points', label: () => t('sysinfo.points'), type: 'mode', default: '20', options: SPARK_POINTS_OPTS },
   ],
   render: sysGpuLineRender,
-})
+})

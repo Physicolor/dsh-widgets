@@ -1,6 +1,7 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { githubConfigSchema, githubPreviewStats, githubPushRender } from '../../client/lib/github-view'
+import { githubConfigSchema, githubPreviewStats } from '../../client/families/github/data'
+import { githubPushRender } from '../../client/families/github/renders'
 
 /** Last push distance + newest release tag: "is this repo alive, and what did
  *  it last ship". */
@@ -15,3 +16,4 @@ export default defineWidget({
   render: githubPushRender,
   example: { stats: githubPreviewStats },
 })
+

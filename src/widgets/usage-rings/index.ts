@@ -1,6 +1,6 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { usageRingsRender } from '../../client/lib/usage-view'
+import { usageRingsRender } from '../../client/families/usage/renders'
 
 /** OpenCode Go dosage as three small donuts (one per window). */
 export default defineWidget({
@@ -11,4 +11,4 @@ export default defineWidget({
   group: 'opencode-go',
   badgeLabel: () => t('badge.opencode'),
   render: usageRingsRender,
-})
+})

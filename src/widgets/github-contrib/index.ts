@@ -1,6 +1,7 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { githubConfigSchema, githubContribRender, githubPreviewStats } from '../../client/lib/github-view'
+import { githubConfigSchema, githubPreviewStats } from '../../client/families/github/data'
+import { githubContribRender } from '../../client/families/github/renders'
 
 /** GitHub contribution calendar — GitHub's own five-step green grid, drawn by
  *  the same heatmap renderer as the token calendar (only the palette and the
@@ -18,3 +19,4 @@ export default defineWidget({
   render: githubContribRender,
   example: { stats: githubPreviewStats },
 })
+

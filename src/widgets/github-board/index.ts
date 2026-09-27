@@ -1,6 +1,7 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { githubBoardRender, githubConfigSchema, githubPreviewStats } from '../../client/lib/github-view'
+import { githubConfigSchema, githubPreviewStats } from '../../client/families/github/data'
+import { githubBoardRender } from '../../client/families/github/renders'
 
 /** The 2×4 board: the family's four readings of ONE repo side by side. */
 export default defineWidget({
@@ -14,3 +15,4 @@ export default defineWidget({
   render: githubBoardRender,
   example: { stats: githubPreviewStats },
 })
+

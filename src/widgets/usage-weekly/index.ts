@@ -1,6 +1,6 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { usageRender } from '../../client/lib/usage-view'
+import { usageRender } from '../../client/families/usage/renders'
 
 /** OpenCode Go weekly usage quota (single-window percent card). */
 export default defineWidget({
@@ -11,4 +11,4 @@ export default defineWidget({
   group: 'opencode-go',
   badgeLabel: () => t('badge.opencode'),
   render: usageRender('weekly', 'widget.usage-weekly.name'),
-})
+})

@@ -1,6 +1,6 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { ccCreditsRender } from '../../client/lib/cc-view'
+import { ccCreditsRender } from '../../client/families/cc/renders'
 
 /** Command Code credit balance + 5h / weekly quota bars. */
 export default defineWidget({
@@ -11,4 +11,4 @@ export default defineWidget({
   group: 'commandcode',
   badgeLabel: () => t('badge.commandcode'),
   render: ccCreditsRender,
-})
+})

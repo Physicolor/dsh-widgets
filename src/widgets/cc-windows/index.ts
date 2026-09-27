@@ -1,6 +1,6 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { ccWindowsRender } from '../../client/lib/cc-view'
+import { ccWindowsRender } from '../../client/families/cc/renders'
 
 /** Command Code 5h / weekly quota windows as two donuts. */
 export default defineWidget({
@@ -11,4 +11,4 @@ export default defineWidget({
   group: 'commandcode',
   badgeLabel: () => t('badge.commandcode'),
   render: ccWindowsRender,
-})
+})

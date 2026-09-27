@@ -1,6 +1,6 @@
 import { defineWidget, type WidgetStats } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { ccSubscriptionRender, PLAN_TIER_STEPS } from '../../client/lib/cc-view'
+import { ccSubscriptionRender, PLAN_TIER_STEPS } from '../../client/families/cc/renders'
 
 const DAY_MS = 86_400_000
 
@@ -40,3 +40,4 @@ export default defineWidget({
   simToggle: () => t('widget.cc-subscription.simToggle'),
   example: { stats: previewStats, sim: { plan: 'individual-goat' }, simSteps: PLAN_TIER_STEPS },
 })
+

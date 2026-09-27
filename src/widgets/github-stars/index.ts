@@ -1,6 +1,7 @@
 import { defineWidget } from '../../client/lib/contract'
 import { t } from '../../client/i18n'
-import { githubConfigSchema, githubPreviewStats, githubStarsRender } from '../../client/lib/github-view'
+import { githubConfigSchema, githubPreviewStats } from '../../client/families/github/data'
+import { githubStarsRender } from '../../client/families/github/renders'
 
 /** Repo stars (+ forks) — the slowest figure in the family, so it stays a 2×2
  *  tile rather than a headline. */
@@ -15,3 +16,4 @@ export default defineWidget({
   render: githubStarsRender,
   example: { stats: githubPreviewStats },
 })
+
