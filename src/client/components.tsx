@@ -17,6 +17,7 @@ import {
 import { fmtShortDate } from './lib/format'
 import { PREVIEW_STATS } from './render/preview/preview-stats'
 import { nextSim } from './render/preview/sim'
+import { DEFAULT_CORNER_PERCENT, type Prefs } from './runtime/prefs'
 import { t } from './i18n'
 
 /** The base card side all scales derive from. */
@@ -36,8 +37,6 @@ const HEAD_GAP_PX = 4
  *  reference card's own ratio; 16% is the default because the same ratio reads
  *  sharper on a small card than on the ~480px card the reference is drawn at. */
 export const CORNER_GEARS: number[] = [12, 16, 20, 24]
-/** Default corner gear (%). */
-export const DEFAULT_CORNER_PERCENT = 16
 /** Corner radius in px for a card of short side `unit`. */
 export function cardRadius(unit: number, percent: number = DEFAULT_CORNER_PERCENT): number {
   const p = Number.isFinite(percent) ? Math.max(8, Math.min(28, percent)) : DEFAULT_CORNER_PERCENT
@@ -50,42 +49,6 @@ export function cardRadius(unit: number, percent: number = DEFAULT_CORNER_PERCEN
  *  Flat 12 · scale, i.e. 12px at the plugin's 150px default, as it always was. */
 function cardInnerPad(unit: number): number {
   return Math.round(12 * (unit / BASE_SIDE))
-}
-
-/** Persisted preferences shared by every surface. */
-export interface Prefs {
-  panelPadding: number
-  cardSide: number
-  installed: string[]
-  order: string[]
-  apiKey: string
-  railOpen: boolean
-  /** Real-time (mouse-Y continuous) magnification; off = discrete focus + CSS transition. */
-  realTime: boolean
-  /** Peak magnification factor of the hovered card (e.g. 1.2 = 120%). */
-  magnify: number
-  /** Width of the right-side add panel (px). */
-  panelWidth: number
-  /** Per-widget card configuration (widgetId -> config map). */
-  cardConfigs: Record<string, Record<string, unknown>>
-  /** Maximum number of installed widgets shown in the rail. */
-  maxWidgets: number
-  /** Number of card columns in the rail (1 / 2 / 3 / 4). Default 2. */
-  columns: number
-  /** Hide the official composer stats line under the input box (personal
-   *  preference — the rail widgets can show the same data). Default OFF so
-   *  other users keep their stats bar. */
-  hideStatsLine: boolean
-  /** 连续曲率圆角: draw the card corners as superellipses (`corner-shape:
-   *  squircle`) instead of circular arcs. Default ON — the squircle reads as
-   *  softer at the same radius, and the setting lets a user compare. */
-  squircle: boolean
-  /** Corner-radius gear in PERCENT of the card's short side (see CORNER_GEARS). */
-  cornerPercent: number
-  /** 组件市场's view: 'list' (rows) or 'grid' (the widget gallery). PERSISTED with
-   *  the rest of the prefs — switching views must survive a reload and ship as a
-   *  user preference to everyone who installs the plugin from npm. */
-  marketView: 'list' | 'grid'
 }
 
 /** The controller handed to every component. */

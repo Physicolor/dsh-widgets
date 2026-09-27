@@ -18,16 +18,11 @@ import { ccPayloadDegraded } from './lib/cc-view'
 import { springSettleMs, springValue, WAVE_SPRING } from './lib/morph-spring'
 import { ingestSysInfo, resolveInterval } from './lib/sys-view'
 import { deriveStats, deriveTrajectory, type Stats } from './data/session-stats'
-import { CardBody, cardRadius, COL_GAP, DEFAULT_CORNER_PERCENT, DETAIL_W, LIST_W, WidgetsPage, type Prefs } from './components'
+import { SAVED_AT_KEY, STORAGE_KEY, loadSavedAt, loadState, normalizePrefs, type Prefs } from './runtime/prefs'
+import { STORE_API, flushPendingState, putState, saveState } from './runtime/host-sync'
+import { CardBody, cardRadius, COL_GAP, DETAIL_W, LIST_W, WidgetsPage } from './components'
 import { t, installLocale, onLocaleChange } from './i18n'
 
-const STORAGE_KEY = 'harness-widgets.state'
-/** Local mirror of the last saved-at timestamp, compared against the host file
- *  on boot so the same DSH service converges from any browser origin
- *  (localhost vs 127.0.0.1 are different localStorage realms). */
-const SAVED_AT_KEY = 'harness-widgets.state.savedAt'
-/** Same-origin host route holding the authoritative state file. */
-const STORE_API = '/api/widgets-state'
 const BASE_SIDE = 150
 
 /**
@@ -455,29 +450,6 @@ const ACTION_COMMANDS: Record<string, string> = {
   contextCompact: '/compact',
 }
 
-
-
-const DEFAULTS: Prefs = {
-  panelPadding: 24,
-  cardSide: 150,
-  installed: DEFAULT_INSTALLED.slice(),
-  order: ALL_INSTANCES.slice(),
-  apiKey: '',
-  railOpen: false,
-  realTime: false,
-  magnify: 1.2,
-  panelWidth: 500,
-  cardConfigs: {},
-  maxWidgets: 10,
-  columns: 2,
-  hideStatsLine: false,
-  // 连续曲率圆角 is ON by default (see the Prefs doc): the rail cards and the
-  // previews share the same corner gear, so the setting is read from one place.
-  squircle: true,
-  cornerPercent: DEFAULT_CORNER_PERCENT,
-  // 组件市场 opens as a list; the choice is persisted from then on.
-  marketView: 'list',
-}
 
 /** Required services: the slot registry (React is a platform module). */
 export const inject = ['slots']
@@ -1537,133 +1509,6 @@ function RailWave(props: RailWaveProps): React.ReactElement {
     },
     onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => { leaveRail(e.clientX, e.clientY) },
   }, rail, magnifyLayer)
-}
-
-/** Normalize an arbitrary persisted/remote prefs object into a valid Prefs.
- *  Shared by localStorage loads and the authoritative host-store sync, so both
- *  channels survive schema drift identically. */
-function normalizePrefs(p: Partial<Prefs>): Prefs {
-  const s = { ...DEFAULTS, ...p }
-  if (!Number.isFinite(s.panelPadding) || s.panelPadding < 4 || s.panelPadding > 40) s.panelPadding = DEFAULTS.panelPadding
-  if (!Number.isFinite(s.cardSide) || s.cardSide < 100 || s.cardSide > 220) s.cardSide = DEFAULTS.cardSide
-  // Normalize one persisted entry to a valid instance key. Legacy bare widget
-  // ids (pre-2脳2) migrate to their 2脳4 instance; unknown entries are dropped.
-  const normalizeInstance = (key: string): string => {
-    // v1.5.0 leak migration: sys-board shipped with its descriptor missing the
-    // sizes list, so the runtime defaulted it to 2脳2 while the manifest said
-    // 2脳4 —users installed a bogus sys-board@2x2. Remap it to the real size.
-    if (key === 'sys-board@2x2') key = 'sys-board@2x4'
-    const { widgetId, size } = parseInstanceKey(key)
-    const w = WIDGETS.find((x) => x.id === widgetId)
-    if (!w) return ''
-    return sizesOf(w).includes(size) ? instanceKey(widgetId, size) : ''
-  }
-  // Respect the user's installed set exactly —do NOT force-append built-ins
-  // back on every load (that kept overflowing the max-widgets cap after the
-  // user uninstalled system widgets). Only the first-run path seeds defaults.
-  if (!Array.isArray(s.installed)) s.installed = []
-  s.installed = s.installed.map(normalizeInstance).filter((id): id is string => id !== '')
-  if (!Array.isArray(s.order)) s.order = []
-  s.order = s.order.map(normalizeInstance).filter((id): id is string => id !== '')
-  for (const key of ALL_INSTANCES) if (s.order.indexOf(key) === -1) s.order.push(key)
-  if (typeof s.apiKey !== 'string') s.apiKey = ''
-  if (typeof s.railOpen !== 'boolean') s.railOpen = DEFAULTS.railOpen
-  if (typeof s.realTime !== 'boolean') s.realTime = DEFAULTS.realTime
-  if (!Number.isFinite(s.magnify) || s.magnify < 1 || s.magnify > 2) s.magnify = DEFAULTS.magnify
-  if (!Number.isFinite(s.panelWidth) || s.panelWidth < 260 || s.panelWidth > 760) s.panelWidth = DEFAULTS.panelWidth
-  if (typeof s.cardConfigs !== 'object' || s.cardConfigs === null || Array.isArray(s.cardConfigs)) s.cardConfigs = {}
-  if (!Number.isFinite(s.maxWidgets) || s.maxWidgets < 1 || s.maxWidgets > 20) s.maxWidgets = DEFAULTS.maxWidgets
-  if ([1, 2, 3, 4].indexOf(s.columns as number) === -1) s.columns = DEFAULTS.columns
-  if (typeof s.hideStatsLine !== 'boolean') s.hideStatsLine = DEFAULTS.hideStatsLine
-  // The market's view mode is a USER PREFERENCE, not panel state: it rides the
-  // same persisted prefs as everything else, so a reload — or the plugin being
-  // installed from npm into someone else's profile — keeps it.
-  if (s.marketView !== 'grid' && s.marketView !== 'list') s.marketView = DEFAULTS.marketView
-  return s
-}
-
-function loadState(): Prefs {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw === null) return { ...DEFAULTS, installed: DEFAULT_INSTALLED.slice(), order: ALL_INSTANCES.slice() }
-    return normalizePrefs(JSON.parse(raw) as Partial<Prefs>)
-  } catch {
-    return { ...DEFAULTS, installed: DEFAULT_INSTALLED.slice(), order: ALL_INSTANCES.slice() }
-  }
-}
-
-function loadSavedAt(): number {
-  try {
-    const n = +(localStorage.getItem(SAVED_AT_KEY) ?? '')
-    return Number.isFinite(n) && n > 0 ? n : 0
-  } catch {
-    return 0
-  }
-}
-
-/** Debounced PUT to the host store; localStorage is always the fast path, the
- *  host file the authoritative one (survives origin switches and clearing). */
-let hostSyncTimer: number | undefined
-let pendingState: Prefs | null = null
-let pendingAt = 0
-async function putState(s: Prefs, at: number): Promise<void> {
-  try {
-    await fetch(STORE_API, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ savedAt: at, state: s }),
-      // A keepalive request is allowed to outlive the page, so a state write
-      // that is still in flight when the window/tab closes is not dropped.
-      keepalive: true,
-    })
-  } catch { /* host unreachable: localStorage still holds the state; a later boot sync re-pushes */ }
-}
-function saveState(s: Prefs): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s))
-    pendingAt = Date.now()
-    localStorage.setItem(SAVED_AT_KEY, String(pendingAt))
-  } catch { /* storage unavailable */ }
-  pendingState = s
-  if (hostSyncTimer !== undefined) window.clearTimeout(hostSyncTimer)
-  hostSyncTimer = window.setTimeout(() => {
-    hostSyncTimer = undefined
-    const toSend = pendingState
-    const at = pendingAt
-    pendingState = null
-    if (toSend !== null) void putState(toSend, at)
-  }, 400)
-}
-/**
- * Flush any state that has not yet reached the host store when the page is
- * being torn down (window/tab close, navigation, desktop-app quit). The
- * 400 ms debounce means the last edit before a quick close is usually still
- * pending here; a normal fetch would be cancelled with the page, but
- * `sendBeacon` is delivered by the browser even as the page is destroyed —
- * which is what keeps the write inside desktop shells that spawn a fresh
- * random loopback origin on every launch (their localStorage is a new realm
- * each boot, so the host file is the only channel that survives).
- */
-function flushPendingState(): void {
-  const toSend = pendingState
-  if (toSend === null) return
-  const at = pendingAt
-  pendingState = null
-  try {
-    const body = JSON.stringify({ savedAt: at, state: toSend })
-    // sendBeacon is a POST; the host handler accepts PUT or POST, so the
-    // same route copes with it. A Blob pins the JSON content type.
-    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-      navigator.sendBeacon(STORE_API, new Blob([body], { type: 'application/json' }))
-    } else {
-      void fetch(STORE_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        keepalive: true,
-      })
-    }
-  } catch { /* page is going away; nothing more can be done —the boot sync on the next launch converges */ }
 }
 
 /**
