@@ -20,13 +20,14 @@
  *
  * Run: node docs/verify-nav-glyph.cjs      (needs the local GUI on :3080)
  */
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 const fs = require('node:fs')
 const path = require('node:path')
 const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
 const { mintCookie } = require('../scripts/diag-auth-lib.cjs')
 
 const ORIGIN = 'http://127.0.0.1:3080'
-const CHROME = 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe'
+const CHROME = chromePath()
 const SHOT_DIR = path.join(__dirname, 'verify-nav-glyph')
 
 /** The section label the registrant publishes, per locale. */

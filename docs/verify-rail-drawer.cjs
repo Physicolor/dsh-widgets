@@ -1,3 +1,4 @@
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 // Verify: dsh-widgets rail drawer open/close animation.
 //   - OPEN: the rail must glide in from the LEFT (translateX(-100%) -> 0),
 //     i.e. sampled frames show intermediate left positions between the
@@ -15,7 +16,7 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
 const RESULTS = {}
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 ;(async () => {
-  const browser = await chromium.launch({ executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1232/chrome-win64/chrome.exe', headless: true })
+  const browser = await chromium.launch({ executablePath: chromePath(), headless: true })
   const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })
   const errs = []
   page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()) })

@@ -1,10 +1,11 @@
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 // Quick diagnostic: print the overlay slot's INLINE transition and computed
 // transition-property on the DISCRETE page (should be a size tween, not none).
 const path = require('path')
 const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
 
 ;(async () => {
-  const browser = await chromium.launch({ executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1232/chrome-win64/chrome.exe', headless: true })
+  const browser = await chromium.launch({ executablePath: chromePath(), headless: true })
   const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })
   await page.goto('http://127.0.0.1:3080', { waitUntil: 'networkidle', timeout: 30000 })
   const s = page.getByText('组件状态保存问题排查').first()

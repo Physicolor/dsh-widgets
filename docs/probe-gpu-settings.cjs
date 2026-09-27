@@ -1,3 +1,4 @@
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 // 探针：设置页 → 组件 → 配置预览（CardBody unit=150），验证 sys-gpu-line 卡片高度
 const path = require('path')
 const fs = require('fs')
@@ -8,7 +9,7 @@ const log = (line) => { console.log(line); fs.appendFileSync(OUT, line + '\n') }
 
 ;(async () => {
   fs.writeFileSync(OUT, `=== probe-gpu-height(settings preview) ${new Date().toISOString()} ===\n`)
-  const browser = await chromium.launch({ executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe', headless: true })
+  const browser = await chromium.launch({ executablePath: chromePath(), headless: true })
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } })
   const errors = []
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })

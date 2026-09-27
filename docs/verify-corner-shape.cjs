@@ -14,12 +14,13 @@
  *
  * Run: node docs/verify-corner-shape.cjs      (needs the local GUI on :3080)
  */
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 const path = require('node:path')
 const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
 const { mintCookie } = require('../scripts/diag-auth-lib.cjs')
 
 const ORIGIN = 'http://127.0.0.1:3080'
-const CHROME = 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe'
+const CHROME = chromePath()
 const SQUIRCLE_ROW = ['连续曲率圆角', 'Continuous corner curvature']
 const CORNER_ROW = ['圆角档位', 'Corner radius']
 

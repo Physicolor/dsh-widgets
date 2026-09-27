@@ -1,10 +1,11 @@
+const { chromePath } = require("../../../scripts/lib/chrome.cjs")
 // End-to-end: where the transcript's drag band overlaps the turn navigator, a real
 // mouse click on a navigator mark must hover/click the navigator (not the band).
 // Setup: a wide transcript preference so the two overlap at 1600.
 const fs = require('fs'); const path = require('path'); const crypto = require('crypto')
 const PW = 'C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules'
 const { chromium } = require(path.join(PW, 'playwright-core'))
-const CHROME = 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe'
+const CHROME = chromePath()
 function authCookie() {
   const yaml = fs.readFileSync('D:/dsh-home/.credentials.yaml', 'utf8')
   const secret = Buffer.from(yaml.match(/secret:\s*([A-Za-z0-9_-]+)/)[1].replaceAll('-', '+').replaceAll('_', '/'), 'base64')

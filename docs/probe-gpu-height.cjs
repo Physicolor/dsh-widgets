@@ -1,3 +1,4 @@
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 // dsh-widgets GPU 卡片悬浮高度异常探测（自包含，连真实 3080）
 // 现象：鼠标悬浮 sys-gpu 2×2 卡片后高度≈176（正常应为 cardSide=150 或
 // magnify 放大的预期值）。本脚本实测：静态层 / magnify overlay 层各自的
@@ -12,7 +13,7 @@ const log = (line) => { console.log(line); fs.appendFileSync(OUT, line + '\n') }
 ;(async () => {
   fs.writeFileSync(OUT, `=== probe-gpu-height ${new Date().toISOString()} ===\n`)
   const browser = await chromium.launch({
-    executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe',
+    executablePath: chromePath(),
     headless: true,
   })
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } })

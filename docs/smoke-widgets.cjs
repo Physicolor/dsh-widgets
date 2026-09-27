@@ -1,3 +1,4 @@
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 // Smoke test: load the DSH web GUI headless, verify the dsh-widgets client
 // bundle loads with zero console errors / failed requests, then exercise the
 // rail's hover state machine by injecting a fake session so the rail renders.
@@ -6,7 +7,7 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
 
 ;(async () => {
   const browser = await chromium.launch({
-    executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1232/chrome-win64/chrome.exe',
+    executablePath: chromePath(),
     headless: true,
   })
   const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })

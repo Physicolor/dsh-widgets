@@ -1,3 +1,4 @@
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 // Verify batch: quote market preview shows sample text; hide-statsline switch
 // actually hides the official composer stats bar; rail sits 12px below the
 // session header.
@@ -5,7 +6,7 @@ const path = require('path')
 const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
 
 ;(async () => {
-  const browser = await chromium.launch({ executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1232/chrome-win64/chrome.exe', headless: true })
+  const browser = await chromium.launch({ executablePath: chromePath(), headless: true })
   const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })
   const errs = []
   page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()) })

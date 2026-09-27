@@ -1,3 +1,4 @@
+const { chromePath } = require("../../../scripts/lib/chrome.cjs")
 // Acceptance probe for the 2026-09-17 report (three fixes):
 //   1. session hand-off: the rail leaves the screen at once and never lingers
 //      over the fresh-conversation page (covered in depth by diag-repro.cjs);
@@ -10,7 +11,7 @@
 const fs = require('fs'); const path = require('path'); const crypto = require('crypto')
 const PW = 'C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules'
 const { chromium } = require(path.join(PW, 'playwright-core'))
-const CHROME = 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe'
+const CHROME = chromePath()
 const OUT = 'docs/verify-report3'
 function authCookie() {
   const yaml = fs.readFileSync('D:/dsh-home/.credentials.yaml', 'utf8')

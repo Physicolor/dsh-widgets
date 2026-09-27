@@ -20,13 +20,14 @@
  *
  * Usage: node docs/verify-rail-morph.cjs   (HEADFUL=1 for the real GPU)
  */
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 const path = require('path')
 const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
 const { mintCookie } = require('../scripts/diag-auth-lib.cjs')
 
 ;(async () => {
   const browser = await chromium.launch({
-    executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe',
+    executablePath: chromePath(),
     headless: process.env.HEADFUL !== '1',
   })
   const ctx = await browser.newContext({

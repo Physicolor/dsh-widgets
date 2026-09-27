@@ -32,6 +32,7 @@
  *
  * Run: node docs/verify-quota-reask.cjs
  */
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 const fs = require('node:fs')
 const path = require('node:path')
 const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
@@ -39,7 +40,7 @@ const { mintCookie } = require('../scripts/diag-auth-lib.cjs')
 const hostState = require('./lib/widgets-state.cjs')
 
 const ORIGIN = 'http://127.0.0.1:3080'
-const CHROME = 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe'
+const CHROME = chromePath()
 const SHOT_DIR = path.join(__dirname, 'verify-quota-reask')
 const SK = ['quota-manage@2x2']
 /** How long the healthy answer to the re-ask is HELD (see the header). */

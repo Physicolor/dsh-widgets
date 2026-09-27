@@ -1,3 +1,4 @@
+const { chromePath } = require("../../../scripts/lib/chrome.cjs")
 // Regression + fidelity check for the wave rewrite:
 //  - geometry: every overlay slot's right edge lands on the rail's right content
 //    line for the rightmost card of its row, and the peak card reaches
@@ -9,7 +10,7 @@
 const fs = require('fs'); const path = require('path'); const crypto = require('crypto')
 const PW = 'C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules'
 const { chromium } = require(path.join(PW, 'playwright-core'))
-const CHROME = 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe'
+const CHROME = chromePath()
 const OUT = 'D:/dsh-home/plugins/dsh-widgets/docs/verify-wave'
 function authCookie() {
   const yaml = fs.readFileSync('D:/dsh-home/.credentials.yaml', 'utf8')

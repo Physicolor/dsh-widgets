@@ -9,6 +9,7 @@
  *
  * Usage: node docs/verify-quota-manage-layout.cjs [outPng]
  */
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
@@ -142,7 +143,7 @@ function locales() {
   fs.writeFileSync(htmlPath, page, 'utf8')
 
   const { chromium } = require('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules/playwright-core')
-  const browser = await chromium.launch({ executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe', headless: true })
+  const browser = await chromium.launch({ executablePath: chromePath(), headless: true })
   const pw = await browser.newPage({ viewport: { width: 640, height: 320 }, deviceScaleFactor: 2 })
   await pw.goto(`file:///${htmlPath.replace(/\\/g, '/')}`)
   await pw.waitForTimeout(300)

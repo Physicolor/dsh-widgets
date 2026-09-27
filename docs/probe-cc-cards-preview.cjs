@@ -18,6 +18,7 @@
  * Usage: node docs/probe-cc-cards-preview.cjs
  * Leaves: docs/probe-cc-cards-preview-result.json + docs/probe-cc-cards-*.png
  */
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 const fs = require('node:fs')
 const path = require('node:path')
 const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
@@ -76,7 +77,7 @@ const READ_CARD = () => {
 
 ;(async () => {
   const browser = await chromium.launch({
-    executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe',
+    executablePath: chromePath(),
     headless: true,
   })
   const ctx = await browser.newContext({ viewport: { width: 1578, height: 1000 }, deviceScaleFactor: 2 })

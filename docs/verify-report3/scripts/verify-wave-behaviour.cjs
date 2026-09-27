@@ -1,3 +1,4 @@
+const { chromePath } = require("../../../scripts/lib/chrome.cjs")
 // Behaviour regression sweep for the RailWave rewrite:
 //  1. engage -> leave: the deck comes back (class removed), the overlay hides;
 //  2. rail close/open via the header capsule still mounts/unmounts cleanly;
@@ -6,7 +7,7 @@
 const fs = require('fs'); const path = require('path'); const crypto = require('crypto')
 const PW = 'C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules'
 const { chromium } = require(path.join(PW, 'playwright-core'))
-const CHROME = 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe'
+const CHROME = chromePath()
 function authCookie() {
   const yaml = fs.readFileSync('D:/dsh-home/.credentials.yaml', 'utf8')
   const secret = Buffer.from(yaml.match(/secret:\s*([A-Za-z0-9_-]+)/)[1].replaceAll('-', '+').replaceAll('_', '/'), 'base64')

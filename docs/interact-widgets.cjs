@@ -1,3 +1,4 @@
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 // Attempt a real interaction test: enter a session, open the widgets rail,
 // hover a card and assert the magnification overlay appears / stays in gaps /
 // stops after leaving the rail.
@@ -6,7 +7,7 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
 
 ;(async () => {
   const browser = await chromium.launch({
-    executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1232/chrome-win64/chrome.exe',
+    executablePath: chromePath(),
     headless: true,
   })
   const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })

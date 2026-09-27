@@ -1,3 +1,4 @@
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 // Verify 1-column mode blocks 2×4 tiles end-to-end on the live web:
 //   - while in a multi-column layout, adding a heatmap@2×4 puts it on the rail;
 //   - switching to 1 column: the market detail shows the title struck through
@@ -10,7 +11,7 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 ;(async () => {
-  const browser = await chromium.launch({ executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1232/chrome-win64/chrome.exe', headless: true })
+  const browser = await chromium.launch({ executablePath: chromePath(), headless: true })
   const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })
   const errs = []
   const fail = (msg) => { console.log(`FAIL: ${msg}`); errs.push(msg) }

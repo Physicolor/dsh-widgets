@@ -1,3 +1,4 @@
+const { chromePath } = require("../scripts/lib/chrome.cjs")
 // Verify the add-panel height is immune to --dsh-sidebar-width (dsh-better-sidebar
 // right-panel width). Regression: the panel's bottom used to track that variable,
 // so opening the right sidebar lifted the bottom by the full panel width and
@@ -7,7 +8,7 @@ const path = require('path')
 const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
 
 ;(async () => {
-  const browser = await chromium.launch({ executablePath: 'C:/Users/12404/AppData/Local/ms-playwright/chromium-1232/chrome-win64/chrome.exe', headless: true })
+  const browser = await chromium.launch({ executablePath: chromePath(), headless: true })
   const page = await browser.newPage({ viewport: { width: 1500, height: 900 } })
   const errs = []
   page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()) })
