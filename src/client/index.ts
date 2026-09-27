@@ -34,17 +34,6 @@ const ACTION_COMMANDS: Record<string, string> = {
 /** Required services: the slot registry (React is a platform module). */
 export const inject = ['slots']
 
-const SURFACE_TOLERANCE = 6
-/**
- * Highest row that can top out the rail's viewport, derived from the LIVE scroll
- * box rather than from a prop: the detents are `2 + r 路 pitch`, so the last usable
- * one is the largest that still fits the scroll range. Always ≤0 (a deck shorter
- * than the viewport keeps row 0 as its only detent).
- */
-function lastScrollRow(rail: { scrollHeight: number; clientHeight: number }, pitch: number): number {
-  const max = Math.max(0, rail.scrollHeight - rail.clientHeight)
-  return Math.max(0, Math.floor(Math.max(0, max - 2) / Math.max(1, pitch)))
-}
 /**
  * Which live source each data-backed widget family reads, and what its loading
  * skeleton looks like, are declared by the UNIT’s own manifest.json and reach
