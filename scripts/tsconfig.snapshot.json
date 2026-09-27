@@ -1,0 +1,32 @@
+/**
+ * G4 build config — compiles ONLY the React-free render closure into CommonJS
+ * so `scripts/snapshot-render.mjs` can exercise every widget's render offline.
+ *
+ * Why a separate config: the project tsconfig is emitDeclarationOnly + Bundler
+ * resolution + strict, which cannot produce runnable CommonJS. Here we emit real
+ * JS with `module: CommonJS` (extensionless requires resolve), and we deliberately
+ * include ONLY: the generated registry (which pulls in the 40 units), their
+ * shared libs, i18n, and the preview stats. `client/index.ts` and
+ * `components.tsx` are NOT in this closure (they need react-dom), and nothing in
+ * the closure imports them, so the snapshot runs with plain `node`.
+ */
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noEmitOnError": false,
+    "types": [],
+    "outDir": "../.tmp-snapshot",
+    "rootDir": ".."
+  },
+  "include": [
+    "../src/client/generated.registry.ts",
+    "../src/client/render/preview/preview-stats.ts",
+    "./snapshot/render-harness.ts"
+  ]
+}

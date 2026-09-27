@@ -12,9 +12,11 @@ import { WIDGETS } from './generated.registry'
 import {
   badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf,
   widgetName, widgetDesc, widgetSimToggle, fieldLabel, optionLabel, TRAJECTORY_WINDOW,
-  type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize, type WidgetRenderMeta, type WidgetExample,
+  type UsageData, type WidgetRenderOut, type WidgetChart, type WidgetAction, type WidgetRich, type ConfigField, type WidgetStats, type WidgetSize, type WidgetRenderMeta,
 } from './lib/contract'
-import { fmtShortDate, buildRollingGrid } from './lib/format'
+import { fmtShortDate } from './lib/format'
+import { PREVIEW_STATS } from './render/preview/preview-stats'
+import { nextSim } from './render/preview/sim'
 import { t } from './i18n'
 
 /** The base card side all scales derive from. */
@@ -48,107 +50,6 @@ export function cardRadius(unit: number, percent: number = DEFAULT_CORNER_PERCEN
  *  Flat 12 · scale, i.e. 12px at the plugin's 150px default, as it always was. */
 function cardInnerPad(unit: number): number {
   return Math.round(12 * (unit / BASE_SIDE))
-}
-
-/**
- * Advance a preview's simulated state by ONE click.
- *
- * A widget with `example.simSteps` cycles through them (the 套餐 card walks the
- * plan tiers so every badge can be seen); everything else keeps the original
- * single-boolean flip (peak-pricing's peak/cheap, quota-manage's over-budget).
- * Shared by the config preview and the market preview so both surfaces step the
- * same way.
- */
-function nextSim(w: { example?: WidgetExample } | undefined, current: Record<string, unknown> | null): Record<string, unknown> | null {
-  if (w === undefined) return current
-  const base = current ?? w.example?.sim ?? {}
-  const steps = w.example?.simSteps
-  if (Array.isArray(steps) && steps.length > 0) {
-    const at = steps.findIndex((s) => JSON.stringify(s) === JSON.stringify(base))
-    return steps[(at + 1) % steps.length]
-  }
-  const boolKey = Object.keys(base).find((k) => typeof base[k] === 'boolean')
-  return boolKey !== undefined ? { ...base, [boolKey]: !base[boolKey] } : { ...base }
-}
-
-/** Realistic non-zero preview stats so every card renders (none return null). */
-/** Raw preview usage log: derived once so BOTH the 2×2 grid and the 2×4 / bar
- *  variants share exactly the same source the real collector uses. */
-const PREVIEW_RAW: Record<string, number> = (() => {
-  const now = new Date()
-  const raw: Record<string, number> = {}
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 12 * 7)
-  for (let i = 0; i < 13 * 7; i++) {
-    const d = new Date(start)
-    d.setDate(start.getDate() + i)
-    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const off = i - 12 * 7
-    raw[k] = off % 5 === 0 ? (Math.pow(Math.abs(off) % 13, 2) + 4000) : (off % 3 === 0 ? (off % 11) * 800 : 0)
-  }
-  return raw
-})()
-const PREVIEW_STATS: WidgetStats = {
-  turns: 11, steps: 137,
-  llmMs: 1_150_000, toolMs: 247_000,
-  ttftMs: 3800, ttftSteps: 1000,
-  decodeMs: 5000, decodeTokens: 600,
-  usage: { inputTokens: 18_600_000, cacheReadTokens: 18_400_000, outputTokens: 75_600 },
-  usageData: { usage: { rolling: { status: 'ok', percent: 42, resetsAt: '2026-08-15T07:25:56Z' }, weekly: { status: 'ok', percent: 25, resetsAt: '2026-08-17T00:00:00Z' }, monthly: { status: 'ok', percent: 8, resetsAt: '2026-09-14T11:35:13Z' } } },
-  // Command Code account snapshot mock (mirrors the host-aggregated
-  // `/api/commandcode-usage` payload so the family previews render fully).
-  commandCode: {
-    whoami: { success: true, user: { id: 'usr_demo', name: 'Physicolor', email: 'demo@example.com', userName: 'Physicolor' }, org: null },
-    usage: { totalCount: 4821, totalCost: 0.467622536, averageCost: 0.0079258, successRate: 100, completedCount: 4821, failedCount: 0, totalTokensIn: 4896670, totalTokensOut: 28435, totalTokens: 4925105, totalCredits: 0.467622536, totalMonthlyCredits: 0.467622536, periodBasis: 'billing-period' },
-    credits: { credits: { belowThreshold: false, creditThreshold: 0, monthlyCredits: 69.163327664, purchasedCredits: 0, freeCredits: 0 }, windowLimits: { limited: true, exceeded: null, fiveHour: { used: 0.836672336, cap: 14, exceeded: false, resetAt: 1789039577701 }, weekly: { used: 0.836672336, cap: 35, exceeded: false, resetAt: 1789626377701 } } },
-    subscription: { success: true, data: { id: 'sub_demo', status: 'active', planId: 'individual-goat', priceId: 'price_demo', quantity: 1, cancelAtPeriodEnd: false, currentPeriodStart: '2026-09-10T04:42:28.000Z', currentPeriodEnd: '2026-10-10T04:42:28.000Z', endedAt: null, canceledAt: null } },
-  },
-  contextPercent: 0.42,
-  contextWindow: 1_000_000,
-  contextTokens: 446_000,
-  contextBreakdown: { systemTokens: 6000, toolsTokens: 11700, messageTokens: 428_300 },
-  todos: [
-    { content: 'Split plan tasks', status: 'in_progress' },
-    { content: 'Feed context data', status: 'completed' },
-    { content: 'Write config form', status: 'completed' },
-    { content: 'Polish hover animation', status: 'pending' },
-    { content: 'Publish npm', status: 'pending' },
-  ],
-  // Grid built by the SAME path as the real 2×2 calendar (7 week-rows × 13
-  // day-columns) — the old preview built it transposed (13×7), which rendered
-  // the heatmap with width and height swapped.
-  heatmapGrid: buildRollingGrid(PREVIEW_RAW, 13),
-  heatmapRaw: PREVIEW_RAW,
-  armedAction: null,
-  // 对话轨迹 preview: a plausible 30-beat rhythm (inputs are instantaneous,
-  // model steps 0.6–4 s, tool calls 0.2–9 s) so the lanes render in the market
-  // and config previews without a live session.
-  trajectory: Array.from({ length: 30 }, (_, i) => {
-    const kind = (['input', 'model', 'tool', 'model', 'tool', 'model', 'input', 'model', 'tool', 'tool'] as const)[(i * 7) % 10]!
-    const ms = kind === 'input' ? 0 : Math.round(kind === 'model' ? 600 + ((i * 977) % 3400) : 200 + ((i * 613) % 8800))
-    return { kind, ms }
-  }),
-  // Machine snapshot mock for the System widget previews (values mirror a real
-  // mid-load laptop so the preview looks live, not synthetic).
-  sysinfo: {
-    ts: 0,
-    cpu: { util: 43 },
-    mem: { used: 17.4 * 1024 ** 3, total: 34.2 * 1024 ** 3, percent: 51 },
-    gpu: { name: 'NVIDIA GeForce RTX 5070 Ti Laptop GPU', temp: 58, util: 8, memUsed: 4815 * 1024 ** 2, memTotal: 12227 * 1024 ** 2, memPercent: 39 },
-    // 30 samples @10s (~5 min) of plausible utilization drift for the
-    // sparkline preview: GPU idles low with a burst, CPU wanders mid-load.
-    history: (() => {
-      const now = Date.now()
-      const ts: number[] = []
-      const cpu: Array<number | null> = []
-      const gpu: Array<number | null> = []
-      for (let i = 0; i < 30; i++) {
-        ts.push(now - (29 - i) * 10000)
-        cpu.push(Math.max(5, Math.min(85, Math.round(43 + Math.sin(i / 3) * 18 + (i % 5) * 2))))
-        gpu.push(Math.max(0, Math.min(70, Math.round(i >= 20 ? 38 + Math.cos(i) * 12 : 6 + Math.sin(i / 2) * 4))))
-      }
-      return { ts, cpu, gpu }
-    })(),
-  },
 }
 
 /** Persisted preferences shared by every surface. */
@@ -1378,33 +1279,62 @@ function MetricsFieldControl({ field, value, onChange }: { field: ConfigField; v
   //   * a change of COLUMN MODE (single ⇄ two columns) — that is the list settling
   //     into place, and animating it is the "自定义区域自己动了一下" the user
   //     reported. `prevTwoCol` tracks the mode.
+  //
+  // The FLIP baseline is the row's LAYOUT box, never the box the eye currently
+  // sees. `getBoundingClientRect()` includes the transform a still-running FLIP
+  // wrote, so reading it as "where the row was" fed the tween's own mid-flight
+  // position back in as the next start — and the settings store is a
+  // `useSyncExternalStore` feed, so ANY commit landing mid-tween (a second
+  // switch flip, a poll, a rail update) moved every OFF row by the part of the
+  // previous move it had not finished yet. Measured 2026-09-28: with rapid
+  // flips the rows lurched ~80px backwards in a single frame and never settled
+  // — the "未开启功能一直在漂移" report. Layout position ignores the tween, so
+  // the delta is the true one and the leftover commits measure zero.
+  const layoutPos = (el: HTMLDivElement, r: DOMRect): { x: number; y: number } => {
+    const t = getComputedStyle(el).transform
+    if (t === '' || t === 'none') return { x: r.left, y: r.top }
+    let tx = 0
+    let ty = 0
+    if (typeof DOMMatrixReadOnly !== 'undefined') {
+      const m = new DOMMatrixReadOnly(t)
+      tx = m.m41
+      ty = m.m42
+    } else {
+      const hit = /matrix\(([^)]+)\)/.exec(t)
+      const n = hit === null ? [] : hit[1].split(',').map(Number)
+      if (n.length === 6) { tx = n[4]; ty = n[5] }
+    }
+    return { x: r.left - tx, y: r.top - ty }
+  }
   const rowEls = React.useRef(new Map<string, HTMLDivElement>())
-  const prevRects = React.useRef(new Map<string, { x: number; y: number }>())
+  const prevLayout = React.useRef(new Map<string, { x: number; y: number }>())
   const prevTwoCol = React.useRef<boolean | null>(null)
   React.useLayoutEffect(() => {
-    const next = new Map<string, { x: number; y: number }>()
     const modeChanged = prevTwoCol.current !== null && prevTwoCol.current !== twoCol
     prevTwoCol.current = twoCol
     rowEls.current.forEach((el, key) => {
       const r = el.getBoundingClientRect()
-      next.set(key, { x: r.left, y: r.top })
-      const prev = prevRects.current.get(key)
+      const at = layoutPos(el, r)
+      const prev = prevLayout.current.get(key)
+      prevLayout.current.set(key, at)
       if (prev === undefined || modeChanged) return
-      const dx = prev.x - r.left
-      const dy = prev.y - r.top
+      const dx = prev.x - at.x
+      const dy = prev.y - at.y
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return
       // NEVER animate while a drag is in flight: the drag's own hit-testing (and
       // the browser's) reads the row's live rect, and a row gliding under the
       // pointer makes the insertion side flap (and cancelled the drop outright
       // in the probe, measured 2026-09-25).
       if (dragging.current !== null || drop !== null) return
+      // Start from where the row IS ON SCREEN: its old layout box plus whatever
+      // part of a running tween it still carries (`r - at`). A move that lands
+      // mid-tween retargets from the current position instead of snapping back.
       el.style.transition = 'none'
-      el.style.transform = `translate(${dx}px, ${dy}px)`
+      el.style.transform = `translate(${dx + (r.left - at.x)}px, ${dy + (r.top - at.y)}px)`
       void el.offsetHeight // flush the start position before animating away
       el.style.transition = 'transform var(--ds-transition-duration) var(--ds-ease-in-out)'
       el.style.transform = ''
     })
-    prevRects.current = next
   })
   const toggle = (key: string): void => {
     if (picked.includes(key)) {
