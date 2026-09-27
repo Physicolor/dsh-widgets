@@ -173,11 +173,31 @@ src/
 | 2.6 | 布局 / 测量（94-416、1979-2465） | `layout/{geometry,measure,host-vars}.ts` | **否**：必须先定义显式 `RailGeometryHost`（`railBudget` 被 1876/2484/3164 读、2110 写；`drawerEl` 由 3702 写、E4 读）；几何函数保持纯 | **高**（`3158` 注释记录过双写事故） |
 | 2.7 | 面板几何纯函数（3372-3496） | `rail/wave/wave-math.ts` 或 `rail/panel-geometry.ts` | **否**：闭包捕获 12 个外部值，需改为显式参数对象 | 中 |
 | 2.8 | 4 个槽位注册（2476 / 2503 / 2973 / 3709） | `runtime/slots.ts` | 是（薄） | 低 |
+| **2.9** | **右栏槽位体：deck 网格 / 加号面板 / 抽屉（`conversation.input.overlay`，约 515 行）** | **`rail/rail-view.tsx`（`createRailView(deps)` 工厂）** | **否**：与 2.5 采集器同型——需要 `{ prefs/state 的 getter、setPrefs、测量函数、wave geometry、CardBody、RailWave }` 注入 | **中高** |
+
+> **2.9 是本计划的缺口**：Phase 0 审计把它标为 E7（2964-3706），但阶段表原先只排了 measure（2.6）与几何（2.7），漏了「谁把 deck 画出来」。已补入。
+> 参考实现：Phase 2.5 的 `data/collector.tsx` 是同一模式的已验证样本——**可变绑定走 getter、稳定函数直接传、组件在 inject 回调内创建**（组件身份必须每次注册都新建，因为它的 mount/unmount 就是「有会话存在」的信号）。
 
 **明确不拆**（只切文件无收益、或会制造跨模块可写全局）：
 - header 胶囊槽位（2476-2500）
 - body class 三个 effect（3763-3793）
 - `syncWithHost`（1887-1914）——它直写 `prefs:1903` 并 `emit`，抽出去只会制造跨模块可写全局
+
+### 2.10 Phase H：host `src/index.ts`（1,076 行）—— 计划外的第二块
+
+目标结构里有 `host/` 却没有对应阶段，同样是本计划的缺口。7 条路由与全部抓取/聚合在一个文件里：
+
+| 步 | 迁出内容 | 落点 |
+|---|---|---|
+| H1 | `memoTtl` / `RouteError` / `readBody` | `host/http/` |
+| H2 | Command Code 通道（四端点 × ≤4 key 聚合 + memo） | `host/routes/commandcode.ts` |
+| H3 | GitHub 通道（凭据三级阶梯 + GraphQL/HTML 抓取 + 5 个分级 memo） | `host/routes/github.ts` |
+| H4 | OpenCode 两条路由 + `usageCenter` 适配 | `host/routes/opencode.ts` / `usage-daily.ts` |
+| H5 | `sysinfo`（闭包缓存 + 环形缓冲） | `host/routes/sysinfo.ts` |
+| H6 | 状态文件读写（tmp+rename 原子写） | `host/state-file.ts` |
+| H7 | 路由注册表 | `src/index.ts` 只剩 compose |
+
+出口：host 侧每条路由一个模块；**G4/G5 与 host 无关，host 的回归只能靠 `docs/verify-sysinfo.mjs`（离线可跑）与 §3.3 的在线探针**——所以这一步必须等 live `dsh web` 可用时再做，比 2.9 更需要实测。
 
 **出口**：`client/index.ts` ≤ 400 行且只剩 compose + mount；`apply()` 内不再有 `prefs` / `state` 之外
 的共享闭包状态；G1–G5 全绿；RailWave 的逐帧证据（`scripts/diag-morph-frames.cjs` HEADFUL=1）maxFrameStep
