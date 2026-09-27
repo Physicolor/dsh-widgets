@@ -1,5 +1,11 @@
 # CURRENT_ARCHITECTURE — dsh-widgets（Phase 0 架构审计）
 
+> **这是重构前的只读审计快照，不是现状文档。** 本文件里所有行号与行数都是审计当时（2026-09-24）的实数，
+> 保留原样以维持证据链。重构之后的目录结构、行数与残留问题见
+> `ARCHITECTURE_REFACTOR_REPORT.md`（第一轮 §1–§15，第二轮 §16）。
+> 已知最大的三处漂移：`client/index.ts` 3,795 → **308**、`components.tsx` → **已删除**、
+> `widgets.module.css` → **已拆成 5 个层文件**；host `src/index.ts` 1,077 → **31**（拆入 `host/`）。
+
 审计日期：2026-09-24　｜　范围：`dsh-widgets` 全仓（host 半区 + client 半区 + 构建/注册/校验管线）
 性质：**只读审计**。本文件不修改任何源码，不改行为。
 方法：4 个独立只读审计并行拆解（client/index.ts、components.tsx + CSS、数据层 + host、注册链 + 管线），

@@ -51,6 +51,11 @@ src/
     │   ├── types.ts                # 纯类型（contract.ts 23-479 + 509-678）
     │   ├── widget.ts               # defineWidget + resolvers（无 i18n 依赖）
     │   └── render.ts               # WidgetRenderOut / WidgetChart / ChartRenderer
+    │   # 实际落点（第二轮 `a0231ab`）：lib/contract/{types.ts, helpers.ts}
+    │   # 只切了两半而不是三：widget/render 再分只会让 665 行的类型模块变成两个互相 import 的文件。
+    │   # helpers.ts 仍依赖 i18n（badgeOf 要 t()），这一点无法靠再拆消除 —— 但类型消费者
+    │   # 现在 import lib/contract/types，字典不再进入它的模块图，这才是这次拆分的收益。
+    │   # 也**没有**保留 contract.ts 作为 barrel：barrel 会把这个耦合原样带回来。
     ├── runtime/
     │   ├── bridge.ts               # state + listeners + emit + subscribe + useBridge
     │   ├── prefs.ts                # DEFAULTS / normalizePrefs / load / save / flush
@@ -126,13 +131,26 @@ src/
 > 两者都必须**先证明它们能抓到故意制造的破坏**（把某个 `value` 改一位、把某个 CSS 声明改 1px，
 > 确认闸门变红），否则不算安全网——这是本阶段的验收标准。
 
+#### 第二轮补入的闸门（Phase H 的产物）
+
+| # | 闸门 | 类型 | 覆盖什么 |
+|---|---|---|---|
+| G6 | `node scripts/audit-move-only.mjs` | 离线 | 纯搬移提交的增删行必须互相抵消（人工复核辅助，非硬门） |
+| **G7** | **`node scripts/snapshot-host-routes.mjs`（第二轮新写）** | 离线 | **host 半区的回归网**：mock webServer + 桩 credentials/fetch + 临时 `DSH_HOME` 驱动 `lib/index.js`，14 个案例（7 条路由 + 方法/查询/连续调用变体）各取「状态码 + 结构指纹」（保留键名与类型，数字归零、字符串归一）。**注册了却没有案例的路由会让它直接红**；故意破坏验证：405 → 404 被逐条指出 |
+
+> G7 补上了本计划 §3.3 的空白：在它之前，host 的 6/7 条路由**只有 live 服务**能回归。它的基线
+> （`docs/architecture/baseline/host-routes.json`）是在**拆分前后两个 bundle 指纹逐字节相同**之后才写入的，
+> 所以那条基线同时是一份「拆分无行为变化」的证据。
+
 ### 3.3 在线闸门（尽力而为，非硬门）
 
 | 闸门 | 前置 | 用途 |
 |---|---|---|
 | `node docs/verify-sysinfo.mjs` | 无（已在 CI） | host sysinfo 链路 |
 | `node --experimental-strip-types docs/verify-i18n.mjs` | 无 | i18n 键完整 |
-| `node docs/verify-skeleton-shapes.cjs`（先修 §17 的过期 `BUILTINS`） | 需 live :3080 + 重建 | Phase 1 骨架元数据下沉的端到端证据 |
+| `node docs/verify-skeleton-shapes.cjs` | 需 live :3080 + 重建 | Phase 1 骨架元数据下沉的端到端证据（**第二轮已实跑：PASS，19/19 卡片、0 溢出、状态已还原**；§17 的过期 `BUILTINS` 问题在实跑中未复现） |
+| `node scripts/diag-rail-hover-release.cjs` | 需 live :3080 + 重建 | 右栏状态机 11 项断言（**第二轮实跑 11/11**；重建后请等数秒再跑，否则会撞上 HMR 重打包） |
+| `HEADFUL=1 node scripts/diag-morph-frames.cjs` | 需 live :3080 + 重建 + 真实 GPU | RailWave 逐帧弹簧证据 |
 | 现有 `scripts/verify-release-smoke.cjs` / `docs/probe-github.mjs` | 需 live :3080 | 端到端冒烟 |
 
 **Phase −1 出口条件**：G1–G5 全绿 + 两条故意破坏都被抓到 + 基线 tag 存在。
@@ -183,25 +201,42 @@ src/
 - body class 三个 effect（3763-3793）
 - `syncWithHost`（1887-1914）——它直写 `prefs:1903` 并 `emit`，抽出去只会制造跨模块可写全局
 
+> **执行状态（第二轮，提交 `31dcbf4` / `74656da`）**：2.6b ✅ 与 2.9 ✅ 都已完成。
+> - **2.6b** 落点改为 `rail/measure.ts`（`createRailMeasure(deps)`，`install()` 取代 `ctx.effect` 包装）：
+>   计划里写的 `layout/{geometry,measure,host-vars}.ts` 与实际结构不符 —— 几何早已在 `rail/geometry.ts`，
+>   host-vars 只是 `setVar` 的几个调用点，单独成文件没有收益。
+>   `railBudget` 与 `drawerEl` **留在组合根**（前者是 bridge 快照的一部分，`emit()` 要读；后者由 rail 视图的 ref 写），
+>   经 getter/setter 跨边界 —— 这比原计划的 `RailGeometryHost` 接口更小，也避免了「跨模块可写全局」。
+> - **2.9** 落点即计划所写 `rail/rail-view.tsx`（`createRailView(deps)`），508 行 body 逐行搬运，仅 3 处实时绑定改写。
+> - 出口达成：`client/index.ts` **775 → 308 行**（≤ 400），`apply()` 内只剩 bridge、boot 同步、`runCommand` 与装配。
+
 ### 2.10 Phase H：host `src/index.ts`（1,076 行）—— 计划外的第二块
 
 目标结构里有 `host/` 却没有对应阶段，同样是本计划的缺口。7 条路由与全部抓取/聚合在一个文件里：
 
-| 步 | 迁出内容 | 落点 |
-|---|---|---|
-| H1 | `memoTtl` / `RouteError` / `readBody` | `host/http/` |
-| H2 | Command Code 通道（四端点 × ≤4 key 聚合 + memo） | `host/routes/commandcode.ts` |
-| H3 | GitHub 通道（凭据三级阶梯 + GraphQL/HTML 抓取 + 5 个分级 memo） | `host/routes/github.ts` |
-| H4 | OpenCode 两条路由 + `usageCenter` 适配 | `host/routes/opencode.ts` / `usage-daily.ts` |
-| H5 | `sysinfo`（闭包缓存 + 环形缓冲） | `host/routes/sysinfo.ts` |
-| H6 | 状态文件读写（tmp+rename 原子写） | `host/state-file.ts` |
-| H7 | 路由注册表 | `src/index.ts` 只剩 compose |
+| 步 | 迁出内容 | 落点 | 实际落点 |
+|---|---|---|---|
+| H1 | `memoTtl` / `RouteError` / `readBody` | `host/http/` | ✅ `host/http.ts`（+ `exec.ts` 存 promisified execFile；`RouteError` 归 commandcode 自己，只有它用）；`context.ts` 存 ctx 契约 |
+| H2 | Command Code 通道（四端点 × ≤4 key 聚合 + memo） | `host/routes/commandcode.ts` | ✅ `host/commandcode.ts` |
+| H3 | GitHub 通道（凭据三级阶梯 + GraphQL/HTML 抓取 + 5 个分级 memo） | `host/routes/github.ts` | ✅ `host/github.ts` |
+| H4 | OpenCode 两条路由 + `usageCenter` 适配 | `host/routes/opencode.ts` / `usage-daily.ts` | ✅ `host/opencode.ts` + `host/usage-daily.ts` |
+| H5 | `sysinfo`（闭包缓存 + 环形缓冲） | `host/routes/sysinfo.ts` | ✅ `host/sysinfo.ts` |
+| H6 | 状态文件读写（tmp+rename 原子写） | `host/state-file.ts` | ✅ 同名 |
+| H7 | 路由注册表 | `src/index.ts` 只剩 compose | ✅ `host/routes.ts` + 31 行的入口 |
 
-出口：host 侧每条路由一个模块；**G4/G5 与 host 无关，host 的回归只能靠 `docs/verify-sysinfo.mjs`（离线可跑）与 §3.3 的在线探针**——所以这一步必须等 live `dsh web` 可用时再做，比 2.9 更需要实测。
+> **执行状态（第二轮，提交 `f832310`）**：Phase H ✅。`routes/` 子目录没有必要 —— 九个模块平铺在 `host/` 下
+> 已经一眼看清渠道边界，再加一层目录只是路径变长。每个模块导出 `registerX(ctx): () => void`，
+> `ctx.effect` 仍由根调用（模块不能替根承担生命周期）。**新的离线闸门 G7** 取代了「只能靠 live 服务」
+> 这个前提：`scripts/snapshot-host-routes.mjs` 用桩驱动构建产物，覆盖全部 14 个案例，并且拒绝在
+> 「有路由没有案例」时运行。
 
 **出口**：`client/index.ts` ≤ 400 行且只剩 compose + mount；`apply()` 内不再有 `prefs` / `state` 之外
 的共享闭包状态；G1–G5 全绿；RailWave 的逐帧证据（`scripts/diag-morph-frames.cjs` HEADFUL=1）maxFrameStep
 与基线同量级。
+
+> **出口达成情况（第二轮）**：308 行 ✅；`railBudget`/`drawerEl` 之外无共享闭包状态 ✅；G1–G5 全绿 ✅
+> （G3 的 35 条为同一缺声明错误多计一次，脚本显式报告）；`maxFrameStep 0.0255` vs 基线 0.0227（同量级）✅；
+> 另跑了 `diag-rail-hover-release.cjs` 11/11 与 `verify-skeleton-shapes.cjs` 19/19。
 
 ---
 

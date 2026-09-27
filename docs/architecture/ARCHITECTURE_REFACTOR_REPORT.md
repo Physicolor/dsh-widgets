@@ -4,6 +4,9 @@
 性质：**行为保持型架构重构**（Architecture Refactor, Not Feature Rewrite）
 提交区间：`17a4819`（基线冻结）→ `9de4b87`（Phase 5），共 **18 个提交**，每步一个。
 
+> **续作（同一份计划，第二轮）见 §16。** §1–§15 是第一轮的收官记录，其中的「未完成」项已在
+> §16 处理；本文件不再改写历史小节，只在 §12 的行内标注已解决项。
+
 ---
 
 ## 1. Before architecture
@@ -168,13 +171,13 @@ client/styles/
 
 | # | 项 | 现状 | 原因 |
 |---|---|---|---|
-| 1 | **Phase 2.6b：测量机制** | 仍在 `client/index.ts`（ResizeObserver / 宽度追踪 / `railBudget` 发布 / 唯一完整 dispose） | 跨段共享状态最多（`railBudget` 3 读 1 写、`drawerEl`/`frameEl` 跨段），需要先立 `RailGeometryHost` 接口；排期不足 |
-| 2 | **Phase 2.9：deck 视图** | 右栏槽位体（deck 网格 / 加号面板 / 抽屉）仍在 `client/index.ts` | **我的计划遗漏**：Phase 0 审计把它标为 E7，但阶段表只安排了 measure 与几何 |
-| 3 | **host `src/index.ts` 1,076 行** | 7 条路由 + 全部抓取/聚合，单文件零本地 import | **同样是计划遗漏**：目标结构里有 `host/`，但没有对应阶段 |
-| 4 | `lib/contract.ts` 729 行 | 纯类型（23-479、509-678）与带逻辑的解析器（483-494、682-730）混装 | 计划 §5 提到应拆 `contracts/types` + `contracts/helpers`，未排期 |
-| 5 | `typescript` 既有 34 条错误 | 缺 `@types/node`、`react-dom` 类型、`ctx.slots` 类型、若干 possibly-undefined | 独立任务；G3 只保证不恶化 |
-| 6 | 发布包缺 `.d.ts` | `package.json` 声明 `lib/types/**` 但两入口 `dts:false` | 独立缺陷，未在本次范围 |
-| 7 | 死代码残留 | `GripIcon`（移入 `render/icons.tsx` 时按纯搬移保留）、死 CSS（`dsx-macts`/`dsx-mid`/`dsx-restore`）、空钩子 7 个 | 已登记，未清理（避免污染结构提交） |
+| 1 | **Phase 2.6b：测量机制** | 仍在 `client/index.ts`（ResizeObserver / 宽度追踪 / `railBudget` 发布 / 唯一完整 dispose） | 跨段共享状态最多（`railBudget` 3 读 1 写、`drawerEl`/`frameEl` 跨段），需要先立 `RailGeometryHost` 接口；排期不足 —— **§16 已解决：`rail/measure.ts`** |
+| 2 | **Phase 2.9：deck 视图** | 右栏槽位体（deck 网格 / 加号面板 / 抽屉）仍在 `client/index.ts` | **我的计划遗漏**：Phase 0 审计把它标为 E7，但阶段表只安排了 measure 与几何 —— **§16 已解决：`rail/rail-view.tsx`** |
+| 3 | **host `src/index.ts` 1,076 行** | 7 条路由 + 全部抓取/聚合，单文件零本地 import | **同样是计划遗漏**：目标结构里有 `host/`，但没有对应阶段 —— **§16 已解决：`host/` 9 个模块** |
+| 4 | `lib/contract.ts` 729 行 | 纯类型（23-479、509-678）与带逻辑的解析器（483-494、682-730）混装 | 计划 §5 提到应拆 `contracts/types` + `contracts/helpers`，未排期 —— **§16 已解决：`lib/contract/{types,helpers}.ts`** |
+| 5 | `typescript` 既有 34 条错误 | 缺 `@types/node`、`react-dom` 类型、`ctx.slots` 类型、若干 possibly-undefined | 独立任务；G3 只保证不恶化（**§16 后为 35 条：同一 `node:os` 缺声明错误随模块拆分多计一次，G3 会显式报告并容忍**） |
+| 6 | 发布包缺 `.d.ts` | `package.json` 声明 `lib/types/**` 但两入口 `dts:false` | 独立缺陷，未在本次范围（**§16 已复核：仍开放，且原因比原记录更严重 —— 见 §16.6**） |
+| 7 | 死代码残留 | `GripIcon`（移入 `render/icons.tsx` 时按纯搬移保留）、死 CSS（`dsx-macts`/`dsx-mid`/`dsx-restore`）、空钩子 7 个 | 已登记，未清理（避免污染结构提交）—— **§16.6 复核：仍未清理，理由已更新** |
 | 8 | 两个 `:root` token 块 | 留在 `card`/`rail` 层文件原位，**没有**独立成 `tokens.css` | 见 §13 的取舍 |
 
 ## 13. 计划与实际的差异（执行中记录）
@@ -205,6 +208,156 @@ client/styles/
 ## 15. 结论
 
 - 目标四文件：`client/index.ts` **−65%**、`components.tsx` **已解散**、`cc-view.ts` **已拆**、`widgets.module.css` **已分层且字节可证**。
-- 反形式主义自检：**A**（新增 widget 只加目录）✅ 除「新数据源」外全自动；**B**（新增 chart 加文件 + 注册）✅；**C**（改数据源只动 data 层）✅；**D**（改 RailWave 只进 `rail/wave/`）⚠️ 组件本身 ✅，但其调用方几何仍在 `index.ts`（2.6b/2.9 待做）；**E**（改一个 widget 不影响别人）✅ 保持。
+- 反形式主义自检：**A**（新增 widget 只加目录）✅ 除「新数据源」外全自动；**B**（新增 chart 加文件 + 注册）✅；**C**（改数据源只动 data 层）✅；**D**（改 RailWave 只进 `rail/wave/`）⚠️ 组件本身 ✅，但其调用方几何仍在 `index.ts`（2.6b/2.9 待做）—— **§16.7 已转为 ✅**；**E**（改一个 widget 不影响别人）✅ 保持。
 - 全部改动都是**可验证的搬运**：18 个提交里 10 个被 G6 判定为纯搬移，其余 3 个（采集器/波形几何/图表 registry）逐行列出了接口差异。
-- 未完成的是「计划遗漏的两块 + host + contract」——它们都有明确入口与建议，不是模糊地带。
+- 未完成的是「计划遗漏的两块 + host + contract」——它们都有明确入口与建议，不是模糊地带（**§16 已做完**）。
+
+---
+
+# 16. 续作（第二轮）：把 §12 的四项做完
+
+第一轮停在 `9de4b87`（Phase 5）。§12 登记的四项未完成里，1–4 是「计划遗漏 / 排期不足」的结构缺口，
+本轮全部做完；5–8 是独立缺陷，本轮**复核并更新了结论**（§16.6），未贸然改动发布面。
+
+## 16.1 本轮提交
+
+| 提交 | 内容 | 规模 |
+|---|---|---|
+| `723ba94` | docs：把 2.9 与 Phase H 补进计划（含「明确不拆」清单一并恢复） | 1 文件 |
+| `31dcbf4` | **Phase 2.9** 右栏槽位体 → `rail/rail-view.tsx` | `client/index.ts` 1,315 → 775 |
+| `92047b3` | 探针不再硬编码 playwright 修订号（`scripts/lib/chrome.cjs`） | 36 个受版本控制的探针 |
+| `74656da` | **Phase 2.6b** 测量层 → `rail/measure.ts` | 775 → **308** |
+| `f832310` | **Phase H** host 拆 9 个模块 + 新闸门 G7 | `src/index.ts` 1,077 → **31** |
+| `a0231ab` | **contract 拆分** `lib/contract/{types,helpers}.ts` + 重接 68 条 import | 730 → 665 + 80 |
+
+## 16.2 最终结构
+
+```text
+src/                                   15,025 行 / 111 文件（第一轮结束时 14,660 / 98）
+├── index.ts (host)            31      ← compose：inject + 遍历 HOST_ROUTES
+├── host/
+│   ├── context.ts             39      上下文契约（webServer / credentials / get / effect）
+│   ├── http.ts                64      memoTtl · readJsonBody · 路由缓存策略
+│   ├── exec.ts                12      唯一的子进程缝（nvidia-smi 与 gh CLI 共用）
+│   ├── opencode.ts           103      /api/opencode-usage · -multi
+│   ├── commandcode.ts        196      /api/commandcode-usage（4 端点 × 池内每 key + memo）
+│   ├── usage-daily.ts        128      /api/widgets-usage-daily（usage-center 适配）
+│   ├── github.ts             449      /api/github（凭据三级阶梯 + 5 个分级 memo）
+│   ├── state-file.ts          63      /api/widgets-state（tmp+rename 原子写）
+│   ├── sysinfo.ts            101      /api/sysinfo（CPU 差值 / 内存 / nvidia-smi + 环形缓冲）
+│   └── routes.ts              23      注册表（新增渠道 = 加模块 + 一行）
+├── widgets/ (40 单元)                 单元结构不变
+└── client/
+    ├── index.ts              308      ← compose：bridge / 槽位装配 / header capsule / settings
+    ├── lib/contract/
+    │   ├── types.ts          665      ← 零 import：全部类型 + 一个数据常量
+    │   └── helpers.ts         80      ← defineWidget / 标签解析器 / 实例键 / sizesOf（唯一需要 i18n 的一半）
+    ├── runtime/ data/ families/ render/ surfaces/ styles/   结构同第一轮
+    └── rail/
+        ├── geometry.ts       405
+        ├── measure.ts        537      ← 锚点探针 / 宽度跟踪 / ResizeObserver / yield beat + dispose
+        ├── rail-view.tsx     612      ← deck 网格 / 放大波 / 加号面板 / 滑动抽屉
+        └── wave/{RailWave 1,045, wave-geometry 277}
+```
+
+**手写文件的天花板**：`RailWave.tsx` 1,045（单一交互组件）→ `ConfigTab.tsx` 686 → `contract/types.ts` 665
+（纯类型，尺寸本来就该大）→ `rail-view.tsx` 612 → `measure.ts` 537。生成物 `generated.registry.ts` 730 不计。
+
+`client/index.ts` **308 行**，低于计划出口条件（≤ 400）32 行；`apply()` 里只剩 bridge 三件套、
+boot 同步、`runCommand`、装配、body class 开关。
+
+## 16.3 三处搬运的保真度证据（逐行，而不是「看起来一样」）
+
+| 步骤 | 证据 | 结果 |
+|---|---|---|
+| 2.9 rail-view | 把 HEAD 的搬移区（508 行）与 `rail/rail-view.tsx` 的 body 逐行 diff | **只有 3 行不同**，且正是文档化的三处实时绑定改写：`prefs.cardConfigs`×2 → `getPrefs()`（事件处理器内，读到渲染期快照就会丢上一次点击）、`prefs.cardSide` → `getPrefs()`、`{ drawerEl = el }` → `{ setDrawerEl(el) }` |
+| 2.6b measure | 把 HEAD 的 173–659 区按文档化的改写重放，再与 `rail/measure.ts` 的 485 行 body 比对 | **485/485 逐行相等** |
+| Phase H host | 用同一套桩（credentials/fetch/usageCenter + 临时 DSH_HOME）分别驱动**拆分前**（`HEAD:lib/index.js`）与**拆分后**的 bundle | 14 条路由案例的结构指纹**逐字节相同** |
+| contract | G4 110 条渲染输出 + G2 40 单元校验 | 全等 / 全过 |
+
+关于 getter 的必要性：2.9 的第一版改写被 `(?<!\.)` 前瞻挡掉了一处外层展开（`...prefs.cardConfigs`），
+自检脚本把它抓了出来 —— 这是本轮唯一一处「差点静默降级为渲染期快照」的缺陷。
+
+## 16.4 live 验收（第一轮不可达的 `dsh web` 已恢复）
+
+| 探针 | 结果 |
+|---|---|
+| `scripts/diag-rail-hover-release.cjs` | **11/11 PASS**（2.9 之后与 2.6b 之后各跑一次） |
+| `docs/verify-skeleton-shapes.cjs` | **PASS**，19/19 卡片、0 溢出、page errors `[]`、状态已还原 |
+| `scripts/diag-morph-frames.cjs`（HEADFUL=1） | `maxFrameStep 0.0255`（第一轮基线 0.0227，同量级；逐帧表无跳变） |
+| `scripts/diag-rail-scroll-perf.cjs` | 无崩溃、detent 端点正常（291 帧 p95 37ms） |
+
+服务新鲜度也做了证据：`__DSH_BOOT__` 里 `dsh-widgets` 的 rev 随每次重建变化，且经授权取回的组合
+bundle 含 `createRailView` / `setDrawerEl` / `getRailBudget` —— 探针驱动的是搬移后的代码，不是缓存。
+
+## 16.5 闸门与工具的变化
+
+**新增 G7 `scripts/snapshot-host-routes.mjs`**：host 半区此前只有 `docs/verify-sysinfo.mjs` 覆盖一条路由，
+其余全靠 live 服务。G7 用 mock webServer + 桩 credentials/fetch + 临时 `DSH_HOME` 驱动**构建产物**，
+把 14 条案例降成结构指纹（保留键名、状态码、类型；数字归零、字符串归一），基线落在
+`docs/architecture/baseline/host-routes.json`。
+
+- 它**拒绝在覆盖不全时运行**：注册了却没有案例的路由会让它直接红（新增渠道必须同时加案例）。
+- 故意破坏验证：把 state 路由的 405 改成 404 → `FAIL — 1 case(s) differ`，并指出是哪一条；改回后全绿。
+- `sysinfo` 只比对顶层键（深契约归 `verify-sysinfo`），避免把宿主机器状态写进基线。
+
+**G3 的容忍规则被修正**：`TS2307/TS2580/TS7016` 是**按 import 模块计数**的错误（`node:os` 被两个模块
+import 就是两条，根因只有一个：缺 `@types/node`）。拆分文件会合法地抬高这些计数，因此**已存在于基线中的
+签名**允许增长并打印报告。但旧规则放过了真正的新错误 —— contract 拆分时 `Cannot find module './contract'`
+（同一 TS2307 码、基线里 0 条）曾被判为「容忍」。现在 `was === 0` 一律致命。
+
+**G4 的输出目录现在先清空**：`tsc` 不会删除产物，被重构删掉的模块会留下幽灵 `.js`，让坏 import 也能通过 ——
+这正是拆分 contract 时发生的事（`.tmp-snapshot/.../lib/contract.js` 满足了 harness 的旧 import，
+而源文件早已不存在，G4 因此照常全绿）。这是本轮发现的**最危险的一处闸门失效**。
+
+**探针的可复跑性**：97 个探针文件硬编码了 `ms-playwright/chromium-1243/...`，本机升到 1246 后全体无法启动
+（`scripts/diag-*.cjs` 是 gitignore 的本地文件，受版本控制的那部分有 36 个）。新增 `scripts/lib/chrome.cjs`
+解析**最新已安装**的修订目录（+ `CHROME_PATH` 覆盖 + 显式报错列出搜索路径），97 个文件全部迁走，
+`node --check` 与 require 路径解析各验一遍。
+
+> 探针使用提醒：`tsdown` 重建后的数秒内启动探针会撞上客户端 HMR 重打包，可能看到一个完全没有插件界面的
+> 页面（本轮遇到过一次，重跑即绿）。重建后稍等再跑。
+
+## 16.6 §12 剩余项的复核结论
+
+| # | 结论 |
+|---|---|
+| 1 | ✅ 已解决：`rail/measure.ts`（`railBudget`/`drawerEl` 仍归组合根，经访问器进出；观察器/计时器/`frameEl` 全部内移） |
+| 2 | ✅ 已解决：`rail/rail-view.tsx`（`createRailView(deps)`，在 inject 回调内构造以保持组件身份语义） |
+| 3 | ✅ 已解决：`host/` 9 个模块 + `HOST_ROUTES` 注册表；每个路由模块自带 `register(ctx): () => void`，`ctx.effect` 仍由根调用 |
+| 4 | ✅ 已解决：`lib/contract/{types,helpers}.ts`；**故意不做 barrel**，否则 i18n 耦合原样保留 |
+| 5 | ⏳ 34 → **35 条**，多出的正是同一 `Cannot find module 'node:os'`（`state-file.ts` 与 `sysinfo.ts` 各一条）。真正的修法是装 `@types/node` + `@types/react-dom` + slots 类型，一次消掉约 20 条；本机 `pnpm install` 目前不通过，故列为独立任务 |
+| 6 | ⏳ **`.d.ts` 复核（本轮实测，比原记录更具体）**：① tsdown 内置 `dts: true` **不是**可行路径 —— 实测它在 `lib/` 下写出了 `lib/index.ts`（0.57 kB），而不是 `lib/index.d.ts`，配置已回退；② `npx tsc -p tsconfig.json`（`emitDeclarationOnly` + `outDir lib/types`）**可以**产出 105 个 `.d.ts`，`lib/types/index.d.ts` 内容正确自洽；③ 但 `lib/types/` 顶层只有 `index.d.ts`，客户端半区的声明在 `lib/types/client/`，其中 6 个文件保留了 `import './styles/*.module.css'`，而 `src/css-modules.d.ts` 这个 ambient 声明**不会被 tsc 再产出** —— 直接发布的话，消费方解析客户端入口会因 CSS 模块 import 报错。**修法**：host 入口一行（build 里追加 `tsc -p tsconfig.json`）；client 入口需要额外把 ambient shim 一起发布，或从声明里剔除 CSS import。这属于**发布面变更**（要动 `files`/版本/发版流程），故本轮只给结论不动手 |
+| 7 | ⏳ 死代码仍未清：`GripIcon`、死 CSS（`dsx-macts`/`dsx-mid`/`dsx-restore`）、空钩子。**本轮新发现一条**：host 的 `COMMANDCODE_ROUTE = 'commandcode'`（`host/usage-daily.ts`）零引用 —— 客户端自己写 `?provider=commandcode`，这个常量只是文档。删死 CSS 会让 G5 的「拼接字节全等」证据链失效（那条基线是**分层阶段**的证据），所以 CSS 清理应与 G5 基线更新一起做，而不是塞进结构提交 |
+| 8 | ⏳ 不变（token 块留在原位，理由见 §13.5） |
+
+## 16.7 反形式主义自检（最终）
+
+| 自检 | 结果 |
+|---|---|
+| **A** 新增 widget 不需改中央文件 | ✅ 仍成立（生成器 + manifest） |
+| **B** 新增 chart 加文件 + 注册一行 | ✅ |
+| **C** 改数据源只动 data 层 | ✅ |
+| **D** 改 RailWave 只进 `rail/wave/` | ✅ **本轮补齐**：RailWave 的调用方（deck 网格、放大层装配、加号面板、抽屉）在 `rail/rail-view.tsx`，其几何/测量在 `rail/measure.ts`，`client/index.ts` 里不再有 rail 视图代码 |
+| **E** 改一个 widget 不影响别人 | ✅ |
+
+## 16.8 仍然可选、但不建议现在做的
+
+| 项 | 行数 | 判断 |
+|---|---|---|
+| `rail/wave/RailWave.tsx` | 1,045 | 单一交互组件（6 个内部函数 + 25 props + 4 个 rAF 循环）；可再拆 `magnify-layer`，收益中等 |
+| `surfaces/config/ConfigTab.tsx` | 686 | 三个子职责（排序列表 / 字段控件 / 预览抽屉）同文件，可拆 3 个 surface 子模块 |
+| `data/collector.tsx` | 502 | 可按源拆 5 个 fetcher（每源一个 `pull()`），需先定义显式接口 |
+| `host/github.ts` | 449 | 凭据阶梯 / GraphQL / HTML 抓取 / 仓库脉冲四段，可再分；当前是单一渠道，尚可 |
+| 装 `@types/node` 等 | — | 消掉约 20 条既有 tsc 错误；需要一次可用的 `pnpm install` |
+
+## 16.9 结论（第二轮）
+
+- §12 的 1–4 项（两份计划缺口 + host 单文件 + 契约混装）**全部落地**；`client/index.ts` 从 3,795 → **308**（−92%），
+  host 从 1,077 → **31**，全仓最大手写文件回到 `RailWave.tsx` 1,045。
+- 每一处都是**可证搬运**：2.9 逐行 3 处差异、2.6b 485/485 重放相等、host 新旧 bundle 14 案例指纹全等、
+  contract 靠 G4/G2 兜住；并且这轮**真的跑了 live 探针**（11/11、19/19、逐帧 0.0255），不再只靠字节推断。
+- 闸门从 6 个变成 7 个（+G7 host 路由契约），并且顺手修好了 G4 的幽灵产物漏洞与 G3 的容忍漏洞 ——
+  这两个漏洞都属于「闸门看起来绿、其实什么都没测」这一类，比缺闸门更危险。
+- 仍未完成的都是**独立缺陷或可选拆分**，且每条都写清了修法与代价（§16.6 / §16.8），不是模糊地带。
+
