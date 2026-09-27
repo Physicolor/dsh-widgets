@@ -56,4 +56,4 @@ export function SegmentsChart({ chart, side, width, pad, scale }: ChartProps): R
     )
   }
   return null
-}
+}

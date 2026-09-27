@@ -44,4 +44,3 @@ export function renderChart(props: ChartProps): ReactElement | null {
 /** Kinds whose chart stretches to fill the card body (the body gets `flex: 1`).
  *  Was an inline `kind === 'line' || kind === 'lanes'` test in CardBody. */
 export const CHART_FILLS_BODY: ReadonlySet<WidgetChart['kind']> = new Set(['line', 'lanes'])
-

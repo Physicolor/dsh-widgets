@@ -54,4 +54,3 @@ export function installSettingsNavGlyph(): () => void {
     for (const row of document.querySelectorAll(`[${ATTR}]`)) row.removeAttribute(ATTR)
   }
 }
-

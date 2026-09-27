@@ -52,4 +52,4 @@ export function RingsChart({ chart, side, width, pad, scale }: ChartProps): Reac
     return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-end', gap: mg } }, items)
   }
   return null
-}
+}

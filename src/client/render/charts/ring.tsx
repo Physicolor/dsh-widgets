@@ -20,4 +20,4 @@ export function RingChart({ chart, side, width, pad, scale }: ChartProps): React
     )
   }
   return null
-}
+}

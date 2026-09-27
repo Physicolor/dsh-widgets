@@ -37,4 +37,4 @@ export function BarsVChart({ chart, side, width, pad, scale }: ChartProps): Reac
     return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 4, height: `${barAreaH}px`, marginTop: `${Math.round(4 * scale)}px` } }, bars)
   }
   return null
-}
+}

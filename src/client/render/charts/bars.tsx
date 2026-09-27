@@ -41,4 +41,4 @@ export function BarsChart({ chart, side, width, pad, scale }: ChartProps): React
     )
   }
   return null
-}
+}

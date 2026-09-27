@@ -498,4 +498,4 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
       }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now, snap.usageDaily, deps.getPrefs().cardConfigs?.heatmap?.monthMode, deps.getPrefs().cardConfigs?.heatmap?.timeZone])
       return null
   }
-}
+}

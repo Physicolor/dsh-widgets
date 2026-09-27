@@ -65,4 +65,4 @@ export function LineChart({ chart, side, width, pad, scale }: ChartProps): React
     )
   }
   return null
-}
+}

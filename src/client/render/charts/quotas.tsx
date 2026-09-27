@@ -46,4 +46,4 @@ export function QuotasChart({ chart, side, width, pad, scale }: ChartProps): Rea
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: Math.round(5 * scale), width: '100%' } }, ...rows)
   }
   return null
-}
+}

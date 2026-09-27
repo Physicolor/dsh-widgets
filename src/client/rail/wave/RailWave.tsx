@@ -1042,4 +1042,4 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     },
     onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => { leaveRail(e.clientX, e.clientY) },
   }, rail, magnifyLayer)
-}
+}

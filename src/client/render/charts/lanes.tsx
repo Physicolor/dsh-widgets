@@ -11,41 +11,41 @@ import * as React from 'react'
 import { TRAJECTORY_WINDOW } from '../../lib/contract'
 import type { ChartProps } from './types'
 
-/** 对话轨迹 lane colors — EXACTLY the official 轨迹 timeline's three lanes
- *  (TrajectoryTimeline.module.css `[data-timeline-span=…]`): 输入 = business
- *  primary, 模型 = the assistant span's decoding color (brand blue 60% mixed
- *  with the error red), 工具 = the warn label. Keeping the expressions (not
- *  resolved hex) means the card follows light/dark and future token changes. */
-const LANE_TONES: Record<string, string> = {
-  input: 'var(--dsw-alias-state-business-primary)',
-  model: 'color-mix(in srgb, var(--dsw-alias-state-business-primary) 60%, var(--dsw-alias-state-error-secondary))',
-  tool: 'var(--dsw-alias-state-warn-label)',
-}
-
-/** Lane draw order, top→bottom — the SAME order as the subtitle's counts
- *  (输入 / 模型 / 工具), which is also the official 轨迹 rail's order. */
-const LANE_ORDER: Array<'input' | 'model' | 'tool'> = ['input', 'model', 'tool']
-
-/** The trajectory window is a FIXED slot count, ONE SLOT PER BEAT: a bar keeps
- *  its column as the window rolls (newest entering at the right), instead of the
- *  whole row re-scaling every time a beat arrives. Until the window fills, the
- *  beats SHARE the lane instead (n beats → 100/n % each), so a lone segment owns
- *  its lane. */
-const LANE_SLOTS = TRAJECTORY_WINDOW
-
-/** Lane corner radius — the official span's `border-radius: 1px`. The official
- *  VERTICAL numbers (8px bars on a 14px pitch) are deliberately NOT used: the
- *  three lanes are stacked contiguously and stretch to the card's remaining
- *  height (user's call, 2026-09-25 — see the lanes branch). */
-const LANE_RADIUS = 1
-
-/** The official span gap: `--trajectory-span-gap: min(widthPercent * .08%, 1px)`,
- *  applied as `left: left% + gap` and `width: max(2px, width% - 2 * gap)` — so
- *  two neighbouring beats stand `2 * gap` apart, never less than the 2px floor
- *  the official span sets with `min-width: 2px`. */
-const LANE_GAP_RATIO = 0.08
-const LANE_GAP_MAX_PX = 1
-const LANE_MIN_PX = 2
+/** 对话轨迹 lane colors — EXACTLY the official 轨迹 timeline's three lanes
+ *  (TrajectoryTimeline.module.css `[data-timeline-span=…]`): 输入 = business
+ *  primary, 模型 = the assistant span's decoding color (brand blue 60% mixed
+ *  with the error red), 工具 = the warn label. Keeping the expressions (not
+ *  resolved hex) means the card follows light/dark and future token changes. */
+const LANE_TONES: Record<string, string> = {
+  input: 'var(--dsw-alias-state-business-primary)',
+  model: 'color-mix(in srgb, var(--dsw-alias-state-business-primary) 60%, var(--dsw-alias-state-error-secondary))',
+  tool: 'var(--dsw-alias-state-warn-label)',
+}
+
+/** Lane draw order, top→bottom — the SAME order as the subtitle's counts
+ *  (输入 / 模型 / 工具), which is also the official 轨迹 rail's order. */
+const LANE_ORDER: Array<'input' | 'model' | 'tool'> = ['input', 'model', 'tool']
+
+/** The trajectory window is a FIXED slot count, ONE SLOT PER BEAT: a bar keeps
+ *  its column as the window rolls (newest entering at the right), instead of the
+ *  whole row re-scaling every time a beat arrives. Until the window fills, the
+ *  beats SHARE the lane instead (n beats → 100/n % each), so a lone segment owns
+ *  its lane. */
+const LANE_SLOTS = TRAJECTORY_WINDOW
+
+/** Lane corner radius — the official span's `border-radius: 1px`. The official
+ *  VERTICAL numbers (8px bars on a 14px pitch) are deliberately NOT used: the
+ *  three lanes are stacked contiguously and stretch to the card's remaining
+ *  height (user's call, 2026-09-25 — see the lanes branch). */
+const LANE_RADIUS = 1
+
+/** The official span gap: `--trajectory-span-gap: min(widthPercent * .08%, 1px)`,
+ *  applied as `left: left% + gap` and `width: max(2px, width% - 2 * gap)` — so
+ *  two neighbouring beats stand `2 * gap` apart, never less than the 2px floor
+ *  the official span sets with `min-width: 2px`. */
+const LANE_GAP_RATIO = 0.08
+const LANE_GAP_MAX_PX = 1
+const LANE_MIN_PX = 2
 
 export function LanesChart({ chart, side, width, pad, scale }: ChartProps): React.ReactElement | null {
   if (chart.kind === 'lanes' && chart.lanes) {
@@ -157,4 +157,4 @@ export function LanesChart({ chart, side, width, pad, scale }: ChartProps): Reac
     }, ...rows)
   }
   return null
-}
+}

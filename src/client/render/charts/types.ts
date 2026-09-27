@@ -21,4 +21,3 @@ export interface ChartProps {
   /** The card scale factor (`side / BASE_SIDE`). */
   scale: number
 }
-

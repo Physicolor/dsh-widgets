@@ -125,4 +125,3 @@ export function deriveStats(nodes: ReadonlyArray<any>): Omit<Stats, 'usage'> {
   }
   return { turns: turns.size, steps, llmMs, toolMs, ttftMs: 0, ttftSteps: 0, decodeMs: 0, decodeTokens: 0 }
 }
-

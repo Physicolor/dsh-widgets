@@ -69,4 +69,4 @@ export function HeatmapChart({ chart, side, width, pad, scale }: ChartProps): Re
     )
   }
   return null
-}
+}

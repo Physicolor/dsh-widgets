@@ -274,4 +274,4 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
 }
 
   return { rows, active, deckBottom, staticLayout, stepScale, scaleFor, placeCards, nearest, xPts, yPts, addSlotFor }
-}
+}

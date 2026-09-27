@@ -63,4 +63,4 @@ export function FiguresChart({ chart, side, width, pad, scale }: ChartProps): Re
     )
   }
   return null
-}
+}
