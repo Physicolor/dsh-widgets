@@ -12,11 +12,12 @@ import { createPortal } from 'react-dom'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import './widgets.module.css'
 import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES, WIDGET_RUNTIME } from './generated.registry'
-import { instanceKey, parseInstanceKey, sizesOf, widgetName, TRAJECTORY_WINDOW, type CommandCodeData, type GitHubData, type SysInfo, type TrajectoryBeat, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
+import { instanceKey, parseInstanceKey, sizesOf, widgetName, type CommandCodeData, type GitHubData, type SysInfo, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
 import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
 import { ccPayloadDegraded } from './lib/cc-view'
 import { springSettleMs, springValue, WAVE_SPRING } from './lib/morph-spring'
 import { ingestSysInfo, resolveInterval } from './lib/sys-view'
+import { deriveStats, deriveTrajectory, type Stats } from './data/session-stats'
 import { CardBody, cardRadius, COL_GAP, DEFAULT_CORNER_PERCENT, DETAIL_W, LIST_W, WidgetsPage, type Prefs } from './components'
 import { t, installLocale, onLocaleChange } from './i18n'
 
@@ -1663,120 +1664,6 @@ function flushPendingState(): void {
       })
     }
   } catch { /* page is going away; nothing more can be done —the boot sync on the next launch converges */ }
-}
-
-/** Session stats shape collected by the dock collector. */
-interface Stats {
-  turns: number
-  steps: number
-  llmMs: number
-  toolMs: number
-  ttftMs: number
-  ttftSteps: number
-  decodeMs: number
-  decodeTokens: number
-  usage: { inputTokens: number; cacheReadTokens: number; outputTokens: number } | null
-  contextPercent?: number | null
-  contextWindow?: number | null
-  contextTokens?: number | null
-  contextBreakdown?: { systemTokens: number; toolsTokens: number; messageTokens: number } | null
-  todos?: Array<{ content: string; status: 'pending' | 'in_progress' | 'completed' }> | null
-  heatmapGrid?: Array<Array<{ value: number; date: string }>>
-  heatmapRaw?: Record<string, number>
-  trajectory?: TrajectoryBeat[]
-}
-
-/** Coerce a possibly-undefined timestamp to a finite number (null when unusable). */
-function timelineTime(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null
-}
-
-/**
- * Project the live conversation into the official 杞ㄨ抗 layout's three lanes:
- * 杈撳叆 (user/steering message) 路 妯″瀷 (assistant step) 路 宸ュ叿 (tool call).
- *
- * Beats are ordered by their START time and trimmed to the newest
- * `TRAJECTORY_WINDOW`. In-flight work is included as it happens —running tool
- * calls plus open, not-yet-assembled assistant steps —which is what makes the
- * card move while the model is working instead of only after a turn settles.
- *
- * @param settled - Conversation nodes (`useChat().legacy.nodes`).
- * @param runningCalls - Live tool calls (`useChat().legacy.runningCalls`).
- * @param timeline - Turn/step timeline (open steps have no node yet).
- * @param now - performance.now() at this collection pass.
- */
-function deriveTrajectory(
-  settled: ReadonlyArray<any>,
-  runningCalls: ReadonlyArray<any>,
-  timeline: any,
-  now: number,
-): TrajectoryBeat[] {
-  const beats: Array<{ at: number; beat: TrajectoryBeat }> = []
-  const push = (at: number | null, kind: TrajectoryBeat['kind'], ms: number): void => {
-    beats.push({ at: at ?? 0, beat: { kind, ms: Math.max(0, ms) } })
-  }
-  for (const node of settled ?? []) {
-    if (node?.kind === 'user' || node?.kind === 'steering') {
-      // The input lane is instantaneous: the message's own arrival is the event.
-      push(timelineTime(node.time), 'input', 0)
-      continue
-    }
-    if (node?.kind === 'assistant') {
-      const start = timelineTime(node.timing?.stepStartTime)
-      const end = timelineTime(node.timing?.completedTime)
-      push(start ?? timelineTime(node.time), 'model', start !== null && end !== null ? end - start : 0)
-      continue
-    }
-    if (node?.kind === 'tool-result') {
-      const start = timelineTime(node.callTime)
-      const end = timelineTime(node.time)
-      push(start ?? end, 'tool', start !== null && end !== null ? end - start : 0)
-    }
-  }
-  for (const call of runningCalls ?? []) {
-    const start = timelineTime(call?.time)
-    if (start === null) continue
-    push(start, 'tool', now - start)
-  }
-  if (timeline && typeof timeline.turns?.values === 'function') {
-    for (const turn of timeline.turns.values()) {
-      if (turn?.status !== 'open') continue
-      for (const step of turn.steps ?? []) {
-        if (step?.status !== 'open') continue
-        const start = timelineTime(step.start?.time)
-        if (start === null) continue
-        // An assembled assistant node already carries this step (see the llmMs
-        // accounting above) —counting both would double the beat.
-        const assembled = (settled ?? []).some((n: any) =>
-          n?.kind === 'assistant' && n.turn === step.turn && n.step === step.step && n.timing !== undefined)
-        if (assembled) continue
-        push(start, 'model', now - start)
-      }
-    }
-  }
-  beats.sort((a, b) => a.at - b.at)
-  return beats.slice(-TRAJECTORY_WINDOW).map((entry) => entry.beat)
-}
-
-/** Fold assistant/tool-result nodes into the same window-scoped stats as the shipped StatsLine fallback. */
-function deriveStats(nodes: ReadonlyArray<any>): Omit<Stats, 'usage'> {
-  const turns = new Set<number>()
-  let steps = 0
-  let llmMs = 0
-  let toolMs = 0
-  for (const node of nodes ?? []) {
-    if (node.kind === 'tool-result') {
-      if (node.callTime !== null && node.callTime !== undefined) toolMs += Math.max(0, node.time - node.callTime)
-      continue
-    }
-    if (node.kind !== 'assistant') continue
-    turns.add(node.turn)
-    steps += 1
-    if (node.timing !== undefined && node.timing !== null && node.timing.stepStartTime !== null) {
-      llmMs += Math.max(0, node.timing.completedTime - node.timing.stepStartTime)
-    }
-  }
-  return { turns: turns.size, steps, llmMs, toolMs, ttftMs: 0, ttftSteps: 0, decodeMs: 0, decodeTokens: 0 }
 }
 
 /**
