@@ -1,0 +1,367 @@
+/* Harness Widgets — 组件市场: search bar, view toggle, gallery layers, stage and hero ghost.
+ *
+ * Split out of widgets.module.css (Phase 5). The rules are in their ORIGINAL order
+ * and each layer file becomes its own <style data-plugin-css> tag at load time, so the
+ * import order in client/index.ts IS the cascade order - which is what makes the
+ * concatenation of these files byte-identical to the stylesheet they came from (G5).
+ */
+
+.dsx-marketbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex: none;
+}
+.dsx-searchwrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px 0 9px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  box-sizing: border-box;
+  color: var(--dsw-alias-label-tertiary);
+}
+.dsx-searchwrap:focus-within {
+  border-color: var(--dsw-alias-state-business-primary);
+}
+.dsx-searchicon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  color: var(--dsw-alias-label-tertiary);
+}
+.dsx-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 26px;
+  padding: 0;
+  border-width: 0;
+  border-style: none;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+.dsx-search::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+/* List ⇄ gallery toggle: the OFFICIAL split control (the second reference image)
+ * — ONE pill, a hairline border, a divider between the two halves, no filled
+ * track. Only the glyph colour marks which half is active. */
+.dsx-viewtoggle {
+  flex: none;
+  display: inline-flex;
+  align-items: stretch;
+  height: 30px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--dsw-alias-border-l2);
+  border-radius: 15px;
+  background: transparent;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.dsx-viewbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  padding: 0;
+  border-style: none;
+  border-width: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+}
+/* The divider belongs to the SECOND half, so the pill's own edges stay clean. */
+.dsx-viewbtn + .dsx-viewbtn {
+  border-left-width: 1px;
+  border-left-style: solid;
+  border-left-color: var(--dsw-alias-border-l2);
+}
+.dsx-viewbtn[data-active='true'] {
+  color: var(--dsw-alias-label-primary);
+}
+.dsx-viewbtn:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+/* The card's edge: an inset ring on its own child element, so it can never be
+ * clipped by an ancestor and never inherits a `button` border. One neutral
+ * colour for every card — a group's "installed" state is ambiguous (one instance
+ * added or all of them?), so the market does not mark it. */
+.dsx-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: inset 0 0 0 1px var(--dsw-alias-border-l2);
+}
+
+/* The gallery (「组件瀑布式」): a two-column mosaic of live tiles with a centred
+ * caption under each — the widget-gallery shape the user pointed at. */
+.dsx-gallery {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+  justify-items: center;
+  gap: 16px 10px;
+  padding: 6px 8px 12px;
+}
+.dsx-gcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  border-style: none;
+  border-width: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 14px;
+}
+/* ── 组件市场: Material's SHARED AXIS (X) between the market and a preview ────
+ * Both layers are stacked and stay mounted through the transition; the outgoing
+ * slides out of the panel's clip while the incoming slides in from the right, and
+ * the closing half plays the SAME keyframes in reverse (`is-rev`), so open and
+ * close are pixel-identical by construction. The shared card itself flies as the
+ * `.dsx-zoomghost` portal on top. */
+.dsx-mkt {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.dsx-mkt-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.dsx-mkt-layer.is-front {
+  z-index: 2;
+  /* Opaque: the incoming surface slides over the outgoing one. */
+  background: var(--dsw-alias-bg-layer-1, #fff);
+}
+.dsx-mkt-push-out {
+  animation: dsx-mkt-out var(--dsx-market-motion, 380ms) var(--ds-ease-in-out) both;
+}
+.dsx-mkt-push-in {
+  animation: dsx-mkt-in var(--dsx-market-motion, 380ms) var(--ds-ease-in-out) both;
+}
+.dsx-mkt-push-out.is-rev,
+.dsx-mkt-push-in.is-rev {
+  animation-direction: reverse;
+}
+@keyframes dsx-mkt-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-28%);
+    opacity: 0.75;
+  }
+}
+@keyframes dsx-mkt-in {
+  from {
+    transform: translateX(100%);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dsx-mkt-push-out,
+  .dsx-mkt-push-in {
+    animation: none;
+  }
+}
+
+/* iOS-style zoom: a fixed ghost of the card that FLIPs from the clicked tile to
+ * the preview slot (the stage's own card stays hidden until it lands). */
+.dsx-zoomghost {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  transform-origin: center center;
+  will-change: transform;
+  transition: transform 380ms var(--ds-ease-in-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dsx-zoomghost {
+    transition: none;
+    display: none;
+  }
+}
+
+/* A tile is only the widget + its name (reference gallery): no ring, no badge —
+ * the affordance is the hover lift on the preview itself. */
+.dsx-gshot {
+  position: relative;
+  display: block;
+  border-radius: 14px;
+  transition: transform var(--ds-transition-duration) var(--ds-ease-in-out);
+}
+.dsx-gcard:hover .dsx-gshot {
+  transform: translateY(-1px);
+}
+.dsx-gcap {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dropdown selector matching the DSH "selector" picker look (e.g. model/创建模式:  */
+/* a bordered rounded control with a native chevron and a real popup menu. The
+   chevron is a data-URI SVG — `fill='currentColor'` does NOT render there
+   (SVG-as-background-image resolves in an isolated image context, so currentColor
+   draws nothing), so the arrow uses explicit fills: a mid-grey in light mode
+   and a near-white under `body[data-ds-dark-theme]` (DSH's dark marker). */
+.dsx-select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 150px;
+  height: 34px;
+  padding: 0 34px 0 12px;
+  border-radius: 17px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background-color: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'><path d='M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z' fill='%236F6F7A'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+body[data-ds-dark-theme] .dsx-select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'><path d='M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z' fill='%23ECECF1'/></svg>");
+}
+.dsx-select:focus {
+  border-color: var(--dsw-alias-state-business-primary);
+  box-shadow: 0 0 0 1px var(--dsw-alias-state-business-primary);
+}
+.dsx-select option {
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+}
+
+.dsx-mlist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The OFFICIAL settings row (measured 2026-09-27 on 设置 → 插件: 75px tall,
+ * radius 16, `1px solid rgba(0,0,0,.16)`, white on the panel's ground, padding
+ * inside, ONE control at the right). The market cards used to be white-on-white
+ * with a 14px radius and three stacked lines, and the user read their border as
+ * 「那条黑色的边缘线」. Longhands for the border so the colour can never fall
+ * back to currentColor. */
+.dsx-mcard {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  /* The card's edge is an inset RING set INLINE by the component (see the note
+   * there): the plugin's injected sheet resolves `var()` for a fresh rule but not
+   * for its own, which turned the border into currentColor — a near-black edge.
+   * These are the shape defaults only. */
+  border-style: none;
+  border-width: 0;
+  background: var(--dsw-alias-bg-layer-1);
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+.dsx-mcard:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* The text block grows; the trailing control keeps its own width. */
+.dsx-mbody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dsx-mhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.dsx-mname {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The trailing control never shrinks — the description gives way instead. With
+ * both flexing, 「已添加」 was squeezed into two clipped glyphs. */
+.dsx-mcard > .dsx-btn {
+  flex: none;
+  white-space: nowrap;
+}
+
+.dsx-mdesc {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+  margin-bottom: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dsx-mid {
+  font-size: 11px;
+  color: var(--dsw-alias-label-caption);
+  font-family: monospace;
+  margin-bottom: 4px;
+}
+
+.dsx-macts {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+

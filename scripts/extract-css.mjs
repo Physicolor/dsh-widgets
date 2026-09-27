@@ -42,47 +42,64 @@ function readJsonString(src, pos) {
 }
 
 const found = {}
+/** Concatenated in BUNDLE order = the order the <style> tags are created at runtime =
+ *  the cascade order. This is the invariant the CSS layering phase must preserve: the
+ *  stylesheet may be split into many files, but the concatenation stays byte-identical. */
+let combined = ''
 let at = 0
 for (;;) {
-  const cssAt = js.indexOf('const css = ', at)
+  // rolldown renames the per-module locals when several CSS modules coexist (`css$5`,
+  // `tagId$5`), so the search has to accept both the plain and the suffixed form.
+  const cssAt = js.indexOf('const css', at)
   if (cssAt < 0) break
-  const lit = readJsonString(js, cssAt + 'const css = '.length)
-  if (lit === null) { at = cssAt + 12; continue }
+  const eq = js.indexOf(' = ', cssAt)
+  if (eq < 0) break
+  const lit = readJsonString(js, eq + 3)
+  if (lit === null) { at = cssAt + 10; continue }
   at = lit.end
   let css
   try { css = JSON.parse(lit.raw) } catch { continue }
   // The generated block emits `const tagId = "..."` right AFTER `const css`.
-  const tagAt = js.indexOf('const tagId = ', lit.end)
+  const tagAt = js.indexOf('const tagId', lit.end)
   if (tagAt < 0) die('found a CSS block with no tagId — the bundler plugin changed shape')
-  const tagLit = readJsonString(js, tagAt + 'const tagId = '.length)
+  const tagLit = readJsonString(js, js.indexOf(' = ', tagAt) + 3)
   if (tagLit === null) die('could not read the tagId literal')
   const tag = JSON.parse(tagLit.raw)
   found[tag] = { sha256: createHash('sha256').update(css).digest('hex'), bytes: Buffer.byteLength(css) }
+  combined += css
 }
 
 const tags = Object.keys(found)
 if (tags.length === 0) die('no compiled CSS found in the bundle')
-console.log(`[extract-css] ${tags.length} compiled stylesheet(s):`)
+const combinedHash = createHash('sha256').update(combined).digest('hex')
+console.log(`[extract-css] ${tags.length} compiled stylesheet(s), combined ${Buffer.byteLength(combined)} B  ${combinedHash.slice(0, 16)}`)
 for (const t of tags) console.log(`  ${t}  ${found[t].bytes} B  ${found[t].sha256.slice(0, 16)}`)
 
 if (WRITE || !existsSync(BASELINE)) {
   mkdirSync(dirname(BASELINE), { recursive: true })
-  writeFileSync(BASELINE, `${JSON.stringify(found, null, 1)}\n`, 'utf8')
+  writeFileSync(BASELINE, `${JSON.stringify({ __combined: combinedHash, sheets: found }, null, 1)}\n`, 'utf8')
   console.log(`[extract-css] wrote baseline -> ${BASELINE}`)
   process.exit(0)
 }
 
-const base = JSON.parse(readFileSync(BASELINE, 'utf8'))
-const problems = []
-for (const t of tags) {
-  if (!(t in base)) { problems.push(`NEW STYLESHEET ${t}`); continue }
-  if (base[t].sha256 !== found[t].sha256) problems.push(`CHANGED ${t}  (${base[t].bytes} B -> ${found[t].bytes} B)`)
-}
-for (const t of Object.keys(base)) if (!tags.includes(t)) problems.push(`REMOVED STYLESHEET ${t}`)
+const raw = JSON.parse(readFileSync(BASELINE, 'utf8'))
+// Backwards compatible with the pre-layering baseline (a flat tag -> hash map).
+const baseCombined = raw.__combined ?? createHash('sha256').update(Object.values(raw).map((v) => v.sha256).join('')).digest('hex')
+const baseSheets = raw.sheets ?? raw
 
-if (problems.length > 0) {
-  console.error(`[extract-css] FAIL — ${problems.length} change(s):`)
-  for (const p of problems) console.error(`  ${p}`)
-  process.exit(1)
+if (baseCombined === combinedHash) {
+  const moved = tags.filter((t) => !(t in baseSheets))
+  console.log(`[extract-css] PASS — the concatenated stylesheet is byte-identical (${tags.length} tag(s)${moved.length > 0 ? `, ${moved.length} new file boundary/ies` : ''})`)
+  process.exit(0)
 }
-console.log('[extract-css] PASS — the compiled CSS is byte-identical')
+console.error('[extract-css] FAIL — the concatenated CSS differs from the baseline:')
+console.error(`  baseline ${baseCombined}`)
+console.error(`  current  ${combinedHash}`)
+for (const t of tags) {
+  const b = baseSheets[t]
+  if (b === undefined) console.error(`  NEW     ${t}  ${found[t].bytes} B`)
+  else if (b.sha256 !== found[t].sha256) console.error(`  CHANGED ${t}  (${b.bytes} B -> ${found[t].bytes} B)`)
+}
+for (const t of Object.keys(baseSheets)) if (!tags.includes(t)) console.error(`  REMOVED ${t}`)
+process.exit(1)
+

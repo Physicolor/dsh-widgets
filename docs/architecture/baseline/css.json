@@ -1,6 +1,25 @@
 {
- "dsh-widgets/src/client/widgets.module.css": {
-  "sha256": "099df111725280797aedbdd6ee89fb892617adb9efe53d931f57761e950f5615",
-  "bytes": 23141
+ "__combined": "099df111725280797aedbdd6ee89fb892617adb9efe53d931f57761e950f5615",
+ "sheets": {
+  "dsh-widgets/src/client/styles/card.module.css": {
+   "sha256": "bb72f9be3ba08a25dbfbf9361e74630804d04d3c7145de31c6ae0e131617722c",
+   "bytes": 4182
+  },
+  "dsh-widgets/src/client/styles/rail.module.css": {
+   "sha256": "76e64ec236660361fde67dc0f37e1e25831ccc004a7a5deb46fb9e00a127fd27",
+   "bytes": 4296
+  },
+  "dsh-widgets/src/client/styles/panel.module.css": {
+   "sha256": "b3e79b7179d695988140d433195a9840cc60b9c6aa434ea8998cb24ba3d01b7c",
+   "bytes": 3622
+  },
+  "dsh-widgets/src/client/styles/market.module.css": {
+   "sha256": "a6247c69b15658e2c3eecd456d4a0c18406e7193b61cfdb55a1d48f7ff0eb8fd",
+   "bytes": 6640
+  },
+  "dsh-widgets/src/client/styles/primitives.module.css": {
+   "sha256": "1355beb3e843c82e05cb04126619e0fc3068a3fd22c2d580245553dd0aba38e3",
+   "bytes": 4401
+  }
  }
 }

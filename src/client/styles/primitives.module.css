@@ -1,0 +1,275 @@
+/* Harness Widgets — framework primitives: buttons, switches, selects, the metrics picker and the warning states.
+ *
+ * Split out of widgets.module.css (Phase 5). The rules are in their ORIGINAL order
+ * and each layer file becomes its own <style data-plugin-css> tag at load time, so the
+ * import order in client/index.ts IS the cascade order - which is what makes the
+ * concatenation of these files byte-identical to the stylesheet they came from (G5).
+ */
+
+.dsx-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dsx-btn-primary {
+  background: var(--dsw-alias-state-business-primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+.dsx-navbtn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  transition: background 0.12s ease;
+}
+
+.dsx-navbtn:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.dsx-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dsw-alias-border-l2);
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+.dsx-dot-active {
+  background: var(--dsw-alias-state-business-primary);
+}
+
+/* ── Switch (official settings-row checkbox-switch, adapted to --dsw-* tokens). ── */
+.dsx-switch-row {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex: none;
+}
+.dsx-switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+.dsx-switch-track {
+  display: inline-flex;
+  align-items: center;
+  width: 34px;
+  height: 20px;
+  padding: 0;
+  border-radius: 11px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  transition: background 0.16s ease;
+}
+.dsx-switch-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-left: 2px;
+  background: #fff;
+  box-shadow: var(--dsw-shadow-lv1);
+  transition: transform 0.16s ease;
+}
+.dsx-switch-input:checked + .dsx-switch-track {
+  background: var(--dsw-alias-state-success-primary);
+}
+.dsx-switch-input:checked + .dsx-switch-track .dsx-switch-thumb {
+  transform: translateX(14px);
+}
+.dsx-switch-input:focus-visible + .dsx-switch-track {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+.dsx-switch-input:disabled + .dsx-switch-track {
+  background: var(--dsw-alias-interactive-bg-hover);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.dsx-switch-input:disabled + .dsx-switch-track .dsx-switch-thumb {
+  box-shadow: none;
+}
+
+/* ── Metrics picker (ConfigField type 'metrics'): pick which numbers a card
+ *    shows, and drag a row to reorder it. Row = settings shape: NAME owns the
+ *    left edge, the SWITCH is the row's control on the right — and the ROW
+ *    ITSELF is the drag handle, exactly like the official session rows in the
+ *    left sidebar (no grip icon anywhere). The switch is the same control the
+ *    'toggle' field uses, so the settings form keeps ONE control vocabulary. ── */
+.dsx-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+.dsx-metric {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Same official menu-item rhythm as the installed list above, so the two
+   * lists in one panel finally read as one system: min-height 40, padding 8 10,
+   * radius 10, hover fill only, box-sizing so 40 IS the row (see above). */
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.dsx-metric:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+/* A switched-ON row carries NO fill of its own: the switch says the state and
+ * the row's POSITION (top group = on the card) says the order. The grey pill it
+ * used to paint was a second, redundant signal that also read as a selection
+ * (reported 2026-09-25). */
+.dsx-metric.is-on {
+  background: transparent;
+}
+.dsx-metric.is-on:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+/* The row being dragged lifts out of the list. */
+.dsx-metric.is-dragging {
+  opacity: 0.35;
+}
+/* Insertion indicator: the OFFICIAL one, copied from the DSH sidebar's
+ * session-row CSS (`.…_dropBefore::before` / `…_dropAfter::after`) — two 55°/125°
+ * gradient strokes draw the little arrow at the left end, the third gradient is
+ * the 2px blue line that spans the row. Same tokens, same geometry, so EVERY
+ * reorderable list in this plugin (the metric picker AND the installed-widget
+ * order list) teaches the same gesture — the one the product itself uses for
+ * sessions and workspaces. */
+.dsx-drop-before::before,
+.dsx-drop-after::after {
+  content: '';
+  z-index: 1;
+  background:
+    linear-gradient(55deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 5px 7px no-repeat,
+    linear-gradient(125deg, transparent calc(50% - 1px), var(--dsw-alias-state-business-primary) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 0 5px / 5px 7px no-repeat,
+    linear-gradient(var(--dsw-alias-state-business-primary) 0 0) 4px 5px / calc(100% - 4px) 2px no-repeat;
+  pointer-events: none;
+  height: 12px;
+  position: absolute;
+  left: 0;
+  right: 4px;
+}
+.dsx-drop-before::before {
+  top: -7px;
+}
+.dsx-drop-after::after {
+  bottom: -7px;
+}
+.dsx-order-row.is-dragging {
+  opacity: 0.35;
+}
+.dsx-metric-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--dsw-alias-label-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dsx-metric-hint {
+  padding: 4px 6px 0;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Yellow capsule next to a 2×4 market title when the rail is in 1-column
+   mode (the tile cannot fit a single-column rail): warn colour with a dark
+   label so it reads in both themes (the warn token itself is amber). */
+.dsx-size-warn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--dsw-alias-state-warn-primary, #f2b04a);
+  color: #4a3800;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Floating limit warning: absolute + centred, never takes layout height. */
+.dsx-limit-tip {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 64px;
+  z-index: 30;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--dsw-alias-state-warn-primary, var(--dsw-alias-label-tertiary));
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 92%, transparent);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  padding: 4px 12px;
+  box-shadow: var(--dsw-shadow-lv1);
+  pointer-events: none;
+}
+
+/* Hide-only-the-text switch: the official composer stats line below the
+   input box keeps its space (layout untouched) but its labels are invisible —
+   exactly like hiding just the text. Default OFF = show the bar. */
+body.dsx-hide-statsline [data-slot='conversation.composer.dock'] > div,
+body.dsx-hide-statsline [data-slot='conversation.composer.dock'] > div * {
+  color: transparent !important;
+}
+
+/* ── Live/over-budget value pulse ──────────────────────────────────────────
+   The escalation now lives on the FIGURE, not on the card: the value turns the
+   error red and blinks (a slow opacity breathe) while the card frame stays
+   clean — no edge glow, no shadow noise around the widget. Used by peak
+   pricing's EXPENSIVE state and by a plan projected past 100%.
+   ponytail: opacity-only blink; swap for a colour tween if it reads too soft. */
+.dsx-stats-card-value.dsx-value-pulse {
+  color: var(--dsw-alias-state-error-primary);
+  animation: dsx-value-breathe 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes dsx-value-breathe {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dsx-stats-card-value.dsx-value-pulse {
+    animation: none;
+  }
+}
+
+

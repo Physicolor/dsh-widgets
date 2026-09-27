@@ -1,0 +1,251 @@
+/* Harness Widgets — the 组件配置 panel: order rows, field controls, tabs and drawers.
+ *
+ * Split out of widgets.module.css (Phase 5). The rules are in their ORIGINAL order
+ * and each layer file becomes its own <style data-plugin-css> tag at load time, so the
+ * import order in client/index.ts IS the cascade order - which is what makes the
+ * concatenation of these files byte-identical to the stylesheet they came from (G5).
+ */
+
+.dsx-stats-addpanel {
+  position: fixed;
+  /* The rail drawer wrapper is pointer-events:none (it only slides); every
+     interactive child must opt back in explicitly. Without this the whole
+     add panel was unhit-testable — clicks fell through to the rail's cards. */
+  pointer-events: auto;
+  right: calc(var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)) + var(--dsx-rail-pad, 14px));
+  width: auto;
+  /* Bottom = input-box breathing gap (--dsx-input-bottom) -- NEVER track
+     --dsh-sidebar-width here: that variable is dsh-better-sidebar's right
+     panel WIDTH (it pushes #root aside when the right sidebar is open); used
+     as a vertical gap it lifts the bottom by the whole panel width, halving
+     the visible panel height (top stays fixed). Symmetry with the right gap
+     is wrong for the same reason -- the right gap grows with the sidebar,
+     not with the viewport. */
+  /* Bottom = HALF the composer's breathing gap (the user's rule), with a floor:
+   * when the shell reports no gap at all (`--dsx-input-bottom: 0`) a literal half
+   * would glue the panel to the window edge, so 8px is the minimum. */
+  bottom: max(calc(var(--dsx-input-bottom, 28px) / 2), 8px);
+  z-index: 30;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--dsw-alias-bg-layer-1);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 16px;
+  box-shadow: var(--dsw-shadow-lv3);
+  transform: translateX(calc(100% + 40px));
+  /* `width` is animatable here because the drawer changes it in one discrete
+   * step (open/close), never per frame — the drag path writes inline directly
+   * and is instant. */
+  transition: transform 0.28s var(--ds-ease-in-out), width var(--ds-transition-duration-slow) var(--ds-ease-in-out), visibility 0s linear 0.28s;
+  visibility: hidden;
+}
+/* Continuous curvature, bound to 设置 → 圆角 (same switch the cards use). */
+.dsx-stats-addpanel.dsx-squircle {
+  corner-shape: squircle;
+}
+.dsx-stats-addpanel.open {
+  transform: translateX(0);
+  transition-delay: 0s;
+  visibility: visible;
+}
+.dsx-stats-addpanel-resize {
+  position: absolute;
+  left: -5px;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: ew-resize;
+  z-index: 3;
+  /* invisible hit area — no visible bar, matching the product's sidebar
+     drag affordance */
+}
+.dsx-stats-addpanel-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* No rule between the title and the tab selector (the user removed it) and a
+     tighter vertical rhythm: 10px above / 6px below the title line, with the
+     tabs' own 8px padding carrying the rest. */
+  padding: 12px 12px 4px;
+}
+.dsx-stats-addpanel-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  color: var(--dsw-alias-label-primary);
+}
+.dsx-stats-addpanel-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.dsx-stats-addpanel-close:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+.dsx-stats-addpanel-body {
+  flex: 1;
+  min-height: 0;
+  /* The BODY no longer scrolls: each tab's own columns do (`overflow-y: auto`).
+   * A scrolling body made the whole content flow move together — including the
+   * 预览 sidebar, which must stay put like a column of the panel (the user:
+   * 「预览的侧边栏…应该为组件配置的高度和内容流的整体高度相同」). */
+  overflow: hidden;
+  padding: 10px 12px 12px;
+}
+/* The market/config inner list already provides its own scroll-free row layout;
+   keep the reused page from overflowing the fixed panel height. */
+.dsx-stats-addpanel-body > div {
+  height: 100%;
+  min-height: 0;
+}
+
+.dsx-order-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
+  /* The official menu-item rhythm (Menu.module.css): min-height 40, padding
+   * 8 10, radius 10. `box-sizing: border-box` matters — the card's own
+   * border-box rule does not reach the settings panel, so without it the row
+   * measured 56px instead of 40 (padding added on top of min-height). The
+   * horizontal padding is not decoration either: without it the selected row's
+   * blue fill hugged the text with no breathing room (reported 2026-09-25). */
+  box-sizing: border-box;
+  min-height: 40px;
+  /* The OFFICIAL settings nav row's horizontal padding (measured 2026-09-26:
+     `9px 16px 9px 12px`) — 12 at the start, 16 before a trailing icon. Our row
+     ends with the delete icon, so that 16px right inset is what keeps it off the
+     column's edge (the user's 被截断 report). */
+  padding: 8px 16px 8px 12px;
+  /* The row is its own drag handle (no grip icon) and the insertion indicator
+   * is drawn on it, so it must be a positioning context. */
+  position: relative;
+}
+
+.dsx-order-row:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.dsx-order-row.selected {
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent);
+  /* INSET ring, never `outline`: an outline is painted OUTSIDE the box, so the
+   * list column's `overflow: hidden` cut its left/right 1px off (the user's
+   * 「遮罩裁断」 report, 2026-09-26). A box-shadow inset lives inside the row's own
+   * box and cannot be clipped. */
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dsw-alias-state-business-primary) 45%, transparent);
+  cursor: pointer;
+}
+
+.dsx-restore {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Entrance for the 组件配置 detail drawer: a TRANSLATE, never a cross-fade —
+ * the panel itself opens with a slide, and a surface that owns a track must not
+ * fade in (user's rule, 2026-09-25). */
+@keyframes dsx-drawer-in {
+  from {
+    transform: translateX(24px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.dsx-trash {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.dsx-trash:hover {
+  color: var(--dsw-alias-state-danger, #e5484d);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.dsx-badge {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 9px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  border: 1px solid var(--dsw-alias-border-l2);
+  white-space: nowrap;
+  flex: none;
+}
+
+.dsx-tabbar {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+}
+
+/* The 组件配置 drawer's close button (title row, right of the size picker). */
+.dsx-drawer-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+}
+.dsx-drawer-close:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.dsx-tab {
+  padding: 8px 2px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.dsx-tab[data-active='true'] {
+  color: var(--dsw-alias-state-business-primary);
+  border-bottom-color: var(--dsw-alias-state-business-primary);
+}
+
+/* The market's search bar copies the OFFICIAL sidebar search box (measured
+ * 2026-09-27: 30px tall, 10px radius, one hairline border, transparent fill, a
+ * leading magnifier, a 13px input) — the user asked for exactly that field.
+ * Explicit longhands so nothing can override the colour through the shorthand. */

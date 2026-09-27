@@ -1,0 +1,251 @@
+/* Harness Widgets — the card shell, its head/body slots and the loading skeleton.
+ *
+ * Split out of widgets.module.css (Phase 5). The rules are in their ORIGINAL order
+ * and each layer file becomes its own <style data-plugin-css> tag at load time, so the
+ * import order in client/index.ts IS the cascade order - which is what makes the
+ * concatenation of these files byte-identical to the stylesheet they came from (G5).
+ */
+
+.dsx-stats-rail,
+.dsx-magnify-layer {
+  font-family: var(--dsw-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif);
+  font-size: 16px;
+  line-height: normal;
+}
+
+.dsx-stats-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin, transparent);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dsx-stats-capsule[aria-pressed='true'] {
+  background: var(--dsw-alias-state-business-primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* No margin for the rail at this width (the transcript measure owns it):
+ * the toggle reads as unavailable instead of opening nothing. */
+.dsx-stats-capsule[data-space='tight'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dsx-stats-card {
+  position: relative;
+  box-sizing: border-box;
+  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin, transparent);
+  background: var(--dsw-specific-input-major, #fff);
+  box-shadow: var(--dsw-shadow-lv2);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+/* 连续曲率圆角 (Settings → 连续曲率): `corner-shape: squircle` turns the
+ * border-radius corners into superellipses — the curvature ramps in from the
+ * straight edges instead of swapping a straight line for a circular arc, which
+ * is what makes an iOS/Figma-style rounded rect read as "soft" rather than
+ * "cut". Native CSS, so the card's border and box-shadow follow the same
+ * outline (a clip-path squircle would slice both off). Degrades to a plain
+ * round corner on any engine without corner-shape. */
+.dsx-stats-card.dsx-squircle {
+  corner-shape: squircle;
+}
+
+/* ---- Official settings-nav glyph for our section ----------------------------
+ * The shell's settings nav picks its glyph from the section ID and only knows
+ * its three built-in IDs ("models" / "agent-presets" / "plugins"); every other
+ * section — ours included — falls back to the generic settings gear. The
+ * section contract carries no icon field, so the client half marks OUR row with
+ * `data-dsx-nav` (matched by our own registered label) and paints the glyph
+ * here, as a mask of the app icon's four-tile motif.
+ *
+ * OUTLINE, not the filled mark: the official 16px set is stroke-based at
+ * `stroke-width: 1.25` (@deepseek-ai/dsh-client-ui-primitives), and a filled
+ * glyph next to it read heavier than its neighbours. The tiles here are stroked
+ * at the same 1.25, with their gaps widened to ~3 units so the rendered gap
+ * between two strokes stays ~1.7px instead of collapsing to 0.75px.
+ *
+ * Scoped to the marked row only: no other plugin's class name is read or
+ * styled, and the attribute is removed with the owning effect. Delete this
+ * block and the marker once the official section contract accepts an icon. */
+[data-dsx-nav='widgets'] > svg {
+  display: none;
+}
+
+[data-dsx-nav='widgets']::before {
+  content: '';
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background-color: currentColor;
+  -webkit-mask: var(--dsx-nav-glyph) center / 16px 16px no-repeat;
+  mask: var(--dsx-nav-glyph) center / 16px 16px no-repeat;
+}
+
+:root {
+  /* The app icon's inner tiles (icon-v3) as OUTLINES on the 16px grid: the same
+     1.25 stroke as the official set, tiles inset to 1.1 so the stroke never
+     clips, and ~3-unit gaps (≈1.7px rendered between strokes) so the four cards
+     still separate at 1x. */
+  --dsx-nav-glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%20fill='none'%20stroke='%23fff'%20stroke-width='1.25'%20stroke-linejoin='round'%3E%3Crect%20x='1.1'%20y='1.1'%20width='4.6'%20height='5.5'%20rx='1.4'/%3E%3Crect%20x='1.1'%20y='9.4'%20width='4.6'%20height='5.5'%20rx='1.4'/%3E%3Crect%20x='8.9'%20y='1.1'%20width='6'%20height='7.1'%20rx='1.8'/%3E%3Crect%20x='8.9'%20y='10.9'%20width='4.4'%20height='4'%20rx='1.3'/%3E%3C/svg%3E");
+}
+
+/* Whole-card cycle (pooled usage): press dips the card, release springs back
+   with a slight bounce — the button feel the shell uses for its own pills. */
+.dsx-stats-card.dsx-cyclable {
+  cursor: pointer;
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.dsx-stats-card.dsx-cyclable.dsx-cycle-pressed {
+  transform: scale(0.93);
+  transition: transform 0.08s ease-out;
+}
+
+.dsx-stats-card-title {
+  color: var(--dsw-alias-state-business-primary);
+  line-height: 1.2;
+}
+
+/* Text inside a card holds its SHAPE. The card is a fixed-size tile: a wrapped
+   label does not make it taller, it pushes its own content out of the tile's
+   floor (the ring rows are bottom-aligned) and reads as a malformed figure.
+   Measured 2026-09-19 on the Command Code 窗口 card: "25.4%" wrapped at the "%"
+   in its 34px ring cell, doubling the caption's height. Every single-line text
+   node therefore refuses to wrap and ellipsizes instead; blocks that are meant
+   to wrap opt back in explicitly (the quote block sets white-space itself). */
+.dsx-stats-card-title,
+.dsx-stats-card-value,
+.dsx-stats-card-sub,
+.dsx-stats-card-legend,
+.dsx-stats-card-headafter,
+.dsx-stats-card-meter {
+  white-space: nowrap;
+}
+.dsx-stats-card-value,
+.dsx-stats-card-sub,
+.dsx-stats-card-legend {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Loading skeleton ─────────────────────────────────────────────────────
+   Placeholder pills in the card's own rhythm: same insets, same line heights
+   as the real title / figure / body rows, so nothing re-flows when the data
+   lands. The shimmer is a background sweep (compositor-only, no layout) and is
+   disabled under reduced motion, where the pill keeps its flat tint. */
+.dsx-sk {
+  background: linear-gradient(
+    90deg,
+    var(--dsw-alias-interactive-bg-hover) 0%,
+    color-mix(in srgb, var(--dsw-alias-interactive-bg-hover) 45%, var(--dsw-alias-bg-layer-1)) 50%,
+    var(--dsw-alias-interactive-bg-hover) 100%
+  );
+  background-size: 200% 100%;
+  animation: dsx-sk-sweep 1.5s var(--ds-ease-in-out) infinite;
+}
+@keyframes dsx-sk-sweep {
+  0% { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dsx-sk { animation: none; }
+}
+.dsx-sk-card {
+  /* No interactive affordance while there is nothing to interact with. */
+  pointer-events: none;
+}
+
+.dsx-stats-card-value {
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  word-break: break-word;
+  line-height: 1.25;
+}
+
+.dsx-stats-card-sub {
+  color: var(--dsw-alias-label-caption);
+  font-size: 10px;
+}
+
+.dsx-stats-resize {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nesw-resize;
+  z-index: 2;
+  opacity: 0;
+  background: linear-gradient(45deg, transparent 50%, var(--dsw-alias-label-tertiary) 50%, var(--dsw-alias-label-tertiary) 62%, transparent 62%);
+}
+
+.dsx-stats-card:hover .dsx-stats-resize {
+  opacity: 1;
+}
+
+.dsx-stats-card-corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  border: none;
+  background: var(--dsw-alias-state-business-primary);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--dsw-shadow-lv1);
+  transition: background 0.16s ease, width 0.16s ease, color 0.16s ease;
+}
+.dsx-stats-card-corner:hover {
+  background: var(--dsw-alias-state-business-primary);
+  filter: brightness(1.08);
+}
+.dsx-stats-card-corner.armed {
+  width: 56px;
+  border-radius: 15px;
+  font-weight: 600;
+}
+
+[data-conversation-scroll] {
+  /* Must be the SAME curve the AppFrame uses for its track (the official layout
+     README lists "track and occupant share one curve" as a layout invariant), so
+     the transcript's inset and the panel's push start and end together. 0.2s/ease
+     here was visibly out of step with the 0.3s track. */
+  transition: padding-right var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+}
+
+/* A conversation-width handle is HELD: the rail's claim is recomputed every
+   frame. The inset must NOT run on the shell's 0.3s track curve here (it would
+   spend the whole drag chasing a moving target — the original "the widget area
+   lags behind the conversation" report), but it must not be INSTANT either: the
+   card size now moves in tiers, so every claim change is a discrete hop that the
+   cards animate. Using the cards' own spring keeps the rail, the cards and the
+   transcript on ONE curve (see SLOT_SPRING in the client half). */
+html.dsx-live-width [data-conversation-scroll] {
+  transition: padding-right 0.26s cubic-bezier(0.34, 1.36, 0.52, 1);
+}
+
+/* Yielded (the panel owns the space): the drawer is faded out but stays
+ * mounted so its retreat is part of the panel's motion. An invisible cover must
+ * not keep capturing clicks over the transcript it just gave back. */
+[data-yielded] .dsx-stats-rail,
+[data-yielded] .dsx-stats-addpanel {
+  pointer-events: none !important;
+}
+
