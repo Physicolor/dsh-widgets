@@ -6,8 +6,29 @@
 //   4. uninstalling falls back to the built-in dictionaries.
 // Run: node --experimental-strip-types docs/verify-i18n.mjs
 // (needs a Node build with type stripping — Node 22.6+)
+//
+// The dictionaries come from the REAL units (each manifest's locale over
+// src/widgets/_shared/locales.json), exactly like scripts/gen-registry.mjs
+// merges them — so the widget keys below are asserted against the strings the
+// product actually ships, not against a copy kept in this file.
 
+import { readdirSync, readFileSync } from 'node:fs'
 import { installLocale, t, onLocaleChange } from '../src/client/i18n.ts'
+
+/** Merge every unit's manifest locale over the family-shared layer. */
+function widgetLocales() {
+  const root = new URL('../src/widgets/', import.meta.url)
+  const out = { zh: {}, en: {} }
+  const shared = JSON.parse(readFileSync(new URL('_shared/locales.json', root), 'utf8'))
+  for (const loc of ['zh', 'en']) Object.assign(out[loc], shared[loc] ?? {})
+  for (const unit of readdirSync(root, { withFileTypes: true })) {
+    if (!unit.isDirectory() || unit.name.startsWith('_')) continue
+    let m
+    try { m = JSON.parse(readFileSync(new URL(`${unit.name}/manifest.json`, root), 'utf8')) } catch { continue }
+    for (const loc of ['zh', 'en']) Object.assign(out[loc], m.locale?.[loc] ?? {})
+  }
+  return out
+}
 
 const state = { active: 'zh', dicts: {} }
 const listeners = new Set()
@@ -27,7 +48,7 @@ const fake = {
 
 let localeChanged = 0
 const disposeLocaleListener = onLocaleChange(() => { localeChanged += 1 })
-const dispose = installLocale(fake)
+const dispose = installLocale(fake, widgetLocales())
 // Re-broadcast a simulated locale switch through the service's subscribe seat.
 const reload = () => { for (const fn of [...listeners]) fn() }
 
@@ -41,7 +62,8 @@ state.active = 'zh'
 eq('capsule (zh)', t('ui.capsule'), '组件')
 eq('section label (zh)', t('ui.section.label'), '组件')
 eq('context water segment (zh)', t('card.contextWater.system'), '系统提示词')
-eq('peak window (zh)', t('card.peak.window1'), '上午 09:00–12:00')
+eq('peak window (zh)', t('card.peak.am', { range: '09:00–12:00' }), '上午 09:00–12:00')
+eq('peak whole-day reason (zh)', t('card.peak.offDay', { reason: t('card.peak.holiday.midautumn') }), '中秋节 · 全天低谷')
 eq('counts value (zh)', t('card.counts.value', { turns: 7, steps: 42 }), '7轮 42步')
 eq('counts name (zh)', t('widget.counts.name'), '轮次·步数')
 
@@ -53,15 +75,15 @@ eq('market back (en)', t('market.back'), '← Back')
 eq('context water system (en)', t('card.contextWater.system'), 'System prompt')
 eq('context water tools (en)', t('card.contextWater.tools'), 'Tools')
 eq('context water messages (en)', t('card.contextWater.messages'), 'Messages')
-eq('peak window1 (en)', t('card.peak.window1'), 'Morning 09:00–12:00')
-eq('peak window2 (en)', t('card.peak.window2'), 'Afternoon 14:00–18:00')
+eq('peak window1 (en)', t('card.peak.am', { range: '09:00–12:00' }), 'Morning 09:00–12:00')
+eq('peak window2 (en)', t('card.peak.pm', { range: '14:00–18:00' }), 'Afternoon 14:00–18:00')
 eq('counts value (en)', t('card.counts.value', { turns: 7, steps: 42 }), '7 turns · 42 steps')
 eq('counts name (en)', t('widget.counts.name'), 'Turns · Steps')
 eq('context water title (en)', t('card.contextWater.title'), 'Context Used')
 eq('peak title (en)', t('card.peak.title'), 'Peak Pricing')
 eq('total key (en)', t('usage.totalKey'), 'All Keys')
 eq('task sub (en)', t('card.task.sub', { doing: 1, pending: 2 }), '1 in progress · 2 pending')
-eq('settings columns option (en)', t('settings.columns.option', { n: 4 }), '4 cols')
+eq('settings columns option (en)', t('settings.columns.option', { n: 4 }), 'Up to 4')
 eq('disabled 2x4 note (en)', t('market.sizeBlockedTitle'), '2×4 is not shown in a 1-column layout')
 
 state.active = 'zh'

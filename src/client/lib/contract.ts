@@ -159,6 +159,75 @@ export interface CommandCodeData extends CommandCodeAccount {
   keys?: CommandCodeKeyEntry[]
 }
 
+/** How the host authenticated to GitHub for one payload: a credential from the
+ *  `GITHUB_TOKEN` ref, the local `gh` CLI's own login, or nobody (anonymous —
+ *  60 requests/hour, shared per egress IP). */
+export type GitHubAuth = 'credentials' | 'gh' | 'anonymous'
+
+/** One day of a contribution calendar. `level` is GitHub's own 0..4 bucket
+ *  (the green step), `count` the exact number of contributions that day. */
+export interface GitHubContribDay {
+  date: string
+  count: number
+  level: number
+}
+
+/** The contribution calendar for ONE login (the card behind the green grid).
+ *
+ *  `source` names how the host got it, because the two paths are not the same
+ *  thing and the card must be able to say which one it is reading:
+ *   - `graphql` — the official API (needs a token; exact counts, ~1 request);
+ *   - `html`    — the public contributions page, parsed (no token at all, but
+ *                225 KB and 1–9 s, and it is a scrape: GitHub may change it). */
+export interface GitHubContributions {
+  login: string
+  /** Σ over `days` (the calendar's own total, e.g. 212). */
+  total: number
+  source: 'graphql' | 'html'
+  days: GitHubContribDay[]
+  /** Consecutive days with ≥1 contribution ending today (0 when today is
+   *  empty — GitHub's own "current streak" also breaks until you commit). */
+  streak: number
+  /** The longest run of consecutive contributing days inside the window. */
+  longest: number
+}
+
+/** One repository's pulse — what the four 2×2 cards and the 2×4 board read. */
+export interface GitHubRepo {
+  fullName: string
+  stars: number
+  forks: number
+  /** Open issues, PRs EXCLUDED (the repo payload's `open_issues_count` counts
+   *  both, so it is never used for this field). */
+  openIssues: number
+  /** True when the listing filled a whole page, i.e. `openIssues` is a floor. */
+  issueCountCapped: boolean
+  /** Open issues nobody has commented on. `null` = not measured (anonymous
+   *  requests skip the extra search call), never 0-by-assumption. */
+  unanswered: number | null
+  /** ISO instant of the last push (any branch). */
+  pushedAt: string | null
+  release: { tag: string; name: string; publishedAt: string | null } | null
+  /** Newest open issue (PRs excluded). */
+  newestIssue: { number: number; title: string; comments: number; updatedAt: string } | null
+}
+
+/** The payload of the host `/api/github` route. Every slice is independently
+ *  nullable: the contribution calendar and the repo list are fetched (and
+ *  cached) separately, so a slow scrape never delays the repo numbers. */
+export interface GitHubData {
+  auth: GitHubAuth
+  /** The login the calendar was actually built for — the configured `user`, or
+   *  (when that is empty) whoever the resolved token belongs to. Empty when
+   *  there was no token and no configured user. */
+  login: string
+  contributions: GitHubContributions | null
+  repos: GitHubRepo[]
+  /** Per-slice failure notes, e.g. `{ contributions: 'rate-limit' }`, or
+   *  `no-user` / `no-repo` when an empty config could not be resolved. */
+  errors: Record<string, string>
+}
+
 /** One hardware snapshot from the Host `/api/sysinfo` route (machine-local
  *  values only — never session data). `cpu.util` is the utilization averaged
  *  over the window between two host samples (null on the very first sample,
@@ -233,6 +302,14 @@ export interface WidgetStats {
    *  folding the machine-wide `heatmapRaw` in charged the plan for every other
    *  provider's tokens too (measured 2026-09-20: 758M vs the plan's own 474M). */
   commandCodeDaily?: Record<string, number>
+  /** GitHub payload from the host `/api/github` route (contribution calendar +
+   *  per-repo pulse). `null` while the first pass is in flight; the widgets'
+   *  own `user` / `repos` config fields decide WHAT the host was asked for. */
+  github?: GitHubData | null
+  /** Stable code when the GitHub route could not answer at all: `'unloaded'`
+   *  (host route missing → dsh web not restarted), `'unavailable'`, or
+   *  `http:<status>`. Per-slice notes live in `github.errors` instead. */
+  githubError?: string | null
   /** Id of the currently armed (awaiting second tap) action, if any. */
   armedAction?: string | null
   /** Current task list (todos projection): status is pending | in_progress | completed. */
@@ -290,18 +367,23 @@ export interface WidgetChart {
    *  percent hard right, and a SEGMENTED bar under them (filled cells = used) —
    *  the 套餐/额度 card family's window trio. */
   quotas?: Array<{ label: string; pct: number; tone?: BarDatum['tone'] }>
-  /** Trajectory lanes (对话轨迹): one bar per beat, newest at the RIGHT, colored
-   *  by the official 轨迹 lane colors (输入 / 模型 / 工具). No axes, no corner
-   *  labels — the bars own the whole remaining card height. */
+  /** Trajectory lanes (对话轨迹): one bar per beat, newest at the RIGHT, drawn
+   *  with the official 轨迹 timeline's HORIZONTAL geometry (the official
+   *  `min(width * .08%, 1px)` gap, the 2px floor, 1px corners) and its lane colors
+   *  (输入 / 模型 / 工具). One ROW per lane, all three lanes always drawn — an
+   *  empty lane is an empty track, exactly as in the official strip. The VERTICAL
+   *  layout is the card's own: three equal bands, flush against each other,
+   *  filling the card's remaining height (the official 8px/14px strip belongs to a
+   *  1300px-wide rail). No axes, no corner labels. */
   lanes?: LaneDatum[]
-  /** How `lanes` distributes width along the shared time axis (per-instance
-   *  choice in the widget's own config):
-   *   - 'time'  (default) — each beat's width is proportional to its duration, so
-   *     a long tool call visibly owns more of the lane than a quick model step
-   *     (an input, ~0ms, collapses to a minimum-width tick);
-   *   - 'equal' — the fixed-slot window: every beat is one slot wide, the slot
-   *     freezes at TRAJECTORY_WINDOW beats, and the row stops re-scaling as the
-   *     window rolls. */
+  /** How a `lanes` bar is sized along the shared axis — the card's equivalent of
+   *  the official toolbar's 时长 toggle (per-instance choice in the widget's own
+   *  config). A bar always fills its lane's full height:
+   *   - 'time'  (default) — the recorded-duration projection: a bar's width is
+   *     its share of the window's total duration, idle compressed away, so a
+   *     26.7s tool call is visibly longer than a 17ms one;
+   *   - 'equal' — the official DEFAULT sequence projection: one equal slot per
+   *     beat, back to back, the slot frozen at TRAJECTORY_WINDOW beats. */
   laneSizing?: 'equal' | 'time'
   /** Donut row (e.g. OpenCode rolling/weekly/monthly, Command Code 5h/weekly/
    *  monthly). `label` renders as a SMALL GREY caption beside the percent —
@@ -316,6 +398,12 @@ export interface WidgetChart {
   /** For figures: a row of label-over-value figure pairs (e.g. 今日用量 24.7M /
    *  今日推荐 200M) — plain numbers, no axis, spread across the card width. */
   figures?: Array<{ label: string; value: string; tone?: BarDatum['tone'] }>
+  /** For figures: SEVERAL such rows, stacked (each row keeps the single row's
+   *  geometry: first pair flush left, last flush right). A 2×4 is twice as wide
+   *  as it is tall in content, so a wide card can carry two rows where a single
+   *  row of eight figures would squeeze every label to nothing — the widget
+   *  decides the split, the renderer just stacks what it is handed. */
+  figureRows?: Array<Array<{ label: string; value: string; tone?: BarDatum['tone'] }>>
   /** Utilization sparkline (Windows-task-manager style): a filled area under
    *  a polyline. `null` entries break the line (no baseline at that sample). */
   line?: {
@@ -329,7 +417,20 @@ export interface WidgetChart {
   segments?: Array<{ label: string; tokens: number; tone: 'primary' | 'success' | 'muted' | 'warn' }>
   totalTokens?: number
   /** Heatmap grid rows (per day amounts). */
-  heatmap?: Array<Array<{ value: number; date: string }>>
+  heatmap?: Array<Array<{ value: number; date: string; level?: number }>>
+  /** Colour ramp for a `heatmap`. `'brand'` (default) is the business-blue
+   *  alpha ramp derived from `--dsw-alias-state-business-primary`, which is
+   *  what a token/value calendar wants. `'github'` is GitHub's own five-step
+   *  contribution ramp — derived from `--dsw-alias-state-success-primary`
+   *  instead of a literal green, so it still follows the theme (a hard-coded
+   *  palette would break dark mode; see the plugin design guide §2.1). It
+   *  reads each cell's `level` (0..4) rather than placing it on a continuous
+   *  scale, because that is what the source reports. */
+  heatmapPalette?: 'brand' | 'github'
+  /** Unit the heatmap's hover tooltip prints after the number (`'tok'` when
+   *  absent). Kept on the chart so a unit-localized word stays in the widget's
+   *  dictionary instead of leaking into the renderer. */
+  heatmapUnit?: string
 }
 
 /** An interactive action on a card (e.g. one-click Compact). */
@@ -510,10 +611,15 @@ export interface WidgetRenderOut {
 export interface ConfigField {
   key: string
   label: string | (() => string)
-  type: 'text' | 'textarea' | 'toggle' | 'align' | 'valign' | 'mode'
-  default?: string | boolean | 'left' | 'center' | 'right'
-  /** For type 'mode': the selectable options as [value, label] pairs. */
+  type: 'text' | 'textarea' | 'toggle' | 'align' | 'valign' | 'mode' | 'metrics'
+  default?: string | boolean | string[] | 'left' | 'center' | 'right'
+  /** For type 'mode': the selectable options as [value, label] pairs.
+   *  For type 'metrics': the SELECTABLE metrics in offer order (the stored
+   *  value is an ordered subset of these keys). */
   options?: Array<[string, string | (() => string)]>
+  /** For type 'metrics': how many may be selected at once (default 6 — the
+   *  density limit a 2×4 figures row can still render legibly). */
+  max?: number
 }
 
 /**

@@ -9,18 +9,23 @@ function fmtMs(ms: number): string {
 
 /** 对话轨迹 — the official 轨迹 (trajectory) rail compressed into one card.
  *
- *  Three lanes, exactly the ones the official timeline draws: 输入 (a user or
- *  steering message), 模型 (an assistant step) and 工具 (a tool call). Each beat
- *  is one segment in its own lane, placed by window position (oldest left,
- *  newest right).
+ *  One ROW per lane, exactly the lanes the official timeline draws — 输入 (a user
+ *  or steering message), 模型 (an assistant step) and 工具 (a tool call) — in that
+ *  order, and all three lanes are always drawn (an empty lane is an empty track,
+ *  as in the official strip). Every beat is one bar in its own lane, oldest left,
+ *  newest right. The card renders the official HORIZONTAL geometry (the official
+ *  `min(width*.08%, 1px)` gap, the 2px floor, 1px corners) but its own VERTICAL
+ *  layout: three flush bands filling the card's remaining height.
  *
- *  WIDTH is a per-card switch (`泳道宽度`):
- *   - 按时长 (default): every beat's width is proportional to its duration, so
- *     the strip shows the session's actual rhythm — a long tool call owns more
- *     of the lane than a quick model step;
- *   - 等宽: the fixed-slot window, where the slot freezes at TRAJECTORY_WINDOW
- *     beats and the row stops re-scaling as the window rolls (n beats share the
- *     lane while it fills, so a single beat owns its whole lane).
+ *  WIDTH is a per-card switch (`泳道宽度`), mirroring the official toolbar's 时长
+ *  toggle:
+ *   - 按时长 (default): the recorded-duration projection — a bar's width is its
+ *     share of the window's total duration (idle compressed), so a 26.7s tool
+ *     call is visibly longer than a 17ms one; anything under the official 2px
+ *     floor is drawn at 2px;
+ *   - 等宽: the official DEFAULT projection — one equal slot per beat, back to
+ *     back, the slot frozen at TRAJECTORY_WINDOW beats so the row stops
+ *     re-scaling as the window rolls (n beats share the lane while it fills).
  *
  *  The subtitle is the window's per-lane counts, so the numbers and the lanes
  *  always describe the same 30 beats. */
@@ -45,8 +50,9 @@ function trajectoryRender(stats: WidgetStats): WidgetRenderOut | null {
     chart: {
       kind: 'lanes',
       lanes,
-      // Default to the duration-proportional lanes; the config switch turns it
-      // back into the fixed-slot window.
+      // Default to the recorded-duration widths (the official 时长 projection);
+      // the config switch turns them into the official default equal-width
+      // sequence projection instead.
       laneSizing: stats.laneSizing === 'equal' ? 'equal' : 'time',
     },
   }

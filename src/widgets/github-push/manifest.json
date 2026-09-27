@@ -1,0 +1,17 @@
+{
+  "id": "github-push",
+  "order": 73,
+  "group": "github",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.github-push.name": "提交",
+      "widget.github-push.desc": "距离最近一次 push 多久（12s / 5m / 3h / 6d），副行是最新 Release tag"
+    },
+    "en": {
+      "widget.github-push.name": "Pushes",
+      "widget.github-push.desc": "How long since the last push (12s / 5m / 3h / 6d), with the newest release tag underneath"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "github-board",
+  "order": 74,
+  "group": "github",
+  "builtin": false,
+  "sizes": ["2x4"],
+  "locale": {
+    "zh": {
+      "widget.github-board.name": "仓库脉搏",
+      "widget.github-board.desc": "2×4 汇总板：Stars / 未关闭 Issue / 未回复 / 最近提交 并排，标题行给出仓库全名与最新 Release"
+    },
+    "en": {
+      "widget.github-board.name": "Repo Pulse",
+      "widget.github-board.desc": "2×4 board: stars / open issues / unanswered / last push side by side, with the full repo name and newest release on the title row"
+    }
+  }
+}

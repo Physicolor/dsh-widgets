@@ -83,7 +83,7 @@
     "@id": "https://physicolor.github.io/dsh-widgets/#widgets",
     "name": "dsh-widgets widget library",
     "description": "Every widget unit shipped by dsh-widgets, generated from the src/widgets unit manifests.",
-    "numberOfItems": 34,
+    "numberOfItems": 40,
     "itemListOrder": "https://schema.org/ItemListOrderAscending",
     "itemListElement": [
             {
@@ -166,163 +166,205 @@
             {
               "@type": "ListItem",
               "position": 12,
+              "name": "会话概览 / Session Overview",
+              "description": "把输入框底部那条统计拆出来的会话数字并成一张 2×4：默认 轮次 / LLM / 工具 / 速率，最多 10 个，在组件配置里勾选 + 拖动整行排序（每行最多 5 个、超过自动折成两行；单张 2×2 卡的数字是 20px，这里是 13px——看板用来扫一排，单卡用来看一个） The session numbers the composer stats line was split into, on ONE 2×4: turns / LLM / tools / rate by default, up to ten, picked and row-dragged in the component config (five per row, wrapping to two rows; a 2×2 card prints its figure at 20px, a board figure is 13px — the board scans a row, the card shows one number)",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/harness-board"
+            },
+            {
+              "@type": "ListItem",
+              "position": 13,
               "name": "今日寄语 / Daily Quote",
               "description": "显示你自定义的一句话（未填写文本时不显示内容） Shows a custom sentence you typed (hidden while empty)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/quote"
             },
             {
               "@type": "ListItem",
-              "position": 13,
+              "position": 14,
               "name": "用量热度图 / Token Heatmap",
               "description": "每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；大小可在市场左右切换 Daily token usage heatmap (self-accounted). 2×2 shows a ~3-month calendar, 2×4 the ~half-year history; switch size in the market",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/heatmap"
             },
             {
               "@type": "ListItem",
-              "position": 14,
+              "position": 15,
               "name": "用量柱状图 / Token Bars",
               "description": "最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致 Vertical bars of the last 7 days of token usage; same height as the calendar view",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/heatmap-bars"
             },
             {
               "@type": "ListItem",
-              "position": 15,
+              "position": 16,
               "name": "额度管理 / Quota Manager",
               "description": "按账期趋势预测月末用量百分比，并给出今日 token 用量与今日推荐用量 Projects the month-end usage percent from the billing period's pace, with today's tokens vs the recommended budget",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/quota-manage"
             },
             {
               "@type": "ListItem",
-              "position": 16,
+              "position": 17,
               "name": "用量对比 / Usage Bars",
               "description": "OpenCode 滚动/周/月三窗口用量柱状图 OpenCode rolling/weekly/monthly usage bars",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-bars"
             },
             {
               "@type": "ListItem",
-              "position": 17,
+              "position": 18,
               "name": "用量环图 / Usage Rings",
               "description": "OpenCode 滚动/周/月三窗口用量环形图 OpenCode rolling/weekly/monthly usage rings",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-rings"
             },
             {
               "@type": "ListItem",
-              "position": 18,
+              "position": 19,
               "name": "滚动用量 / Rolling Usage",
               "description": "OpenCode Go 滚动窗口用量配额 OpenCode Go rolling-window usage quota",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-rolling"
             },
             {
               "@type": "ListItem",
-              "position": 19,
+              "position": 20,
               "name": "每周用量 / Weekly Usage",
               "description": "OpenCode Go 每周用量配额 OpenCode Go weekly usage quota",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-weekly"
             },
             {
               "@type": "ListItem",
-              "position": 20,
+              "position": 21,
               "name": "每月用量 / Monthly Usage",
               "description": "OpenCode Go 每月用量配额 OpenCode Go monthly usage quota",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/usage-monthly"
             },
             {
               "@type": "ListItem",
-              "position": 21,
+              "position": 22,
               "name": "账户 / Account",
               "description": "当前 Command Code 账户身份（用户名 / 邮箱 / 组织） Current Command Code account identity (name / email / org)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-whoami"
             },
             {
               "@type": "ListItem",
-              "position": 22,
+              "position": 23,
               "name": "峰谷定价 / Peak Pricing",
-              "description": "DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰） DeepSeek V4 peak pricing: whether now is a peak window (Beijing time, weekdays 09:00–12:00 & 14:00–18:00 are peak)",
+              "description": "DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间工作日 09:00–12:00 与 14:00–18:00 为高峰；周末与中国法定节假日全天低谷） DeepSeek V4 peak pricing: whether now is a peak window (Beijing time, weekdays 09:00–12:00 & 14:00–18:00; weekends and Chinese public holidays are off-peak all day)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/peak-pricing"
             },
             {
               "@type": "ListItem",
-              "position": 23,
+              "position": 24,
               "name": "CPU 状态 / CPU Status",
               "description": "本机 CPU 利用率与内存占用 Local CPU utilization and memory usage",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-cpu"
             },
             {
               "@type": "ListItem",
-              "position": 24,
+              "position": 25,
               "name": "用量 / Usage",
               "description": "账期内的请求数、成功率、Token 与消费摘要 Requests, success rate, tokens and spend for the billing period",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-usage"
             },
             {
               "@type": "ListItem",
-              "position": 25,
+              "position": 26,
               "name": "GPU 状态 / GPU Status",
               "description": "本机 NVIDIA GPU 显存、利用率与温度 Local NVIDIA GPU VRAM, utilization and temperature",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-gpu"
             },
             {
               "@type": "ListItem",
-              "position": 26,
+              "position": 27,
               "name": "额度 / Credits",
               "description": "Credits 余额与 5h / 周额度窗口用量 Credit balance with 5h / weekly window usage",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-credits"
             },
             {
               "@type": "ListItem",
-              "position": 27,
+              "position": 28,
               "name": "CPU·GPU 环图 / CPU · GPU Rings",
               "description": "CPU / GPU 利用率双环形图 CPU / GPU utilization twin rings",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-rings"
             },
             {
               "@type": "ListItem",
-              "position": 28,
+              "position": 29,
               "name": "窗口 / Windows",
               "description": "5h / 周 / 月 三窗口用量环图 5h / weekly / monthly usage as rings",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-windows"
             },
             {
               "@type": "ListItem",
-              "position": 29,
+              "position": 30,
               "name": "系统监控 / System Monitor",
               "description": "CPU/内存/GPU 显存与利用率全指标环形看板 CPU / memory / GPU VRAM and utilization dashboard rings",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-board"
             },
             {
               "@type": "ListItem",
-              "position": 30,
+              "position": 31,
               "name": "套餐 / Plan",
               "description": "当前套餐等级（GOAT / Pro / Max …）与账期结束时间 Current plan tier (GOAT / Pro / Max …) and the billing period end",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-subscription"
             },
             {
               "@type": "ListItem",
-              "position": 31,
+              "position": 32,
               "name": "GPU 利用率 / GPU Utilization",
               "description": "GPU 利用率折线（最近约 20 分钟） GPU utilization sparkline (last ~20 min)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-gpu-line"
             },
             {
               "@type": "ListItem",
-              "position": 32,
+              "position": 33,
               "name": "5h 窗口 / 5h window",
               "description": "5 小时额度窗口用量百分比与重置时间 5-hour quota window usage percent and reset time",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-window-5h"
             },
             {
               "@type": "ListItem",
-              "position": 33,
+              "position": 34,
               "name": "周窗口 / Weekly window",
               "description": "周额度窗口用量百分比与重置时间 Weekly quota window usage percent and reset time",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-window-weekly"
             },
             {
               "@type": "ListItem",
-              "position": 34,
+              "position": 35,
               "name": "月窗口 / Monthly window",
               "description": "账期月额度用量百分比（额度 − 剩余 / 额度）与账期结束时间 Billing-period usage percent ((allowance − remaining) / allowance) and period end",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/cc-window-monthly"
+            },
+            {
+              "@type": "ListItem",
+              "position": 36,
+              "name": "提交热度图 / Contribution Heatmap",
+              "description": "GitHub 提交热度图（同款 5 级绿）。2×2 近 3 个月，2×4 近一年（与 GitHub 个人页同款窗口）；默认读本机已登录的账号，也可填用户名 GitHub contribution calendar in GitHub's own five-step green. 2×2 covers ~3 months, 2×4 the last year (the window GitHub's profile header reports); reads this machine's login unless a user is set",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/github-contrib"
+            },
+            {
+              "@type": "ListItem",
+              "position": 37,
+              "name": "Stars / Stars",
+              "description": "仓库 Stars（副标题是仓库名，副行是 Forks）；同时监控多个仓库时单击卡片切换 Repo stars with the repo name above and forks below; tap the card to cycle when several repos are watched",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/github-stars"
+            },
+            {
+              "@type": "ListItem",
+              "position": 38,
+              "name": "问题 / Issues",
+              "description": "未关闭 Issue 数（不含 PR），副行是其中没有任何人回复的数量——配了 token 才测得到，否则显示「回复（配置 token 后可测）」 Open issues (PRs excluded), with how many nobody has answered underneath — measured only with a token, otherwise the line says so",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/github-issues"
+            },
+            {
+              "@type": "ListItem",
+              "position": 39,
+              "name": "提交 / Pushes",
+              "description": "距离最近一次 push 多久（12s / 5m / 3h / 6d），副行是最新 Release tag How long since the last push (12s / 5m / 3h / 6d), with the newest release tag underneath",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/github-push"
+            },
+            {
+              "@type": "ListItem",
+              "position": 40,
+              "name": "仓库脉搏 / Repo Pulse",
+              "description": "2×4 汇总板：Stars / 未关闭 Issue / 未回复 / 最近提交 并排，标题行给出仓库全名与最新 Release 2×4 board: stars / open issues / unanswered / last push side by side, with the full repo name and newest release on the title row",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/github-board"
             }
     ]
   }
@@ -819,6 +861,25 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
               </div>
             </div>
           </article>
+          <article class="widget-card" data-group="system" data-widget="harness-board" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="harness-board" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">会话概览<span class="widget-name-en">Session Overview</span></span>
+                <span class="widget-id">harness-board</span>
+              </div>
+              <p class="widget-desc">把输入框底部那条统计拆出来的会话数字并成一张 2×4：默认 轮次 / LLM / 工具 / 速率，最多 10 个，在组件配置里勾选 + 拖动整行排序（每行最多 5 个、超过自动折成两行；单张 2×2 卡的数字是 20px，这里是 13px——看板用来扫一排，单卡用来看一个）<span class="widget-desc-en"> The session numbers the composer stats line was split into, on ONE 2×4: turns / LLM / tools / rate by default, up to ten, picked and row-dragged in the component config (five per row, wrapping to two rows; a 2×2 card prints its figure at 20px, a board figure is 13px — the board scans a row, the card shows one number)</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.system">系统</span>
+                <span class="badge badge-size">2×4</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="harness-board" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
           <article class="widget-card" data-group="other" data-widget="quote" role="listitem">
             <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="quote" data-size="2x2"></div></div>
             <div class="widget-body">
@@ -1016,7 +1077,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="widget-name">峰谷定价<span class="widget-name-en">Peak Pricing</span></span>
                 <span class="widget-id">peak-pricing</span>
               </div>
-              <p class="widget-desc">DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间，工作日 09:00–12:00 与 14:00–18:00 为高峰）<span class="widget-desc-en"> DeepSeek V4 peak pricing: whether now is a peak window (Beijing time, weekdays 09:00–12:00 &amp; 14:00–18:00 are peak)</span></p>
+              <p class="widget-desc">DeepSeek V4 峰谷定价：当前是否处于高峰时段（北京时间工作日 09:00–12:00 与 14:00–18:00 为高峰；周末与中国法定节假日全天低谷）<span class="widget-desc-en"> DeepSeek V4 peak pricing: whether now is a peak window (Beijing time, weekdays 09:00–12:00 &amp; 14:00–18:00; weekends and Chinese public holidays are off-peak all day)</span></p>
               <div class="widget-meta">
                 <span class="badge" data-i18n="group.pricing">峰谷定价</span>
                 <span class="badge badge-size">2×2</span>
@@ -1253,6 +1314,101 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
                 
                 <button type="button" class="widget-open" data-widget="cc-window-monthly" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="github" data-widget="github-contrib" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="github-contrib" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">提交热度图<span class="widget-name-en">Contribution Heatmap</span></span>
+                <span class="widget-id">github-contrib</span>
+              </div>
+              <p class="widget-desc">GitHub 提交热度图（同款 5 级绿）。2×2 近 3 个月，2×4 近一年（与 GitHub 个人页同款窗口）；默认读本机已登录的账号，也可填用户名<span class="widget-desc-en"> GitHub contribution calendar in GitHub's own five-step green. 2×2 covers ~3 months, 2×4 the last year (the window GitHub's profile header reports); reads this machine's login unless a user is set</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.github">github</span>
+                <span class="badge badge-size">2×2 2×4</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="github-contrib" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="github" data-widget="github-stars" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="github-stars" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">Stars<span class="widget-name-en">Stars</span></span>
+                <span class="widget-id">github-stars</span>
+              </div>
+              <p class="widget-desc">仓库 Stars（副标题是仓库名，副行是 Forks）；同时监控多个仓库时单击卡片切换<span class="widget-desc-en"> Repo stars with the repo name above and forks below; tap the card to cycle when several repos are watched</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.github">github</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="github-stars" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="github" data-widget="github-issues" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="github-issues" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">问题<span class="widget-name-en">Issues</span></span>
+                <span class="widget-id">github-issues</span>
+              </div>
+              <p class="widget-desc">未关闭 Issue 数（不含 PR），副行是其中没有任何人回复的数量——配了 token 才测得到，否则显示「回复（配置 token 后可测）」<span class="widget-desc-en"> Open issues (PRs excluded), with how many nobody has answered underneath — measured only with a token, otherwise the line says so</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.github">github</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="github-issues" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="github" data-widget="github-push" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="github-push" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">提交<span class="widget-name-en">Pushes</span></span>
+                <span class="widget-id">github-push</span>
+              </div>
+              <p class="widget-desc">距离最近一次 push 多久（12s / 5m / 3h / 6d），副行是最新 Release tag<span class="widget-desc-en"> How long since the last push (12s / 5m / 3h / 6d), with the newest release tag underneath</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.github">github</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="github-push" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="github" data-widget="github-board" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="github-board" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">仓库脉搏<span class="widget-name-en">Repo Pulse</span></span>
+                <span class="widget-id">github-board</span>
+              </div>
+              <p class="widget-desc">2×4 汇总板：Stars / 未关闭 Issue / 未回复 / 最近提交 并排，标题行给出仓库全名与最新 Release<span class="widget-desc-en"> 2×4 board: stars / open issues / unanswered / last push side by side, with the full repo name and newest release on the title row</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.github">github</span>
+                <span class="badge badge-size">2×4</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="github-board" data-i18n="openDetail">解剖 / 审计</button>
               </div>
             </div>
           </article>

@@ -12,12 +12,12 @@ import { createPortal } from 'react-dom'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import './widgets.module.css'
 import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS, WIDGET_LOCALES } from './generated.registry'
-import { instanceKey, parseInstanceKey, sizesOf, widgetName, TRAJECTORY_WINDOW, type CommandCodeData, type SkeletonShape, type SysInfo, type TrajectoryBeat, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
+import { instanceKey, parseInstanceKey, sizesOf, widgetName, TRAJECTORY_WINDOW, type CommandCodeData, type GitHubData, type SkeletonShape, type SysInfo, type TrajectoryBeat, type UsageData, type UsageMulti, type WidgetRenderOut, type WidgetSize } from './lib/contract'
 import { accumulateHeatmap, buildHeatmapGrid, dateKey, DEFAULT_TZ, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from './lib/heatmap-accounting'
 import { ccPayloadDegraded } from './lib/cc-view'
 import { springSettleMs, springValue, WAVE_SPRING } from './lib/morph-spring'
 import { SYS_WIDGET_IDS, ingestSysInfo, resolveInterval } from './lib/sys-view'
-import { CardBody, DEFAULT_CORNER_PERCENT, WidgetsPage, type Prefs } from './components'
+import { CardBody, cardRadius, COL_GAP, DEFAULT_CORNER_PERCENT, DETAIL_W, LIST_W, WidgetsPage, type Prefs } from './components'
 import { t, installLocale, onLocaleChange } from './i18n'
 
 const STORAGE_KEY = 'harness-widgets.state'
@@ -232,6 +232,12 @@ interface BridgeSnapshot {
    *  token side. Separate from `usageDaily` because that one is machine-wide. */
   commandCodeDaily: Record<string, number> | null
   sysinfo: SysInfo | null
+  /** GitHub family payload (contribution calendar + repo pulses) from the
+   *  host `/api/github` route. */
+  github: GitHubData | null
+  /** `'unloaded'` when the host route is missing (dsh web not restarted),
+   *  otherwise a transport code; `null` once a payload has arrived. */
+  githubError: string | null
   prefs: Prefs
   railBudget: number
 }
@@ -468,6 +474,8 @@ const DEFAULTS: Prefs = {
   // previews share the same corner gear, so the setting is read from one place.
   squircle: true,
   cornerPercent: DEFAULT_CORNER_PERCENT,
+  // 组件市场 opens as a list; the choice is persisted from then on.
+  marketView: 'list',
 }
 
 /** Required services: the slot registry (React is a platform module). */
@@ -599,12 +607,13 @@ const REDUCE_MOTION = typeof window !== 'undefined' && typeof window.matchMedia 
  * heatmap, trajectory, peak-pricing) are absent: their data is derived
  * synchronously and is never "loading".
  */
-const WIDGET_SOURCE: Record<string, 'usage' | 'cc' | 'sys'> = {
+const WIDGET_SOURCE: Record<string, 'usage' | 'cc' | 'sys' | 'github'> = {
   'usage-rings': 'usage', 'usage-bars': 'usage', 'usage-rolling': 'usage', 'usage-weekly': 'usage', 'usage-monthly': 'usage',
   'cc-whoami': 'cc', 'cc-usage': 'cc', 'cc-credits': 'cc', 'cc-subscription': 'cc',
   'cc-windows': 'cc', 'cc-window-5h': 'cc', 'cc-window-weekly': 'cc', 'cc-window-monthly': 'cc',
   'quota-manage': 'cc',
   'sys-cpu': 'sys', 'sys-gpu': 'sys', 'sys-gpu-line': 'sys', 'sys-rings': 'sys', 'sys-board': 'sys',
+  'github-contrib': 'github', 'github-stars': 'github', 'github-issues': 'github', 'github-push': 'github', 'github-board': 'github',
 }
 /**
  * The SILHOUETTE each loading skeleton draws, per widget id (see
@@ -649,6 +658,13 @@ const SKELETON_SHAPE: Record<string, { shape: SkeletonShape; count?: number; row
   'sys-gpu-line': { shape: 'line' },
   'sys-cpu': { shape: 'text' },
   'sys-gpu': { shape: 'text' },
+  // GitHub: the calendar is one wide block; the board is a four-figure row; the
+  // three single-figure cards are one value + one grey line.
+  'github-contrib': { shape: 'heatmap' },
+  'github-board': { shape: 'figures', count: 4 },
+  'github-stars': { shape: 'text' },
+  'github-issues': { shape: 'text' },
+  'github-push': { shape: 'text' },
 }
 
 /**
@@ -658,9 +674,13 @@ const SKELETON_SHAPE: Record<string, { shape: SkeletonShape; count?: number; row
  * ANSWERED with an error the card must show its real "not configured" state,
  * not a skeleton that never resolves.
  */
-function isSourcePending(source: 'usage' | 'cc' | 'sys', snap: BridgeSnapshot): boolean {
+function isSourcePending(source: 'usage' | 'cc' | 'sys' | 'github', snap: BridgeSnapshot): boolean {
   if (source === 'usage') return snap.usageData === null && (snap.usageMulti === null || snap.usageMulti.keys.length === 0)
   if (source === 'cc') return snap.commandCode === null && snap.commandCodeError === null
+  // GitHub: the route answers `errors` for the slices it could not fill, so a
+  // 200 with an empty calendar is an ANSWER (the card prints why) — only a
+  // request that has never returned anything is "loading".
+  if (source === 'github') return snap.github === null && snap.githubError === null
   return snap.sysinfo === null
 }
 
@@ -1612,6 +1632,10 @@ function normalizePrefs(p: Partial<Prefs>): Prefs {
   if (!Number.isFinite(s.maxWidgets) || s.maxWidgets < 1 || s.maxWidgets > 20) s.maxWidgets = DEFAULTS.maxWidgets
   if ([1, 2, 3, 4].indexOf(s.columns as number) === -1) s.columns = DEFAULTS.columns
   if (typeof s.hideStatsLine !== 'boolean') s.hideStatsLine = DEFAULTS.hideStatsLine
+  // The market's view mode is a USER PREFERENCE, not panel state: it rides the
+  // same persisted prefs as everything else, so a reload — or the plugin being
+  // installed from npm into someone else's profile — keeps it.
+  if (s.marketView !== 'grid' && s.marketView !== 'list') s.marketView = DEFAULTS.marketView
   return s
 }
 
@@ -1833,7 +1857,7 @@ export function apply(ctx: ClientContext): void {
   // loads —and it must never touch live-accumulated days.
   try { loadHeatmapStore() } catch { /* best-effort */ }
   let prefs = loadState()
-  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, commandCodeDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null }
+  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, commandCodeDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null, github: null as GitHubData | null, githubError: null as string | null }
 
   const listeners = new Set<() => void>()
   /**
@@ -2684,6 +2708,60 @@ export function apply(ctx: ClientContext): void {
         document.addEventListener('visibilitychange', onVisible)
         return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
       }, [ccOnRail, pullCommandCode])
+      // GitHub family: ONE request for every installed github-* card.
+      //
+      // The cards' own config fields decide the request — `user` (whose
+      // calendar) and `repos` (which pulses). Both empty means "whoever this
+      // machine is signed in as": the HOST resolves the login from the
+      // credential / `gh` CLI, which is what makes the family work on a fresh
+      // install with nothing typed. Several installed cards are ONE upstream
+      // pass: the logins and repo lists are merged here, so two cards never
+      // buy two rounds.
+      //
+      // Cadence: on mount, whenever the merged request changes (a config edit
+      // re-runs the effect), every 10 minutes while the tab is visible, and on
+      // return to the tab. Nothing here hangs off a turn — GitHub does not
+      // move when this conversation does.
+      const ghKeys = (snap.prefs.installed ?? []).filter((key) => WIDGET_SOURCE[parseInstanceKey(key).widgetId] === 'github')
+      const ghUser = ghKeys
+        .map((key) => (snap.prefs.cardConfigs?.[key]?.user as string | undefined) ?? '')
+        .map((s) => s.trim())
+        .find((s) => s !== '') ?? ''
+      const ghRepos = Array.from(new Set(ghKeys.flatMap((key) => String(snap.prefs.cardConfigs?.[key]?.repos ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => /^[\w.-]+\/[\w.-]+$/.test(s)))))
+        .slice(0, 4)
+      const ghRequest = `${ghUser}|${ghRepos.join(',')}`
+      React.useEffect(() => {
+        if (ghKeys.length === 0) return
+        const pull = (): void => {
+          const params = new URLSearchParams()
+          if (ghUser !== '') params.set('user', ghUser)
+          if (ghRepos.length > 0) params.set('repos', ghRepos.join(','))
+          const query = params.toString()
+          fetch(`/api/github${query === '' ? '' : `?${query}`}`)
+            .then(async (r) => {
+              const data = (await r.json().catch(() => null)) as GitHubData | { error?: string } | null
+              if (!r.ok) {
+                // STALE-WHILE-ERROR, exactly like the Command Code family: the
+                // last good payload stays on screen (a transport blip must not
+                // blank a card that was showing a number), and 404 means the
+                // HOST ROUTE is absent — `dsh web` was not restarted — which
+                // the cards say in words instead of pretending to load.
+                setState({ githubError: r.status === 404 ? 'unloaded' : `http:${r.status}` })
+                return
+              }
+              setState({ github: data as GitHubData, githubError: null })
+            })
+            .catch(() => setState({ githubError: 'unavailable' }))
+        }
+        pull()
+        const onVisible = (): void => { if (!document.hidden) pull() }
+        const id = window.setInterval(() => { if (!document.hidden) pull() }, 600_000)
+        document.addEventListener('visibilitychange', onVisible)
+        return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
+      }, [ghRequest, ghKeys.length])
       // Hardware snapshot (System widgets): the installed sys-* instances drive
       // ONE shared poll loop —the effective cadence is the SHORTEST refresh
       // interval among them (5/10/30/60 s presets + custom numeric, clamped
@@ -2936,6 +3014,36 @@ export function apply(ctx: ClientContext): void {
       React.useEffect(() => {
         if (!snap.open || !snap.hasSession) setAddOpen(false)
       }, [snap.open, snap.hasSession])
+      // 组件配置's detail drawer adds width to the panel — but only up to a
+      // MINIMUM, never blindly `pw + 440`: a panel the user has already dragged
+      // wide has room for the drawer, and inflating it anyway left a dead band on
+      // the right (measured 2026-09-25: a 914px row = 190 list + 440 drawer + 284
+      // empty). The drawer is flexible, so any extra width goes to the preview and
+      // to the metric columns instead of to nothing. NOT reset when the panel
+      // closes: closing and reopening the card must come back the way it was.
+      const [detailOpen, setDetailOpen] = React.useState(false)
+      // Click anywhere OUTSIDE the panel and it closes — the gesture every
+      // popover in this product answers to. The rail's own surfaces are excluded
+      // (its cards, the magnify layer, the 组件 capsule and the 添加 button
+      // itself, which toggles the panel on its own click), because those are not
+      // "empty space": clicking a card is a deliberate act on the rail.
+      React.useEffect(() => {
+        if (!addOpen) return
+        const onDown = (e: PointerEvent): void => {
+          const target = e.target instanceof Element ? e.target : null
+          if (target === null) return
+          if (target.closest('.dsx-stats-addpanel') !== null) return
+          if (target.closest('.dsx-stats-rail') !== null) return
+          if (target.closest('.dsx-magnify-layer') !== null) return
+          if (target.closest('.dsx-stats-add') !== null) return
+          if (target.closest('.dsx-stats-capsule') !== null) return
+          setAddOpen(false)
+        }
+        // Capture phase: a click on a shell control that stops propagation still
+        // closes the panel, and the panel's own descendants are filtered above.
+        document.addEventListener('pointerdown', onDown, true)
+        return () => document.removeEventListener('pointerdown', onDown, true)
+      }, [addOpen])
       /**
        * The rail's measured viewport height (clientHeight), tracked with a
        * ResizeObserver. It is the one input the scroll geometry cannot derive: the
@@ -3107,7 +3215,7 @@ export function apply(ctx: ClientContext): void {
           // a placeholder instead; the error stays visible in the console.
           let out: ReturnType<typeof w.render>
           try {
-            out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, commandCode: snap.commandCode, commandCodeError: snap.commandCodeError, commandCodeDaily: snap.commandCodeDaily, sysinfo: snap.sysinfo, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
+            out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, commandCode: snap.commandCode, commandCodeError: snap.commandCodeError, commandCodeDaily: snap.commandCodeDaily, sysinfo: snap.sysinfo, github: snap.github, githubError: snap.githubError, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
           } catch (error) {
             console.error(`[dsh-widgets] widget ${widgetId}@${size} render crashed:`, error)
             out = { title: widgetName(w), value: '—', legend: t('ui.renderError') }
@@ -3521,14 +3629,43 @@ const addSlotFor = (layout: Array<{ s: number; top: number; right: number; w: nu
       // The panel keeps every anchor it needs: --dsx-rail-top / --dsx-input-bottom
       // / --dsx-rightbar-w / --dsx-rail-pad are written on documentElement, so a
       // body-level child still resolves them.
-      const addPanel = createPortal(React.createElement('div', { className: 'dsx-stats-addpanel' + (addOpen ? ' open' : ''), style: { top: 'var(--dsx-rail-top,0px)', width: `${pw}px` } },
+      const addPanel = createPortal(React.createElement('div', {
+        className: 'dsx-stats-addpanel' + (addOpen ? ' open' : '') + (prefs.squircle ? ' dsx-squircle' : ''),
+        style: {
+          top: 'var(--dsx-rail-top,0px)',
+          // Enough for list + drawer, and never more than that on the drawer's
+          // behalf: an already-wide panel keeps its width (the drawer grows into
+          // it) instead of sprouting a dead band on the right. 26 = the panel's own
+          // 2px of borders + the body's 24px of padding, so DETAIL_W is the
+          // drawer's REAL width (the inner then keeps its 2px mask slack).
+          width: `${detailOpen ? Math.max(pw, LIST_W + COL_GAP + DETAIL_W + 26) : pw}px`,
+          // Continuous curvature, bound to the 设置 gear: same `corner-shape`
+          // switch the cards use, and the same corner percentage, measured
+          // against a 100px reference so a panel-sized surface gets a
+          // panel-sized radius instead of 16% of its own 700px side.
+          borderRadius: `${cardRadius(100, prefs.cornerPercent)}px`,
+        },
+      },
         React.createElement('span', { className: 'dsx-stats-addpanel-resize', 'aria-label': t('ui.addPanel.resizeAria'), onPointerDown: startResize }),
         React.createElement('div', { className: 'dsx-stats-addpanel-header' },
           React.createElement('div', { className: 'dsx-stats-addpanel-title' }, t('ui.addPanel.title')),
           React.createElement('button', { type: 'button', className: 'dsx-stats-addpanel-close', 'aria-label': t('ui.addPanel.closeAria'), onClick: () => setAddOpen(false) }, closeIcon),
         ),
         React.createElement('div', { className: 'dsx-stats-addpanel-body' },
-          React.createElement(WidgetsPage, { controller: { prefs, setPrefs }, hideHeader: true }),
+          // The drawer's FINAL width: with it the preview is laid out at its final
+          // size from the first frame, and the drawer reveals it by widening — no
+          // small-to-large zoom while the panel animates.
+          React.createElement(WidgetsPage, { controller: {
+            prefs,
+            setPrefs,
+            onDetailToggle: setDetailOpen,
+            // 26 = the body's 12+12 padding PLUS the panel's own 1px border on each
+            // side (box-sizing: border-box). Deriving it from the width alone left
+            // the inner 2px wider than the mask, and that is exactly where a row's
+            // 1px edge line got cut (reported 2026-09-26).
+            detailWidth: Math.max(DETAIL_W, pw - 26 - LIST_W - COL_GAP),
+            railSide: side,
+          }, hideHeader: true }),
         ),
       ), document.body)
       // Always render the panel too so closing slides it out (`.open` toggles

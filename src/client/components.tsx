@@ -7,6 +7,7 @@
  */
 
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import { WIDGETS } from './generated.registry'
 import {
   badgeOf, groupOf, instanceKey, parseInstanceKey, sizesOf,
@@ -180,12 +181,31 @@ export interface Prefs {
   squircle: boolean
   /** Corner-radius gear in PERCENT of the card's short side (see CORNER_GEARS). */
   cornerPercent: number
+  /** 组件市场's view: 'list' (rows) or 'grid' (the widget gallery). PERSISTED with
+   *  the rest of the prefs — switching views must survive a reload and ship as a
+   *  user preference to everyone who installs the plugin from npm. */
+  marketView: 'list' | 'grid'
 }
 
 /** The controller handed to every component. */
 export interface WidgetsController {
   prefs: Prefs
   setPrefs: (patch: Partial<Prefs>) => void
+  /** 组件配置 tells the PANEL when its detail drawer opens/closes, so the panel
+   *  can widen by the drawer's own width instead of splitting the existing one
+   *  (the user's rule: opening the preview adds width). */
+  onDetailToggle?: (open: boolean) => void
+  /** The drawer's final width, when the host knows it (the add panel computes it
+   *  from its own target width). With it the preview is laid out at its FINAL
+   *  size from the first frame and the drawer's growing box reveals it — no
+   *  small-to-large zoom while the panel animates. The settings page does not
+   *  know it and falls back to the measured width. */
+  detailWidth?: number
+  /** The rail's CURRENT tile side. The rail auto-sizes its columns, so this is
+   *  not always `prefs.cardSide` — and the preview must be laid out at exactly
+   *  this unit for its padding/gaps to be byte-identical to the real card (only
+   *  scaled). */
+  railSide?: number
 }
 
 // ---- Icons (official ui-primitives paths) ----
@@ -202,6 +222,71 @@ const CHEV_RIGHT = 'M5.5 2.15137L5.92383 2.57617L8.65137 5.30273C8.90706 5.55843
 
 const ChevronLeftIcon = (): React.ReactElement => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 14 14', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: CHEV_LEFT, fill: 'currentColor' }))
 const ChevronRightIcon = (): React.ReactElement => React.createElement('svg', { width: 18, height: 18, viewBox: '0 0 14 14', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: CHEV_RIGHT, fill: 'currentColor' }))
+/** Close glyph for the 组件配置 preview drawer (same shape as the panel's own). */
+const closeIconSmall = React.createElement('svg', { width: 12, height: 12, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('path', { d: 'M14.1168 13.197L13.197 14.1167L1.8833 2.80303L2.80309 1.88324L14.1168 13.197Z', fill: 'currentColor' }),
+  React.createElement('path', { d: 'M13.197 1.88326L14.1168 2.80305L2.80309 14.1168L1.8833 13.197L13.197 1.88326Z', fill: 'currentColor' }),
+)
+/** Market view toggle + the search field's leading magnifier (official shapes). */
+const listViewIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('path', { d: 'M2.5 4.25h11M2.5 8h11M2.5 11.75h11', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' }),
+)
+const gridViewIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('rect', { x: 2.5, y: 2.5, width: 4.6, height: 4.6, rx: 1.4, fill: 'currentColor' }),
+  React.createElement('rect', { x: 8.9, y: 2.5, width: 4.6, height: 4.6, rx: 1.4, fill: 'currentColor' }),
+  React.createElement('rect', { x: 2.5, y: 8.9, width: 4.6, height: 4.6, rx: 1.4, fill: 'currentColor' }),
+  React.createElement('rect', { x: 8.9, y: 8.9, width: 4.6, height: 4.6, rx: 1.4, fill: 'currentColor' }),
+)
+const searchIcon = React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('circle', { cx: 7, cy: 7, r: 4.6, stroke: 'currentColor', strokeWidth: 1.5 }),
+  React.createElement('path', { d: 'M10.6 10.6L14 14', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' }),
+)
+
+/** 组件市场's hero (FLIP) transition toggle.
+ *
+ *  OFF by design: the market ⇄ preview move is a SHARED-AXIS push (the gallery
+ *  slides left, the preview slides in from the right). A card that additionally
+ *  flies on its own reads as a second, conflicting motion — the user's call
+ *  (2026-09-27): 「其他都是右边弹出、瀑布流向左平移，却有一个组件在做 FLIP，
+ *  视觉上非常割裂」. The implementation is kept intact (ZoomGhost + `.dsx-zoomghost`
+ *  + `openGroup`'s seed) so it can be switched back on here, or reused elsewhere,
+ *  the day a surface wants a card-expand instead of a push. */
+const MARKET_HERO = false
+
+/** The simulated render output for a widget instance — shared by the market's
+ *  stage and its gallery tiles, so a tile shows exactly what the stage shows.
+ *  Widget-owned example stats ride over the shared preview stats, and the
+ *  instance's own config rides along like the rail's render does. */
+function exampleOut(w: (typeof WIDGETS)[number], size: WidgetSize, prefs: Prefs, sim?: Record<string, unknown> | null): WidgetRenderOut | null {
+  const key = instanceKey(w.id, size)
+  const ex = w.example
+  const exStats = ex?.stats ? (typeof ex.stats === 'function' ? ex.stats(prefs.cardConfigs?.[key] ?? {}) : ex.stats) : {}
+  const stats = { ...PREVIEW_STATS, ...exStats, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0]
+  const effSim = sim ?? ex?.sim ?? null
+  // Preview isolation: a crashing widget render must not take the surface down.
+  try {
+    return w.render(stats, { size, ...(effSim && Object.keys(effSim).length > 0 ? { sim: effSim } : {}) })
+  } catch (error) {
+    console.error(`[dsh-widgets] preview render crashed for ${w.id}:`, error)
+    return null
+  }
+}
+
+/** 组件配置's two column widths + the gutter between them. LIST_W is the
+ *  installed list's fixed column; DETAIL_W is the drawer's MINIMUM width — the
+ *  panel is sized to fit both, and any extra width goes to the drawer (preview +
+ *  metric columns), so a wide panel never leaves a dead band on the right.
+ *  COL_GAP is copied from the OFFICIAL settings window (measured 2026-09-26: nav
+ *  164px, content 612px, a 12px gutter between them, rows padded 12/16) — the
+ *  same relative language, our own absolute sizes. */
+export const LIST_W = 190
+export const DETAIL_W = 440
+export const COL_GAP = 12
+
+/** The instance 组件配置 had open. Module scope on purpose: closing the add
+ *  panel and reopening it must come back the way the user left it — the panel is
+ *  unmounted with the session, and component state would be lost with it. */
+let lastSelectedInstance = ''
 
 // ---- Card body ----
 
@@ -220,7 +305,7 @@ const CHART_TONES: Record<string, string> = {
  *  resolved hex) means the card follows light/dark and future token changes. */
 const LANE_TONES: Record<string, string> = {
   input: 'var(--dsw-alias-state-business-primary)',
-  model: 'color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color) 60%, var(--dsw-alias-state-error-secondary))',
+  model: 'color-mix(in srgb, var(--dsw-alias-state-business-primary) 60%, var(--dsw-alias-state-error-secondary))',
   tool: 'var(--dsw-alias-state-warn-label)',
 }
 
@@ -228,16 +313,26 @@ const LANE_TONES: Record<string, string> = {
  *  (输入 / 模型 / 工具), which is also the official 轨迹 rail's order. */
 const LANE_ORDER: Array<'input' | 'model' | 'tool'> = ['input', 'model', 'tool']
 
-/** The trajectory window is a FIXED slot count: bars keep a constant width as
- *  the window rolls (newest entering at the right), instead of the whole row
- *  re-scaling every time a beat arrives. Until the window fills, the beats SHARE
- *  the lane instead (n beats → 100/n % each), so a lone segment owns its lane. */
+/** The trajectory window is a FIXED slot count, ONE SLOT PER BEAT: a bar keeps
+ *  its column as the window rolls (newest entering at the right), instead of the
+ *  whole row re-scaling every time a beat arrives. Until the window fills, the
+ *  beats SHARE the lane instead (n beats → 100/n % each), so a lone segment owns
+ *  its lane. */
 const LANE_SLOTS = TRAJECTORY_WINDOW
 
-/** The lane block's height as a fraction of the card side: "at most up to the
- *  50% line" — the chart lives in the card's middle/lower band and leaves a
- *  clear gap under the title+subtitle row instead of filling the whole card. */
-const LANE_HEIGHT_RATIO = 0.5
+/** Lane corner radius — the official span's `border-radius: 1px`. The official
+ *  VERTICAL numbers (8px bars on a 14px pitch) are deliberately NOT used: the
+ *  three lanes are stacked contiguously and stretch to the card's remaining
+ *  height (user's call, 2026-09-25 — see the lanes branch). */
+const LANE_RADIUS = 1
+
+/** The official span gap: `--trajectory-span-gap: min(widthPercent * .08%, 1px)`,
+ *  applied as `left: left% + gap` and `width: max(2px, width% - 2 * gap)` — so
+ *  two neighbouring beats stand `2 * gap` apart, never less than the 2px floor
+ *  the official span sets with `min-width: 2px`. */
+const LANE_GAP_RATIO = 0.08
+const LANE_GAP_MAX_PX = 1
+const LANE_MIN_PX = 2
 
 function ChartBlock({ chart, side, width, pad }: { chart: WidgetChart; side: number; width?: number; pad?: number }): React.ReactElement | null {
   const scale = side / BASE_SIDE
@@ -306,74 +401,111 @@ function ChartBlock({ chart, side, width, pad }: { chart: WidgetChart; side: num
     return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 4, height: `${barAreaH}px`, marginTop: `${Math.round(4 * scale)}px` } }, bars)
   }
   if (chart.kind === 'lanes' && chart.lanes) {
-    // 对话轨迹 — the official 轨迹 rail as a card: THREE horizontal lanes
-    // (输入 / 模型 / 工具, same order as the subtitle), one segment per beat at
-    // its window position, left→right = oldest→newest.
+    // 对话轨迹 — the official 轨迹 timeline (`@deepseek-ai/dsh-client-ui-trajectory`,
+    // TrajectoryTimeline.module.css + deriveTrajectoryTimeline) rendered inside a
+    // card. ONE ROW PER LANE, in the official order 输入 / 模型 / 工具, and all
+    // THREE lanes are always drawn — an empty lane is an empty track, exactly as
+    // in the official strip, where a lane with no record inside the domain still
+    // occupies its own band. left→right = oldest→newest.
     //
-    // WIDTH is per-instance (`chart.laneSizing`, a config switch on the card):
-    //  - 'time' (default): each beat owns a share of the lane proportional to its
-    //    DURATION, so the shape of the strip is the actual rhythm of the session
-    //    (a 9s tool call is visibly longer than a 0.6s model step). A beat with
-    //    no duration of its own (an input message) keeps a minimum-width tick
-    //    instead of vanishing.
-    //  - 'equal': the original fixed-slot window — every beat is one slot wide,
-    //    the slot freezes at TRAJECTORY_WINDOW beats, and the row stops
-    //    re-scaling as the window rolls (n beats share the lane while it fills).
+    // HORIZONTAL geometry is the official's, value for value:
+    //   .span { left:  calc(left%  + gap);
+    //           width: max(2px, calc(width% - gap - gap));
+    //           min-width: 2px; border-radius: 1px }
+    //   --trajectory-span-gap: min(widthPercent * .08%, 1px)
+    //   opacity: 1 for 模型/工具; the base span's .78 for 输入
+    //   colours: see LANE_TONES (the official `[data-timeline-span=…]` rules).
+    // Duration never changes a bar's height, only its WIDTH.
     //
-    // Height rule (both modes): at most 50% of the card, so the block sits in
-    // the card's middle band with a real gap under the title/legend row (the
-    // card's own `marginTop:auto` foot pushes it down). No axis, no corner
-    // labels.
+    // VERTICAL geometry is the CARD's, by the user's request (2026-09-25): the
+    // official 8px bars on a 14px pitch left two thirds of this 160px tile empty,
+    // so the three lanes are stacked CONTIGUOUSLY (no gap between them) and the
+    // block owns every pixel between the grey caption and the card's floor — the
+    // card body is elastic for `lanes` (see `stretchChart` in CardBody).
+    //
+    // WIDTH is per-instance (`chart.laneSizing`), mirroring the official
+    // toolbar's 时长 toggle:
+    //  - 'time' (按时长): the recorded-duration projection — each beat's slice is
+    //    its share of the window's total duration, idle compressed away, so a
+    //    26.7s tool call is visibly longer than a 17ms one (the official
+    //    "duration"/actual projection, `deriveTimedTimeline`);
+    //  - 'equal' (等宽): the official DEFAULT projection — one equal slot per
+    //    beat, back to back (the official "sequence" mode), the slot count
+    //    frozen at TRAJECTORY_WINDOW so the row stops re-scaling as the window
+    //    rolls (n beats share the lane while it fills).
+    // In both modes a beat narrower than the 2px floor is drawn at 2px
+    // (`min-width: 2px` in the official CSS), which is what keeps a quick tool
+    // call visible instead of vanishing — and the official gap is subtracted
+    // from the LEFT edge as well, so two neighbours can never touch.
     const lanes = chart.lanes
-    const n = lanes.length
+    if (lanes.length === 0) return null
     const timeMode = chart.laneSizing !== 'equal' && lanes.some((l) => (l.ms ?? 0) > 0)
-    const spans: Array<[number, number]> = []
+    // Slice per beat on the shared axis: [left%, width%].
+    const slices: Array<[number, number]> = []
     if (timeMode) {
       const total = lanes.reduce((sum, l) => sum + Math.max(0, l.ms ?? 0), 0) || 1
       let acc = 0
       for (const l of lanes) {
         const w = (Math.max(0, l.ms ?? 0) / total) * 100
-        spans.push([acc, w])
+        slices.push([acc, w])
         acc += w
       }
     } else {
-      const slots = Math.max(1, Math.min(LANE_SLOTS, n))
+      const slots = Math.max(1, Math.min(LANE_SLOTS, lanes.length))
       const slotPct = 100 / slots
-      for (let i = 0; i < n; i++) spans.push([i * slotPct, slotPct])
+      for (let i = 0; i < lanes.length; i++) slices.push([i * slotPct, slotPct])
     }
-    const rows = LANE_ORDER.map((kind) => {
+    // --trajectory-span-gap: min(widthPercent * .08%, 1px) — the 1px ceiling is
+    // what the official strip always hits (its track is ~1300px wide); inside a
+    // ~130px card the proportional branch wins, so the standoff scales with the
+    // slot instead of eating a whole pixel of a 4px slot.
+    const contentW = Math.max(48, (width ?? side) - 2 * (pad ?? Math.round(12 * scale)))
+    const gapPct = (l: number): number => Math.min(l * LANE_GAP_RATIO, (LANE_GAP_MAX_PX / contentW) * 100)
+    const rows = LANE_ORDER.map((kind, lane) => {
       const segs = lanes
         .map((l, i) => ({ l, i }))
         .filter((e) => e.l.kind === kind)
-        .map((e) => React.createElement('div', {
-          key: e.i,
-          className: 'dsx-lane-seg',
-          title: e.l.label,
-          style: {
-            position: 'absolute',
-            left: `${spans[e.i][0].toFixed(4)}%`,
-            // 1px shaved off the slot so neighbouring beats stay visually apart;
-            // one beat alone still spans the full lane (100% - 1px). A
-            // duration-proportional slice can be smaller than that 1px, so it
-            // falls back to the 2px minimum instead of collapsing to zero.
-            width: `calc(${spans[e.i][1].toFixed(4)}% - 1px)`,
-            minWidth: 2,
-            top: 0,
-            bottom: 0,
-            borderRadius: 2,
-            background: LANE_TONES[kind] ?? LANE_TONES.input,
-            opacity: 0.9,
-          },
-        }))
+        .map((e) => {
+          const [left, width] = slices[e.i]!
+          const gap = gapPct(width)
+          return React.createElement('div', {
+            key: e.i,
+            className: 'dsx-lane-seg',
+            // The lane this bar belongs to — a probe asserts a row never carries
+            // a foreign lane (scripts/diag-lanes-invariant.cjs).
+            'data-lane': kind,
+            title: e.l.label,
+            style: {
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: `calc(${left.toFixed(4)}% + ${gap.toFixed(4)}%)`,
+              width: `max(${LANE_MIN_PX}px, calc(${width.toFixed(4)}% - ${(2 * gap).toFixed(4)}%))`,
+              minWidth: LANE_MIN_PX,
+              borderRadius: LANE_RADIUS,
+              background: LANE_TONES[kind] ?? LANE_TONES.input,
+              // The official base span is .78; 模型 and 工具 override it to 1.
+              opacity: kind === 'input' ? 0.78 : 1,
+            },
+          })
+        })
       return React.createElement('div', {
         key: kind,
         className: 'dsx-lane-row',
-        style: { position: 'relative', flex: 1, minHeight: 0 },
+        'data-lane': kind,
+        'data-lane-index': lane,
+        // Equal thirds of the elastic block, contiguous: `flex: 1` on every lane
+        // (an empty lane keeps its third, like the official track).
+        style: { position: 'relative', flex: 1, minWidth: 0, minHeight: 0 },
       }, ...segs)
     })
     return React.createElement('div', {
       className: 'dsx-lanes',
-      style: { width: '100%', height: `${Math.round(side * LANE_HEIGHT_RATIO)}px`, display: 'flex', flexDirection: 'column', gap: Math.max(3, Math.round(4 * scale)) },
+      // `flex: 1` = own every pixel the card body has left; the top margin is the
+      // card's own spacing token (the same 6px the body gap uses), so the block
+      // starts at a normal distance under the grey caption instead of butting
+      // against it — and still reaches the card's padding floor.
+      style: { width: '100%', flex: 1, minHeight: 0, marginTop: Math.round(6 * scale), display: 'flex', flexDirection: 'column' },
     }, ...rows)
   }
   if (chart.kind === 'quotas' && chart.quotas && chart.quotas.length > 0) {
@@ -574,23 +706,62 @@ function ChartBlock({ chart, side, width, pad }: { chart: WidgetChart; side: num
       ),
     )
   }
-  if (chart.kind === 'figures' && chart.figures && chart.figures.length) {
+  if (chart.kind === 'figures' && ((chart.figures && chart.figures.length) || (chart.figureRows && chart.figureRows.length))) {
     // A row of label-over-value figure pairs (e.g. the quota card's 今日用量
     // 24.7M / 今日推荐 200M). No axes, no bars — the two numbers ARE the block,
-    // in the space a chart would have taken. The FIRST pair is flush with the
-    // card's left padding and the LAST with its right padding (space-between),
-    // so the row shares the head row's insets instead of floating inward — a
-    // centred row reads as a different, unrelated gutter.
-    const last = chart.figures.length - 1
-    const items = chart.figures.map((f, i) => {
-      const valColor = f.tone ? (CHART_TONES[f.tone] ?? CHART_TONES.primary) : 'var(--dsw-alias-label-primary)'
-      const align = i === 0 ? 'flex-start' : i === last ? 'flex-end' : 'center'
-      return React.createElement('div', { key: i, style: { minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: align, gap: Math.round(2 * scale) } },
-        React.createElement('div', { style: { fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' } }, f.label),
-        React.createElement('div', { style: { fontSize: `${Math.round(13 * scale)}px`, fontWeight: 600, color: valColor, fontVariantNumeric: 'tabular-nums', lineHeight: 1.2, whiteSpace: 'nowrap' } }, f.value),
-      )
-    })
-    return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: Math.round(8 * scale), width: '100%' } }, items)
+    // in the space a chart would have taken.
+    //
+    // `figureRows` stacks SEVERAL such rows (a 2×4 is wide enough to carry two
+    // rows of five where one row of ten would leave every label ellipsized).
+    // Each row keeps the single-row geometry, so a stacked card reads as the
+    // same block repeated rather than a new chart.
+    //
+    // SPACING — `| 1 | 1 | 1 |`, i.e. EVERY space equal (the user's own notation,
+    // 2026-09-25). Earlier shapes each failed one half of that:
+    //   * `space-between` — equal gaps between blocks but the OUTER insets were
+    //     the card's padding, so the edges read tighter than the middle;
+    //   * `flex: 1` + fixed gap — equal COLUMNS, but a wide value ("107m31s")
+    //     filled its column while a narrow one ("9") floated, so the perceived
+    //     gaps differed row by row.
+    // SPACING — `| 1 | 1 | 1 |`: EVERY visible space equal (the user's notation,
+    // 2026-09-25). Three shapes were tried, each failing one step further out:
+    //   * `space-between` — equal gaps between blocks, but the outer insets were
+    //     the card's padding, which reads tighter than the middle;
+    //   * `flex: 1` + fixed gap — equal COLUMNS, so a wide value filled its
+    //     column while a narrow one floated and the perceived gaps differed;
+    //   * `space-evenly` alone — equalised the spaces past the padding, but the
+    //     padding was still added to the outer two: on the live rail the card
+    //     edge→「轮次」measured 40px against 27px between「轮次」and「LLM」.
+    // So the row spans the card's FULL width — negative margins swallow the
+    // padding — and `space-evenly` divides the leftover into n+1 equal spaces,
+    // the outer two included: the edge gap IS the inter-block gap.
+    const padAmt = pad ?? Math.round(12 * scale)
+    const rowWidth = `calc(100% + ${2 * padAmt}px)`
+    const drawRow = (figures: NonNullable<typeof chart.figures>, key: number): React.ReactElement => {
+      const items = figures.map((f, i) => {
+        const valColor = f.tone ? (CHART_TONES[f.tone] ?? CHART_TONES.primary) : 'var(--dsw-alias-label-primary)'
+        return React.createElement('div', { key: i, style: { flex: '0 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.round(2 * scale) } },
+          React.createElement('div', { style: { fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' } }, f.label),
+          // The value ellipsizes rather than spilling into its neighbours when a
+          // row is genuinely too tight (a 2×2 with two long figures).
+          React.createElement('div', { style: { fontSize: `${Math.round(13 * scale)}px`, fontWeight: 600, color: valColor, fontVariantNumeric: 'tabular-nums', lineHeight: 1.2, whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' } }, f.value),
+        )
+      })
+      return React.createElement('div', { key, style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-evenly', width: '100%' } }, items)
+    }
+    // ONE wrapper always, so the widened box is applied exactly once (a per-row
+    // negative margin inside a widened wrapper would double the padding back).
+    const rows = chart.figureRows && chart.figureRows.length ? chart.figureRows : [chart.figures ?? []]
+    return React.createElement('div', { style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: rows.length > 1 ? Math.round(6 * scale) : 0,
+      width: rowWidth,
+      marginLeft: -padAmt,
+      marginRight: -padAmt,
+    } },
+      rows.map((row, i) => drawRow(row, i)),
+    )
   }
   if (chart.kind === 'ring') {
     const p = Math.max(0, Math.min(1, (chart.value ?? 0) / (chart.max ?? 100)))
@@ -623,12 +794,32 @@ function ChartBlock({ chart, side, width, pad }: { chart: WidgetChart; side: num
     const wideCell = isWide ? Math.max(3, Math.floor((availW - (weeks - 1) * gap) / weeks)) : Math.round((6 + 2) * scale)
     const cell = wideCell
     const max = Math.max(1, ...chart.heatmap.flat().map((c) => c.value))
+    // Two ramps, one `color-mix` mechanism (see WidgetChart.heatmapPalette):
+    //   brand  — continuous business-blue alpha from the value's share of max;
+    //   github — GitHub's five DISCRETE contribution steps, in GitHub's order
+    //            (empty -> strongest), derived from the SUCCESS token so the
+    //            green follows the light/dark theme instead of being a literal.
+    const palette = chart.heatmapPalette ?? 'brand'
+    const EMPTY_CELL = 'var(--dsw-alias-interactive-bg-hover)'
+    const GITHUB_STEPS = [0, 30, 52, 74, 100]
+    const unit = chart.heatmapUnit ?? 'tok'
+    const cellBg = (c: { value: number; level?: number }): string => {
+      if (palette === 'github') {
+        const level = Math.max(0, Math.min(4, Math.round(c.level ?? (c.value > 0 ? 1 : 0))))
+        return level === 0
+          ? EMPTY_CELL
+          : `color-mix(in srgb, var(--dsw-alias-state-success-primary) ${GITHUB_STEPS[level]}%, transparent)`
+      }
+      const t = max > 0 ? c.value / max : 0
+      if (t <= 0) return EMPTY_CELL
+      return `color-mix(in srgb, var(--dsw-alias-state-business-primary) ${Math.round((0.25 + 0.7 * t) * 100)}%, transparent)`
+    }
     const rows = chart.heatmap.map((week, wi) => {
-      const cells = week.map((c) => {
-        const t = max > 0 ? c.value / max : 0
-        const alpha = t > 0 ? 0.25 + 0.7 * t : 0.12
-        return React.createElement('div', { key: c.date, title: `${c.date}: ${c.value} tok`, style: { width: cell, height: cell, borderRadius: 2, background: t > 0 ? `color-mix(in srgb, var(--dsw-alias-state-business-primary) ${Math.round(alpha * 100)}%, transparent)` : 'var(--dsw-alias-interactive-bg-hover)', opacity: t > 0 ? 1 : 0.5 } })
-      })
+      const cells = week.map((c) => React.createElement('div', {
+        key: c.date,
+        title: `${c.date}: ${c.value} ${unit}`,
+        style: { width: cell, height: cell, borderRadius: 2, background: cellBg(c), opacity: c.value > 0 ? 1 : 0.5 },
+      }))
       return React.createElement('div', { key: wi, style: { display: 'flex', gap: 2 } }, cells)
     })
     const first = chart.heatmap[0]?.[0]?.date
@@ -656,7 +847,7 @@ function ActionsBlock({ actions, onAction, scale }: { actions: WidgetAction[]; o
   const btnStyle: React.CSSProperties = {
     flex: 'none', height: Math.round(26 * scale), padding: `0 ${Math.round(10 * scale)}px`,
     borderRadius: Math.round(13 * scale), border: '1px solid var(--dsw-alias-border-l2)',
-    background: 'transparent', color: 'var(--dsw-alias-brand-primary)',
+    background: 'transparent', color: 'var(--dsw-alias-state-business-primary)',
     fontSize: `${Math.round(11 * scale)}px`, cursor: 'pointer', display: 'inline-flex', alignItems: 'center',
   }
   const btnEls = actions.map((a) => {
@@ -891,7 +1082,13 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // its box at any side size or magnification. Other charts keep their fixed
   // footprint and bottom-anchored posture. Declared BEFORE the chart push
   // below (TDZ: the push evaluates it immediately).
-  const stretchChart = out.chart?.kind === 'line'
+  //
+  // 对话轨迹 (lanes) is elastic too, by the user's request (2026-09-25): the
+  // three lanes are stacked CONTIGUOUSLY (no gap between them) and the whole
+  // block takes every pixel between the grey caption and the card's floor —
+  // the official 8px/14px vertical strip left a two-thirds-empty card at this
+  // tile size. Only the block's WIDTH geometry is the official one.
+  const stretchChart = out.chart?.kind === 'line' || out.chart?.kind === 'lanes'
   // value is shown inline in the header when headRight is present (official meter
   // header: `上下文已用 64% ~638K / 1M`); otherwise it goes to the body.
   if (out.value != null && out.headRight === undefined) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value' + (out.valuePulse ? ' dsx-value-pulse' : ''), style: { fontSize: `${valuePx}px`, color: out.valueTone === 'danger' ? 'var(--dsw-alias-state-error-primary)' : undefined } }, out.value))
@@ -976,33 +1173,71 @@ function OrderList({ items, onMove, onRemove, onSelect, selected }: {
   selected?: string
 }): React.ReactElement {
   const dragIdx = React.useRef<number | null>(null)
+  // Where a drop would land: the row's index and which side of it.
+  const [drop, setDrop] = React.useState<{ idx: number; after: boolean } | null>(null)
+  /** Insert the dragged row before/after the target row. */
+  const dropOn = (target: number, after: boolean): void => {
+    const from = dragIdx.current
+    dragIdx.current = null
+    setDrop(null)
+    if (from === null || from === target) return
+    const next = items.slice()
+    const held = next.splice(from, 1)[0]
+    const at = next.indexOf(items[target]!)
+    if (at < 0) return
+    next.splice(after ? at + 1 : at, 0, held!)
+    if (next.join(',') !== items.join(',')) onMove(next)
+  }
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 2 } },
     items.map((id, i) => {
       const { widgetId, size } = parseInstanceKey(id)
       const w = WIDGETS.find((x) => x.id === widgetId)
       if (!w) return null
       const isSel = selected === id
+      const isDropTarget = drop !== null && drop.idx === i
       return React.createElement('div', {
-        key: id, className: 'dsx-order-row' + (isSel ? ' selected' : ''), draggable: true,
-        onDragStart: (e: React.DragEvent) => { dragIdx.current = i; e.dataTransfer.effectAllowed = 'move' },
-        onDragEnd: () => { dragIdx.current = null },
-        onDragOver: (e: React.DragEvent) => { e.preventDefault() },
+        key: id,
+        // NO drag handle (the official session rows have none either): the row
+        // itself is the handle, and the insertion indicator below is the
+        // product's own blue arrow-line. The previous grip lived on the LEFT
+        // while the metrics picker's lived on the right — two lists in one
+        // panel teaching two different gestures.
+        className: 'dsx-order-row' + (isSel ? ' selected' : '')
+          + (dragIdx.current === i ? ' is-dragging' : '')
+          + (isDropTarget && !drop!.after ? ' dsx-drop-before' : '')
+          + (isDropTarget && drop!.after ? ' dsx-drop-after' : ''),
+        draggable: true,
+        onDragStart: (e: React.DragEvent) => {
+          dragIdx.current = i
+          e.dataTransfer.effectAllowed = 'move'
+          try { e.dataTransfer.setData('text/plain', id) } catch { /* older engines */ }
+          if (typeof e.dataTransfer.setDragImage === 'function') e.dataTransfer.setDragImage(e.currentTarget, 24, 15)
+        },
+        onDragEnd: () => { dragIdx.current = null; setDrop(null) },
+        onDragOver: (e: React.DragEvent) => {
+          e.preventDefault()
+          const rect = e.currentTarget.getBoundingClientRect()
+          const after = e.clientY > rect.top + rect.height / 2
+          setDrop((prev) => (prev !== null && prev.idx === i && prev.after === after ? prev : { idx: i, after }))
+        },
         onDrop: (e: React.DragEvent) => {
           e.preventDefault()
-          const from = dragIdx.current
-          if (from === null || from === i) return
-          const next = items.slice()
-          const m = next.splice(from, 1)[0]
-          next.splice(i, 0, m)
-          dragIdx.current = null
-          onMove(next)
+          // Re-derive the side from THIS event: dragover and drop arrive back to
+          // back and React batches the dragover's setState, so the state can
+          // still hold the previous side (see the metrics picker).
+          const rect = e.currentTarget.getBoundingClientRect()
+          dropOn(i, e.clientY > rect.top + rect.height / 2)
         },
+        onDragLeave: () => setDrop((prev) => (prev !== null && prev.idx === i ? null : prev)),
         onClick: onSelect ? () => onSelect(id) : undefined,
       },
-        React.createElement('span', { className: 'dsx-drag-handle' }, React.createElement(GripIcon)),
-        React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, widgetName(w)),
+        // The name owns the row and ellipsizes in the narrow left column, so it
+        // carries a title — a truncated 「会…」 must still be identifiable on
+        // hover. The source badge (系统/外部) is dropped in THIS list: at 190px
+        // it was the thing that squeezed the name to two characters, and the
+        // market row already shows it.
+        React.createElement('span', { title: widgetName(w), style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, widgetName(w)),
         React.createElement('span', { style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', flex: 'none' } }, size === '2x4' ? '2×4' : '2×2'),
-        React.createElement('span', { className: 'dsx-badge' }, badgeOf(w)),
         onRemove ? React.createElement('button', { type: 'button', className: 'dsx-trash', 'aria-label': t('order.removeAria'), title: t('order.removeTitle'), onClick: () => { if (onSelect && selected === id) onSelect('') ; onRemove(id) } }, React.createElement(TrashIcon)) : null,
       )
     }),
@@ -1056,12 +1291,241 @@ function ConfigFieldControl({ field, value, onChange }: { field: ConfigField; va
       opts.map(([o, label]) => React.createElement('option', { key: o, value: o }, optionLabel([o, label]))),
     )
   }
+  if (field.type === 'metrics') {
+    // Multi-select + ORDER. Rendered by its own component so the hooks below
+    // (drag state) live on a stable component type instead of after this
+    // function's other type branches.
+    return React.createElement(MetricsFieldControl, { field, value, onChange })
+  }
   return React.createElement(React.Fragment)
+}
+
+/**
+ * `ConfigField` type 'metrics' — pick which numbers a card shows, and drag them
+ * into order.
+ *
+ * The row is the iOS settings shape read left to right: the NAME owns the left
+ * edge, the SWITCH is the row's control on the right, and the reorder GRIP sits
+ * at the far right (the same affordance iOS puts at the edge of an editable
+ * list). Dragging is HTML5 DnD, with the drop position decided by which half of
+ * the target row the pointer is in (iOS insertion semantics), a live insertion
+ * bar, and the dragged row lifting out of the list while it moves.
+ *
+ * The stored value is an ordered ARRAY of option keys, so the card renders
+ * exactly the numbers the user ticked, left to right. Anything not in the
+ * option list is dropped on read — a metric renamed or removed in a later build
+ * can never wedge the card with a key nobody renders.
+ */
+function MetricsFieldControl({ field, value, onChange }: { field: ConfigField; value: unknown; onChange: (v: unknown) => void }): React.ReactElement {
+  const opts = field.options ?? []
+  const max = typeof field.max === 'number' && field.max > 0 ? field.max : 6
+  // An UNCONFIGURED card falls back to the field's own default, exactly like
+  // the toggle/mode fields do — otherwise the form would read "0 picked" while
+  // the card it configures is happily rendering the default four.
+  const stored = Array.isArray(value) ? value : (Array.isArray(field.default) ? field.default : [])
+  const picked = (stored as unknown[])
+    .filter((v): v is string => typeof v === 'string' && opts.some(([o]) => o === v))
+  // Where a drop would land: `{ key, after }` names the row and the side.
+  const [drop, setDrop] = React.useState<{ key: string; after: boolean } | null>(null)
+  const dragging = React.useRef<string | null>(null)
+  // A press that starts ON the switch must not become a row drag: the switch is
+  // the row's control, and every other gesture in the row reorders it. The
+  // official session rows have no such child; a row with a toggle has to say so.
+  const onSwitch = React.useRef(false)
+  /**
+   * The ON group sits on TOP, in CARD order, and the OFF group below it.
+   *
+   * The list used to render the catalog order with the picked rows scattered
+   * through it, so what the form showed was never the order the card printed —
+   * the user had to remember which of twelve switches came first. Grouping
+   * makes the list itself the answer: read the top group downwards and that IS
+   * the card, left to right.
+   *
+   * A row that is switched OFF lands at the TOP of the OFF group (`offOrder`),
+   * so the movement is one step in one direction — the user's own rule: "关闭
+   * 后它向下移动到所有已关闭指标的第一个".
+   */
+  const [offOrder, setOffOrder] = React.useState<string[]>(() => opts.map(([k]) => k).filter((k) => !picked.includes(k)))
+  const displayKeys = [
+    ...picked,
+    ...offOrder.filter((k) => !picked.includes(k)),
+    ...opts.map(([k]) => k).filter((k) => !picked.includes(k) && !offOrder.includes(k)),
+  ]
+  // Responsive: the list splits into two columns (ON | OFF) only when the drawer
+  // is wide enough for two readable rows side by side; below that it falls back
+  // to the single stacked column. Measured in a LAYOUT effect (before paint) so
+  // the first painted frame is already the final layout — an effect-based measure
+  // painted one single-column frame and then snapped to two columns, which the
+  // user saw as "自定义选项出现动画效果" (reported 2026-09-26).
+  const metricsRef = React.useRef<HTMLDivElement | null>(null)
+  const [pickW, setPickW] = React.useState(0)
+  React.useLayoutEffect(() => {
+    const el = metricsRef.current
+    if (el === null) return
+    const measure = (): void => setPickW((prev) => (Math.abs(prev - el.clientWidth) < 2 ? prev : el.clientWidth))
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  // FLIP: a row that changes group must MOVE, not jump — and with two columns it
+  // can move SIDEWAYS as well as up, so both axes are animated (the product's
+  // motion token, so the form moves like the rest of the UI).
+  //
+  // Two cases must NOT animate, because the rows did not really move:
+  //   * the first layout (nothing to animate FROM), and
+  //   * a change of COLUMN MODE (single ⇄ two columns) — that is the list settling
+  //     into place, and animating it is the "自定义区域自己动了一下" the user
+  //     reported. `prevTwoCol` tracks the mode.
+  const rowEls = React.useRef(new Map<string, HTMLDivElement>())
+  const prevRects = React.useRef(new Map<string, { x: number; y: number }>())
+  const prevTwoCol = React.useRef<boolean | null>(null)
+  React.useLayoutEffect(() => {
+    const next = new Map<string, { x: number; y: number }>()
+    const modeChanged = prevTwoCol.current !== null && prevTwoCol.current !== twoCol
+    prevTwoCol.current = twoCol
+    rowEls.current.forEach((el, key) => {
+      const r = el.getBoundingClientRect()
+      next.set(key, { x: r.left, y: r.top })
+      const prev = prevRects.current.get(key)
+      if (prev === undefined || modeChanged) return
+      const dx = prev.x - r.left
+      const dy = prev.y - r.top
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return
+      // NEVER animate while a drag is in flight: the drag's own hit-testing (and
+      // the browser's) reads the row's live rect, and a row gliding under the
+      // pointer makes the insertion side flap (and cancelled the drop outright
+      // in the probe, measured 2026-09-25).
+      if (dragging.current !== null || drop !== null) return
+      el.style.transition = 'none'
+      el.style.transform = `translate(${dx}px, ${dy}px)`
+      void el.offsetHeight // flush the start position before animating away
+      el.style.transition = 'transform var(--ds-transition-duration) var(--ds-ease-in-out)'
+      el.style.transform = ''
+    })
+    prevRects.current = next
+  })
+  const toggle = (key: string): void => {
+    if (picked.includes(key)) {
+      onChange(picked.filter((k) => k !== key))
+      setOffOrder((prev) => [key, ...prev.filter((k) => k !== key)])
+    } else if (picked.length < max) {
+      onChange(picked.concat(key))
+      setOffOrder((prev) => prev.filter((k) => k !== key))
+    }
+  }
+  /** Move the dragged key to just before/after the target key, or to the END of
+   *  the ON group when the target row is not picked (a drop on an unpicked row
+   *  is a reasonable gesture for "put it last" — refusing it silently would read
+   *  as a broken drag). */
+  const dropOn = (targetKey: string, after: boolean, payload?: string): void => {
+    const from = dragging.current ?? (typeof payload === 'string' && payload !== '' ? payload : null)
+    if (from === null) return
+    const rest = picked.filter((k) => k !== from)
+    const at = rest.indexOf(targetKey)
+    const next = rest.slice()
+    if (at < 0) next.push(from)
+    else next.splice(after ? at + 1 : at, 0, from)
+    dragging.current = null
+    setDrop(null)
+    if (next.join(',') !== picked.join(',')) onChange(next)
+  }
+  // TWO COLUMNS when the drawer is wide enough: ON on the left, OFF on the right.
+  // One flat, keyed list placed by GRID CELL rather than two parent divs — a row
+  // that changes group would be REMOUNTED if it moved between parents, and a
+  // remounted row cannot be FLIP-animated (it would flash in its new spot). Grid
+  // placement keeps the element identity, so the diagonal move animates.
+  const onKeys = picked
+  const offKeys = displayKeys.filter((k) => !picked.includes(k))
+  const twoCol = pickW >= 340 && onKeys.length > 0 && offKeys.length > 0
+  const rowsBottom = Math.max(onKeys.length, offKeys.length) + 1
+  const cellFor = (key: string): React.CSSProperties => {
+    const on = picked.includes(key)
+    if (!twoCol) return { gridColumn: 1, gridRow: on ? onKeys.indexOf(key) + 1 : onKeys.length + offKeys.indexOf(key) + 1 }
+    return { gridColumn: on ? 1 : 2, gridRow: (on ? onKeys.indexOf(key) : offKeys.indexOf(key)) + 1 }
+  }
+  return React.createElement('div', { className: 'dsx-metrics', ref: metricsRef, style: { display: 'grid', gridTemplateColumns: twoCol ? '1fr 1fr' : '1fr', columnGap: 10, rowGap: 0, alignContent: 'start' } },
+    displayKeys.map((key) => {
+      const label = opts.find(([o]) => o === key)?.[1] ?? key
+      const on = picked.includes(key)
+      const isDropTarget = drop !== null && drop.key === key && on
+      return React.createElement('div', {
+        key,
+        // Stable hook for the drag/reorder probes (and for anyone inspecting
+        // which key a row is): the visible label is localized, the key is not.
+        'data-metric': key,
+        ref: (el: HTMLDivElement | null) => { if (el !== null) rowEls.current.set(key, el) },
+        style: cellFor(key),
+        className: 'dsx-metric'
+          + (on ? ' is-on' : '')
+          + (dragging.current === key ? ' is-dragging' : '')
+          + (isDropTarget && !drop!.after ? ' dsx-drop-before' : '')
+          + (isDropTarget && drop!.after ? ' dsx-drop-after' : ''),
+        // The WHOLE row drags (the official session-row gesture — no grip): the
+        // row is the handle, and the 2px blue arrow-line below is the official
+        // insertion indicator, copied from the DSH sidebar's row CSS.
+        draggable: true,
+        onDragStart: (e: React.DragEvent) => {
+          if (onSwitch.current) { e.preventDefault(); return }
+          dragging.current = key
+          // The key also rides the drag payload: a ref survives re-renders but
+          // not a re-mount, and the drop handler is the only place that can tell
+          // the two apart.
+          try { e.dataTransfer.setData('text/plain', key) } catch { /* older engines */ }
+          e.dataTransfer.effectAllowed = 'move'
+          if (typeof e.dataTransfer.setDragImage === 'function') e.dataTransfer.setDragImage(e.currentTarget, 24, 15)
+        },
+        onDragEnd: () => { dragging.current = null; onSwitch.current = false; setDrop(null) },
+        onDragOver: (e: React.DragEvent) => {
+          // Accept the drop on ANY row (so a drop on an unpicked row can mean
+          // "last"), but only a PICKED row shows the insertion indicator.
+          e.preventDefault()
+          if (!on) { setDrop((prev) => (prev === null ? prev : null)); return }
+          const rect = e.currentTarget.getBoundingClientRect()
+          const after = e.clientY > rect.top + rect.height / 2
+          // Compare before writing state: dragover fires continuously and a
+          // fresh object per event would re-render the whole form each frame.
+          setDrop((prev) => (prev !== null && prev.key === key && prev.after === after ? prev : { key, after }))
+        },
+        onDrop: (e: React.DragEvent) => {
+          e.preventDefault()
+          let payload = ''
+          try { payload = e.dataTransfer.getData('text/plain') } catch { payload = '' }
+          // The insertion side is re-derived from THIS event, never read from
+          // the `drop` state: the browser fires dragover and drop back to back,
+          // React batches the dragover's setState, and the drop handler can
+          // therefore still close over the PREVIOUS side — which silently made a
+          // drop below a row behave like a drop above it (measured: dragging the
+          // first metric one slot down was a no-op).
+          const rect = e.currentTarget.getBoundingClientRect()
+          dropOn(key, e.clientY > rect.top + rect.height / 2, payload)
+        },
+        onDragLeave: on ? () => setDrop((prev) => (prev !== null && prev.key === key ? null : prev)) : undefined,
+      },
+        // No order NUMBER on the row (the card itself shows the order): the row
+        // is name + switch, the two things a settings row has.
+        React.createElement('span', { className: 'dsx-metric-name', title: optionLabel([key, label]) }, optionLabel([key, label])),
+        React.createElement('label', {
+          className: 'dsx-switch-row',
+          title: optionLabel([key, label]),
+          onMouseDown: () => { onSwitch.current = true },
+          onMouseUp: () => { onSwitch.current = false },
+        },
+          React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: on, onChange: () => toggle(key) }),
+          React.createElement('span', { className: 'dsx-switch-track', 'aria-hidden': true }, React.createElement('span', { className: 'dsx-switch-thumb' })),
+        ),
+      )
+    }),
+    React.createElement('div', { className: 'dsx-metric-hint', style: { gridColumn: '1 / -1', gridRow: rowsBottom } }, t('config.metricHint', { n: picked.length, max })),
+  )
 }
 
 function ConfigTab({ controller }: { controller: WidgetsController }): React.ReactElement {
   const { prefs, setPrefs } = controller
-  const [selected, setSelected] = React.useState<string>('')
+  // Restored from module scope, so closing/reopening the panel keeps the drawer.
+  const [selected, setSelected] = React.useState<string>(lastSelectedInstance)
+  React.useEffect(() => { lastSelectedInstance = selected }, [selected])
   // Local preview size (2×2 ↔ 2×4) — lets you eyeball a widget at a different
   // size in the preview without changing the added instance.
   const [previewSize, setPreviewSize] = React.useState<WidgetSize>('2x2')
@@ -1132,14 +1596,107 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
   // the same size never appears twice (a resize to a size that already exists
   // merges instead of duplicating).
   const out = previewOut()
-  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } },
-    React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', marginBottom: 4 } }, t('config.addedCount', { added: installed.length, max: prefs.maxWidgets })),
-    React.createElement(OrderList, { items: installed, onMove: (next) => setPrefs({ order: next }), onRemove: remove, onSelect: setSelected, selected }),
-    selWidget && selConfig ? React.createElement('div', { style: { marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--dsw-alias-border-l2)', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } },
-      // Preview title anchored top-LEFT; the card-size dropdown sits beside it
-      // on the right (same dsx-select style as the 窗口对齐方式 field).
-      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-        React.createElement('div', { style: { flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, t('config.preview', { name: widgetName(selWidget) })),
+  const hasSel = Boolean(selWidget && selConfig)
+  // The panel grows by the drawer's width while a widget is selected; tell it.
+  const onDetailToggle = controller.onDetailToggle
+  React.useEffect(() => {
+    onDetailToggle?.(hasSel)
+    return () => { onDetailToggle?.(false) }
+  }, [hasSel, onDetailToggle])
+  // The detail column is a DRAWER revealed by its own growing box: the inner
+  // content is laid out at the TARGET width from the first frame (so the card's
+  // size never changes — the user's 「大小从未变化，而是从右边的遮罩平滑移动到左边」
+  // rule) and the drawer's `overflow: hidden` wipes it in as the box widens. The
+  // measured width is only the fallback for hosts that do not know the target
+  // (the official settings page).
+  const detailRef = React.useRef<HTMLDivElement | null>(null)
+  const [detailW, setDetailW] = React.useState(0)
+  React.useEffect(() => {
+    const el = detailRef.current
+    if (el === null || typeof ResizeObserver === 'undefined') return
+    const measure = (): void => setDetailW((prev) => (Math.abs(prev - el.clientWidth) < 2 ? prev : el.clientWidth))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [hasSel])
+  const targetW = controller.detailWidth ?? 0
+  const drawerW = targetW > 0 ? targetW : detailW
+  // No translateX animation on open/close: the reveal IS the box growing. A
+  // translate on top of it doubled the motion and made the card look like it
+  // zoomed into place.
+  return React.createElement('div', { style: { display: 'flex', flexDirection: 'row', flex: 1, minHeight: 0 } },
+    // LEFT column: the installed list — the panel's whole width while nothing is
+    // selected, LIST_W once the drawer is out. `width` (not `flex-basis`) so it
+    // interpolates: `auto` → `190px` is not animatable, which is why the left
+    // column used to snap (reported 2026-09-26).
+    React.createElement('div', { className: 'dsx-config-list', style: {
+      flex: '0 0 auto',
+      width: hasSel ? `${LIST_W}px` : '100%',
+      minWidth: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      transition: 'width var(--ds-transition-duration-slow) var(--ds-ease-in-out)',
+      // The list column animates with the drawer, so opening the preview glides
+      // on BOTH sides instead of snapping the left column to 190px.
+      // The official gutter (measured from the settings window's nav→content
+      // spacing, 12px): the list's rows stop short of the drawer so the selected
+      // fill is never guillotined by the drawer's edge.
+      paddingRight: COL_GAP,
+    } },
+      // The caption lives INSIDE this column now (one ellipsized line, full text
+      // on hover): as a full-width row it pushed the drawer down by its own
+      // height, and the drawer must start at the top of the content area — level
+      // with the tab selector — so the preview gets that space.
+      React.createElement('div', {
+        title: t('config.addedCount', { added: installed.length, max: prefs.maxWidgets }),
+        style: { flex: 'none', fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+      }, hasSel ? `${installed.length}/${prefs.maxWidgets}` : t('config.addedCount', { added: installed.length, max: prefs.maxWidgets })),
+      React.createElement(OrderList, {
+        items: installed,
+        onMove: (next) => setPrefs({ order: next }),
+        onRemove: remove,
+        // Tapping the SELECTED row again closes the drawer — the same gesture the
+        // product uses for a selected list item, and the reason the user could
+        // not get rid of the preview ("再次点击会话概览没有办法关掉").
+        onSelect: (id) => setSelected((prev) => (prev === id ? '' : id)),
+        selected,
+      }),
+    ),
+    // RIGHT column: the drawer. `flex: 1 1 0` fills whatever the list leaves, and
+    // its `overflow: hidden` is the MASK that reveals the content as the box
+    // widens. The inner content is absolutely positioned at the TARGET width, so
+    // it does not reflow while the box animates.
+    React.createElement('div', { ref: detailRef, className: 'dsx-config-drawer', style: {
+      flex: '1 1 0px',
+      minWidth: 0,
+      height: '100%',
+      position: 'relative',
+      overflow: 'hidden',
+    } },
+      hasSel ? React.createElement('div', { className: 'dsx-config-drawer-inner', style: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        // Pinned to the target width MINUS 2px: the drawer's `overflow: hidden` is
+        // the mask, and a row's 1px edge line sitting exactly on that boundary is
+        // the first thing a fractional pixel eats (the user's 「留一点 px 给渲染的
+        // 边缘线」). Both the fit and the card's centring use this same width.
+        width: `${Math.max(0, drawerW - 2)}px`,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0,
+        // NO entrance animation of its own: the reveal is the drawer's box
+        // widening over this content (the mask). An extra translate/fade here
+        // doubled the motion.
+      } },
+      // Preview title anchored top-LEFT; the card-size dropdown and the CLOSE
+      // button sit beside it on the right.
+      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flex: 'none' } },
+        React.createElement('div', { style: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, t('config.preview', { name: widgetName(selWidget) })),
         sizesOf(selWidget).length > 1
           ? React.createElement('select', {
               className: 'dsx-select', style: { fontSize: 11, width: 'auto' },
@@ -1149,46 +1706,224 @@ function ConfigTab({ controller }: { controller: WidgetsController }): React.Rea
               sizesOf(selWidget).map((s) => React.createElement('option', { key: s, value: s }, s === '2x4' ? '2×4' : '2×2')),
             )
           : null,
+        // An explicit way out of the preview (the user asked for a close button;
+        // tapping the selected row again works too — see OrderList.onSelect).
+        React.createElement('button', {
+          type: 'button',
+          className: 'dsx-drawer-close',
+          'aria-label': t('config.closePreview'),
+          title: t('config.closePreview'),
+          onClick: () => setSelected(''),
+        }, closeIconSmall),
       ),
-      // The preview fills the space BELOW the title and centres, so extra room
-      // becomes generous vertical padding (2×4 previews scale 0.85 so their
-      // right-edge buttons stay visible without pushing the layout).
-      React.createElement('div', { style: { flex: 1, minHeight: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 8px 8px' } },
+      // A FIXED-HEIGHT preview block: the card's height never changes when the
+      // selection does, because `fit` is derived from the WIDEST layout (2×4) for
+      // both sizes — so a 2×2 and a 2×4 preview are exactly the same height and
+      // switching widgets/sizes moves nothing (the user's rule: 预览的组件高度保持
+      // 不变，上下留一点合适的间距，然后往下顺延自定义的按钮和区域). The 自定义 form
+      // follows immediately below the block; whatever height is left over stays
+      // empty at the bottom instead of pushing the preview around.
+      React.createElement('div', { style: { flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '26px 8px' } },
         (() => {
-          const u = 150
+          // Drawn at the RAIL'S OWN unit (`prefs.cardSide`), then scaled — so every
+          // element, padding and gap inside the card is the identical layout the
+          // rail seats, only bigger. The user's rule: 预览组件与实际组件必须完全复用，
+          // 唯一区别只是预览大小与预览效果（数值填充）. A different unit would re-round
+          // every `Math.round(x * scale)` and the spacing would drift.
+          const u = controller.railSide && controller.railSide > 0 ? controller.railSide : prefs.cardSide
           const isWide = selSize === '2x4'
-          const pv = out ? React.createElement(CardBody, { out, unit: u, width: isWide ? 2 * u + 12 : undefined, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent, pinBox: true }) : null
+          const refW = 2 * u + 12
+          const cardW = isWide ? refW : u
+          const avail = drawerW > 0 ? drawerW - 18 : refW
+          // ONE fit for every size: from the 2×4 reference, so the scaled card is
+          // the same height whatever is selected (a 2×2 is then a square of that
+          // height, centred in the column). The scaled box is reserved EXPLICITLY
+          // — a transform does not change layout size, and reserving the unscaled
+          // height clipped the enlarged card (reported 2026-09-26).
+          const fit = Math.max(0.55, Math.min(1.5, avail / refW))
+          const pv = out ? React.createElement(CardBody, { out, unit: u, width: isWide ? cardW : undefined, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent, pinBox: true }) : null
           const simTip = widgetSimToggle(selWidget)
             ? React.createElement('div', { key: 'simtip', style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', marginTop: 8, textAlign: 'center' } }, t('config.simTip', { label: widgetSimToggle(selWidget) }))
             : null
           return out
             ? React.createElement('div', {
-                style: { display: 'flex', flexDirection: 'column', alignItems: 'center', transform: isWide ? 'scale(0.85)' : undefined, transformOrigin: 'center center', cursor: widgetSimToggle(selWidget) ? 'pointer' : undefined, userSelect: 'none' },
+                // Column wrapper: the reserved card box, then the optional sim tip
+                // UNDER it. NO transition anywhere here: switching to another
+                // widget must snap, not zoom (「切换预览的组件还有动画效果，我觉得不需要」);
+                // opening/closing the drawer still animates — that is the columns'
+                // flex-basis motion.
+                style: { display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 'none' },
                 title: widgetSimToggle(selWidget) ? t('config.simTitle') : undefined,
                 onClick: widgetSimToggle(selWidget) ? () => toggleSim() : undefined,
-              }, pv, simTip)
+              },
+              React.createElement('div', { style: { position: 'relative', width: Math.round(cardW * fit), height: Math.round(u * fit), flex: 'none' } },
+                React.createElement('div', { style: { position: 'absolute', top: 0, left: 0, width: cardW, transform: `scale(${fit.toFixed(4)})`, transformOrigin: 'top left', cursor: widgetSimToggle(selWidget) ? 'pointer' : undefined, userSelect: 'none' } }, pv),
+              ),
+              simTip,
+              )
             : null
         })(),
       ),
+      // 自定义 sits on the drawer's floor (natural height, shrinking + scrolling
+      // only when it is taller than the space the stage leaves).
+      React.createElement('div', { style: { flex: '0 1 auto', minHeight: 0, overflowY: 'auto' } },
       // Per-card schema fields keep their 自定义 heading below the preview.
-      selWidget.configSchema && selWidget.configSchema.length > 0 ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 10 } },
+      selWidget.configSchema && selWidget.configSchema.length > 0 ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 16 } },
         React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)' } }, t('config.custom')),
-        selWidget.configSchema.map((f) => React.createElement('div', { key: f.key, style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--dsw-alias-border-l1)' } },
-          React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)' } }, fieldLabel(f)),
-          React.createElement('div', { style: { flex: 'none', minWidth: 0 } }, React.createElement(ConfigFieldControl, { field: f, value: selConfig[f.key], onChange: (v) => setConfig(f, v) })),
-        )),
+        selWidget.configSchema.map((f) => {
+          // A 'metrics' control is a self-describing LIST: its rows, its switch
+          // and its hint already say everything a label would, and the label
+          // line only pushed the list down (reported 2026-09-25). Scalar fields
+          // keep the label-left / control-right settings-row shape.
+          const isList = f.type === 'metrics'
+          return React.createElement('div', { key: f.key, style: {
+            display: 'flex',
+            flexDirection: isList ? 'column' : 'row',
+            alignItems: isList ? 'stretch' : 'center',
+            justifyContent: 'space-between',
+            gap: isList ? 0 : 8,
+            padding: isList ? '4px 0 0' : '10px 0',
+            borderBottom: isList ? undefined : '1px solid var(--dsw-alias-border-l1)',
+          } },
+            isList ? null : React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)' } }, fieldLabel(f)),
+            React.createElement('div', { style: { flex: isList ? '1 1 auto' : 'none', minWidth: 0 } }, React.createElement(ConfigFieldControl, { field: f, value: selConfig[f.key], onChange: (v) => setConfig(f, v) })),
+          )
+        }),
       ) : null,
-    ) : null,
+      ),
+      ) : null,
+    ),
   )
+}
+
+/** iOS-style zoom: the clicked tile grows and travels into the preview's slot.
+ *  A FLIP over a fixed-position ghost that renders the SAME card; the stage's
+ *  card is the authority for the final box, so the ghost lands exactly on it and
+ *  then unmounts. */
+function ZoomGhost({ zoom, target, onDone }: {
+  zoom: { x: number; y: number; w: number; h: number; out: WidgetRenderOut; unit: number; cardW: number; size: WidgetSize; squircle?: boolean; cornerPercent?: number; phase: 'in' | 'out' }
+  target: React.RefObject<HTMLDivElement | null>
+  onDone: () => void
+}): React.ReactElement | null {
+  const [box, setBox] = React.useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  const [playing, setPlaying] = React.useState(false)
+  const done = React.useRef(onDone)
+  done.current = onDone
+  const reverse = zoom.phase === 'out'
+  React.useLayoutEffect(() => {
+    const el = target.current
+    if (el === null) { done.current(); return }
+    // The stage layer SLIDES in (shared axis), so a raw rect is mid-flight:
+    // subtract the layer's own translation to get the SETTLED box the ghost must
+    // land on. The card's own size is re-read until it stops moving (its slot
+    // width is measured) — otherwise the ghost lands short and the card pops.
+    const settled = (r: DOMRect): { x: number; y: number; w: number; h: number } => {
+      let layer: HTMLElement | null = el
+      while (layer !== null && !(layer.className || '').toString().includes('dsx-mkt-layer')) layer = layer.parentElement
+      let dx = 0
+      let dy = 0
+      if (layer !== null) {
+        const t = getComputedStyle(layer).transform
+        if (t !== '' && t !== 'none' && typeof DOMMatrixReadOnly !== 'undefined') {
+          const m = new DOMMatrixReadOnly(t)
+          dx = m.m41
+          dy = m.m42
+        }
+      }
+      return { x: r.left - dx, y: r.top - dy, w: r.width, h: r.height }
+    }
+    let box = settled(el.getBoundingClientRect())
+    setBox(box)
+    let tries = 0
+    let raf = 0
+    const tick = (): void => {
+      const cur = target.current ? settled(target.current.getBoundingClientRect()) : box
+      if (Math.abs(cur.w - box.w) > 1 && tries++ < 4) {
+        box = cur
+        setBox(cur)
+        raf = requestAnimationFrame(tick)
+        return
+      }
+      setPlaying(true)
+    }
+    raf = requestAnimationFrame(tick)
+    const timer = setTimeout(() => done.current(), 560)
+    return () => { cancelAnimationFrame(raf); clearTimeout(timer) }
+  }, [])
+  if (box === null) return null
+  const sFrom = reverse ? Math.min(box.w / zoom.cardW, box.h / zoom.unit) : Math.min(zoom.w / zoom.cardW, zoom.h / zoom.unit)
+  const sTo = reverse ? Math.min(zoom.w / zoom.cardW, zoom.h / zoom.unit) : Math.min(box.w / zoom.cardW, box.h / zoom.unit)
+  // The ghost is positioned at the TARGET box and transformed back onto the
+  // source, so the FLIP reads as one continuous move in either direction.
+  const at = (rect: { x: number; y: number; w: number; h: number }, s: number): string =>
+    `translate(${rect.x + rect.w / 2 - box.x - zoom.cardW / 2}px, ${rect.y + rect.h / 2 - box.y - zoom.unit / 2}px) scale(${s.toFixed(4)})`
+  const from = at(reverse ? { x: box.x, y: box.y, w: box.w, h: box.h } : zoom, sFrom)
+  const to = at(reverse ? zoom : { x: box.x, y: box.y, w: box.w, h: box.h }, sTo)
+  return createPortal(React.createElement('div', {
+    className: 'dsx-zoomghost',
+    // PORTALED to <body> on purpose: the panel lives inside the rail's drawer
+    // wrapper, which carries a transform — a `position: fixed` ghost inside it is
+    // positioned against THAT wrapper, so it flew ~1000px off-screen and the user
+    // saw an empty tile then a sudden preview (reported 2026-09-27).
+    style: { left: box.x, top: box.y, width: zoom.cardW, height: zoom.unit, transform: playing ? to : from },
+  }, React.createElement(CardBody, { out: zoom.out, unit: zoom.unit, width: zoom.size === '2x4' ? zoom.cardW : undefined, squircle: zoom.squircle, cornerPercent: zoom.cornerPercent, pinBox: true })), document.body)
 }
 
 // ---- Market tab ----
 
 function MarketTab({ controller, usageData }: { controller: WidgetsController; usageData: UsageData | null }): React.ReactElement {
   const { prefs, setPrefs } = controller
+  // NOTE: every `useState` this component's effects depend on must be declared
+  // BEFORE those effects — a dependency array is read at hook-call time, so
+  // naming a later `useState` throws "Cannot access X before initialization"
+  // (which is exactly how the market tab blanked itself once).
   const [q, setQ] = React.useState('')
+  // The view is a PERSISTED pref (not component state): switching must survive a
+  // reload, a session change — and ship as a user preference to plugin users.
+  const view = prefs.marketView === 'grid' ? 'grid' : 'list'
+  const setView = (v: 'list' | 'grid'): void => setPrefs({ marketView: v })
   const [previewGroup, setPreviewGroup] = React.useState<string | null>(null)
   const [previewIdx, setPreviewIdx] = React.useState(0)
+  const galleryRef = React.useRef<HTMLDivElement | null>(null)
+  const [colW, setColW] = React.useState(0)
+  React.useLayoutEffect(() => {
+    const el = galleryRef.current
+    if (el === null) return
+    const measure = (): void => {
+      const w = el.clientWidth
+      setColW((prev) => (Math.abs(prev - w) < 2 ? prev : w))
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [view])
+  // iOS-style zoom: the clicked card grows and travels into the preview slot
+  // instead of the stage simply appearing. `zoom` carries the source rect; the
+  // target is measured from the stage's card once it has rendered.
+  const [zoom, setZoom] = React.useState<{ x: number; y: number; w: number; h: number; out: WidgetRenderOut; unit: number; cardW: number; size: WidgetSize; squircle?: boolean; cornerPercent?: number; phase: 'in' | 'out' } | null>(null)
+  // The tile/card the preview was opened from, kept PAST the IN animation so the
+  // back gesture can fly home (the IN ghost clears `zoom` when it lands).
+  const [lastSource, setLastSource] = React.useState<{ x: number; y: number; w: number; h: number; out: WidgetRenderOut; unit: number; cardW: number; size: WidgetSize; squircle?: boolean; cornerPercent?: number } | null>(null)
+  // Which way the shared-axis push is going while it runs (null = settled).
+  const [anim, setAnim] = React.useState<'in' | 'out' | null>(null)
+  const railSide = controller.railSide ?? 0
+  const stageRef = React.useRef<HTMLDivElement | null>(null)
+  const stageCardRef = React.useRef<HTMLDivElement | null>(null)
+  // Measured in a LAYOUT effect so the stage's card is already at its final size
+  // on the first painted frame (the zoom ghost flies into that box).
+  const [stageW, setStageW] = React.useState(0)
+  React.useLayoutEffect(() => {
+    const el = stageRef.current
+    if (el === null) return
+    const measure = (): void => setStageW((prev) => (Math.abs(prev - el.clientWidth) < 2 ? prev : el.clientWidth))
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [previewGroup])
   // Simulated state for widgets with states (e.g. peak-pricing): clicking the
   // preview card flips it, so both states can be reviewed live.
   const [previewSim, setPreviewSim] = React.useState<Record<string, unknown> | null>(null)
@@ -1206,7 +1941,165 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     const label = t(key)
     return label === key ? widgetName(w) : label
   }
+  /** Open a group's preview, seeding the zoom from the clicked card/tile. */
+  const openGroup = (w: (typeof WIDGETS)[number], from: 'list' | 'grid'): void => {
+    const sizes = sizesOf(w)
+    const size: WidgetSize = sizes.includes('2x2') ? '2x2' : sizes[0]
+    const unit = railSide > 0 ? railSide : prefs.cardSide
+    const cardW = size === '2x4' ? 2 * unit + 12 : unit
+    // The source rect: the tile's preview for the gallery, the card itself for
+    // the list (there is no preview there).
+    const el = from === 'grid'
+      ? (document.querySelector(`.dsx-gcard[data-gid="${w.id}"] .dsx-gshot`) as HTMLElement | null)
+      : (document.querySelector(`.dsx-mcard[data-gid="${w.id}"]`) as HTMLElement | null)
+    const out = exampleOut(w, size, prefs)
+    const r = el ? el.getBoundingClientRect() : null
+    const src = r && out ? { x: r.left, y: r.top, w: r.width, h: r.height, out, unit, cardW, size, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent } : null
+    setLastSource(src)
+    if (MARKET_HERO) setZoom(src ? { ...src, phase: 'in' } : null)
+    setAnim('in')
+    // Without the hero nothing else clears the push: do it when the 380ms
+    // keyframes are done, which also unmounts the (now hidden) market layer.
+    if (!MARKET_HERO) window.setTimeout(() => setAnim(null), 400)
+    setPreviewGroup(groupOf(w))
+    setPreviewIdx(0)
+  }
+  /** Leave the preview. With the hero OFF this is a pure shared-axis pop: the
+   *  preview slides out, the market slides back in, and the stage is dropped when
+   *  that motion ends (400ms ≈ the 380ms keyframes + a frame of slack). With the
+   *  hero ON the card flies home first (see MARKET_HERO). */
+  const closeGroup = (): void => {
+    if (!MARKET_HERO) {
+      setAnim('out')
+      window.setTimeout(() => { setPreviewGroup(null); setAnim(null) }, 400)
+      return
+    }
+    if (lastSource !== null) { setAnim('out'); setZoom({ ...lastSource, phase: 'out' }) }
+    else setPreviewGroup(null)
+  }
+  const zoomDone = (): void => {
+    if (zoom !== null && zoom.phase === 'out') setPreviewGroup(null)
+    setZoom(null)
+    setAnim(null)
+  }
+  /** 组件市场 uses Material's SHARED AXIS (X) between the list/gallery and the
+   *  preview: outgoing and incoming ride the same horizontal motion — the outgoing
+   *  slides out of the panel's clip while the incoming slides in from the right —
+   *  and BOTH directions play the SAME keyframes (closing = `animation-direction:
+   *  reverse`), so open and close are identical by construction. Both layers stay
+   *  MOUNTED for the whole transition; the previous code swapped them instantly,
+   *  which is why the surrounding tiles vanished (and popped back) while only the
+   *  shared card animated. Reference: MaterialSharedAxis / the Material motion
+   *  system's shared-axis pattern + the container-transform (FLIP) ghost below. */
+  const renderLayers = (stageBody: React.ReactNode | null, dir: 'in' | 'out' | null): React.ReactElement => {
+    // The grid is mounted whenever there is no stage (settled market) OR a
+    // transition is in flight — in BOTH directions: during the push it is the
+    // outgoing layer, during the pop the incoming one.
+    const gridMounted = stageBody === null || dir !== null
+    return React.createElement('div', { className: 'dsx-mkt' },
+      gridMounted
+        ? React.createElement('div', { className: 'dsx-mkt-layer' + (dir === 'in' ? ' dsx-mkt-push-out' : dir === 'out' ? ' dsx-mkt-push-out is-rev' : '') }, marketBody)
+        : null,
+      stageBody !== null
+        ? React.createElement('div', { className: 'dsx-mkt-layer is-front' + (dir === 'in' ? ' dsx-mkt-push-in' : dir === 'out' ? ' dsx-mkt-push-in is-rev' : '') }, stageBody)
+        : null,
+      zoom ? React.createElement(ZoomGhost, { key: zoom.phase, zoom, target: stageCardRef, onDone: zoomDone }) : null,
+    )
+  }
 
+  const marketBody = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' } },
+    // The search field + the view toggle. The field copies the official sidebar
+    // search box (measured 2026-09-27: height 30, radius 10, 1px border, a
+    // leading magnifier, 13px input, transparent fill) — the user's pick.
+    React.createElement('div', { className: 'dsx-marketbar' },
+      React.createElement('div', { className: 'dsx-searchwrap' },
+        React.createElement('span', { className: 'dsx-searchicon' }, searchIcon),
+        React.createElement('input', { type: 'search', placeholder: t('market.search'), className: 'dsx-search', value: q, onChange: (e) => setQ(e.target.value) }),
+      ),
+      React.createElement('div', { className: 'dsx-viewtoggle' },
+        React.createElement('button', {
+          type: 'button', className: 'dsx-viewbtn', 'data-active': view === 'list',
+          'aria-label': t('market.viewList'), title: t('market.viewList'),
+          onClick: () => setView('list'),
+        }, listViewIcon),
+        React.createElement('button', {
+          type: 'button', className: 'dsx-viewbtn', 'data-active': view === 'grid',
+          'aria-label': t('market.viewGrid'), title: t('market.viewGrid'),
+          onClick: () => setView('grid'),
+        }, gridViewIcon),
+      ),
+    ),
+    // The market list owns its own scroll now that the panel body does not
+    // (`overflow: hidden` on `.dsx-stats-addpanel-body`).
+    view === 'grid'
+      ? React.createElement('div', { className: 'dsx-gallery', tabIndex: -1, ref: galleryRef },
+        list.map((w) => {
+          const sizes = sizesOf(w)
+          // One representative preview per group: the first supported size (2×2
+          // preferred), the same simulated output the stage renders.
+          const size: WidgetSize = sizes.includes('2x2') ? '2x2' : sizes[0]
+          const out = exampleOut(w, size, prefs)
+          // Drawn at the RAIL's own unit and scaled to sit COMFORTABLY in the
+          // column: the cap is ~1.15× so the widget keeps its natural proportions
+          // and typography (the reference gallery shows widgets at their real size
+          // with breathing room, not zoomed to fill the cell).
+          const gUnit = railSide > 0 ? railSide : prefs.cardSide
+          const gW = size === '2x4' ? 2 * gUnit + 12 : gUnit
+          const col = colW > 0 ? (colW - 16 - 10) / 2 : gW
+          const fit = Math.max(0.5, Math.min(1.15, (col - 12) / gW))
+          // The gallery tile is ONLY the live preview + its caption: no outer
+          // rounded rectangle and no 「已添加」 badge (the user's rule — the
+          // reference widget gallery shows nothing but the widget and its name).
+          return React.createElement('div', {
+            key: w.id, role: 'button', tabIndex: 0, className: 'dsx-gcard', 'data-gid': w.id,
+            title: widgetDesc(w),
+            onClick: () => openGroup(w, 'grid'),
+            onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openGroup(w, 'grid') } },
+          },
+            React.createElement('span', {
+              className: 'dsx-gshot',
+              // The box RESERVES the scaled size (a transform does not change
+              // layout size — reserving the unscaled box is what clipped the card
+              // before).
+              style: { width: Math.round(gW * fit), height: Math.round(gUnit * fit) },
+            },
+              React.createElement('span', {
+                style: { position: 'absolute', top: 0, left: 0, width: gW, transform: `scale(${fit.toFixed(4)})`, transformOrigin: 'top left', display: 'block' },
+              }, out ? React.createElement(CardBody, { out, unit: gUnit, width: size === '2x4' ? gW : undefined, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent, pinBox: true }) : null),
+            ),
+            React.createElement('span', { className: 'dsx-gcap' }, groupLabel(w)),
+          )
+        }),
+      )
+      : React.createElement('div', { className: 'dsx-mlist', style: { overflowY: 'auto', minHeight: 0 } },
+        list.map((w) => {
+          const gw = WIDGETS.filter((x) => groupOf(x) === groupOf(w))
+          // Instance count = every widget at every supported size (a 2×2 and a
+          // 2×4 of the same widget are two independent market entries).
+          const instanceCount = gw.reduce((a, x) => a + sizesOf(x).length, 0)
+          // NO trailing control and NO installed marker: a market card is a
+          // GROUP, and "已添加" on a group is ambiguous — one instance added or
+          // all of them? (the user's argument). The card's own click opens the
+          // group's preview, where each instance is added individually, so there
+          // is nothing to put here. The ring is neutral for the same reason.
+          const ring = React.createElement('span', { className: 'dsx-ring' })
+          return React.createElement('div', {
+            key: w.id, role: 'button', tabIndex: 0, className: 'dsx-mcard', 'data-gid': w.id,
+            onClick: () => openGroup(w, 'list'),
+            onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openGroup(w, 'list') } },
+          },
+            ring,
+            React.createElement('span', { className: 'dsx-mbody' },
+              React.createElement('span', { className: 'dsx-mhead' },
+                React.createElement('span', { className: 'dsx-mname' }, groupLabel(w)),
+                React.createElement('span', { className: 'dsx-badge' }, String(instanceCount)),
+              ),
+              React.createElement('span', { className: 'dsx-mdesc' }, widgetDesc(w)),
+            ),
+          )
+        }),
+      ),
+  )
   if (previewGroup !== null) {
     // Every supported size is its own selectable instance (2×2 first, then
     // 2×4), so multi-size widgets like the heatmap appear as independent
@@ -1223,7 +2116,10 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     // merged over the shared preview stats — no central special-casing here.
     const ex = w?.example
     const exStats = ex?.stats ? (typeof ex.stats === 'function' ? ex.stats(prefs.cardConfigs?.[curKey] ?? {}) : ex.stats) : {}
-    const previewStats = { ...PREVIEW_STATS, ...exStats } as WidgetStats
+    // The instance's own config rides along exactly like the rail's render does,
+    // so a config-driven card (peak-pricing's windows / holiday switches)
+    // previews what it will actually show instead of the defaults.
+    const previewStats = { ...PREVIEW_STATS, ...exStats, ...(prefs.cardConfigs?.[curKey] ?? {}) } as WidgetStats
     const effSim = previewSim ?? ex?.sim ?? null
     // Market-preview isolation: a crashing render shows an empty stage rather
     // than taking the market panel down (mirrors rail + config preview guards).
@@ -1256,9 +2152,9 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
     // capsule next to it, and the add button disabled.
     const oneCol = prefs.columns === 1
     const sizeBlocked = oneCol && curSize === '2x4'
-    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0, position: 'relative' } },
+    const stageBody = React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0, position: 'relative' } },
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-        React.createElement('button', { type: 'button', className: 'dsx-btn', onClick: () => setPreviewGroup(null) }, t('market.back')),
+        React.createElement('button', { type: 'button', className: 'dsx-btn', onClick: closeGroup }, t('market.back')),
         React.createElement('div', { style: { flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 } },
           React.createElement('span', { style: { fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: sizeBlocked ? 'line-through' : undefined, opacity: sizeBlocked ? 0.75 : undefined } }, w ? `${widgetName(w)}${curSize === '2x4' ? ' 2×4' : ' 2×2'}` : ''),
           sizeBlocked ? React.createElement('span', { className: 'dsx-size-warn' }, t('market.sizeBlocked')) : null,
@@ -1268,18 +2164,25 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
       !installed && prefs.installed.length >= prefs.maxWidgets
         ? React.createElement('div', { className: 'dsx-limit-tip' }, t('market.limit', { max: prefs.maxWidgets }))
         : null,
-      React.createElement('div', { style: { flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '0 4px' } },
+      React.createElement('div', { ref: stageRef, style: { flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '0 4px' } },
         React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': t('market.prevAria'), onClick: prev }, React.createElement(ChevronLeftIcon)),
-        React.createElement('div', { style: { width: 360, flex: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center' } },
+        React.createElement('div', { style: { flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' } },
           out
-            ? React.createElement('div', {
-                style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transform: curSize === '2x4' ? 'scale(0.85)' : undefined, transformOrigin: 'center center', cursor: widgetSimToggle(w) ? 'pointer' : undefined, userSelect: 'none' },
-                title: widgetSimToggle(w) ? t('config.simTitle') : undefined,
-                onClick: widgetSimToggle(w) ? toggleSim : undefined,
-              },
-                React.createElement(CardBody, { out, unit: 200, width: curSize === '2x4' ? 412 : undefined, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent, pinBox: true }),
-                w && widgetSimToggle(w) ? React.createElement('div', { style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', whiteSpace: 'nowrap' } }, t('config.simTip', { label: widgetSimToggle(w) })) : null,
-              )
+            ? (() => {
+                // Same geometry the drawer preview uses: drawn at the rail's unit,
+                // then scaled to fill the slot. The zoom ghost animates INTO this
+                // box, so both must agree on the layout size.
+                const u = railSide > 0 ? railSide : prefs.cardSide
+                const cw = curSize === '2x4' ? 2 * u + 12 : u
+                const slotW = stageW > 0 ? stageW - 80 : cw
+                const fit = Math.max(0.4, Math.min(1.6, (slotW - 8) / cw))
+                return React.createElement('div', { ref: stageCardRef, style: { position: 'relative', width: Math.round(cw * fit), height: Math.round(u * fit), opacity: zoom === null ? 1 : 0, cursor: widgetSimToggle(w) ? 'pointer' : undefined, userSelect: 'none' }, title: widgetSimToggle(w) ? t('config.simTitle') : undefined, onClick: widgetSimToggle(w) ? toggleSim : undefined },
+                  React.createElement('div', { style: { position: 'absolute', top: 0, left: 0, width: cw, transform: `scale(${fit.toFixed(4)})`, transformOrigin: 'top left' } },
+                    React.createElement(CardBody, { out, unit: u, width: curSize === '2x4' ? cw : undefined, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent, pinBox: true }),
+                  ),
+                  w && widgetSimToggle(w) ? React.createElement('div', { style: { position: 'absolute', left: 0, right: 0, bottom: -18, fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', whiteSpace: 'nowrap', textAlign: 'center' } }, t('config.simTip', { label: widgetSimToggle(w) })) : null,
+                )
+              })()
             : null,
         ),
         React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': t('market.nextAria'), onClick: next }, React.createElement(ChevronRightIcon)),
@@ -1288,53 +2191,33 @@ function MarketTab({ controller, usageData }: { controller: WidgetsController; u
         instances.map((inst, i) => React.createElement('button', { key: inst.w.id + '@' + inst.s, type: 'button', className: i === previewIdx ? 'dsx-dot dsx-dot-active' : 'dsx-dot', 'aria-label': `${widgetName(inst.w)} ${inst.s === '2x4' ? '2×4' : '2×2'}`, onClick: () => setPreviewIdx(i) })),
       ),
     )
+    return renderLayers(stageBody, anim)
   }
-
-  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
-    React.createElement('input', { type: 'search', placeholder: t('market.search'), className: 'dsx-search', value: q, onChange: (e) => setQ(e.target.value) }),
-    React.createElement('div', { className: 'dsx-mlist' },
-      list.map((w) => {
-        const gw = WIDGETS.filter((x) => groupOf(x) === groupOf(w))
-        // Instance count = every widget at every supported size (a 2×2 and a
-        // 2×4 of the same widget are two independent market entries).
-        const instanceCount = gw.reduce((a, x) => a + sizesOf(x).length, 0)
-        // A group card is "added" when ANY of its instances is in the rail.
-        const anyInstalled = gw.some((x) => sizesOf(x).some((s) => prefs.installed.indexOf(instanceKey(x.id, s)) !== -1))
-        // Card layout: type name (bold) + widget count (capsule badge) on the
-        // first line, one description line, actions — no extra id line.
-        return React.createElement('button', { key: w.id, type: 'button', className: 'dsx-mcard', 'aria-pressed': anyInstalled, onClick: () => { setPreviewGroup(groupOf(w)); setPreviewIdx(0) } },
-          React.createElement('span', { className: 'dsx-mhead' },
-            React.createElement('span', { className: 'dsx-mname' }, groupLabel(w)),
-            React.createElement('span', { className: 'dsx-badge' }, String(instanceCount)),
-          ),
-          React.createElement('span', { className: 'dsx-mdesc' }, widgetDesc(w)),
-          React.createElement('span', { className: 'dsx-macts' },
-            React.createElement('span', { className: 'dsx-btn' }, t('market.details')),
-            React.createElement('span', { className: anyInstalled ? 'dsx-btn dsx-btn-primary' : 'dsx-btn' }, anyInstalled ? t('market.added') : t('market.add')),
-          ),
-        )
-      }),
-    ),
-  )
+  // Settled market: one layer, no transition running.
+  return renderLayers(null, null)
 }
 
 // ---- Widgets page (settings section) ----
 
 export function WidgetsPage({ controller, hideHeader }: { controller: WidgetsController; hideHeader?: boolean }): React.ReactElement {
   const [tab, setTab] = React.useState('config')
-  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12, minHeight: '100%' } },
+  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, height: '100%', minHeight: 0 } },
     hideHeader ? null : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0 12px', borderBottom: '1px solid var(--dsw-alias-border-l2)' } },
       React.createElement('div', { style: { fontSize: 18, fontWeight: 600, lineHeight: '26px', color: 'var(--dsw-alias-label-primary)' } }, t('page.title')),
       React.createElement('div', { style: { fontSize: 13, lineHeight: '20px', color: 'var(--dsw-alias-label-tertiary)' } }, t('page.desc')),
     ),
-    React.createElement('div', { className: 'dsx-tabbar' },
+    React.createElement('div', { className: 'dsx-tabbar', style: { flex: 'none' } },
       React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'config', onClick: () => setTab('config') }, t('tab.config')),
       React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'market', onClick: () => setTab('market') }, t('tab.market')),
       React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'settings', onClick: () => setTab('settings') }, t('tab.settings')),
     ),
-    tab === 'config' ? React.createElement(ConfigTab, { controller })
-      : tab === 'market' ? React.createElement(MarketTab, { controller, usageData: null })
-      : React.createElement(SettingsPanel, { controller }),
+    // The active tab owns the remaining height and its own scroll (`minHeight: 0`
+    // is what lets it shrink below its content instead of growing the panel).
+    React.createElement('div', { style: { flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' } },
+      tab === 'config' ? React.createElement(ConfigTab, { controller })
+        : tab === 'market' ? React.createElement(MarketTab, { controller, usageData: null })
+        : React.createElement(SettingsPanel, { controller }),
+    ),
   )
 }
 
@@ -1344,7 +2227,7 @@ function Slider({ value, onChange, unit, min, max, step }: { value: number; onCh
   // Native range + accent-color, matching the official uitw-slider pattern so we
   // reuse the product's slider look instead of inventing a custom one.
   return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flex: 'none' } },
-    React.createElement('input', { type: 'range', min, max, step: step ?? 1, value, style: { width: 160, accentColor: 'var(--dsw-alias-brand-primary)' }, onChange: (e) => onChange(Number(e.target.value)) }),
+    React.createElement('input', { type: 'range', min, max, step: step ?? 1, value, style: { width: 160, accentColor: 'var(--dsw-alias-state-business-primary)' }, onChange: (e) => onChange(Number(e.target.value)) }),
     React.createElement('span', { style: { width: 48, fontSize: 13, lineHeight: '20px', color: 'var(--dsw-alias-label-secondary)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' } }, `${value}${unit}`),
   )
 }
@@ -1365,7 +2248,7 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
   // A stored value outside the gear table (hand-edited prefs) must still show a
   // selected option, so fall back to the default gear.
   const gearValue = CORNER_GEARS.indexOf(prefs.cornerPercent) !== -1 ? prefs.cornerPercent : DEFAULT_CORNER_PERCENT
-  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
+  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', minHeight: 0, overflowY: 'auto', flex: '1 1 auto' } },
     React.createElement(Row, {
       title: t('settings.columns.title'), desc: t('settings.columns.desc'),
       children: React.createElement('select', {

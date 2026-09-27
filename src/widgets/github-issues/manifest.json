@@ -1,0 +1,17 @@
+{
+  "id": "github-issues",
+  "order": 72,
+  "group": "github",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.github-issues.name": "问题",
+      "widget.github-issues.desc": "未关闭 Issue 数（不含 PR），副行是其中没有任何人回复的数量——配了 token 才测得到，否则显示「回复（配置 token 后可测）」"
+    },
+    "en": {
+      "widget.github-issues.name": "Issues",
+      "widget.github-issues.desc": "Open issues (PRs excluded), with how many nobody has answered underneath — measured only with a token, otherwise the line says so"
+    }
+  }
+}

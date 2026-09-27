@@ -69,6 +69,12 @@ const ZH: Record<string, string> = {
   'config.simTip': '点击卡片切换：{label}',
   'config.simTitle': '点击切换预览状态',
   'config.custom': '自定义',
+  'config.metricsLabel': '显示指标（勾选 + 排序）',
+  'config.metricDrag': '拖动排序',
+  'config.metricHint': '已选 {n}/{max} · 拖动整行排序：顺序 = 卡片上从左到右，每行最多 5 个、超过自动折成两行',
+  'config.closePreview': '关闭预览',
+  'market.viewList': '列表视图',
+  'market.viewGrid': '组件视图',
 
   // Order list
   'order.removeAria': '移除',
@@ -155,6 +161,12 @@ const EN: Record<string, string> = {
   'config.simTip': 'Click the card to switch: {label}',
   'config.simTitle': 'Click to toggle preview state',
   'config.custom': 'Custom',
+  'config.metricsLabel': 'Metrics (pick & order)',
+  'config.metricDrag': 'Drag to reorder',
+  'config.metricHint': '{n}/{max} picked · drag a row to reorder: the order is left to right on the card, five per row, wrapping to two rows',
+  'config.closePreview': 'Close preview',
+  'market.viewList': 'List view',
+  'market.viewGrid': 'Gallery view',
 
   'order.removeAria': 'Remove',
   'order.removeTitle': 'Remove from rail',

@@ -1,0 +1,17 @@
+{
+  "id": "github-stars",
+  "order": 71,
+  "group": "github",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "widget.github-stars.name": "Stars",
+      "widget.github-stars.desc": "仓库 Stars（副标题是仓库名，副行是 Forks）；同时监控多个仓库时单击卡片切换"
+    },
+    "en": {
+      "widget.github-stars.name": "Stars",
+      "widget.github-stars.desc": "Repo stars with the repo name above and forks below; tap the card to cycle when several repos are watched"
+    }
+  }
+}

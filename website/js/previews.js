@@ -432,13 +432,19 @@ window.DASH_PREVIEWS = (function () {
       }
       case 'peak-pricing': {
         var sim = opts.sim;
-        var peak = sim && typeof sim.peak === 'boolean' ? sim.peak : true; /* preview default OFF in real; we default to CHEAP */
+        var peak = sim && typeof sim.peak === 'boolean' ? sim.peak : true; /* showcase leads with EXPENSIVE */
+        /* A day that is off-peak in FULL (周末 / 中国法定节假日) names the reason
+           instead of lighting a window row — no window applies to such a day.
+           Mirrors src/widgets/peak-pricing/index.ts; keep the two in step. */
+        var reasonKey = sim && !peak && typeof sim.reasonKey === 'string' ? sim.reasonKey : null;
         return {
           title: t('card.peak.title'),
-          meter: [
-            { label: t('card.peak.window1'), active: peak && (!sim || sim.window !== 1) },
-            { label: t('card.peak.window2'), active: peak && sim && sim.window === 1 }
-          ],
+          meter: reasonKey
+            ? [{ label: t('card.peak.offDay', { reason: t(reasonKey) }), active: false }]
+            : [
+                { label: t('card.peak.am', { range: '09:00–12:00' }), active: peak && (!sim || sim.window !== 1) },
+                { label: t('card.peak.pm', { range: '14:00–18:00' }), active: peak && sim && sim.window === 1 }
+              ],
           value: peak ? 'EXPENSIVE' : 'CHEAP',
           valueTone: peak ? 'danger' : undefined,
           /* Text-level escalation (red + blink), never a card-wide glow. */

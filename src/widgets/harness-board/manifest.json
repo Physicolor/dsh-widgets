@@ -1,0 +1,41 @@
+{
+  "id": "harness-board",
+  "order": 24,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x4"],
+  "locale": {
+    "zh": {
+      "widget.harness-board.name": "会话概览",
+      "widget.harness-board.desc": "把输入框底部那条统计拆出来的会话数字并成一张 2×4：默认 轮次 / LLM / 工具 / 速率，最多 10 个，在组件配置里勾选 + 拖动整行排序（每行最多 5 个、超过自动折成两行；单张 2×2 卡的数字是 20px，这里是 13px——看板用来扫一排，单卡用来看一个）",
+      "metric.turns": "轮次",
+      "metric.steps": "步数",
+      "metric.llm": "LLM",
+      "metric.tool": "工具",
+      "metric.ttft": "TTFT",
+      "metric.tps": "速率",
+      "metric.cache": "缓存",
+      "metric.in": "输入",
+      "metric.out": "输出",
+      "metric.context": "上下文",
+      "metric.todoDoing": "进行",
+      "metric.todoPending": "待办"
+    },
+    "en": {
+      "widget.harness-board.name": "Session Overview",
+      "widget.harness-board.desc": "The session numbers the composer stats line was split into, on ONE 2×4: turns / LLM / tools / rate by default, up to ten, picked and row-dragged in the component config (five per row, wrapping to two rows; a 2×2 card prints its figure at 20px, a board figure is 13px — the board scans a row, the card shows one number)",
+      "metric.turns": "Turns",
+      "metric.steps": "Steps",
+      "metric.llm": "LLM",
+      "metric.tool": "Tools",
+      "metric.ttft": "TTFT",
+      "metric.tps": "Rate",
+      "metric.cache": "Cache",
+      "metric.in": "In",
+      "metric.out": "Out",
+      "metric.context": "Context",
+      "metric.todoDoing": "Active",
+      "metric.todoPending": "Todo"
+    }
+  }
+}

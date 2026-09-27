@@ -1,0 +1,17 @@
+{
+  "id": "github-contrib",
+  "order": 70,
+  "group": "github",
+  "builtin": false,
+  "sizes": ["2x2", "2x4"],
+  "locale": {
+    "zh": {
+      "widget.github-contrib.name": "提交热度图",
+      "widget.github-contrib.desc": "GitHub 提交热度图（同款 5 级绿）。2×2 近 3 个月，2×4 近一年（与 GitHub 个人页同款窗口）；默认读本机已登录的账号，也可填用户名"
+    },
+    "en": {
+      "widget.github-contrib.name": "Contribution Heatmap",
+      "widget.github-contrib.desc": "GitHub contribution calendar in GitHub's own five-step green. 2×2 covers ~3 months, 2×4 the last year (the window GitHub's profile header reports); reads this machine's login unless a user is set"
+    }
+  }
+}
