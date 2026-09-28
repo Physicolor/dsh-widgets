@@ -171,132 +171,43 @@
   "status": 200,
   "shape": {
    "auth": "s",
-   "contributions": {
-    "days": [
-     {
-      "count": 0,
-      "date": "s",
-      "level": 0
-     }
-    ],
-    "login": "s",
-    "longest": 0,
-    "source": "s",
-    "streak": 0,
-    "total": 0
+   "contributions": null,
+   "errors": {
+    "contributions": "s",
+    "repos": "s"
    },
-   "errors": {},
    "login": "s",
-   "repos": [
-    {
-     "forks": 0,
-     "fullName": "s",
-     "issueCountCapped": false,
-     "newestIssue": {
-      "comments": 0,
-      "number": 0,
-      "title": "s",
-      "updatedAt": "s"
-     },
-     "openIssues": 0,
-     "pushedAt": "s",
-     "release": {
-      "name": "s",
-      "publishedAt": "s",
-      "tag": "s"
-     },
-     "stars": 0,
-     "unanswered": 0
-    }
-   ]
+   "notifications": null,
+   "repos": []
   }
  },
  "/api/github?user=acme&repos=acme/widgets": {
   "status": 200,
   "shape": {
    "auth": "s",
-   "contributions": {
-    "days": [
-     {
-      "count": 0,
-      "date": "s",
-      "level": 0
-     }
-    ],
-    "login": "s",
-    "longest": 0,
-    "source": "s",
-    "streak": 0,
-    "total": 0
+   "contributions": null,
+   "errors": {
+    "acme/widgets": "s",
+    "contributions": "s"
    },
-   "errors": {},
    "login": "s",
-   "repos": [
-    {
-     "forks": 0,
-     "fullName": "s",
-     "issueCountCapped": false,
-     "newestIssue": {
-      "comments": 0,
-      "number": 0,
-      "title": "s",
-      "updatedAt": "s"
-     },
-     "openIssues": 0,
-     "pushedAt": "s",
-     "release": {
-      "name": "s",
-      "publishedAt": "s",
-      "tag": "s"
-     },
-     "stars": 0,
-     "unanswered": 0
-    }
-   ]
+   "notifications": null,
+   "repos": []
   }
  },
  "/api/github?user=acme&notif=1": {
   "status": 200,
   "shape": {
    "auth": "s",
-   "contributions": {
-    "days": [
-     {
-      "count": 0,
-      "date": "s",
-      "level": 0
-     }
-    ],
-    "login": "s",
-    "longest": 0,
-    "source": "s",
-    "streak": 0,
-    "total": 0
+   "contributions": null,
+   "errors": {
+    "contributions": "s",
+    "notifications": "s",
+    "repos": "s"
    },
-   "errors": {},
    "login": "s",
-   "repos": [
-    {
-     "forks": 0,
-     "fullName": "s",
-     "issueCountCapped": false,
-     "newestIssue": {
-      "comments": 0,
-      "number": 0,
-      "title": "s",
-      "updatedAt": "s"
-     },
-     "openIssues": 0,
-     "pushedAt": "s",
-     "release": {
-      "name": "s",
-      "publishedAt": "s",
-      "tag": "s"
-     },
-     "stars": 0,
-     "unanswered": 0
-    }
-   ]
+   "notifications": null,
+   "repos": []
   }
  },
  "/api/widgets-state GET (fresh dir)": {
@@ -337,6 +248,7 @@
     "cpu",
     "gpu",
     "history",
+    "machine",
     "mem",
     "ts"
    ]
@@ -349,12 +261,34 @@
     "cpu",
     "gpu",
     "history",
+    "machine",
     "mem",
     "ts"
    ]
   }
  },
  "/api/host/overview (first sample)": {
-  "error": "no route registered for /api/host/overview"
+  "status": 200,
+  "shape": {
+   "keys": [
+    "net",
+    "power",
+    "procs",
+    "proxy",
+    "services",
+    "ts"
+   ]
+  }
+ },
+ "/api/widgets-pricing (no table)": {
+  "status": 200,
+  "shape": {
+   "available": false,
+   "currency": null,
+   "modifiedAt": null,
+   "path": "s",
+   "rules": [],
+   "version": null
+  }
  }
 }

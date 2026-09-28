@@ -160,6 +160,11 @@ const CASES = [
   ['/api/sysinfo (first sample)', { method: 'GET', url: '/api/sysinfo' }],
   ['/api/sysinfo (cache hit)', { method: 'GET', url: '/api/sysinfo' }],
   ['/api/host/overview (first sample)', { method: 'GET', url: '/api/host/overview' }],
+  // The pricing channel reads `$DSH_HOME/storages/usage-center/pricing.json`, and
+  // this harness points DSH_HOME at a throwaway dir — so the case pins the
+  // "no table" contract deterministically (available:false, empty rules). The
+  // REAL table's shape is asserted by the module's own run against the live home.
+  ['/api/widgets-pricing (no table)', { method: 'GET', url: '/api/widgets-pricing' }],
 ]
 
 /** Routes whose readings come from THIS machine, so only their top-level keys are
