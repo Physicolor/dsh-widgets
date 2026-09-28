@@ -83,7 +83,7 @@
     "@id": "https://physicolor.github.io/dsh-widgets/#widgets",
     "name": "dsh-widgets widget library",
     "description": "Every widget unit shipped by dsh-widgets, generated from the src/widgets unit manifests.",
-    "numberOfItems": 55,
+    "numberOfItems": 56,
     "itemListOrder": "https://schema.org/ItemListOrderAscending",
     "itemListElement": [
             {
@@ -460,13 +460,20 @@
             {
               "@type": "ListItem",
               "position": 54,
+              "name": "本地服务 / Local Services",
+              "description": "本机关键端口的存活与延迟，以及代理出口是否真的能出网（不是「端口在听」就算通） Liveness and latency of the machine's key local endpoints, plus whether the proxy egress actually works — a listening port is not proof",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-services"
+            },
+            {
+              "@type": "ListItem",
+              "position": 55,
               "name": "会话成本 / Session Cost",
               "description": "把本会话的四桶 token 按价格表折成钱，并标出这个金额的来源（官方价 / 中转价 / 免费路由 / 估算价） Folds this session's four token buckets into money using the price table, and says which table it used (official / reseller / free route / estimated)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/session-cost"
             },
             {
               "@type": "ListItem",
-              "position": 55,
+              "position": 56,
               "name": "待我处理 / To Review",
               "description": "GitHub 上等我的未读线程：review 请求 / @提及 / 指派，以及最新的一条；需要 token 或 gh 登录（未登录时该卡不出现） Unread GitHub threads waiting on you: review requests, mentions and assignments, plus the newest one — needs a token or a gh login (no card at all when signed out)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/github-notify"
@@ -1761,6 +1768,25 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
                 
                 <button type="button" class="widget-open" data-widget="sys-procs" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="device" data-widget="sys-services" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="sys-services" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">本地服务<span class="widget-name-en">Local Services</span></span>
+                <span class="widget-id">sys-services</span>
+              </div>
+              <p class="widget-desc">本机关键端口的存活与延迟，以及代理出口是否真的能出网（不是「端口在听」就算通）<span class="widget-desc-en"> Liveness and latency of the machine's key local endpoints, plus whether the proxy egress actually works — a listening port is not proof</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.device">设备状态</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="sys-services" data-i18n="openDetail">解剖 / 审计</button>
               </div>
             </div>
           </article>

@@ -1,0 +1,40 @@
+{
+  "id": "sys-services",
+  "order": 92,
+  "group": "device",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": false,
+  "source": "sys",
+  "skeleton": { "shape": "quotas" },
+  "locale": {
+    "zh": {
+      "widget.sys-services.name": "本地服务",
+      "widget.sys-services.desc": "本机关键端口的存活与延迟，以及代理出口是否真的能出网（不是「端口在听」就算通）",
+      "card.sys-services.title": "本地服务",
+      "card.sys-services.up": "通",
+      "card.sys-services.down": "未运行",
+      "card.sys-services.egressOk": "出口 {ms}",
+      "card.sys-services.egressPending": "检测中",
+      "card.sys-services.egressFail": "出口不通",
+      "card.sys-services.egressFailWhy": "出口不通（{error}）",
+      "card.sys-services.egressDetail": "出口探针失败：{error}",
+      "card.sys-services.noRule": "TCP 在听不等于能出网",
+      "card.sys-services.simToggle": "切换代理出口状态"
+    },
+    "en": {
+      "widget.sys-services.name": "Local Services",
+      "widget.sys-services.desc": "Liveness and latency of the machine's key local endpoints, plus whether the proxy egress actually works — a listening port is not proof",
+      "card.sys-services.title": "Local Services",
+      "card.sys-services.up": "up",
+      "card.sys-services.down": "down",
+      "card.sys-services.egressOk": "egress {ms}",
+      "card.sys-services.egressPending": "checking",
+      "card.sys-services.egressFail": "no egress",
+      "card.sys-services.egressFailWhy": "no egress ({error})",
+      "card.sys-services.egressDetail": "egress probe failed: {error}",
+      "card.sys-services.noRule": "a listening port is not an egress verdict",
+      "card.sys-services.simToggle": "Cycle the proxy egress state"
+    }
+  }
+}

@@ -63,6 +63,7 @@ import w_window_forecast from '../widgets/window-forecast'
 import w_sys_net from '../widgets/sys-net'
 import w_sys_power from '../widgets/sys-power'
 import w_sys_procs from '../widgets/sys-procs'
+import w_sys_services from '../widgets/sys-services'
 import w_session_cost from '../widgets/session-cost'
 import w_github_notify from '../widgets/github-notify'
 
@@ -121,6 +122,7 @@ export const WIDGETS: import('./lib/contract/types').Widget[] = [
   w_sys_net,
   w_sys_power,
   w_sys_procs,
+  w_sys_services,
   w_session_cost,
   w_github_notify,
 ]
@@ -173,6 +175,7 @@ export const WIDGET_RUNTIME: Record<string, {
   "sys-net": { source: "sys", skeleton: { shape: "text" } },
   "sys-power": { source: "sys", skeleton: { shape: "text" } },
   "sys-procs": { source: "sys", skeleton: { shape: "bars" } },
+  "sys-services": { source: "sys", skeleton: { shape: "quotas" } },
   "session-cost": { source: "cc", skeleton: { shape: "text" } },
   "github-notify": { source: "github", skeleton: { shape: "text" } },
 }
@@ -232,6 +235,7 @@ export const ALL_IDS: string[] = [
   'sys-net',
   'sys-power',
   'sys-procs',
+  'sys-services',
   'session-cost',
   'github-notify',
 ]
@@ -296,6 +300,7 @@ export const ALL_INSTANCES: string[] = [
   `sys-net@2x2`,
   `sys-power@2x2`,
   `sys-procs@2x2`,
+  `sys-services@2x2`,
   `session-cost@2x2`,
   `github-notify@2x2`,
 ]
@@ -745,6 +750,18 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "widget.sys-procs.desc": "按工作集内存排序的前几名进程；多 agent / 多模型并行时回答「谁把内存吃满了」",
     "widget.sys-procs.simToggle": "切换 多进程 / 单进程 预览",
     "card.sys-procs.title": "内存大户",
+    "widget.sys-services.name": "本地服务",
+    "widget.sys-services.desc": "本机关键端口的存活与延迟，以及代理出口是否真的能出网（不是「端口在听」就算通）",
+    "card.sys-services.title": "本地服务",
+    "card.sys-services.up": "通",
+    "card.sys-services.down": "未运行",
+    "card.sys-services.egressOk": "出口 {ms}",
+    "card.sys-services.egressPending": "检测中",
+    "card.sys-services.egressFail": "出口不通",
+    "card.sys-services.egressFailWhy": "出口不通（{error}）",
+    "card.sys-services.egressDetail": "出口探针失败：{error}",
+    "card.sys-services.noRule": "TCP 在听不等于能出网",
+    "card.sys-services.simToggle": "切换代理出口状态",
     "widget.session-cost.name": "会话成本",
     "widget.session-cost.desc": "把本会话的四桶 token 按价格表折成钱，并标出这个金额的来源（官方价 / 中转价 / 免费路由 / 估算价）",
     "widget.session-cost.simToggle": "命中价 / 高峰价 / 无价格表",
@@ -1205,6 +1222,18 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "widget.sys-procs.desc": "The top processes by working-set memory — who is eating the RAM while several agents or models run at once",
     "widget.sys-procs.simToggle": "Toggle many- / one-process preview",
     "card.sys-procs.title": "Top Processes",
+    "widget.sys-services.name": "Local Services",
+    "widget.sys-services.desc": "Liveness and latency of the machine's key local endpoints, plus whether the proxy egress actually works — a listening port is not proof",
+    "card.sys-services.title": "Local Services",
+    "card.sys-services.up": "up",
+    "card.sys-services.down": "down",
+    "card.sys-services.egressOk": "egress {ms}",
+    "card.sys-services.egressPending": "checking",
+    "card.sys-services.egressFail": "no egress",
+    "card.sys-services.egressFailWhy": "no egress ({error})",
+    "card.sys-services.egressDetail": "egress probe failed: {error}",
+    "card.sys-services.noRule": "a listening port is not an egress verdict",
+    "card.sys-services.simToggle": "Cycle the proxy egress state",
     "widget.session-cost.name": "Session Cost",
     "widget.session-cost.desc": "Folds this session's four token buckets into money using the price table, and says which table it used (official / reseller / free route / estimated)",
     "widget.session-cost.simToggle": "List rate / peak rate / no price table",

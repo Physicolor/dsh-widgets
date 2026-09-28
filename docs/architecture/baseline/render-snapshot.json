@@ -6842,6 +6842,165 @@
    }
   },
   {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "TCP 在听不等于能出网",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "通 · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "通 · 2ms"
+      },
+      {
+       "label": "LM Studio",
+       "tone": "danger",
+       "value": "未运行"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3 / 4"
+    },
+    "legend": "出口 1.3s",
+    "title": "本地服务",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.2,
+     "egressMs": 1311,
+     "ok": true,
+     "error": null
+    }
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "TCP 在听不等于能出网",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "通 · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "通 · 2ms"
+      },
+      {
+       "label": "LM Studio",
+       "tone": "danger",
+       "value": "未运行"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3 / 4"
+    },
+    "legend": "出口 1.3s",
+    "title": "本地服务",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.3,
+     "egressMs": null,
+     "ok": false,
+     "error": "ECONNREFUSED 127.0.0.1:10808"
+    }
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "出口探针失败：ECONNREFUSED 127.0.0.1:10808 · TCP 在听不等于能出网",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "通 · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "通 · 2ms"
+      },
+      {
+       "label": "LM Studio",
+       "tone": "danger",
+       "value": "未运行"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3 / 4"
+    },
+    "legend": "出口不通",
+    "title": "本地服务",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.2,
+     "egressMs": null,
+     "ok": null,
+     "error": null
+    }
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "TCP 在听不等于能出网",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "通 · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "通 · 2ms"
+      },
+      {
+       "label": "LM Studio",
+       "tone": "danger",
+       "value": "未运行"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3 / 4"
+    },
+    "legend": "检测中 · 10808 0.2ms",
+    "title": "本地服务",
+    "valueTone": "danger"
+   }
+  },
+  {
    "id": "session-cost",
    "size": "2x2",
    "sim": null,
@@ -14027,6 +14186,165 @@
     },
     "legend": "Memory Compression",
     "title": "Top Processes"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "a listening port is not an egress verdict",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "up · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "up · 2ms"
+      },
+      {
+       "label": "LM Studio",
+       "tone": "danger",
+       "value": "down"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3 / 4"
+    },
+    "legend": "egress 1.3s",
+    "title": "Local Services",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.2,
+     "egressMs": 1311,
+     "ok": true,
+     "error": null
+    }
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "a listening port is not an egress verdict",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "up · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "up · 2ms"
+      },
+      {
+       "label": "LM Studio",
+       "tone": "danger",
+       "value": "down"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3 / 4"
+    },
+    "legend": "egress 1.3s",
+    "title": "Local Services",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.3,
+     "egressMs": null,
+     "ok": false,
+     "error": "ECONNREFUSED 127.0.0.1:10808"
+    }
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "egress probe failed: ECONNREFUSED 127.0.0.1:10808 · a listening port is not an egress verdict",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "up · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "up · 2ms"
+      },
+      {
+       "label": "LM Studio",
+       "tone": "danger",
+       "value": "down"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3 / 4"
+    },
+    "legend": "no egress",
+    "title": "Local Services",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.2,
+     "egressMs": null,
+     "ok": null,
+     "error": null
+    }
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "a listening port is not an egress verdict",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "up · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "up · 2ms"
+      },
+      {
+       "label": "LM Studio",
+       "tone": "danger",
+       "value": "down"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3 / 4"
+    },
+    "legend": "checking · 10808 0.2ms",
+    "title": "Local Services",
+    "valueTone": "danger"
    }
   },
   {
