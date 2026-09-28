@@ -230,7 +230,8 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
    */
   let dragColumnW = 0
   function readMeasure(): number {
-    const host = document.querySelector('[data-phase]')
+    // Typed as HTMLElement: the inline custom property is read off `.style` below.
+    const host = document.querySelector<HTMLElement>('[data-phase]')
     if (host === null) return -1
     // The handle writes `--dsh-chat-user-width` INLINE on this element on every
     // frame of a drag. Reading the inline style costs no style resolution, while

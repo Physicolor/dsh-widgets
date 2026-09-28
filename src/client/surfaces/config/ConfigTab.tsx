@@ -344,7 +344,7 @@ function MetricsFieldControl({ field, value, onChange }: { field: ConfigField; v
         // Stable hook for the drag/reorder probes (and for anyone inspecting
         // which key a row is): the visible label is localized, the key is not.
         'data-metric': key,
-        ref: (el: HTMLDivElement | null) => { if (el !== null) rowEls.current.set(key, el) },
+        ref: (el: HTMLDivElement | null): void => { if (el !== null) rowEls.current.set(key, el) },
         style: cellFor(key),
         className: 'dsx-metric'
           + (on ? ' is-on' : '')
@@ -485,7 +485,11 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
   // the same size never appears twice (a resize to a size that already exists
   // merges instead of duplicating).
   const out = previewOut()
-  const hasSel = Boolean(selWidget && selConfig)
+  // The drawer body below is ONE long expression. Narrow the selection ONCE here
+  // instead of re-checking (or asserting) `selWidget` / `selConfig` at each of its
+  // dozen use sites: `sel` is non-null exactly while the drawer renders.
+  const sel = selWidget !== undefined && selConfig !== null ? { widget: selWidget, config: selConfig } : null
+  const hasSel = sel !== null
   // The panel grows by the drawer's width while a widget is selected; tell it.
   const onDetailToggle = controller.onDetailToggle
   React.useEffect(() => {
@@ -565,7 +569,7 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
       position: 'relative',
       overflow: 'hidden',
     } },
-      hasSel ? React.createElement('div', { className: 'dsx-config-drawer-inner', style: {
+      sel ? React.createElement('div', { className: 'dsx-config-drawer-inner', style: {
         position: 'absolute',
         top: 0,
         left: 0,
@@ -585,14 +589,14 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
       // Preview title anchored top-LEFT; the card-size dropdown and the CLOSE
       // button sit beside it on the right.
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flex: 'none' } },
-        React.createElement('div', { style: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, t('config.preview', { name: widgetName(selWidget) })),
-        sizesOf(selWidget).length > 1
+        React.createElement('div', { style: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, t('config.preview', { name: widgetName(sel.widget) })),
+        sizesOf(sel.widget).length > 1
           ? React.createElement('select', {
               className: 'dsx-select', style: { fontSize: 11, width: 'auto' },
               value: selSize, title: t('config.cardSize'),
               onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setPreviewSize(e.target.value as WidgetSize),
             },
-              sizesOf(selWidget).map((s) => React.createElement('option', { key: s, value: s }, s === '2x4' ? '2×4' : '2×2')),
+              sizesOf(sel.widget).map((s) => React.createElement('option', { key: s, value: s }, s === '2x4' ? '2×4' : '2×2')),
             )
           : null,
         // An explicit way out of the preview (the user asked for a close button;
@@ -631,8 +635,8 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
           // height clipped the enlarged card (reported 2026-09-26).
           const fit = Math.max(0.55, Math.min(1.5, avail / refW))
           const pv = out ? React.createElement(CardBody, { out, unit: u, width: isWide ? cardW : undefined, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent, pinBox: true }) : null
-          const simTip = widgetSimToggle(selWidget)
-            ? React.createElement('div', { key: 'simtip', style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', marginTop: 8, textAlign: 'center' } }, t('config.simTip', { label: widgetSimToggle(selWidget) }))
+          const simTip = widgetSimToggle(sel.widget)
+            ? React.createElement('div', { key: 'simtip', style: { fontSize: 11, color: 'var(--dsw-alias-label-tertiary)', marginTop: 8, textAlign: 'center' } }, t('config.simTip', { label: widgetSimToggle(sel.widget) }))
             : null
           return out
             ? React.createElement('div', {
@@ -642,11 +646,11 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
                 // opening/closing the drawer still animates — that is the columns'
                 // flex-basis motion.
                 style: { display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 'none' },
-                title: widgetSimToggle(selWidget) ? t('config.simTitle') : undefined,
-                onClick: widgetSimToggle(selWidget) ? () => toggleSim() : undefined,
+                title: widgetSimToggle(sel.widget) ? t('config.simTitle') : undefined,
+                onClick: widgetSimToggle(sel.widget) ? () => toggleSim() : undefined,
               },
               React.createElement('div', { style: { position: 'relative', width: Math.round(cardW * fit), height: Math.round(u * fit), flex: 'none' } },
-                React.createElement('div', { style: { position: 'absolute', top: 0, left: 0, width: cardW, transform: `scale(${fit.toFixed(4)})`, transformOrigin: 'top left', cursor: widgetSimToggle(selWidget) ? 'pointer' : undefined, userSelect: 'none' } }, pv),
+                React.createElement('div', { style: { position: 'absolute', top: 0, left: 0, width: cardW, transform: `scale(${fit.toFixed(4)})`, transformOrigin: 'top left', cursor: widgetSimToggle(sel.widget) ? 'pointer' : undefined, userSelect: 'none' } }, pv),
               ),
               simTip,
               )
@@ -657,9 +661,9 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
       // only when it is taller than the space the stage leaves).
       React.createElement('div', { style: { flex: '0 1 auto', minHeight: 0, overflowY: 'auto' } },
       // Per-card schema fields keep their 自定义 heading below the preview.
-      selWidget.configSchema && selWidget.configSchema.length > 0 ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 16 } },
+      sel.widget.configSchema && sel.widget.configSchema.length > 0 ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 16 } },
         React.createElement('div', { style: { fontSize: 12, color: 'var(--dsw-alias-label-tertiary)' } }, t('config.custom')),
-        selWidget.configSchema.map((f) => {
+        sel.widget.configSchema.map((f) => {
           // A 'metrics' control is a self-describing LIST: its rows, its switch
           // and its hint already say everything a label would, and the label
           // line only pushed the list down (reported 2026-09-25). Scalar fields
@@ -675,7 +679,7 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
             borderBottom: isList ? undefined : '1px solid var(--dsw-alias-border-l1)',
           } },
             isList ? null : React.createElement('span', { style: { fontSize: 13, color: 'var(--dsw-alias-label-primary)' } }, fieldLabel(f)),
-            React.createElement('div', { style: { flex: isList ? '1 1 auto' : 'none', minWidth: 0 } }, React.createElement(ConfigFieldControl, { field: f, value: selConfig[f.key], onChange: (v) => setConfig(f, v) })),
+            React.createElement('div', { style: { flex: isList ? '1 1 auto' : 'none', minWidth: 0 } }, React.createElement(ConfigFieldControl, { field: f, value: sel.config[f.key], onChange: (v) => setConfig(f, v) })),
           )
         }),
       ) : null,

@@ -1,20 +1,5 @@
 {
- "count": 34,
- "signatures": {
-  "TS2307 Cannot find module 'react-dom' or its corresponding type declarations.": 2,
-  "TS7023 'ref' implicitly has return type 'any' because it does not have a return type annotation and is referenced directly or indirectly in one of its return expressions.": 1,
-  "TS2345 Argument of type 'Widget | undefined' is not assignable to parameter of type 'Widget'.": 8,
-  "TS18048 'selWidget' is possibly 'undefined'.": 3,
-  "TS18047 'selConfig' is possibly 'null'.": 1,
-  "TS2339 Property 'style' does not exist on type 'Element'.": 1,
-  "TS2339 Property 'slots' does not exist on type 'Context'.": 8,
-  "TS2307 Cannot find module 'node:path' or its corresponding type declarations.": 1,
-  "TS2307 Cannot find module 'node:os' or its corresponding type declarations.": 1,
-  "TS2307 Cannot find module 'node:fs' or its corresponding type declarations.": 1,
-  "TS2307 Cannot find module 'node:child_process' or its corresponding type declarations.": 1,
-  "TS2307 Cannot find module 'node:util' or its corresponding type declarations.": 1,
-  "TS2580 Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.": 1,
-  "TS2580 Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node`.": 4
- },
- "files": 3
+ "count": 0,
+ "signatures": {},
+ "files": 0
 }

@@ -2,19 +2,22 @@
 /**
  * G3 — the typecheck gate.
  *
- * The project has PRE-EXISTING tsc errors (missing @types/node, react-dom types,
- * the slots service typing, a few possibly-undefined reads). `pnpm check`
- * therefore cannot be a pass/fail gate today. This script compares the CURRENT
- * error set against a recorded baseline and fails only on errors that are NEW.
+ * HISTORY: this started as a BASELINE comparison because the project carried 34
+ * pre-existing errors (missing `@types/node` / `react-dom`, an untyped `ctx.slots`
+ * service, a few possibly-undefined reads). The recorded baseline is now EMPTY and
+ * the project typechecks with ZERO errors, so this gate is a hard one: any error
+ * fails it, and `pnpm check` (gen-registry --check + tsc --noEmit) is green.
  *
- * A signature deliberately drops file + line: the refactor MOVES code between
- * modules, which relocates existing errors without changing them. Matching on
+ * The tolerance machinery below is kept for exactly one reason: a future change may
+ * legitimately need to land with a known error plus a written reason. A signature
+ * deliberately drops file + line, because refactors MOVE code between modules and
+ * that relocates an existing error without changing it — matching on
  * (code, message) + occurrence count keeps a move neutral while still catching a
  * genuinely new error (new message) or a duplicated one (count increase).
  *
  * Usage:
- *   node scripts/verify-tsc-baseline.mjs --write   # record the baseline
- *   node scripts/verify-tsc-baseline.mjs           # default: fail on new errors
+ *   node scripts/verify-tsc-baseline.mjs --write   # record the baseline (currently: 0)
+ *   node scripts/verify-tsc-baseline.mjs           # default: fail on any error
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
