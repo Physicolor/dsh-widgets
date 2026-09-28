@@ -1,18 +1,20 @@
 # Screenshots
 
-实拍/生成图目录，README 与插件市场展示使用。
+The captured / generated images the README and the plugin market showcase use.
 
-| 文件名 | 来源 | 内容 |
+| File | Origin | What it shows |
 | --- | --- | --- |
-| `rail-widgets.png` | 实拍 | 右侧部件栏小部件展示 |
-| `dock-magnify.png` | 实拍 | macOS Dock 式悬浮放大效果 |
-| `add-panel.png` | 实拍 | 添加组件面板 |
-| `widget-cards.png` | 生成 | 前五个部件卡片预览（由 `widget-cards-preview.html` 经 headless Edge 截图） |
-| `widget-cards-preview.html` | 生成 | 复刻前五个部件卡片的独立 HTML（可用 Edge headless 重截：`msedge --headless=new --screenshot=widget-cards.png --window-size=900,260 widget-cards-preview.html`） |
+| `rail-widgets.png` | captured | the right-hand rail with its widgets seated |
+| `dock-magnify.png` | captured | the macOS-Dock-style magnification wave |
+| `add-panel.png` | captured | the add-widget panel |
+| `widget-cards.png` | generated | the first five widget cards, screenshotted from `widget-cards-preview.html` with headless Edge |
+| `widget-cards-preview.html` | generated | a standalone HTML page reproducing those five cards (re-shoot with `msedge --headless=new --screenshot=widget-cards.png --window-size=900,260 widget-cards-preview.html`) |
 
-## 插件市场（dsh-market）PR（可选）
+## Plugin market (dsh-market) PR — optional
 
-若要控制展示的截图与顺序，向 dsh-market 仓库 `data/screenshots.json` 新增一条，**key 用本插件 GitHub 入口 URL**，图片用 `raw.githubusercontent.com` 直链：
+To control which screenshots the market shows and in what order, add one entry to the
+dsh-market repository's `data/screenshots.json`: **the key is this plugin's GitHub URL**,
+and the images are `raw.githubusercontent.com` links:
 
 ```jsonc
 "https://github.com/Physicolor/dsh-widgets": [
@@ -22,4 +24,4 @@
 ]
 ```
 
-放 1–8 张；不提交 PR 时，市场也会自动从 README 抽图。
+One to eight images; without a PR the market falls back to extracting images from the README.

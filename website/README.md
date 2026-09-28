@@ -2,7 +2,7 @@
 
 A single-page, static showcase for **dsh-widgets**: what it is, the real
 widgets, the spatial grammar behind them, an anatomy view of a real card, a
-rule-based visual audit of all 34 widgets, how to make and contribute one, and a
+rule-based visual audit of all 40 widgets, how to make and contribute one, and a
 requirement-form → specification generator.
 
 - **Stack:** plain HTML + CSS + vanilla JS. No framework, no build step.
@@ -29,7 +29,7 @@ website/
 │   │                     # DSH widget tokens (--dsw-*)
 │   ├── base.css          # reset, typography, glass nav, buttons, toast
 │   ├── widgets.css       # the REAL widget card language (port of
-│   │                     # src/client/widgets.module.css + CardBody/ChartBlock)
+│   │                     # src/client/styles/{card,primitives}.module.css + render/CardBody.tsx)
 │   ├── hero.css          # full-screen hero (left story / right REAL widget array)
 │   ├── sections.css      # widgets gallery / design philosophy / create / contribute
 │   └── lab.css           # design grammar · anatomy · visual audit · component detail
@@ -62,7 +62,7 @@ writes it into the page, so the site is readable **without JavaScript**
 
 | artifact | source of truth |
 | --- | --- |
-| `js/data.js` (widget table) | `src/widgets/<id>/manifest.json` (34 units) |
+| `js/data.js` (widget table) | `src/widgets/<id>/manifest.json` (40 units) |
 | the gallery markup in `index.html` (between `gen:gallery` markers) | the same manifests + `js/previews.js` for the primary pattern / interaction |
 | the JSON-LD `ItemList` (between `gen:jsonld` markers) | the same manifests |
 
@@ -73,7 +73,7 @@ writes a version.
 
 One deliberate site-side copy correction lives in `gen-site.mjs` (`DESC_FIXES`):
 the `cc-window-monthly` market description still states the superseded
-`used / (used + remaining)` denominator, while `src/client/lib/cc-view.ts:170`
+`used / (used + remaining)` denominator, while `src/client/families/cc/data.ts`
 computes `(allowance − remaining) / allowance`. The website shows the correct
 formula and the audit reports the mismatch as a `copyTruth` WARN; the plugin's
 manifest is owned by the plugin and is left untouched.
@@ -83,12 +83,12 @@ manifest is owned by the plugin and is left untouched.
 `js/grammar.js` is a port, not a re-imagining:
 
 - **constants** — `BASE_SIDE 150`, `cardSide 150`, `panelPadding 24`,
-  `magnify 1.2`, `columns 2` (`src/client/index.ts:27,37,38,44,48`); `innerPad
+  `magnify 1.2`, `columns 2` (`src/client/rail/geometry.ts` · `src/client/runtime/prefs.ts`); `innerPad
   = round(12·scale)`, `radius = round(16·scale)`, title/value/caption `13/20/10`,
-  foot gap `6`, corner inset `round(8·scale)` (`src/client/components.tsx:459-604`).
+  foot gap `6`, corner inset `round(8·scale)` (`src/client/render/card-geometry.ts`).
 - **magnification** — `stepScale(d)`: `d ≤ 0 → peak`, else `1 + (peak−1)·max(0, 1−d/3)^1.6`
-  (`src/client/index.ts:1053-1059`); the rail demo runs this curve plus the
-  right-anchored reflow (`placeCards`, `src/client/index.ts:1158-1188`), and the
+  (`src/client/rail/wave/wave-geometry.ts`); the rail demo runs this curve plus the
+  right-anchored reflow (`placeCards`, same file), and the
   sliders are the real `cardSide` / `panelPadding` / `magnify` settings.
 - **audit** — 13 rules in two explicit layers. *Geometry* (`getBoundingClientRect`
   on the real rendered cards): padding, title inset, right-slot alignment, block
@@ -109,9 +109,9 @@ plus the `copyTruth` mismatch and the `sys-board` 2×4-only size contract).
 `js/previews.js` is a static port of the plugin's own rendering path — no new
 "looks-like-a-widget" design system was invented:
 
-- **data** — `PREVIEW_STATS` / `PREVIEW_RAW` copied from `src/client/components.tsx`;
+- **data** — `PREVIEW_STATS` / `PREVIEW_RAW` copied from `src/client/render/preview/preview-stats.ts`;
 - **format** — `fmtDuration` / `fmtTokens` / `fmtTps` / `buildRollingGrid` / `lastNDays` from `src/client/lib/format.ts`;
-- **render** — each widget's `render()` ported from its unit `src/widgets/<id>/index.ts` (+ `lib/usage-view.ts`, `lib/cc-view.ts`, `lib/sys-view.ts`);
+- **render** — each widget's `render()` ported from its unit `src/widgets/<id>/index.ts` (+ `families/<family>/renders.ts`);
 - **layout & type** — the real `CardBody` / `ChartBlock` scale formula (title 13 / value 20 / pad 12 / radius 16 at unit 150);
 - **colors** — the real DSH tokens in both themes (`--dsw-*` in tokens.css).
 
@@ -119,7 +119,7 @@ plus the `copyTruth` mismatch and the `sys-board` 2×4-only size contract).
 
 - `<title>` / `meta description` name the project, DeepSeek Harness, the design-system and component-library framing.
 - `canonical` + `og:*` + `twitter:card` point at the real Pages URL; `assets/og.png` is a real 1200×630 render of the site's own cards.
-- JSON-LD: `WebSite` + `SoftwareApplication` (static) and a generated `ItemList` of all 34 widgets.
+- JSON-LD: `WebSite` + `SoftwareApplication` (static) and a generated `ItemList` of all 40 widgets.
 - `robots.txt` (allow all + sitemap) and `sitemap.xml`.
 - The gallery is **in the HTML source**, so the widget names, ids, categories, sizes and descriptions are crawlable without JS — which is also why the static markup is generated rather than rendered at runtime.
 
@@ -143,7 +143,7 @@ asset references, `gen-site --check`, the SEO surface (title/description/canonic
 static gallery crawlability, theme toggle + persistence, language toggle, i18n
 completeness in both languages, gallery filters and equal columns, the grammar
 rail (curve + reflow + slider formulas), anatomy annotations and measurement,
-the audit (34 widgets scored, exceptions listed), the component detail dialog,
+the audit (40 widgets scored, exceptions listed), the component detail dialog,
 responsive checks at 390/1440/1920, console/network monitoring, and desktop +
 mobile screenshots of every section.
 
