@@ -16,7 +16,7 @@ import './styles/panel.module.css'
 import './styles/market.module.css'
 import './styles/primitives.module.css'
 import { WIDGET_LOCALES } from './generated.registry'
-import type { CommandCodeData, GitHubData, SysInfo, UsageData, UsageMulti } from './lib/contract/types'
+import type { CommandCodeData, GitHubData, HostOverview, SysInfo, UsageData, UsageMulti } from './lib/contract/types'
 import { loadHeatmapStore } from './lib/heatmap-accounting'
 import { createCollector } from './data/collector'
 import { type BridgeSnapshot } from './runtime/bridge'
@@ -54,7 +54,7 @@ export function apply(ctx: ClientContext): void {
   // loads —and it must never touch live-accumulated days.
   try { loadHeatmapStore() } catch { /* best-effort */ }
   let prefs = loadState()
-  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, commandCodeDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null, github: null as GitHubData | null, githubError: null as string | null }
+  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, commandCodeDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null, host: null as HostOverview | null, hostError: null as string | null, github: null as GitHubData | null, githubError: null as string | null }
 
   const listeners = new Set<() => void>()
   /**

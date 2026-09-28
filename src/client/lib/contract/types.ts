@@ -280,9 +280,84 @@ export interface MachineInfo {
   proc: { pid: number; rss: number; cpuPercent: number | null; uptimeSec: number }
 }
 
+/** One probed local service (see `HostOverview.services`). */
+export interface HostServiceProbe {
+  key: string
+  label: string
+  host: string
+  port: number
+  up: boolean
+  /** TCP handshake time in ms, or null when the probe failed. */
+  ms: number | null
+}
+
+/**
+ * Proxy egress health.
+ *
+ * `tcpMs` alone is NOT a verdict: the local proxy answers `200 Connection
+ * established` even for a domain that does not exist (measured 2026-09-29 on
+ * xray), so a CONNECT probe proves only that the port is listening. The real
+ * question — "can traffic leave this machine" — is answered by `egressMs`, an
+ * absolute-URI GET through the proxy; `ok` is null while that measurement is
+ * still in flight (stale-while-revalidate, see host/overview.ts).
+ */
+export interface HostProxyHealth {
+  host: string
+  port: number
+  tcpMs: number | null
+  egressMs: number | null
+  ok: boolean | null
+  /** Stable failure code when the egress probe failed, else null. */
+  error: string | null
+}
+
+/** Power supply / battery state (null on a machine with no battery). */
+export interface HostPower {
+  /** True when running on mains power; null when the source cannot be told. */
+  onAc: boolean | null
+  percent: number | null
+  /** Minutes of runtime left; null when on AC or unknown — the Win32 sentinel
+   *  `71582788` (0x4444444) means "AC / unknown" and must never be printed. */
+  minutesLeft: number | null
+  /** The active Windows power scheme's name, when `powercfg` answered. */
+  scheme: string | null
+}
+
+/** One process by working set (the machine's memory hogs). */
+export interface HostProcess {
+  pid: number
+  name: string
+  rss: number
+}
+
+/** Per-adapter throughput, derived from two counter samples. */
+export interface HostNetAdapter {
+  name: string
+  rxBps: number
+  txBps: number
+}
+
+/**
+ * The `/api/host/overview` payload: the machine's operational picture.
+ *
+ * Every section is independently nullable, and for a reason: the sections have
+ * different costs (a TCP probe is ~1 ms, a PowerShell snapshot ~350 ms, the proxy
+ * egress probe ~1.3 s), so each is sampled on its own clock and a section that
+ * has not answered YET is `null` rather than a zero. `services` is the one
+ * exception — a TCP probe is cheap enough to always answer, so it is an array
+ * (possibly empty) rather than nullable.
+ */
+export interface HostOverview {
+  ts: number
+  net: { adapters: HostNetAdapter[]; rxBps: number; txBps: number } | null
+  power: HostPower | null
+  procs: HostProcess[] | null
+  services: HostServiceProbe[]
+  proxy: HostProxyHealth | null
+}
+
 /** Session stats a widget render can read. */
-export interface WidgetStats {
-  turns: number
+export interface WidgetStats {  turns: number
   steps: number
   llmMs: number
   toolMs: number
@@ -367,6 +442,15 @@ export interface WidgetStats {
   /** Direct children of this session (projection `subagentCatalog`), in catalog
    *  order (oldest first). `null` = projection absent; `[]` = no children. */
   subagents?: SubagentEntry[] | null
+  /** This session's background jobs (the `jobsBySession` list mirror); `null`
+   *  when the list is unavailable, `[]` when the session has none. */
+  jobs?: JobInfo[] | null
+  /** Machine operational picture from the host `/api/host/overview` route
+   *  (throughput / power / top processes / local services / proxy egress). */
+  host?: HostOverview | null
+  /** Stable code when the host route could not answer at all: `'unloaded'`
+   *  (route missing → dsh web not restarted) or `'unavailable'`. */
+  hostError?: string | null
   /** Per-instance config merged by the shell (typed any: widgets with a
    *  configSchema read their keys from the same record the collector feeds). */
   [key: string]: unknown
@@ -502,16 +586,40 @@ export interface PermissionInfo {
 /**
  * One direct child of this session (the `subagentCatalog` projection).
  *
- * Deliberately NARROW: the catalog carries identity and creation time, not
- * liveness or spend. A card must therefore say how many children exist and how
- * long ago they were created — it must NOT claim one is "running", which this
- * projection cannot answer.
+ * Deliberately NARROW: the catalog carries identity and creation time, not spend.
+ * A card must therefore say how many children exist and how long each has been
+ * ACTIVE — it must NOT claim one is "running", which this projection cannot
+ * answer.
+ *
+ * `activeMs` is the child's own durable active-turn duration, read from the
+ * client session list (`byId[child].projectionValues.subagentTiming`) because the
+ * parent cannot see it any other way: `useProjection('subagentTiming')` in this
+ * scope folds the PARENT's own log as if it were a child. `undefined` = not
+ * measurable yet (no descriptor, or the child's log has not settled).
  */
 export interface SubagentEntry {
   id: string
   createdAt: number
   mode: 'one-shot' | 'continuable'
   label?: string
+  activeMs?: number
+}
+
+/**
+ * One background job of this session (the client session list's `jobsBySession`
+ * mirror — a slot hook, `useSessions`, not a projection).
+ *
+ * Unlike the subagent catalog this DOES carry liveness: `status` is the job
+ * runtime's own state, which is what makes 「N 个运行中 · 最久 12m」 answerable.
+ */
+export interface JobInfo {
+  id: string
+  kind: string
+  label: string
+  status: 'running' | 'stopping' | 'completed' | 'killed' | 'failed'
+  startedAt: number
+  finishedAt?: number
+  detail?: string
 }
 
 /** One bar for a mini bar chart. */

@@ -10,7 +10,7 @@
  * for a given input, which is what makes the numbers testable in isolation.
  */
 
-import { COMPACTION_HISTORY, TRAJECTORY_WINDOW, type CompactionSummary, type GoalInfo, type ModelRoute, type ModelSelectionInfo, type PermissionInfo, type SubagentEntry, type ToolCallSummary, type TrajectoryBeat } from '../lib/contract/types'
+import { COMPACTION_HISTORY, TRAJECTORY_WINDOW, type CompactionSummary, type GoalInfo, type JobInfo, type ModelRoute, type ModelSelectionInfo, type PermissionInfo, type SubagentEntry, type ToolCallSummary, type TrajectoryBeat } from '../lib/contract/types'
 
 /** Session stats shape collected by the dock collector. */
 export interface Stats {
@@ -38,6 +38,7 @@ export interface Stats {
   goal?: GoalInfo | null
   permissions?: PermissionInfo | null
   subagents?: SubagentEntry[] | null
+  jobs?: JobInfo[] | null
 }
 
 /**
@@ -118,19 +119,78 @@ export function normalizePermissions(value: unknown): PermissionInfo | null {
 
 /** Normalize the `subagentCatalog` projection: identity rows only, unknown
  *  members dropped. Returns null when the projection is absent (which is NOT the
- *  same statement as "no children" — that is `[]`). */
-export function normalizeSubagents(value: unknown): SubagentEntry[] | null {
+ *  same statement as "no children" — that is `[]`).
+ *
+ *  `activeMs` is attached from the client session list when it is reachable: the
+ *  parent cannot read a child's `subagentTiming` through its own projection (that
+ *  key folds THIS session's log), so the duration comes from
+ *  `byId[childId].projectionValues.subagentTiming` — the same detour the official
+ *  subagent list takes. Absent list ⇒ the field stays absent, never 0.
+ *
+ *  @param value - the raw `subagentCatalog` projection value (any).
+ *  @param summaryOf - lookup for one child's session-list row, or null.
+ *  @param now - the wall clock the open-turn duration is measured against.
+ */
+export function normalizeSubagents(
+  value: unknown,
+  summaryOf?: ((id: string) => unknown) | null,
+  now?: number,
+): SubagentEntry[] | null {
   if (!Array.isArray(value)) return null
+  const clock = typeof now === 'number' ? now : Date.now()
   return value.flatMap((raw): SubagentEntry[] => {
     if (raw === null || typeof raw !== 'object') return []
     const e = raw as Record<string, unknown>
     if (typeof e.id !== 'string' || typeof e.createdAt !== 'number') return []
     const mode = e.mode === 'continuable' ? 'continuable' : 'one-shot'
+    const activeMs = subagentActiveMs(summaryOf?.(e.id), clock)
     return [{
       id: e.id,
       createdAt: e.createdAt,
       mode,
       ...(typeof e.label === 'string' && e.label !== '' ? { label: e.label } : {}),
+      ...(activeMs === undefined ? {} : { activeMs }),
+    }]
+  })
+}
+
+/** The active-turn duration one child's session-list row reports, or undefined
+ *  when the row (or its timing) has not landed. Never 0-by-assumption. */
+function subagentActiveMs(summary: unknown, now: number): number | undefined {
+  if (summary === null || typeof summary !== 'object') return undefined
+  const values = (summary as Record<string, unknown>).projectionValues
+  if (values === null || typeof values !== 'object') return undefined
+  const timing = (values as Record<string, unknown>).subagentTiming
+  if (timing === null || typeof timing !== 'object') return undefined
+  const t = timing as Record<string, unknown>
+  const settled = typeof t.settledMs === 'number' ? t.settledMs : 0
+  const active = t.active
+  if (active === null || typeof active !== 'object') return settled
+  const a = active as Record<string, unknown>
+  if (typeof a.since !== 'number') return settled
+  const through = typeof a.through === 'number' ? a.through : now
+  return settled + Math.max(0, through - a.since)
+}
+
+/** Normalize this session's `jobsBySession` entry: identity + liveness, unknown
+ *  members dropped. Returns null when the list is unavailable (NOT the same
+ *  statement as "no jobs" — that is `[]`). */
+export function normalizeJobs(value: unknown): JobInfo[] | null {
+  if (!Array.isArray(value)) return null
+  const statuses = ['running', 'stopping', 'completed', 'killed', 'failed']
+  return value.flatMap((raw): JobInfo[] => {
+    if (raw === null || typeof raw !== 'object') return []
+    const j = raw as Record<string, unknown>
+    if (typeof j.id !== 'string' || typeof j.startedAt !== 'number') return []
+    const status = statuses.includes(String(j.status)) ? (j.status as JobInfo['status']) : 'running'
+    return [{
+      id: j.id,
+      kind: typeof j.kind === 'string' ? j.kind : '',
+      label: typeof j.label === 'string' ? j.label : '',
+      status,
+      startedAt: j.startedAt,
+      ...(typeof j.finishedAt === 'number' ? { finishedAt: j.finishedAt } : {}),
+      ...(typeof j.detail === 'string' && j.detail !== '' ? { detail: j.detail } : {}),
     }]
   })
 }

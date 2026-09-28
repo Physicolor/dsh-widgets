@@ -18,11 +18,11 @@
 import * as React from 'react'
 import { WIDGET_RUNTIME } from '../generated.registry'
 import { parseInstanceKey } from '../lib/contract/helpers'
-import type { CommandCodeData, GitHubData, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
+import type { CommandCodeData, GitHubData, HostOverview, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
 import { DEFAULT_TZ, accumulateHeatmap, buildHeatmapGrid, dateKey, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from '../lib/heatmap-accounting'
 import { ccPayloadDegraded } from '../families/cc/data'
 import { ingestSysInfo, resolveInterval } from '../families/sys/data'
-import { type Stats, deriveCompaction, deriveStats, deriveTools, deriveTrajectory, normalizeGoal, normalizeModelSelection, normalizePermissions, normalizeSubagents } from './session-stats'
+import { type Stats, deriveCompaction, deriveStats, deriveTools, deriveTrajectory, normalizeGoal, normalizeJobs, normalizeModelSelection, normalizePermissions, normalizeSubagents } from './session-stats'
 import { type BridgeSnapshot, type BridgeState } from '../runtime/bridge'
 import { type Prefs } from '../runtime/prefs'
 
@@ -41,7 +41,7 @@ export interface CollectorDeps {
 /** Build the collector component bound to one bridge. */
 export function createCollector(deps: CollectorDeps): (props: any) => null {
   const { useBridge, setState } = deps
-  return ({ useSession, useProjection, useChat }: any): null => {
+  return ({ useSession, useProjection, useChat, useSessions }: any): null => {
       // DSH 0.1.5 split the session snapshot: chat data (nodes, timeline and
       // running tool calls) moved to the new `useChat` hook while `useSession`
       // now carries lifecycle state only. Read whichever half the running build
@@ -75,6 +75,14 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
       const goalProj = useProjection ? useProjection('goal') : undefined
       const permsProj = useProjection ? useProjection('permissions') : undefined
       const subagentProj = useProjection ? useProjection('subagentCatalog') : undefined
+      // The session LIST mirror: background jobs and the per-child timing the
+      // parent cannot see through its own projections (see normalizeSubagents).
+      // `useSessions` is provided at the slot ROOT by dsh-client-ui-session, so
+      // every slot component receives it. Both selectors return store-held
+      // references — never a freshly built object, which would re-render for ever.
+      const jobsBySession = useSessions ? useSessions((s: any) => s?.jobsBySession) : undefined
+      const sessionsById = useSessions ? useSessions((s: any) => s?.byId) : undefined
+      const sessionId = useSession ? useSession((s: any) => s?.id) : undefined
       // Bridge subscription: the sysinfo poll cadence depends on per-instance
       // refresh-interval config, so this collector re-renders on prefs changes
       // (emit) exactly like the capsule/rail bridges do.
@@ -327,6 +335,17 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
           .then((r) => r.json())
           .then((data: SysInfo) => { setState({ sysinfo: data }); ingestSysInfo(data) })
           .catch(() => { /* keep last known snapshot */ })
+          // The machine overview rides the same cadence: same subject (this
+          // machine), and the route answers from per-section caches after its
+          // first pass, so the extra request is a few milliseconds.
+          fetch('/api/host/overview')
+          .then(async (r) => {
+            if (!r.ok) { setState({ hostError: r.status === 404 ? 'unloaded' : `http:${r.status}` }); return }
+            const data = (await r.json().catch(() => null)) as HostOverview | null
+            if (data === null) { setState({ hostError: 'unavailable' }); return }
+            setState({ host: data, hostError: null })
+          })
+          .catch(() => { /* stale-while-error: keep the last overview */ })
         }
         refresh()
         const id = window.setInterval(refresh, secs * 1000)
@@ -521,10 +540,21 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
           agentPreset: typeof agentPresetProj === 'string' && agentPresetProj !== '' ? agentPresetProj : null,
           goal: normalizeGoal(goalProj),
           permissions: normalizePermissions(permsProj),
-          subagents: normalizeSubagents(subagentProj),
+          subagents: normalizeSubagents(
+            subagentProj,
+            typeof sessionsById === 'object' && sessionsById !== null
+              ? (id: string) => (sessionsById as Record<string, unknown>)[id]
+              : null,
+            now,
+          ),
+          jobs: normalizeJobs(
+            typeof jobsBySession === 'object' && jobsBySession !== null && typeof sessionId === 'string'
+              ? (jobsBySession as Record<string, unknown>)[sessionId]
+              : undefined,
+          ),
         }
         setState({ stats })
-      }, [settled, projected, usage, contextPres, contextBrk, todosProj, modelSelProj, agentPresetProj, goalProj, permsProj, subagentProj, timeline, runningCalls, now, snap.usageDaily, deps.getPrefs().cardConfigs?.heatmap?.monthMode, deps.getPrefs().cardConfigs?.heatmap?.timeZone])
+      }, [settled, projected, usage, contextPres, contextBrk, todosProj, modelSelProj, agentPresetProj, goalProj, permsProj, subagentProj, jobsBySession, sessionsById, sessionId, timeline, runningCalls, now, snap.usageDaily, deps.getPrefs().cardConfigs?.heatmap?.monthMode, deps.getPrefs().cardConfigs?.heatmap?.timeZone])
       return null
   }
 }

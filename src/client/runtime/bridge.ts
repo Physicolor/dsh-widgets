@@ -11,7 +11,7 @@
  * without importing back into their own caller (which would be a cycle).
  */
 
-import type { CommandCodeData, GitHubData, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
+import type { CommandCodeData, GitHubData, HostOverview, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
 import type { Stats } from '../data/session-stats'
 import type { Prefs } from './prefs'
 
@@ -32,6 +32,14 @@ export interface BridgeSnapshot {
    *  token side. Separate from `usageDaily` because that one is machine-wide. */
   commandCodeDaily: Record<string, number> | null
   sysinfo: SysInfo | null
+  /** The machine's operational picture (throughput / power / processes / local
+   *  services / proxy egress) from the host `/api/host/overview` route. Polled by
+   *  the same effect as `sysinfo` — both are the machine's own data, and the
+   *  route is cheap once each section's cache is warm. */
+  host: HostOverview | null
+  /** `'unloaded'` when the host route is missing (dsh web not restarted),
+   *  otherwise a transport code; `null` once a payload has arrived. */
+  hostError: string | null
   /** GitHub family payload (contribution calendar + repo pulses) from the
    *  host `/api/github` route. */
   github: GitHubData | null
