@@ -1,0 +1,26 @@
+{
+  "id": "heatmap-bars-wide",
+  "order": 81,
+  "group": "coding-plan",
+  "builtin": true,
+  "sizes": ["2x4"],
+  "defaultInstalled": false,
+  "locale": {
+    "zh": {
+      "widget.heatmap-bars-wide.name": "用量柱状图 · 30 天",
+      "widget.heatmap-bars-wide.desc": "近 30 天 Token 用量的宽版（2×4）柱状图：每根柱两天、柱宽与 7 日柱状图一致；数字带 MAX/TOTAL 标头落在标题行右端",
+      "card.heatmap-bars-wide.title": "用量柱状图",
+      "card.heatmap-bars-wide.max": "MAX",
+      "card.heatmap-bars-wide.total": "TOTAL",
+      "card.heatmap-bars-wide.hint": "每根柱 = 2 天（悬停柱看该柱合计；标签是该柱的结束日）"
+    },
+    "en": {
+      "widget.heatmap-bars-wide.name": "Usage Bars · 30 Days",
+      "widget.heatmap-bars-wide.desc": "Wide (2×4) token-usage bars for the last 30 days: two days per bar, the same bar weight as the 7-day card, MAX/TOTAL figures at the right end of the title row",
+      "card.heatmap-bars-wide.title": "Usage Bars",
+      "card.heatmap-bars-wide.max": "MAX",
+      "card.heatmap-bars-wide.total": "TOTAL",
+      "card.heatmap-bars-wide.hint": "each bar = 2 days (hover a bar for its total; the label is the day the bar ends on)"
+    }
+  }
+}

@@ -19,7 +19,8 @@ import { WIDGET_LOCALES } from './generated.registry'
 import type { CommandCodeData, GitHubData, SysInfo, UsageData, UsageMulti } from './lib/contract/types'
 import { loadHeatmapStore } from './lib/heatmap-accounting'
 import { createCollector } from './data/collector'
-import type { BridgeSnapshot } from './runtime/bridge'
+import { type BridgeSnapshot } from './runtime/bridge'
+import { buildLiveStats } from './runtime/live-stats'
 import { type Stats } from './data/session-stats'
 import { SAVED_AT_KEY, STORAGE_KEY, loadSavedAt, loadState, normalizePrefs, type Prefs } from './runtime/prefs'
 import { STORE_API, flushPendingState, putState, saveState } from './runtime/host-sync'
@@ -267,7 +268,10 @@ export function apply(ctx: ClientContext): void {
     { name: 'settings.section', id: 'widgets', order: 30, label: () => t('ui.section.label') },
     () => {
       const snap = useBridge()
-      return React.createElement(WidgetsPage, { controller: { prefs: snap.prefs, setPrefs } })
+      // `liveStats` is the same fold the rail renders from (runtime/live-stats),
+      // so the 组件配置 preview shows the instance's real numbers whenever a
+      // session is running, and the filler data otherwise.
+      return React.createElement(WidgetsPage, { controller: { prefs: snap.prefs, setPrefs, liveStats: (key: string) => buildLiveStats(snap, prefs, key) } })
     },
   ))
 

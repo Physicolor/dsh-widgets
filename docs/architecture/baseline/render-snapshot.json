@@ -23,8 +23,30 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "title": "工具调用",
-    "value": "4m7s"
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "失败",
+       "tone": "danger",
+       "value": "1"
+      },
+      {
+       "label": "平均每次",
+       "value": "3.2s"
+      },
+      {
+       "label": "工具耗时占比",
+       "value": "26%"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1m15s"
+    },
+    "legend": "23 次 · 5 个工具",
+    "title": "工具调用"
    }
   },
   {
@@ -50,8 +72,35 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "title": "缓存命中",
-    "value": "99%"
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "未缓存输入",
+       "value": "200K"
+      },
+      {
+       "label": "缓存读取",
+       "value": "18.4M"
+      },
+      {
+       "label": "输出",
+       "value": "75.6K"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "99%"
+    },
+    "headRing": {
+     "icon": "database",
+     "label": "98.9%",
+     "ratio": 0.989247311827957,
+     "tone": "success"
+    },
+    "legend": "18.7M tok",
+    "title": "缓存命中"
    }
   },
   {
@@ -59,8 +108,28 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "title": "Tokens",
-    "value": "18.6M 75.6K"
+    "bodyAnchor": "bottom",
+    "chart": {
+     "kind": "segments",
+     "segments": [
+      {
+       "label": "输入",
+       "tokens": 18600000,
+       "tone": "muted"
+      },
+      {
+       "label": "输出",
+       "tokens": 75600,
+       "tone": "primary"
+      }
+     ],
+     "segmentsPalette": "tones",
+     "totalTokens": 18675600
+    },
+    "headAfter": {
+     "big": "18.7M"
+    },
+    "title": "会话 Token"
    }
   },
   {
@@ -68,15 +137,36 @@
    "size": "2x2",
    "sim": null,
    "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "压缩次数",
+       "value": "2"
+      },
+      {
+       "label": "累计回收",
+       "value": "340K"
+      },
+      {
+       "label": "折叠项数",
+       "value": "47"
+      }
+     ],
+     "kind": "breakdown"
+    },
     "corner": {
      "armed": false,
      "armedLabel": "确认",
      "id": "contextCompact",
      "label": "压缩",
-     "pos": "bottom"
+     "pos": "top"
     },
-    "title": "一键压缩",
-    "value": "42%"
+    "headAfter": {
+     "big": "42%"
+    },
+    "legend": "最近 4m 前",
+    "title": "上下文压缩"
    }
   },
   {
@@ -148,9 +238,169 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "sub": "1 进行中 · 2 待办",
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "任务 1",
+       "tone": "primary",
+       "value": "进行中"
+      },
+      {
+       "label": "任务 2",
+       "value": "待办"
+      },
+      {
+       "label": "任务 3 · 这一行故意写得很长，用来检查右端是截断还是淡出",
+       "value": "待办"
+      },
+      {
+       "label": "任务 4",
+       "tone": "success",
+       "value": "已完成"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1",
+     "small": "进行中 · 2 待办"
+    },
+    "title": "任务"
+   }
+  },
+  {
+   "id": "task",
+   "size": "2x2",
+   "sim": {
+    "empty": false
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "任务 1",
+       "tone": "primary",
+       "value": "进行中"
+      },
+      {
+       "label": "任务 2",
+       "value": "待办"
+      },
+      {
+       "label": "任务 3 · 这一行故意写得很长，用来检查右端是截断还是淡出",
+       "value": "待办"
+      },
+      {
+       "label": "任务 4",
+       "tone": "success",
+       "value": "已完成"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1",
+     "small": "进行中 · 2 待办"
+    },
+    "title": "任务"
+   }
+  },
+  {
+   "id": "task",
+   "size": "2x2",
+   "sim": {
+    "empty": true
+   },
+   "out": {
     "title": "任务",
-    "value": "2 已完成"
+    "value": "暂无任务"
+   }
+  },
+  {
+   "id": "task",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "任务 1",
+       "tone": "primary",
+       "value": "进行中"
+      },
+      {
+       "label": "任务 2",
+       "value": "待办"
+      },
+      {
+       "label": "任务 3 · 这一行故意写得很长，用来检查右端是截断还是淡出",
+       "value": "待办"
+      },
+      {
+       "label": "任务 4",
+       "tone": "success",
+       "value": "已完成"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1",
+     "small": "进行中 · 2 待办"
+    },
+    "title": "任务"
+   }
+  },
+  {
+   "id": "task",
+   "size": "2x4",
+   "sim": {
+    "empty": false
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "任务 1",
+       "tone": "primary",
+       "value": "进行中"
+      },
+      {
+       "label": "任务 2",
+       "value": "待办"
+      },
+      {
+       "label": "任务 3 · 这一行故意写得很长，用来检查右端是截断还是淡出",
+       "value": "待办"
+      },
+      {
+       "label": "任务 4",
+       "tone": "success",
+       "value": "已完成"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1",
+     "small": "进行中 · 2 待办"
+    },
+    "title": "任务"
+   }
+  },
+  {
+   "id": "task",
+   "size": "2x4",
+   "sim": {
+    "empty": true
+   },
+   "out": {
+    "title": "任务",
+    "value": "暂无任务"
    }
   },
   {
@@ -4750,6 +5000,472 @@
     "legend": "Physicolor/dsh-widgets · Release v1.7.0",
     "title": "仓库脉搏"
    }
+  },
+  {
+   "id": "usage-mix",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "今日",
+       "tone": "muted",
+       "value": "92M"
+      },
+      {
+       "label": "Command Code Ⅰ",
+       "tone": "warn",
+       "value": "91.4%"
+      },
+      {
+       "label": "OpenCode Go Ⅰ",
+       "tone": "success",
+       "value": "38.0%"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "92M",
+     "small": "5h 重置 3h0m"
+    },
+    "headRing": {
+     "icon": "database",
+     "label": "91.4%",
+     "ratio": 0.9142857142857143,
+     "tone": "warn"
+    },
+    "title": "套餐总览"
+   }
+  },
+  {
+   "id": "trajectory-stats",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "kind": "segments",
+     "segments": [
+      {
+       "label": "输入 0ms",
+       "tokens": 0,
+       "tone": "primary"
+      },
+      {
+       "label": "模型 24.2s",
+       "tokens": 24198,
+       "tone": "accent"
+      },
+      {
+       "label": "工具 58.1s",
+       "tokens": 58101,
+       "tone": "warn"
+      }
+     ],
+     "segmentsPalette": "tones",
+     "segmentsValue": "percent",
+     "totalTokens": 82299
+    },
+    "cycle": {
+     "current": "model",
+     "hint": "单击切换大数字：模型 → 工具",
+     "modes": [
+      "model",
+      "tool"
+     ],
+     "store": "bigLane"
+    },
+    "headAfter": {
+     "big": "29%"
+    },
+    "legend": "模型 · 时长占比",
+    "title": "轨迹占比"
+   }
+  },
+  {
+   "id": "trajectory-stats",
+   "size": "2x2",
+   "sim": {
+    "bigLane": "model"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "kind": "segments",
+     "segments": [
+      {
+       "label": "输入 0ms",
+       "tokens": 0,
+       "tone": "primary"
+      },
+      {
+       "label": "模型 24.2s",
+       "tokens": 24198,
+       "tone": "accent"
+      },
+      {
+       "label": "工具 58.1s",
+       "tokens": 58101,
+       "tone": "warn"
+      }
+     ],
+     "segmentsPalette": "tones",
+     "segmentsValue": "percent",
+     "totalTokens": 82299
+    },
+    "cycle": {
+     "current": "model",
+     "hint": "单击切换大数字：模型 → 工具",
+     "modes": [
+      "model",
+      "tool"
+     ],
+     "store": "bigLane"
+    },
+    "headAfter": {
+     "big": "29%"
+    },
+    "legend": "模型 · 时长占比",
+    "title": "轨迹占比"
+   }
+  },
+  {
+   "id": "trajectory-stats",
+   "size": "2x2",
+   "sim": {
+    "bigLane": "tool"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "kind": "segments",
+     "segments": [
+      {
+       "label": "输入 0ms",
+       "tokens": 0,
+       "tone": "primary"
+      },
+      {
+       "label": "模型 24.2s",
+       "tokens": 24198,
+       "tone": "accent"
+      },
+      {
+       "label": "工具 58.1s",
+       "tokens": 58101,
+       "tone": "warn"
+      }
+     ],
+     "segmentsPalette": "tones",
+     "segmentsValue": "percent",
+     "totalTokens": 82299
+    },
+    "cycle": {
+     "current": "model",
+     "hint": "单击切换大数字：模型 → 工具",
+     "modes": [
+      "model",
+      "tool"
+     ],
+     "store": "bigLane"
+    },
+    "headAfter": {
+     "big": "29%"
+    },
+    "legend": "模型 · 时长占比",
+    "title": "轨迹占比"
+   }
+  },
+  {
+   "id": "heatmap-bars-wide",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "cardHint": "每根柱 = 2 天（悬停柱看该柱合计；标签是该柱的结束日）",
+    "chart": {
+     "bars": [
+      {
+       "label": "8.27",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "8.29",
+       "ratio": 0.28690807799442897,
+       "tone": "primary",
+       "value": 10300000
+      },
+      {
+       "label": "8.31",
+       "ratio": 0.31197771587743733,
+       "tone": "primary",
+       "value": 11200000
+      },
+      {
+       "label": "9.2",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.4",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      },
+      {
+       "label": "9.6",
+       "ratio": 0.25348189415041783,
+       "tone": "primary",
+       "value": 9100000
+      },
+      {
+       "label": "9.8",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.10",
+       "ratio": 0.4456824512534819,
+       "tone": "primary",
+       "value": 16000000
+      },
+      {
+       "label": "9.12",
+       "ratio": 0.8662952646239555,
+       "tone": "primary",
+       "value": 31100000
+      },
+      {
+       "label": "9.14",
+       "ratio": 0.23676880222841226,
+       "tone": "primary",
+       "value": 8500000
+      },
+      {
+       "label": "9.16",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "9.18",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17827298050139276,
+       "tone": "primary",
+       "value": 6400000
+      },
+      {
+       "label": "9.22",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "headRight": "MAX 35.9M  TOTAL 259M",
+    "title": "用量柱状图"
+   }
+  },
+  {
+   "id": "peak-pricing-board",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "09:00–12:00",
+       "tone": "danger",
+       "value": "高峰"
+      },
+      {
+       "label": "14:00–18:00",
+       "tone": "danger",
+       "value": "高峰"
+      },
+      {
+       "label": "18:00–09:00",
+       "tone": "primary",
+       "value": "低谷"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "CHEAP",
+     "small": "本段至 24:00"
+    },
+    "legend": "下一段（次日） 24:00 · 还有 4h 00m",
+    "title": "峰谷时段表",
+    "valuePulse": false
+   }
+  },
+  {
+   "id": "peak-pricing-board",
+   "size": "2x4",
+   "sim": {
+    "when": "2026-09-24T10:30"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "09:00–12:00",
+       "tone": "danger",
+       "value": "高峰"
+      },
+      {
+       "label": "14:00–18:00",
+       "tone": "danger",
+       "value": "高峰"
+      },
+      {
+       "label": "18:00–09:00",
+       "value": "低谷"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "EXPENSIVE",
+     "small": "本段至 12:00"
+    },
+    "legend": "下一段 12:00 · 还有 1h 30m",
+    "title": "峰谷时段表",
+    "valuePulse": true,
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "peak-pricing-board",
+   "size": "2x4",
+   "sim": {
+    "when": "2026-09-24T13:00"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "09:00–12:00",
+       "tone": "danger",
+       "value": "高峰"
+      },
+      {
+       "label": "14:00–18:00",
+       "tone": "danger",
+       "value": "高峰"
+      },
+      {
+       "label": "18:00–09:00",
+       "tone": "primary",
+       "value": "低谷"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "CHEAP",
+     "small": "本段至 14:00"
+    },
+    "legend": "下一段 14:00 · 还有 1h 00m",
+    "title": "峰谷时段表",
+    "valuePulse": false
+   }
+  },
+  {
+   "id": "peak-pricing-board",
+   "size": "2x4",
+   "sim": {
+    "when": "2026-09-26T10:30"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "09:00–12:00",
+       "tone": "muted",
+       "value": "高峰"
+      },
+      {
+       "label": "14:00–18:00",
+       "tone": "muted",
+       "value": "高峰"
+      },
+      {
+       "label": "18:00–09:00",
+       "tone": "primary",
+       "value": "低谷 · 中秋节"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "CHEAP",
+     "small": "中秋节"
+    },
+    "legend": "恢复高峰 周一 09:00 · 还有 46h 30m",
+    "title": "峰谷时段表",
+    "valuePulse": false
+   }
+  },
+  {
+   "id": "peak-pricing-board",
+   "size": "2x4",
+   "sim": {
+    "when": "2026-10-10T10:30"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "09:00–12:00",
+       "tone": "muted",
+       "value": "高峰"
+      },
+      {
+       "label": "14:00–18:00",
+       "tone": "muted",
+       "value": "高峰"
+      },
+      {
+       "label": "18:00–09:00",
+       "tone": "primary",
+       "value": "低谷 · 周末"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "CHEAP",
+     "small": "周末"
+    },
+    "legend": "恢复高峰 周一 09:00 · 还有 46h 30m",
+    "title": "峰谷时段表",
+    "valuePulse": false
+   }
   }
  ],
  "en": [
@@ -4776,8 +5492,30 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "title": "Tool Calls",
-    "value": "4m7s"
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Failed",
+       "tone": "danger",
+       "value": "1"
+      },
+      {
+       "label": "Average",
+       "value": "3.2s"
+      },
+      {
+       "label": "Tool share",
+       "value": "26%"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1m15s"
+    },
+    "legend": "23 calls · 5 tools",
+    "title": "Tool Calls"
    }
   },
   {
@@ -4803,8 +5541,35 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "title": "Cache Hit",
-    "value": "99%"
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Uncached input",
+       "value": "200K"
+      },
+      {
+       "label": "Cache read",
+       "value": "18.4M"
+      },
+      {
+       "label": "Output",
+       "value": "75.6K"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "99%"
+    },
+    "headRing": {
+     "icon": "database",
+     "label": "98.9%",
+     "ratio": 0.989247311827957,
+     "tone": "success"
+    },
+    "legend": "18.7M tok",
+    "title": "Cache Hit"
    }
   },
   {
@@ -4812,8 +5577,28 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "title": "Tokens",
-    "value": "18.6M 75.6K"
+    "bodyAnchor": "bottom",
+    "chart": {
+     "kind": "segments",
+     "segments": [
+      {
+       "label": "Input",
+       "tokens": 18600000,
+       "tone": "muted"
+      },
+      {
+       "label": "Output",
+       "tokens": 75600,
+       "tone": "primary"
+      }
+     ],
+     "segmentsPalette": "tones",
+     "totalTokens": 18675600
+    },
+    "headAfter": {
+     "big": "18.7M"
+    },
+    "title": "Session Tokens"
    }
   },
   {
@@ -4821,15 +5606,36 @@
    "size": "2x2",
    "sim": null,
    "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Folds",
+       "value": "2"
+      },
+      {
+       "label": "Reclaimed",
+       "value": "340K"
+      },
+      {
+       "label": "Items folded",
+       "value": "47"
+      }
+     ],
+     "kind": "breakdown"
+    },
     "corner": {
      "armed": false,
      "armedLabel": "Confirm",
      "id": "contextCompact",
      "label": "Compact",
-     "pos": "bottom"
+     "pos": "top"
     },
-    "title": "Compact",
-    "value": "42%"
+    "headAfter": {
+     "big": "42%"
+    },
+    "legend": "Last 4m ago",
+    "title": "Context Compaction"
    }
   },
   {
@@ -4901,9 +5707,169 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "sub": "1 in progress · 2 pending",
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "任务 1",
+       "tone": "primary",
+       "value": "In progress"
+      },
+      {
+       "label": "任务 2",
+       "value": "Pending"
+      },
+      {
+       "label": "任务 3 · 这一行故意写得很长，用来检查右端是截断还是淡出",
+       "value": "Pending"
+      },
+      {
+       "label": "任务 4",
+       "tone": "success",
+       "value": "Done"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1",
+     "small": "active · 2 pending"
+    },
+    "title": "Tasks"
+   }
+  },
+  {
+   "id": "task",
+   "size": "2x2",
+   "sim": {
+    "empty": false
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "任务 1",
+       "tone": "primary",
+       "value": "In progress"
+      },
+      {
+       "label": "任务 2",
+       "value": "Pending"
+      },
+      {
+       "label": "任务 3 · 这一行故意写得很长，用来检查右端是截断还是淡出",
+       "value": "Pending"
+      },
+      {
+       "label": "任务 4",
+       "tone": "success",
+       "value": "Done"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1",
+     "small": "active · 2 pending"
+    },
+    "title": "Tasks"
+   }
+  },
+  {
+   "id": "task",
+   "size": "2x2",
+   "sim": {
+    "empty": true
+   },
+   "out": {
     "title": "Tasks",
-    "value": "2 done"
+    "value": "No tasks"
+   }
+  },
+  {
+   "id": "task",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "任务 1",
+       "tone": "primary",
+       "value": "In progress"
+      },
+      {
+       "label": "任务 2",
+       "value": "Pending"
+      },
+      {
+       "label": "任务 3 · 这一行故意写得很长，用来检查右端是截断还是淡出",
+       "value": "Pending"
+      },
+      {
+       "label": "任务 4",
+       "tone": "success",
+       "value": "Done"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1",
+     "small": "active · 2 pending"
+    },
+    "title": "Tasks"
+   }
+  },
+  {
+   "id": "task",
+   "size": "2x4",
+   "sim": {
+    "empty": false
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "任务 1",
+       "tone": "primary",
+       "value": "In progress"
+      },
+      {
+       "label": "任务 2",
+       "value": "Pending"
+      },
+      {
+       "label": "任务 3 · 这一行故意写得很长，用来检查右端是截断还是淡出",
+       "value": "Pending"
+      },
+      {
+       "label": "任务 4",
+       "tone": "success",
+       "value": "Done"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1",
+     "small": "active · 2 pending"
+    },
+    "title": "Tasks"
+   }
+  },
+  {
+   "id": "task",
+   "size": "2x4",
+   "sim": {
+    "empty": true
+   },
+   "out": {
+    "title": "Tasks",
+    "value": "No tasks"
    }
   },
   {
@@ -9502,6 +10468,472 @@
     },
     "legend": "Physicolor/dsh-widgets · Release v1.7.0",
     "title": "Repo pulse"
+   }
+  },
+  {
+   "id": "usage-mix",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Today",
+       "tone": "muted",
+       "value": "92M"
+      },
+      {
+       "label": "Command Code Ⅰ",
+       "tone": "warn",
+       "value": "91.4%"
+      },
+      {
+       "label": "OpenCode Go Ⅰ",
+       "tone": "success",
+       "value": "38.0%"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "92M",
+     "small": "5h resets 3h0m"
+    },
+    "headRing": {
+     "icon": "database",
+     "label": "91.4%",
+     "ratio": 0.9142857142857143,
+     "tone": "warn"
+    },
+    "title": "Plan Overview"
+   }
+  },
+  {
+   "id": "trajectory-stats",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "kind": "segments",
+     "segments": [
+      {
+       "label": "Input 0ms",
+       "tokens": 0,
+       "tone": "primary"
+      },
+      {
+       "label": "Model 24.2s",
+       "tokens": 24198,
+       "tone": "accent"
+      },
+      {
+       "label": "Tool 58.1s",
+       "tokens": 58101,
+       "tone": "warn"
+      }
+     ],
+     "segmentsPalette": "tones",
+     "segmentsValue": "percent",
+     "totalTokens": 82299
+    },
+    "cycle": {
+     "current": "model",
+     "hint": "Click to switch the figure: model → tool",
+     "modes": [
+      "model",
+      "tool"
+     ],
+     "store": "bigLane"
+    },
+    "headAfter": {
+     "big": "29%"
+    },
+    "legend": "Model · of window time",
+    "title": "Trajectory Share"
+   }
+  },
+  {
+   "id": "trajectory-stats",
+   "size": "2x2",
+   "sim": {
+    "bigLane": "model"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "kind": "segments",
+     "segments": [
+      {
+       "label": "Input 0ms",
+       "tokens": 0,
+       "tone": "primary"
+      },
+      {
+       "label": "Model 24.2s",
+       "tokens": 24198,
+       "tone": "accent"
+      },
+      {
+       "label": "Tool 58.1s",
+       "tokens": 58101,
+       "tone": "warn"
+      }
+     ],
+     "segmentsPalette": "tones",
+     "segmentsValue": "percent",
+     "totalTokens": 82299
+    },
+    "cycle": {
+     "current": "model",
+     "hint": "Click to switch the figure: model → tool",
+     "modes": [
+      "model",
+      "tool"
+     ],
+     "store": "bigLane"
+    },
+    "headAfter": {
+     "big": "29%"
+    },
+    "legend": "Model · of window time",
+    "title": "Trajectory Share"
+   }
+  },
+  {
+   "id": "trajectory-stats",
+   "size": "2x2",
+   "sim": {
+    "bigLane": "tool"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "kind": "segments",
+     "segments": [
+      {
+       "label": "Input 0ms",
+       "tokens": 0,
+       "tone": "primary"
+      },
+      {
+       "label": "Model 24.2s",
+       "tokens": 24198,
+       "tone": "accent"
+      },
+      {
+       "label": "Tool 58.1s",
+       "tokens": 58101,
+       "tone": "warn"
+      }
+     ],
+     "segmentsPalette": "tones",
+     "segmentsValue": "percent",
+     "totalTokens": 82299
+    },
+    "cycle": {
+     "current": "model",
+     "hint": "Click to switch the figure: model → tool",
+     "modes": [
+      "model",
+      "tool"
+     ],
+     "store": "bigLane"
+    },
+    "headAfter": {
+     "big": "29%"
+    },
+    "legend": "Model · of window time",
+    "title": "Trajectory Share"
+   }
+  },
+  {
+   "id": "heatmap-bars-wide",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "cardHint": "each bar = 2 days (hover a bar for its total; the label is the day the bar ends on)",
+    "chart": {
+     "bars": [
+      {
+       "label": "8.27",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "8.29",
+       "ratio": 0.28690807799442897,
+       "tone": "primary",
+       "value": 10300000
+      },
+      {
+       "label": "8.31",
+       "ratio": 0.31197771587743733,
+       "tone": "primary",
+       "value": 11200000
+      },
+      {
+       "label": "9.2",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.4",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      },
+      {
+       "label": "9.6",
+       "ratio": 0.25348189415041783,
+       "tone": "primary",
+       "value": 9100000
+      },
+      {
+       "label": "9.8",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.10",
+       "ratio": 0.4456824512534819,
+       "tone": "primary",
+       "value": 16000000
+      },
+      {
+       "label": "9.12",
+       "ratio": 0.8662952646239555,
+       "tone": "primary",
+       "value": 31100000
+      },
+      {
+       "label": "9.14",
+       "ratio": 0.23676880222841226,
+       "tone": "primary",
+       "value": 8500000
+      },
+      {
+       "label": "9.16",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "9.18",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17827298050139276,
+       "tone": "primary",
+       "value": 6400000
+      },
+      {
+       "label": "9.22",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "headRight": "MAX 35.9M  TOTAL 259M",
+    "title": "Usage Bars"
+   }
+  },
+  {
+   "id": "peak-pricing-board",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "09:00–12:00",
+       "tone": "danger",
+       "value": "Peak"
+      },
+      {
+       "label": "14:00–18:00",
+       "tone": "danger",
+       "value": "Peak"
+      },
+      {
+       "label": "18:00–09:00",
+       "tone": "primary",
+       "value": "Off-peak"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "CHEAP",
+     "small": "until 24:00"
+    },
+    "legend": "Next (tomorrow) 24:00 · 4h 00m left",
+    "title": "Peak Hours Board",
+    "valuePulse": false
+   }
+  },
+  {
+   "id": "peak-pricing-board",
+   "size": "2x4",
+   "sim": {
+    "when": "2026-09-24T10:30"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "09:00–12:00",
+       "tone": "danger",
+       "value": "Peak"
+      },
+      {
+       "label": "14:00–18:00",
+       "tone": "danger",
+       "value": "Peak"
+      },
+      {
+       "label": "18:00–09:00",
+       "value": "Off-peak"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "EXPENSIVE",
+     "small": "until 12:00"
+    },
+    "legend": "Next 12:00 · 1h 30m left",
+    "title": "Peak Hours Board",
+    "valuePulse": true,
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "peak-pricing-board",
+   "size": "2x4",
+   "sim": {
+    "when": "2026-09-24T13:00"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "09:00–12:00",
+       "tone": "danger",
+       "value": "Peak"
+      },
+      {
+       "label": "14:00–18:00",
+       "tone": "danger",
+       "value": "Peak"
+      },
+      {
+       "label": "18:00–09:00",
+       "tone": "primary",
+       "value": "Off-peak"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "CHEAP",
+     "small": "until 14:00"
+    },
+    "legend": "Next 14:00 · 1h 00m left",
+    "title": "Peak Hours Board",
+    "valuePulse": false
+   }
+  },
+  {
+   "id": "peak-pricing-board",
+   "size": "2x4",
+   "sim": {
+    "when": "2026-09-26T10:30"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "09:00–12:00",
+       "tone": "muted",
+       "value": "Peak"
+      },
+      {
+       "label": "14:00–18:00",
+       "tone": "muted",
+       "value": "Peak"
+      },
+      {
+       "label": "18:00–09:00",
+       "tone": "primary",
+       "value": "Off-peak · Mid-Autumn Festival"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "CHEAP",
+     "small": "Mid-Autumn Festival"
+    },
+    "legend": "Back to peak Mon 09:00 · 46h 30m left",
+    "title": "Peak Hours Board",
+    "valuePulse": false
+   }
+  },
+  {
+   "id": "peak-pricing-board",
+   "size": "2x4",
+   "sim": {
+    "when": "2026-10-10T10:30"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "09:00–12:00",
+       "tone": "muted",
+       "value": "Peak"
+      },
+      {
+       "label": "14:00–18:00",
+       "tone": "muted",
+       "value": "Peak"
+      },
+      {
+       "label": "18:00–09:00",
+       "tone": "primary",
+       "value": "Off-peak · Weekend"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "CHEAP",
+     "small": "Weekend"
+    },
+    "legend": "Back to peak Mon 09:00 · 46h 30m left",
+    "title": "Peak Hours Board",
+    "valuePulse": false
    }
   }
  ]

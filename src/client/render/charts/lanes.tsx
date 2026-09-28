@@ -9,6 +9,7 @@
 
 import * as React from 'react'
 import { TRAJECTORY_WINDOW } from '../../lib/contract/types'
+import { CHART_TONES } from './theme'
 import type { ChartProps } from './types'
 
 /** 对话轨迹 lane colors — EXACTLY the official 轨迹 timeline's three lanes
@@ -17,8 +18,11 @@ import type { ChartProps } from './types'
  *  with the error red), 工具 = the warn label. Keeping the expressions (not
  *  resolved hex) means the card follows light/dark and future token changes. */
 const LANE_TONES: Record<string, string> = {
-  input: 'var(--dsw-alias-state-business-primary)',
-  model: 'color-mix(in srgb, var(--dsw-alias-state-business-primary) 60%, var(--dsw-alias-state-error-secondary))',
+  input: CHART_TONES.primary!,
+  // The one lane the palette could not name until `accent` existed: read from the
+  // shared palette so this strip and 轨迹占比 (which paints the same three shares)
+  // cannot drift apart.
+  model: CHART_TONES.accent!,
   tool: 'var(--dsw-alias-state-warn-label)',
 }
 

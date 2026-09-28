@@ -64,6 +64,16 @@
   corner-shape: squircle;
 }
 
+/* Tile-fits guard (see the layout effect in CardBody): a card whose content does not
+ * fit its tile is a BUILD defect, not a data state — it is clipped in a preview and
+ * grows past its grid row on the rail — so it is marked in both surfaces instead of
+ * being discovered after install. The outline is inset so the card's own radius and
+ * shadow are untouched. */
+.dsx-stats-card[data-dsx-overflow='1'] {
+  outline: 2px solid var(--dsw-alias-state-error-primary);
+  outline-offset: -3px;
+}
+
 /* ---- Official settings-nav glyph for our section ----------------------------
  * The shell's settings nav picks its glyph from the section ID and only knows
  * its three built-in IDs ("models" / "agent-presets" / "plugins"); every other
@@ -190,13 +200,13 @@
 
 .dsx-stats-card-corner {
   position: absolute;
-  width: 30px;
-  height: 30px;
-  border-radius: 15px;
+  width: 42px;
+  height: 42px;
+  border-radius: 21px;
   border: none;
   background: var(--dsw-alias-state-business-primary);
   color: #fff;
-  font-size: 12px;
+  font-size: 10px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -209,9 +219,33 @@
   filter: brightness(1.08);
 }
 .dsx-stats-card-corner.armed {
-  width: 56px;
-  border-radius: 15px;
+  /* The disc keeps its size and swaps the icon for the confirm label: widening into
+     a capsule would reach left under the head's title at this diameter. */
   font-weight: 600;
+}
+
+/* Value-change transition (see CardBody's figure-drop): a card's body figure slides
+ * down into place when its reading changes — 任务 going from a live count to
+ * 「暂无任务」 is the case that asked for it. The motion is decoration: it is skipped
+ * entirely under reduced-motion, and the renderer only arms the class on a real value
+ * change, never on mount. */
+@keyframes dsx-figure-drop {
+  from {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.dsx-figure-drop {
+  animation: dsx-figure-drop 200ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dsx-figure-drop {
+    animation: none;
+  }
 }
 
 [data-conversation-scroll] {

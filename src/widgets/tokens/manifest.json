@@ -7,12 +7,16 @@
   "defaultInstalled": true,
   "locale": {
     "zh": {
-      "widget.tokens.name": "Tokens",
-      "widget.tokens.desc": "输入与输出 token 计数"
+      "widget.tokens.name": "会话 Token",
+      "widget.tokens.desc": "本次会话的 token 总量与输入 / 输出构成（会话内口径，不是逐日跨会话的用量）",
+      "card.tokens.input": "输入",
+      "card.tokens.output": "输出"
     },
     "en": {
-      "widget.tokens.name": "Tokens",
-      "widget.tokens.desc": "Input & output token counts"
+      "widget.tokens.name": "Session Tokens",
+      "widget.tokens.desc": "This session's token total with its input / output split (session scope, not the per-day cross-session usage)",
+      "card.tokens.input": "Input",
+      "card.tokens.output": "Output"
     }
   }
 }

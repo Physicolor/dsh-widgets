@@ -8,11 +8,25 @@
   "locale": {
     "zh": {
       "widget.tool.name": "工具调用",
-      "widget.tool.desc": "工具调用累计耗时"
+      "widget.tool.desc": "明细三行（默认 失败 / 平均每次 / 工具耗时占比），大字为累计耗时；行可在组件配置里更换",
+      "card.tool.running": "正在执行",
+      "card.tool.slowest": "最慢",
+      "card.tool.failed": "失败",
+      "card.tool.mean": "平均每次",
+      "card.tool.share": "工具耗时占比",
+      "card.tool.calls": "{n} 次 · {m} 个工具",
+      "card.tool.hint": "最多 {max} 行 · 拖动整行排序：上面的先显示在卡片上"
     },
     "en": {
       "widget.tool.name": "Tool Calls",
-      "widget.tool.desc": "Cumulative tool call time"
+      "widget.tool.desc": "Three detail rows (default 失败 / 平均每次 / 工具耗时占比) under the cumulative-time figure; rows are swappable in Config",
+      "card.tool.running": "Running",
+      "card.tool.slowest": "Slowest",
+      "card.tool.failed": "Failed",
+      "card.tool.mean": "Average",
+      "card.tool.share": "Tool share",
+      "card.tool.calls": "{n} calls · {m} tools",
+      "card.tool.hint": "Up to {max} rows · drag a row to reorder: the top one shows first on the card"
     }
   }
 }

@@ -1,0 +1,42 @@
+{
+  "id": "usage-mix",
+  "order": 79,
+  "group": "coding-plan",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": false,
+  "source": "cc",
+  "skeleton": { "shape": "rings", "count": 1 },
+  "locale": {
+    "zh": {
+      "widget.usage-mix.name": "套餐总览",
+      "widget.usage-mix.desc": "跨平台额度看板：今日用量打头，右上角环形显示全场最紧的占用，下面每个平台（含号池，第二个用罗马数字 Ⅱ）各占一行",
+      "card.usage-mix.opencode": "OpenCode Go",
+      "card.usage-mix.commandcode": "Command Code",
+      "card.usage-mix.today": "今日",
+      "card.usage-mix.legend": "{win}重置 {at}",
+      "card.usage-mix.mark.Δ": "滚动",
+      "card.usage-mix.mark.W": "周",
+      "card.usage-mix.mark.M": "月",
+      "card.usage-mix.mark.5h": "5h ",
+      "card.usage-mix.cfg.daily": "显示今日用量",
+      "card.usage-mix.cfg.opencode": "显示 OpenCode Go（退订后关掉）",
+      "card.usage-mix.cfg.commandcode": "显示 Command Code"
+    },
+    "en": {
+      "widget.usage-mix.name": "Plan Overview",
+      "widget.usage-mix.desc": "Cross-platform quota board: today's tokens first, the board's tightest occupancy as a head ring, then one row per platform (its second key pool reads Ⅱ)",
+      "card.usage-mix.opencode": "OpenCode Go",
+      "card.usage-mix.commandcode": "Command Code",
+      "card.usage-mix.today": "Today",
+      "card.usage-mix.legend": "{win} resets {at}",
+      "card.usage-mix.mark.Δ": "rolling",
+      "card.usage-mix.mark.W": "weekly",
+      "card.usage-mix.mark.M": "monthly",
+      "card.usage-mix.mark.5h": "5h",
+      "card.usage-mix.cfg.daily": "Show today's tokens",
+      "card.usage-mix.cfg.opencode": "Show OpenCode Go (turn off once unsubscribed)",
+      "card.usage-mix.cfg.commandcode": "Show Command Code"
+    }
+  }
+}

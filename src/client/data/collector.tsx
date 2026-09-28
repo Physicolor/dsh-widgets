@@ -22,7 +22,7 @@ import type { CommandCodeData, GitHubData, SysInfo, UsageData, UsageMulti } from
 import { DEFAULT_TZ, accumulateHeatmap, buildHeatmapGrid, dateKey, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from '../lib/heatmap-accounting'
 import { ccPayloadDegraded } from '../families/cc/data'
 import { ingestSysInfo, resolveInterval } from '../families/sys/data'
-import { type Stats, deriveStats, deriveTrajectory } from './session-stats'
+import { type Stats, deriveCompaction, deriveStats, deriveTools, deriveTrajectory } from './session-stats'
 import { type BridgeSnapshot, type BridgeState } from '../runtime/bridge'
 import { type Prefs } from '../runtime/prefs'
 
@@ -483,6 +483,7 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
             messageTokens: (contextBrk as unknown as Record<string, unknown>).messageTokens as number | undefined ?? 0,
           }
         }
+        const compaction = deriveCompaction(settled)
         const stats: Stats = {
           turns: folded.turns, steps: folded.steps,
           llmMs, toolMs,
@@ -494,6 +495,15 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
           heatmapGrid: buildHeatmapGrid(heatmapDays, (deps.getPrefs().cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling', heatTz),
           heatmapRaw: { ...heatmapDays },
           trajectory: deriveTrajectory(settled, runningCalls, timeline, now),
+          // The 工具调用 card's fold: names, failures, the slowest call and what is
+          // running right now — all off the nodes this pass already walks.
+          tools: deriveTools(settled, runningCalls, now),
+          // The 上下文压缩 card's fold: how much history was folded away, when, and
+          // how many surface items went with it — same node array, one filter more.
+          // NULL when this session has folded nothing: "no reading yet" must not
+          // masquerade as a zero, or the record would override the preview's own
+          // example and leave a reviewable card showing nothing.
+          compactions: compaction.count > 0 ? compaction : null,
         }
         setState({ stats })
       }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now, snap.usageDaily, deps.getPrefs().cardConfigs?.heatmap?.monthMode, deps.getPrefs().cardConfigs?.heatmap?.timeZone])

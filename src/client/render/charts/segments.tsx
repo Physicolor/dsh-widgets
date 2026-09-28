@@ -1,6 +1,7 @@
 /** The `segments` chart — body moved verbatim out of ChartBlock (Phase 3.4). */
 
 import * as React from 'react'
+import { CHART_TONES } from './theme'
 import type { ChartProps } from './types'
 
 export function SegmentsChart({ chart, side, width, pad, scale }: ChartProps): React.ReactElement | null {
@@ -24,6 +25,11 @@ export function SegmentsChart({ chart, side, width, pad, scale }: ChartProps): R
     // available, i.e. ≈2.8px of slack instead of 6px of overflow (the live UI
     // reported 5px over the 150px slot; the fixture reproduces 6px).
     const officialColors = ['var(--dsw-static-neutral-bluish-400)', 'rgb(167, 139, 250)', 'var(--dsw-static-blue-450)']
+    // `'tones'` paints each segment with the tone IT declared (see segmentsPalette);
+    // the default keeps the product's ContextMeter palette 上下文水位 mirrors.
+    const useTones = chart.segmentsPalette === 'tones'
+    const tintOf = (index: number, tone: string): string =>
+      useTones ? (CHART_TONES[tone] ?? officialColors[index % officialColors.length] ?? officialColors[0]!) : (officialColors[index % officialColors.length] ?? officialColors[0]!)
     const total = chart.totalTokens
     const fmt = (n: number): string => {
       const k = n / 1000
@@ -35,17 +41,25 @@ export function SegmentsChart({ chart, side, width, pad, scale }: ChartProps): R
     }
     const bar = chart.segments.map((s, i) => {
       const w = total > 0 ? Math.max(2.2, (s.tokens / total) * 100) : 0
-      const tint = officialColors[i % officialColors.length] ?? officialColors[0]
+      // A segment's `tone` is optional (it is `BarDatum['tone']`, one shared
+      // vocabulary): under `'official'` it is unused, and a `'tones'` bar without one
+      // falls back to the brand primary rather than to an undefined colour.
+      const tint = tintOf(i, s.tone ?? 'primary')
       return React.createElement('div', { key: i, style: { width: `${w}%`, height: '100%', borderRadius: 0, background: tint, flex: 'none', minWidth: 2 } })
     })
     const rows = chart.segments.map((s, i) => {
-      const tint = officialColors[i % officialColors.length] ?? officialColors[0]
+      const tint = tintOf(i, s.tone ?? 'primary')
+      // See `segmentsValue`: a share-of-time chart must not be labelled with the token
+      // formatter (`~24.2K` for 24.2 seconds reads as a token count).
+      const valueText = chart.segmentsValue === 'percent'
+        ? (total > 0 ? `${Math.round((s.tokens / total) * 100)}%` : '—')
+        : fmt(s.tokens)
       return React.createElement('div', { key: i, style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '2px 0', fontSize: `${Math.round(12 * scale)}px`, lineHeight: 1.2 } },
         React.createElement('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--dsw-alias-label-secondary)' } },
           React.createElement('span', { 'aria-hidden': true, style: { width: 8, height: 8, borderRadius: 2, background: tint, flex: 'none' } }),
           s.label,
         ),
-        React.createElement('span', { style: { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none', color: 'var(--dsw-alias-label-primary)' } }, fmt(s.tokens)),
+        React.createElement('span', { style: { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none', color: 'var(--dsw-alias-label-primary)' } }, valueText),
       )
     })
     const bh = Math.max(4, Math.round(5 * scale))

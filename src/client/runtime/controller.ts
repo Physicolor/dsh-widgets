@@ -7,11 +7,17 @@
  */
 
 import type { Prefs } from './prefs'
+import type { WidgetStats } from '../lib/contract/types'
 
 /** The controller handed to every component. */
 export interface WidgetsController {
   prefs: Prefs
   setPrefs: (patch: Partial<Prefs>) => void
+  /** The LIVE stats record for one instance, assembled by `buildLiveStats` — the
+   *  exact record the rail renders that instance from. The preview surfaces call
+   *  it so "有真数据喂真数据，缺的用假数据填" is a real merge rather than a mock
+   *  stage: absent (outside a session) the previews stay on the filler data. */
+  liveStats?: (key: string) => WidgetStats
   /** 组件配置 tells the PANEL when its detail drawer opens/closes, so the panel
    *  can widen by the drawer's own width instead of splitting the existing one
    *  (the user's rule: opening the preview adds width). */

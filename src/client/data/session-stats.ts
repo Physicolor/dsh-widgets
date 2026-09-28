@@ -10,7 +10,7 @@
  * for a given input, which is what makes the numbers testable in isolation.
  */
 
-import { TRAJECTORY_WINDOW, type TrajectoryBeat } from '../lib/contract/types'
+import { COMPACTION_HISTORY, TRAJECTORY_WINDOW, type CompactionSummary, type ToolCallSummary, type TrajectoryBeat } from '../lib/contract/types'
 
 /** Session stats shape collected by the dock collector. */
 export interface Stats {
@@ -31,6 +31,8 @@ export interface Stats {
   heatmapGrid?: Array<Array<{ value: number; date: string }>>
   heatmapRaw?: Record<string, number>
   trajectory?: TrajectoryBeat[]
+  tools?: ToolCallSummary
+  compactions?: CompactionSummary | null
 }
 
 /** Coerce a possibly-undefined timestamp to a finite number (null when unusable). */
@@ -103,6 +105,89 @@ export function deriveTrajectory(
   }
   beats.sort((a, b) => a.at - b.at)
   return beats.slice(-TRAJECTORY_WINDOW).map((entry) => entry.beat)
+}
+
+/**
+ * Fold the conversation's tool calls into the 工具调用 card's summary.
+ *
+ * Why this exists: the card used to print ONE number (cumulative tool time), so a
+ * slow turn could not be told apart from a hung tool. The name, the error flag and
+ * the two timestamps are all already on the nodes the client loads — a
+ * `tool-result` carries `call.name`, `isError` and `callTime`, and a running call
+ * carries `name` and `time` — so this costs one pass over the same array
+ * `deriveStats` already walks.
+ *
+ * @param settled - Conversation nodes (`useChat().legacy.nodes`).
+ * @param runningCalls - Live tool calls (`useChat().legacy.runningCalls`).
+ * @param now - `Date.now()` at this collection pass (the running call's elapsed).
+ */
+export function deriveTools(
+  settled: ReadonlyArray<any>,
+  runningCalls: ReadonlyArray<any>,
+  now: number,
+): ToolCallSummary {
+  let calls = 0
+  let failures = 0
+  let slowest: { name: string; ms: number } | null = null
+  const names = new Set<string>()
+  for (const node of settled ?? []) {
+    if (node?.kind !== 'tool-result') continue
+    calls += 1
+    const name = typeof node.call?.name === 'string' && node.call.name.length > 0 ? node.call.name : null
+    if (name !== null) names.add(name)
+    if (node.isError === true) failures += 1
+    const ms = typeof node.callTime === 'number' && Number.isFinite(node.time)
+      ? Math.max(0, node.time - node.callTime)
+      : null
+    // A truncated head (call === null) still counts as a call but cannot be timed.
+    if (ms !== null && (slowest === null || ms > slowest.ms)) slowest = { name: name ?? '—', ms }
+  }
+  let running: ToolCallSummary['running'] = null
+  let longest = -1
+  for (const call of runningCalls ?? []) {
+    if (typeof call?.time !== 'number' || !Number.isFinite(call.time)) continue
+    const ms = Math.max(0, now - call.time)
+    if (ms > longest) {
+      longest = ms
+      running = { name: typeof call.name === 'string' && call.name.length > 0 ? call.name : '—', ms, count: 0 }
+    }
+  }
+  if (running !== null) running = { ...running, count: (runningCalls ?? []).length }
+  return { calls, tools: names.size, failures, slowest, running }
+}
+
+/**
+ * Fold the conversation's compaction markers into the 上下文压缩 card's summary.
+ *
+ * Why this exists: context is trimmed silently. A long session shows the meter
+ * drop and the transcript lose rows, with nothing saying how much history was
+ * folded away or when — so "why did the model forget that?" has no answer on
+ * screen. The markers are already nodes in the stream the collector walks
+ * (`kind: 'compaction'`), so this costs one more filter over the same array.
+ *
+ * A `null` `shadowedTokenCount`/`shadowedItemCount` means the summary event was
+ * outside the loaded window: the compaction is still COUNTED (it happened) while
+ * its figures stay null, so the card can print `—` instead of a fabricated 0.
+ *
+ * @param settled - Conversation nodes (`useChat().legacy.nodes`).
+ */
+export function deriveCompaction(settled: ReadonlyArray<any>): CompactionSummary {
+  let count = 0
+  let reclaimed = 0
+  let items = 0
+  const events: CompactionSummary['recent'] = []
+  const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+  for (const node of settled ?? []) {
+    if (node?.kind !== 'compaction') continue
+    count += 1
+    const tokens = num(node.shadowedTokenCount)
+    const dropped = num(node.shadowedItemCount)
+    reclaimed += tokens ?? 0
+    items += dropped ?? 0
+    events.push({ at: num(node.time) ?? 0, reclaimed: tokens, items: dropped })
+  }
+  events.sort((a, b) => b.at - a.at)
+  return { count, reclaimed, items, recent: events.slice(0, COMPACTION_HISTORY) }
 }
 
 /** Fold assistant/tool-result nodes into the same window-scoped stats as the shipped StatsLine fallback. */

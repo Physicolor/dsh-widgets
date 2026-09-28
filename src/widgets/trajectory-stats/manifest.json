@@ -1,0 +1,30 @@
+{
+  "id": "trajectory-stats",
+  "order": 80,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": false,
+  "locale": {
+    "zh": {
+      "widget.trajectory-stats.name": "轨迹占比",
+      "widget.trajectory-stats.desc": "「对话轨迹」的统计版：输入 / 模型 / 工具 各自的时长与占比，点按可切换大数字看模型或工具",
+      "widget.trajectory-stats.simToggle": "切换大数字：模型 / 工具",
+      "card.trajectory-stats.legend": "时长占比",
+      "card.trajectory-stats.cycleHint": "单击切换大数字：模型 → 工具",
+      "card.trajectory-stats.input": "输入",
+      "card.trajectory-stats.model": "模型",
+      "card.trajectory-stats.tool": "工具"
+    },
+    "en": {
+      "widget.trajectory-stats.name": "Trajectory Share",
+      "widget.trajectory-stats.desc": "The stats view of Trajectory: each lane's time and share of the window; tap to switch the figure between model and tool",
+      "widget.trajectory-stats.simToggle": "Switch figure: model / tool",
+      "card.trajectory-stats.legend": "of window time",
+      "card.trajectory-stats.cycleHint": "Click to switch the figure: model → tool",
+      "card.trajectory-stats.input": "Input",
+      "card.trajectory-stats.model": "Model",
+      "card.trajectory-stats.tool": "Tool"
+    }
+  }
+}

@@ -6,20 +6,28 @@
   "sizes": ["2x2"],
   "locale": {
     "zh": {
-      "widget.context.name": "一键压缩",
-      "widget.context.desc": "上下文占用百分比，右上按钮两次点击执行压缩",
-      "card.context.title": "一键压缩",
+      "widget.context.name": "上下文压缩",
+      "widget.context.desc": "上下文占用百分比 + 右上角按钮两次点击执行压缩；下方是压缩次数 / 累计回收 / 折叠项数",
+      "card.context.title": "上下文压缩",
       "card.context.waiting": "等待上下文数据",
       "card.context.compact": "压缩",
-      "card.context.confirm": "确认"
+      "card.context.confirm": "确认",
+      "card.context.folds": "压缩次数",
+      "card.context.reclaimed": "累计回收",
+      "card.context.items": "折叠项数",
+      "card.context.recent": "最近 {ago} 前"
     },
     "en": {
-      "widget.context.name": "Compact",
-      "widget.context.desc": "Context usage percent; top-right button compacts after two taps",
-      "card.context.title": "Compact",
+      "widget.context.name": "Context Compaction",
+      "widget.context.desc": "Context usage percent with the top-right two-tap Compact button; below it folds / reclaimed tokens / items folded",
+      "card.context.title": "Context Compaction",
       "card.context.waiting": "Waiting for context data",
       "card.context.compact": "Compact",
-      "card.context.confirm": "Confirm"
+      "card.context.confirm": "Confirm",
+      "card.context.folds": "Folds",
+      "card.context.reclaimed": "Reclaimed",
+      "card.context.items": "Items folded",
+      "card.context.recent": "Last {ago} ago"
     }
   }
 }

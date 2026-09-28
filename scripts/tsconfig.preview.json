@@ -1,0 +1,32 @@
+/**
+ * Preview-closure build config for `scripts/verify-preview-merge.mjs`.
+ *
+ * Compiles ONLY what the preview data policy needs — the registry, the shared
+ * filler stats, the preview builder, and the live-stats fold — into CommonJS so
+ * the check runs with plain `node`, no React and no browser. Mirrors
+ * `tsconfig.snapshot.json` (same compiler options, different output dir) so the
+ * two never fight over `.tmp-*`.
+ */
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noEmitOnError": false,
+    "types": [],
+    "outDir": "../.tmp-preview",
+    "rootDir": ".."
+  },
+  "include": [
+    "../src/client/generated.registry.ts",
+    "../src/client/data/session-stats.ts",
+    "../src/client/lib/arc.ts",
+    "../src/client/render/preview/preview-stats.ts",
+    "../src/client/render/preview/example-out.ts",
+    "../src/client/runtime/live-stats.ts"
+  ]
+}

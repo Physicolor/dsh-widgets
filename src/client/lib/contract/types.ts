@@ -320,6 +320,13 @@ export interface WidgetStats {
    *  last, at most `TRAJECTORY_WINDOW` beats). Re-derived on every node/timeline
    *  change, so in-flight model steps and tool calls appear as they run. */
   trajectory?: TrajectoryBeat[]
+  /** The tool-call fold of this session window (see ToolCallSummary): how many
+   *  calls, how many failed, which is slowest, and what is running right now —
+   *  the 工具调用 card's whole input. */
+  tools?: ToolCallSummary | null
+  /** The compaction fold (see CompactionSummary): how much history was folded
+   *  away and when — the 上下文压缩 card's whole input. */
+  compactions?: CompactionSummary | null
   /** Per-instance config merged by the shell (typed any: widgets with a
    *  configSchema read their keys from the same record the collector feeds). */
   [key: string]: unknown
@@ -352,19 +359,73 @@ export interface LaneDatum {
   ms?: number
 }
 
+/**
+ * The tool-call fold of one session window (the 工具调用 card's source).
+ *
+ * Read off the conversation nodes the client already loads — no host round trip:
+ *  - a settled call is a `tool-result` node, whose `call.name` is the tool id
+ *    (null when window truncation left the call head outside) and whose
+ *    `isError` is the failure flag; its duration is `time − callTime`;
+ *  - a running call is a `RunningToolCall` with `name` and `time`.
+ *
+ * `tools` counts DISTINCT names among the calls that still carry one, so a
+ * truncated head neither invents a name nor hides the call from `calls`.
+ */
+export interface ToolCallSummary {
+  /** Settled calls in the loaded window. */
+  calls: number
+  /** Distinct tool names among those that still carry a name. */
+  tools: number
+  /** Settled calls the tool itself reported as errors. */
+  failures: number
+  /** Slowest settled call (name + duration), or null when none is measurable. */
+  slowest: { name: string; ms: number } | null
+  /** The longest-running in-flight call, or null when nothing is running. */
+  running: { name: string; ms: number; count: number } | null
+}
+
+/**
+ * The compaction fold of one session window (the 上下文压缩 card's source).
+ *
+ * A landed compaction is a `compaction` node: it names how many surface items it
+ * replaced and what that history was worth in tokens. Both can be null when the
+ * summary event fell outside the loaded window — the compaction still HAPPENED, so
+ * it is counted, while its figures stay null and are printed as `—` rather than 0.
+ */
+export interface CompactionSummary {
+  /** Compactions landed in the loaded window. */
+  count: number
+  /** Σ tokens the replaced history was worth (unknown entries contribute 0). */
+  reclaimed: number
+  /** Σ surface items replaced (unknown entries contribute 0). */
+  items: number
+  /** Newest first, capped by the fold (`COMPACTION_HISTORY`). */
+  recent: Array<{ at: number; reclaimed: number | null; items: number | null }>
+}
+
+/** How many compaction events the fold keeps for the card's history rows. */
+export const COMPACTION_HISTORY = 5
+
 /** One bar for a mini bar chart. */
 export interface BarDatum {
   label: string
   value: number
   /** 0..1 used for the fill ratio; falls back to value/max when absent. */
   ratio?: number
-  tone?: 'primary' | 'success' | 'warn' | 'danger' | 'muted'
+  tone?: 'primary' | 'success' | 'warn' | 'danger' | 'muted' | 'accent'
 }
 
 /** A chart block a card body can render (declarative, theme tokens only). */
 export interface WidgetChart {
-  kind: 'bars' | 'ring' | 'rings' | 'line' | 'segments' | 'heatmap' | 'barsV' | 'figures' | 'lanes' | 'quotas'
+  kind: 'bars' | 'ring' | 'rings' | 'line' | 'segments' | 'heatmap' | 'barsV' | 'figures' | 'lanes' | 'quotas' | 'breakdown'
   bars?: BarDatum[]
+  /** Label / value / optional COST rows, one row per bucket — the 「Token 用量」
+   *  breakdown (缓存命中率 + 未缓存输入 + 缓存读取 + 输出). Two right-aligned
+   *  columns: the value (always) and the money (only when a price rule matched, so
+   *  a route with no published rate leaves the cell EMPTY rather than printing a
+   *  fabricated `$0.00`). A hairline divider sits above the rows. The widget owns
+   *  every string, including which unit each value carries. */
+  breakdown?: Array<{ label: string; value: string; cost?: string; tone?: BarDatum['tone']; /** Slow red blink on THIS row's value — the escalation a card-level `valuePulse` gives a big figure, for the one row that is live or alarming (峰谷时段表's peak band). The class and its reduced-motion opt-out already exist; this field is the hook that lets a row reach them. */ pulse?: boolean }>
   /** Quota ROWS in the official site's shape: the window name on the left, its
    *  percent hard right, and a SEGMENTED bar under them (filled cells = used) —
    *  the 套餐/额度 card family's window trio. */
@@ -392,7 +453,7 @@ export interface WidgetChart {
    *  leave it empty when the figure should stand alone; `name` then carries the
    *  datum's identity into the hover tooltip only. `decimals` overrides the
    *  percent precision (default 0 = whole numbers). */
-  rings?: Array<{ label: string; value: number; ratio?: number; tone?: 'primary' | 'success' | 'warn' | 'danger' | 'muted'; decimals?: number; name?: string }>
+  rings?: Array<{ label: string; value: number; ratio?: number; tone?: BarDatum['tone']; decimals?: number; name?: string }>
   /** For ring: one datum + its centered label. */
   value?: number
   valueLabel?: string
@@ -416,8 +477,32 @@ export interface WidgetChart {
     labels?: [string, string]
   }
   /** Segmented bar (system/tools/messages). Each segment has a token share. */
-  segments?: Array<{ label: string; tokens: number; tone: 'primary' | 'success' | 'muted' | 'warn' }>
+  segments?: Array<{ label: string; tokens: number; tone?: BarDatum['tone'] }>
   totalTokens?: number
+  /**
+   * Colour ramp for a `segments` bar.
+   *
+   * `'official'` (default) keeps the product's own ContextMeter palette
+   * (bluish-neutral / violet / blue) — that is what 上下文水位 mirrors, and it must
+   * not move. `'tones'` instead paints each segment with its declared `tone`, which
+   * is what a bar built from SEMANTIC parts (输入 / 输出) needs: until this option
+   * existed, a segment's `tone` was required by the contract but silently ignored,
+   * so a card could ask for grey/blue and get the context palette.
+   */
+  segmentsPalette?: 'official' | 'tones'
+  /**
+   * What a `segments` row prints in its right-hand column.
+   *
+   * `'tokens'` (default) keeps the shipped behaviour: the segment's absolute token
+   * count in the `~12.2K` form the context meter uses. `'percent'` prints its share of
+   * `totalTokens` instead.
+   *
+   * The mode exists because the renderer must never format a NON-token quantity with
+   * the token formatter: a chart whose segments are a share of TIME (轨迹占比) would
+   * otherwise print 24.2 seconds as `~24.2K`, which reads as a token count. The
+   * contract says what the column MEANS; the widget picks the reading that is true.
+   */
+  segmentsValue?: 'tokens' | 'percent'
   /** Heatmap grid rows (per day amounts). */
   heatmap?: Array<Array<{ value: number; date: string; level?: number }>>
   /** Colour ramp for a `heatmap`. `'brand'` (default) is the business-blue
@@ -471,6 +556,16 @@ export interface WidgetCorner {
  *  wide as 2×2 (2 grid-unit rows tall, 1 wide → the render only differs in
  *  placement/length, never in height). */
 export type WidgetSize = '2x2' | '2x4'
+
+/**
+ * The glyph a head ring may draw in its middle (see `WidgetRenderOut.headRing`).
+ *
+ * A closed vocabulary, not a React node: the render output is pure DATA — the
+ * offline render gate (G4) snapshots every widget's output as JSON, and the
+ * renderer maps each name to one inline SVG from `render/icons.tsx`.
+ *  - `database` — a stroked cylinder: the usage / token-store glyph.
+ */
+export type HeadRingIcon = 'database'
 
 /** Extra render context. `sim` lets a preview force a widget into a specific
  *  state (e.g. peak-pricing preview toggling EXPENSIVE/CHEAP) so its states can
@@ -526,6 +621,35 @@ export interface WidgetRenderOut {
    *  vertical alignment (unlike headAfter) — for subtitles like "今日 12.2K". */
   legend?: string
   /**
+   * Optional DONUT in the head's right slot (e.g. the cache hit rate), with the
+   * head's ladder — title, `headAfter.big`, `legend` — stacked in the LEFT column
+   * beside it.
+   *
+   * The ladder is the SAME three rungs, in the same order, with the same 4px/2px
+   * rhythm a head without a ring uses (CardBody defines them once); the ring is a
+   * LAYOUT NEIGHBOUR of that ladder, never a second typography for it. The figure
+   * therefore comes from `headAfter.big`, NOT from `value`: one field per concept,
+   * so `value` keeps its single meaning (the body figure) and a ring head cannot
+   * render the same number twice.
+   *
+   * The ring carries NO figure: a caption inside a 52px circle reads as cramped, and
+   * the number is already on the tile at 20px. Its middle holds `icon` and the exact
+   * figure rides its hover text (`label`).
+   *
+   * `tone` is the WIDGET's call, deliberately: for a cache hit rate HIGH is good
+   * (green), which is the OPPOSITE of the system rings, where a high number means
+   * a busy machine. The renderer therefore never infers a tone from `ratio`.
+   */
+  headRing?: {
+    ratio: number
+    /** Arc + icon colour; the widget decides what "good" means. */
+    tone?: BarDatum['tone']
+    /** Glyph in the middle (see HeadRingIcon); unknown/absent draws a bare ring. */
+    icon?: HeadRingIcon
+    /** Hover text only — never drawn in the ring (see above). */
+    label?: string
+  }
+  /**
    * Card-level hover tooltip: a diagnostic that must NOT be printed on the tile.
    *
    * The Command Code "not configured" hint is a full sentence (~90 chars); as a
@@ -539,6 +663,9 @@ export interface WidgetRenderOut {
    *  active line lights up (brand blue, slightly enlarged); idle lines keep the
    *  faint legend look. */
   meter?: Array<{ label: string; active?: boolean }>
+  /** The card's figure. It renders in the title row when `headRight` is present
+   *  (the official meter header), otherwise in the BODY — and never in a head that
+   *  carries a `headRing`, whose figure is `headAfter.big` (see headRing). */
   value?: string
   /** Value color override (e.g. 'danger' renders the value in the error red,
    *  used by the peak-pricing EXPENSIVE state). It follows the figure into
@@ -607,6 +734,12 @@ export interface ConfigField {
   /** For type 'metrics': how many may be selected at once (default 6 — the
    *  density limit a 2×4 figures row can still render legibly). */
   max?: number
+  /** Optional helper line under the control, overriding the generic one. A
+   *  'metrics' field's stock hint talks about figures folding into two rows of
+   *  five, which is wrong for a card whose picks become stacked ROWS (工具调用's
+   *  three detail lines) — a widget whose geometry differs says so here instead
+   *  of shipping a caption that describes another card. */
+  hint?: string | (() => string)
 }
 
 /**
@@ -628,14 +761,23 @@ export interface WidgetExample {
    *  alignment): a function receives the current per-instance config at preview
    *  time and returns the extra stats. */
   stats?: Partial<WidgetStats> | ((config: Record<string, unknown>) => Partial<WidgetStats>)
-  /** Initial simulated state served to `render(meta.sim)`. */
+  /** Initial simulated state served to `render(meta.sim)`.
+   *
+   *  MUST be the first entry of `simSteps` when `simToggle` is declared and the
+   *  state is not a single boolean: `nextSim` locates the CURRENT step by deep
+   *  comparison, so a `sim` that is absent from `simSteps` makes the FIRST click a
+   *  silent no-op, and with no `simSteps` at all a non-boolean `sim` (a pinned clock,
+   *  say) is a no-op on EVERY click — the card advertises 「点击卡片切换」 and nothing
+   *  happens. That was a real defect on 峰谷时段表 (2026-09-28, fixed by declaring its
+   *  four clock steps). */
   sim?: Record<string, unknown>
   /** Preview states a click ADVANCES through, in order and cyclically. Present
    *  for widgets whose preview has more than two states — the 套餐 card cycles
    *  the plan tiers (GOAT → Pro → Max → …) so every badge can be eyeballed
    *  without a subscription for it. When omitted, a click keeps the original
    *  behaviour: flip the single boolean field of `sim`. `simToggle` is the label
-   *  the preview shows either way. */
+   *  the preview shows either way — so a widget whose `sim` holds no boolean MUST
+   *  declare `simSteps` (see `sim` above). */
   simSteps?: Array<Record<string, unknown>>
   /** Optional hint shown under the preview card. */
   note?: string
@@ -652,7 +794,9 @@ export interface Widget {
   sizes?: WidgetSize[]
   render: (stats: WidgetStats, meta?: WidgetRenderMeta) => WidgetRenderOut | null
   /** When set (label text), the preview surfaces let you click the card to flip
-   *  the widget's simulated state (e.g. peak-pricing 高峰/低峰). */
+   *  the widget's simulated state (e.g. peak-pricing 高峰/低峰). Only declare it when
+   *  a click can actually change something: either `sim` carries a boolean field, or
+   *  `simSteps` is declared (see them above — otherwise the affordance is a lie). */
   simToggle?: string | (() => string)
   /** Optional per-card customization fields (shown in 组件配置 when chosen). */
   configSchema?: ConfigField[]

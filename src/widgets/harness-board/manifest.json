@@ -19,7 +19,11 @@
       "metric.out": "输出",
       "metric.context": "上下文",
       "metric.todoDoing": "进行",
-      "metric.todoPending": "待办"
+      "metric.todoPending": "待办",
+      "metric.toolFail": "失败",
+      "metric.folds": "折叠",
+      "metric.reclaimed": "回收",
+      "metric.running": "执行"
     },
     "en": {
       "widget.harness-board.name": "Session Overview",
@@ -35,7 +39,11 @@
       "metric.out": "Out",
       "metric.context": "Context",
       "metric.todoDoing": "Active",
-      "metric.todoPending": "Todo"
+      "metric.todoPending": "Todo",
+      "metric.toolFail": "Failed",
+      "metric.folds": "Folds",
+      "metric.reclaimed": "Reclaimed",
+      "metric.running": "Running"
     }
   }
 }

@@ -39,3 +39,19 @@ export const searchIcon = React.createElement('svg', { width: 14, height: 14, vi
   React.createElement('circle', { cx: 7, cy: 7, r: 4.6, stroke: 'currentColor', strokeWidth: 1.5 }),
   React.createElement('path', { d: 'M10.6 10.6L14 14', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round' }),
 )
+/**
+ * The database / token-store glyph: a stroked cylinder (top ellipse, two sides,
+ * a middle band and the bottom's front arc).
+ *
+ * The shape follows Lucide's `database` glyph (ISC) — the owner pointed at exactly
+ * this cylinder (2026-09-28); the coordinates are re-authored in this repo's own
+ * 16×16 grid with the 1.6 stroke of the other stroked glyphs here
+ * (listViewIcon/searchIcon use 1.5). `currentColor`, so a card can paint it in its
+ * own tone — the cache card paints it the same green/red as its ring arc.
+ */
+export const databaseIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('ellipse', { cx: 8, cy: 3.4, rx: 6, ry: 2.1, stroke: 'currentColor', strokeWidth: 1.6 }),
+  React.createElement('path', { d: 'M2 3.4V12.6M14 3.4V12.6', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }),
+  React.createElement('path', { d: 'M2 12.6a6 2.1 0 0 0 12 0', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }),
+  React.createElement('path', { d: 'M2 8a6 2.1 0 0 0 12 0', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }),
+)

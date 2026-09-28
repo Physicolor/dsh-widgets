@@ -22,7 +22,7 @@ import { createPortal } from 'react-dom'
 import { WIDGETS, WIDGET_RUNTIME } from '../generated.registry'
 import { parseInstanceKey, sizesOf, widgetName } from '../lib/contract/helpers'
 import type { WidgetRenderOut, WidgetSize } from '../lib/contract/types'
-import { DEFAULT_TZ, buildHeatmapGrid, loadHeatmapStore } from '../lib/heatmap-accounting'
+import { buildLiveStats } from '../runtime/live-stats'
 import { type BridgeSnapshot } from '../runtime/bridge'
 import { type Prefs } from '../runtime/prefs'
 import { CardBody } from '../render/CardBody'
@@ -306,28 +306,15 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       document.documentElement.style.setProperty('--dsx-rail-overshoot', `0px`)
       applyRailRight(space.swallowed)
       // --dsx-rail-scroll is owned by RailWave (it tracks the rail's scrollTop).
-      // Heatmap day data is owned by the dock collector: the authoritative host
-      // map when dsh-usage-center is installed, else its own persisted live log.
-      // The rail consumes the collector's values and never overrides them; only
-      // when stats lacks heatmap fields entirely (first paint before the
-      // collector effect runs) does it fall back to the persisted table so the
-      // cards are never blank.
-      const statsHeat = (snap.stats as { heatmapRaw?: Record<string, number>; heatmapGrid?: unknown } | null) ?? null
-      const fallbackRaw = statsHeat?.heatmapRaw && Object.keys(statsHeat.heatmapRaw).length > 0
-        ? statsHeat.heatmapRaw
-        : (snap.usageDaily ?? loadHeatmapStore())
-      const base = {
-        ...(snap.stats ?? { turns: 0, steps: 0, llmMs: 0, toolMs: 0, ttftMs: 0, ttftSteps: 0, decodeMs: 0, decodeTokens: 0, usage: null }),
-        // Only inject the fallback when live stats lacks heatmap fields.
-        ...(statsHeat?.heatmapRaw ? {} : { heatmapRaw: { ...fallbackRaw } }),
-        ...(statsHeat?.heatmapGrid ? {} : { heatmapGrid: buildHeatmapGrid(fallbackRaw, (prefs.cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling', (prefs.cardConfigs?.heatmap?.timeZone as string) || DEFAULT_TZ) }),
-      }
+      // Live stats (session figures + the bridge's payload slices + this
+      // instance's own config) are assembled by ONE shared fold, `buildLiveStats`
+      // — the same record the preview surfaces render from, so "the preview shows
+      // what the rail card shows" is structural instead of a second
+      // implementation kept in sync by hand. The fold's rules (heatmap fallback,
+      // pooled view modes, config-last) live in runtime/live-stats.ts.
       interface RailItem { key: string; size: WidgetSize; w: (typeof WIDGETS)[number]; out: NonNullable<ReturnType<(typeof WIDGETS)[number]['render']>>; baseW: number }
-      // Pooled usage views: ['total', 'Key 1', 'Key 2', 'Key N'] when the pool has
-      // more than one key; otherwise usage cards fall back to single-key data.
-      const poolModes = (snap.usageMulti?.keys.length ?? 0) > 1
-        ? ['total', ...snap.usageMulti!.keys.map((entry, i) => entry.label || `Key ${i + 1}`)]
-        : undefined
+      // Pooled usage views live in `buildLiveStats` (it owns the fold), so the
+      // rail no longer derives them here.
       const items: RailItem[] = prefs.order
         .filter((id) => prefs.installed.indexOf(id) !== -1)
         .map((key) => {
@@ -341,7 +328,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
           // a placeholder instead; the error stays visible in the console.
           let out: ReturnType<typeof w.render>
           try {
-            out = w.render({ ...base, usageData: snap.usageData, usageMulti: snap.usageMulti, commandCode: snap.commandCode, commandCodeError: snap.commandCodeError, commandCodeDaily: snap.commandCodeDaily, sysinfo: snap.sysinfo, github: snap.github, githubError: snap.githubError, poolModes, armedAction, ...(prefs.cardConfigs?.[key] ?? {}) } as Parameters<typeof w.render>[0], { size })
+            out = w.render(buildLiveStats(snap, prefs, key, armedAction), { size })
           } catch (error) {
             console.error(`[dsh-widgets] widget ${widgetId}@${size} render crashed:`, error)
             out = { title: widgetName(w), value: '—', legend: t('ui.renderError') }
@@ -571,6 +558,10 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
             // 1px edge line got cut (reported 2026-09-26).
             detailWidth: Math.max(DETAIL_W, pw - 26 - LIST_W - COL_GAP),
             railSide: side,
+            // The previews inside this panel render from the same fold the cards
+            // above do, instance config included — so the stage is the real card
+            // (with real data where a session provides it), not a mock layout.
+            liveStats: (key: string) => buildLiveStats(snap, prefs, key, armedAction),
           }, hideHeader: true }),
         ),
       ), document.body)

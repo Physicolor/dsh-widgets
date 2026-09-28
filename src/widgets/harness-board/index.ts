@@ -23,6 +23,15 @@ import { fmtDuration, fmtTokens, fmtTps } from '../../client/lib/format'
  * ONE value here is a deliberately cheap approximation: `turns` counts the
  * session's turns the same way the 轮次·步数 card does (the collector's own
  * fold), not a re-derivation.
+ *
+ * THE CATALOG ONLY EVER GROWS AT THE TAIL (2026-09-28, second round): an
+ * instance stores KEYS, so reordering or renaming an existing entry would empty
+ * a board that is already on someone's rail. The four newer dimensions are the
+ * folds the collector already performs but the board had no cell for — 工具失败数
+ * (danger when non-zero, the same colour the 工具调用 card gives 失败), 折叠次数 and
+ * 累计回收 token (the 上下文压缩 card's own two figures), and 正在执行 (the in-flight
+ * call's name). The default four are untouched, and every one of them prints `—`
+ * (muted) while its source has no reading.
  */
 
 /** How many figures ONE row can carry. Six in a row drops every label under
@@ -44,13 +53,32 @@ const DEFAULT_METRICS = ['turns', 'llm', 'tool', 'tps']
 interface Metric {
   key: string
   label: string
-  value: (s: WidgetStats) => string
+  value: (s: WidgetStats) => Figure
   /** The figure for a NARROW row (five per row). Only the metrics whose unit is
    *  a separate suffix need it: "space allows the unit, else fall back" is the
    *  rule, and the row length IS the space proxy the widget has (it does not
    *  know the card's pixel width). Absent = the value has no separable unit. */
-  valueBare?: (s: WidgetStats) => string
+  valueBare?: (s: WidgetStats) => Figure
 }
+
+/** The two tones a board figure may carry: `danger` = this reading is bad news,
+ *  `muted` = there is no reading (the `—` case). `primary` is the default and is
+ *  expressed by NOT setting a tone. */
+type FiguresTone = 'danger' | 'muted'
+
+/** One figure as the `figures` chart takes it: the value, plus a tone when the
+ *  value itself carries a verdict. A metric whose tone is driven by its OWN
+ *  value returns `{ value, tone }` — the shape the single-purpose 工具调用 card
+ *  already uses for 失败 (0 = plain, >0 = danger), reused here so the board and
+ *  the card say the same number in the same colour. (The renderer wraps a bare
+ *  string on its own, but the metrics are typed to the pair so the difference is
+ *  visible in the catalog.) */
+type Figure = { value: string; tone?: FiguresTone }
+
+/** The em dash a figure shows while it has nothing to report (and the muted tone
+ *  that goes with it): a board cell must never print a 0 that was never
+ *  measured. A fresh object per call so no two figures ever share one. */
+const dash = (): Figure => ({ value: '—', tone: 'muted' })
 
 /** Count the todo entries in one status. */
 function todoCount(stats: WidgetStats, status: 'pending' | 'in_progress' | 'completed'): number {
@@ -67,26 +95,81 @@ function todoCount(stats: WidgetStats, status: 'pending' | 'in_progress' | 'comp
  * hide one cell, so it says "no data" the honest way).
  */
 const METRICS: Metric[] = [
-  { key: 'turns', label: 'metric.turns', value: (s) => String(s.turns) },
-  { key: 'steps', label: 'metric.steps', value: (s) => String(s.steps) },
-  { key: 'llm', label: 'metric.llm', value: (s) => (s.llmMs > 0 ? fmtDuration(s.llmMs) : '—') },
-  { key: 'tool', label: 'metric.tool', value: (s) => (s.toolMs > 0 ? fmtDuration(s.toolMs) : '—') },
-  { key: 'ttft', label: 'metric.ttft', value: (s) => (s.ttftSteps > 0 ? fmtDuration(s.ttftMs / s.ttftSteps) : '—') },
+  { key: 'turns', label: 'metric.turns', value: (s) => ({ value: String(s.turns) }) },
+  { key: 'steps', label: 'metric.steps', value: (s) => ({ value: String(s.steps) }) },
+  { key: 'llm', label: 'metric.llm', value: (s) => (s.llmMs > 0 ? { value: fmtDuration(s.llmMs) } : dash()) },
+  { key: 'tool', label: 'metric.tool', value: (s) => (s.toolMs > 0 ? { value: fmtDuration(s.toolMs) } : dash()) },
+  { key: 'ttft', label: 'metric.ttft', value: (s) => (s.ttftSteps > 0 ? { value: fmtDuration(s.ttftMs / s.ttftSteps) } : dash()) },
   {
     key: 'tps',
     label: 'metric.tps',
     // "152 tok/s" needs ~55px at the 13px figure font: it fits a four-per-row
     // row (71px) and does not fit a five-per-row one (56px), where the bare
     // number keeps every figure whole instead of ellipsizing the unit away.
-    value: (s) => (s.decodeMs > 0 ? `${fmtTps(s.decodeTokens / (s.decodeMs / 1000))} tok/s` : '—'),
-    valueBare: (s) => (s.decodeMs > 0 ? fmtTps(s.decodeTokens / (s.decodeMs / 1000)) : '—'),
+    value: (s) => (s.decodeMs > 0 ? { value: `${fmtTps(s.decodeTokens / (s.decodeMs / 1000))} tok/s` } : dash()),
+    valueBare: (s) => (s.decodeMs > 0 ? { value: fmtTps(s.decodeTokens / (s.decodeMs / 1000)) } : dash()),
   },
-  { key: 'cache', label: 'metric.cache', value: (s) => (s.usage && s.usage.inputTokens > 0 ? `${Math.round((s.usage.cacheReadTokens / s.usage.inputTokens) * 100)}%` : '—') },
-  { key: 'in', label: 'metric.in', value: (s) => (s.usage && s.usage.inputTokens > 0 ? fmtTokens(s.usage.inputTokens) : '—') },
-  { key: 'out', label: 'metric.out', value: (s) => (s.usage && s.usage.outputTokens > 0 ? fmtTokens(s.usage.outputTokens) : '—') },
-  { key: 'context', label: 'metric.context', value: (s) => (typeof s.contextPercent === 'number' ? `${Math.round(s.contextPercent * 100)}%` : '—') },
-  { key: 'todoDoing', label: 'metric.todoDoing', value: (s) => String(todoCount(s, 'in_progress')) },
-  { key: 'todoPending', label: 'metric.todoPending', value: (s) => String(todoCount(s, 'pending')) },
+  { key: 'cache', label: 'metric.cache', value: (s) => (s.usage && s.usage.inputTokens > 0 ? { value: `${Math.round((s.usage.cacheReadTokens / s.usage.inputTokens) * 100)}%` } : dash()) },
+  { key: 'in', label: 'metric.in', value: (s) => (s.usage && s.usage.inputTokens > 0 ? { value: fmtTokens(s.usage.inputTokens) } : dash()) },
+  { key: 'out', label: 'metric.out', value: (s) => (s.usage && s.usage.outputTokens > 0 ? { value: fmtTokens(s.usage.outputTokens) } : dash()) },
+  { key: 'context', label: 'metric.context', value: (s) => (typeof s.contextPercent === 'number' ? { value: `${Math.round(s.contextPercent * 100)}%` } : dash()) },
+  { key: 'todoDoing', label: 'metric.todoDoing', value: (s) => ({ value: String(todoCount(s, 'in_progress')) }) },
+  { key: 'todoPending', label: 'metric.todoPending', value: (s) => ({ value: String(todoCount(s, 'pending')) }) },
+  // ── The second round of dimensions (appended, never reordered): the board's
+  //    existing keys are what installed instances STORE, so the catalog only
+  //    ever grows at the tail. Defaults are untouched — a board in use keeps
+  //    exactly the four figures it opened with.
+  {
+    key: 'toolFail',
+    label: 'metric.toolFail',
+    // A failure count HAS a reading the moment the tool fold exists (0 = nothing
+    // broke, which is worth printing); without the fold there is nothing to
+    // report, so `—`. Red when non-zero — the same rule, and the same colour, as
+    // the 工具调用 card's 失败 row.
+    value: (s) => {
+      const tools = s.tools
+      if (!tools) return dash()
+      return tools.failures > 0 ? { value: String(tools.failures), tone: 'danger' as const } : { value: String(tools.failures) }
+    },
+  },
+  {
+    key: 'folds',
+    label: 'metric.folds',
+    // `count > 0` is the whole test (the collector hands over null / a zero fold
+    // when nothing has been compacted yet), so "never folded" prints `—` rather
+    // than a 0 that was never measured.
+    value: (s) => {
+      const c = s.compactions
+      return c && c.count > 0 ? { value: String(c.count) } : dash()
+    },
+  },
+  {
+    key: 'reclaimed',
+    label: 'metric.reclaimed',
+    // Same shape as the 上下文压缩 card's 累计回收 row, including the `—`: a fold
+    // whose summary event fell outside the loaded window reports reclaimed 0, and
+    // printing that as a measured 0 would claim nothing was reclaimed.
+    value: (s) => {
+      const c = s.compactions
+      if (!c || c.count <= 0 || c.reclaimed <= 0) return dash()
+      return { value: `${fmtTokens(c.reclaimed)} tok` }
+    },
+    // "340K tok" does not fit a five-per-row figure (56px): the bare count keeps
+    // the number whole, exactly like 速率 drops its tok/s there.
+    valueBare: (s) => {
+      const c = s.compactions
+      if (!c || c.count <= 0 || c.reclaimed <= 0) return dash()
+      return { value: fmtTokens(c.reclaimed) }
+    },
+  },
+  {
+    key: 'running',
+    label: 'metric.running',
+    // The in-flight call's NAME is the figure: a running tool is a transient
+    // state, and `—` (muted) is what the board says while nothing is running —
+    // the collector's own null, not a name it had to invent.
+    value: (s) => (s.tools && s.tools.running ? { value: s.tools.running.name } : dash()),
+  },
 ]
 
 /** The picked metrics, in the STORED order; unknown keys are dropped and an
@@ -116,7 +199,7 @@ function harnessBoardRender(stats: WidgetStats): WidgetRenderOut {
   const metrics = pickedMetrics(stats)
   const rows = splitRows(metrics).map((row) => {
     const roomy = row.length <= ROW_ROOMY
-    return row.map((metric) => ({ label: t(metric.label), value: (roomy ? metric.value : metric.valueBare ?? metric.value)(stats) }))
+    return row.map((metric) => ({ label: t(metric.label), ...(roomy ? metric.value : metric.valueBare ?? metric.value)(stats) }))
   })
   return {
     title: t('widget.harness-board.name'),

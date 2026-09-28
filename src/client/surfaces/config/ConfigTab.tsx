@@ -10,9 +10,9 @@ import * as React from 'react'
 import { WIDGETS } from '../../generated.registry'
 import { parseInstanceKey, sizesOf, widgetName, widgetSimToggle, fieldLabel, optionLabel } from '../../lib/contract/helpers'
 import type { ConfigField, WidgetRenderOut, WidgetSize } from '../../lib/contract/types'
-import { PREVIEW_STATS } from '../../render/preview/preview-stats'
 import { nextSim } from '../../render/preview/sim'
 import { CardBody } from '../../render/CardBody'
+import { buildPreviewStats } from '../../render/preview/example-out'
 import { TrashIcon, closeIconSmall } from '../../render/icons'
 import { COL_GAP, LIST_W } from '../layout'
 import type { WidgetsController } from '../../runtime/controller'
@@ -406,7 +406,7 @@ function MetricsFieldControl({ field, value, onChange }: { field: ConfigField; v
         ),
       )
     }),
-    React.createElement('div', { className: 'dsx-metric-hint', style: { gridColumn: '1 / -1', gridRow: rowsBottom } }, t('config.metricHint', { n: picked.length, max })),
+    React.createElement('div', { className: 'dsx-metric-hint', style: { gridColumn: '1 / -1', gridRow: rowsBottom } }, field.hint !== undefined ? (typeof field.hint === 'function' ? field.hint() : field.hint) : t('config.metricHint', { n: picked.length, max })),
   )
 }
 
@@ -454,13 +454,11 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
   const effSim = previewSim ?? selWidget?.example?.sim ?? null
   const previewOut = (): WidgetRenderOut | null => {
     if (!selWidget || !selConfig) return null
-    // Widget-owned example stats (a plain object, or a function of the current
-    // per-instance config — the heatmap rebuilds its preview grid honoring the
-    // window-alignment mode, the quote seeds a sample text). Merged over the
-    // shared preview stats; preview logic lives in the widget unit, not here.
-    const ex = selWidget.example
-    const exStats = ex?.stats ? (typeof ex.stats === 'function' ? ex.stats(selConfig) : ex.stats) : {}
-    const stats = { ...PREVIEW_STATS, ...exStats, ...selConfig } as Parameters<typeof selWidget.render>[0]
+    // The instance's stats: the shared filler + this widget's own example, with
+    // the LIVE record merged over the top where it exists (the user's rule —
+    // 有真数据喂真数据，缺的用假数据填) and the instance's config last, exactly
+    // like the rail's fold. See buildPreviewStats.
+    const stats = buildPreviewStats(selWidget, prefs, selected, controller.liveStats?.(selected) ?? null)
     const sim = effSim && Object.keys(effSim).length > 0 ? effSim : undefined
     // Preview isolation: a crashing widget render must not take the settings
     // surface down with it (mirrors the rail's per-card try/catch).

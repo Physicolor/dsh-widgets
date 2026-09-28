@@ -11,10 +11,9 @@ import { createPortal } from 'react-dom'
 import { WIDGETS } from '../../generated.registry'
 import { groupOf, instanceKey, sizesOf, widgetDesc, widgetName, widgetSimToggle } from '../../lib/contract/helpers'
 import type { UsageData, WidgetRenderOut, WidgetSize, WidgetStats } from '../../lib/contract/types'
-import { PREVIEW_STATS } from '../../render/preview/preview-stats'
 import { nextSim } from '../../render/preview/sim'
 import { CardBody } from '../../render/CardBody'
-import { exampleOut } from '../../render/preview/example-out'
+import { buildPreviewStats, exampleOut } from '../../render/preview/example-out'
 import { ChevronLeftIcon, ChevronRightIcon, gridViewIcon, listViewIcon, searchIcon } from '../../render/icons'
 import type { WidgetsController } from '../../runtime/controller'
 import { t } from '../../i18n'
@@ -143,6 +142,9 @@ export function MarketTab({ controller, usageData }: { controller: WidgetsContro
   // Which way the shared-axis push is going while it runs (null = settled).
   const [anim, setAnim] = React.useState<'in' | 'out' | null>(null)
   const railSide = controller.railSide ?? 0
+  // Live stats for one instance, when a session is running: the previews merge
+  // the real record over the filler (see buildPreviewStats).
+  const liveFor = (id: string, s: WidgetSize): WidgetStats | null => controller.liveStats?.(instanceKey(id, s)) ?? null
   const stageRef = React.useRef<HTMLDivElement | null>(null)
   const stageCardRef = React.useRef<HTMLDivElement | null>(null)
   // Measured in a LAYOUT effect so the stage's card is already at its final size
@@ -186,7 +188,7 @@ export function MarketTab({ controller, usageData }: { controller: WidgetsContro
     const el = from === 'grid'
       ? (document.querySelector(`.dsx-gcard[data-gid="${w.id}"] .dsx-gshot`) as HTMLElement | null)
       : (document.querySelector(`.dsx-mcard[data-gid="${w.id}"]`) as HTMLElement | null)
-    const out = exampleOut(w, size, prefs)
+    const out = exampleOut(w, size, prefs, undefined, liveFor(w.id, size))
     const r = el ? el.getBoundingClientRect() : null
     const src = r && out ? { x: r.left, y: r.top, w: r.width, h: r.height, out, unit, cardW, size, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent } : null
     setLastSource(src)
@@ -272,7 +274,7 @@ export function MarketTab({ controller, usageData }: { controller: WidgetsContro
           // One representative preview per group: the first supported size (2×2
           // preferred), the same simulated output the stage renders.
           const size: WidgetSize = sizes.includes('2x2') ? '2x2' : sizes[0]
-          const out = exampleOut(w, size, prefs)
+          const out = exampleOut(w, size, prefs, undefined, liveFor(w.id, size))
           // Drawn at the RAIL's own unit and scaled to sit COMFORTABLY in the
           // column: the cap is ~1.15× so the widget keeps its natural proportions
           // and typography (the reference gallery shows widgets at their real size
@@ -345,16 +347,12 @@ export function MarketTab({ controller, usageData }: { controller: WidgetsContro
     const curSize = cur?.s ?? '2x2'
     const curKey = w ? instanceKey(w.id, curSize) : ''
     const installed = w ? prefs.installed.indexOf(curKey) !== -1 : false
-    // Widget-owned example stats: preview mode uses the unit's example (quote
-    // seeds a sample text, heatmap builds a config-aware rolling grid, …)
-    // merged over the shared preview stats — no central special-casing here.
-    const ex = w?.example
-    const exStats = ex?.stats ? (typeof ex.stats === 'function' ? ex.stats(prefs.cardConfigs?.[curKey] ?? {}) : ex.stats) : {}
     // The instance's own config rides along exactly like the rail's render does,
     // so a config-driven card (peak-pricing's windows / holiday switches)
-    // previews what it will actually show instead of the defaults.
-    const previewStats = { ...PREVIEW_STATS, ...exStats, ...(prefs.cardConfigs?.[curKey] ?? {}) } as WidgetStats
-    const effSim = previewSim ?? ex?.sim ?? null
+    // previews what it will actually show instead of the defaults. Live data wins
+    // over the mock where it exists (the user's rule — see buildPreviewStats).
+    const previewStats = w ? buildPreviewStats(w, prefs, curKey, liveFor(w.id, curSize)) : ({} as WidgetStats)
+    const effSim = previewSim ?? w?.example?.sim ?? null
     // Market-preview isolation: a crashing render shows an empty stage rather
     // than taking the market panel down (mirrors rail + config preview guards).
     let out: ReturnType<NonNullable<typeof w>['render']> | null = null

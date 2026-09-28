@@ -11,6 +11,7 @@ import type { WidgetChart } from '../../lib/contract/types'
 import type { ChartProps } from './types'
 import { BarsChart } from './bars'
 import { BarsVChart } from './barsV'
+import { BreakdownChart } from './breakdown'
 import { LanesChart } from './lanes'
 import { QuotasChart } from './quotas'
 import { SegmentsChart } from './segments'
@@ -25,6 +26,7 @@ import { HeatmapChart } from './heatmap'
 const RENDERERS: Partial<Record<WidgetChart['kind'], (p: ChartProps) => ReactElement | null>> = {
   bars: BarsChart,
   barsV: BarsVChart,
+  breakdown: BreakdownChart,
   lanes: LanesChart,
   quotas: QuotasChart,
   segments: SegmentsChart,

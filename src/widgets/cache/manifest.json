@@ -8,11 +8,19 @@
   "locale": {
     "zh": {
       "widget.cache.name": "缓存命中",
-      "widget.cache.desc": "输入缓存的命中比例"
+      "widget.cache.desc": "缓存命中率环图与本次会话的 token 构成",
+      "card.cache.unit": "tok",
+      "card.cache.uncached": "未缓存输入",
+      "card.cache.read": "缓存读取",
+      "card.cache.output": "输出"
     },
     "en": {
       "widget.cache.name": "Cache Hit",
-      "widget.cache.desc": "Input cache hit ratio"
+      "widget.cache.desc": "Cache hit rate as a ring, with this session's token breakdown",
+      "card.cache.unit": "tok",
+      "card.cache.uncached": "Uncached input",
+      "card.cache.read": "Cache read",
+      "card.cache.output": "Output"
     }
   }
 }
