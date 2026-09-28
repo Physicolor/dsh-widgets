@@ -327,6 +327,9 @@ async function fetchGitHubRepo(fullName: string, cred: GitHubCred): Promise<Host
 interface HostNotifications {
   /** Unread threads GitHub reports for this account. */
   count: number
+  /** True when the page was FULL, i.e. `count` is a floor ("30+"), not exact.
+   *  Mirrors `GitHubNotifications.capped` on the client side. */
+  capped: boolean
   /** Unread threads per reason, for the card's rows. `other` folds every reason
    *  the card has no row for, so the rows always add up to `count`. */
   byReason: Record<string, number>

@@ -202,7 +202,20 @@ export function createOverviewSampler(): { sample: () => Promise<HostOverview> }
     void readSnapshot().then((value) => {
       snapshot = { ts: Date.now(), value }
       snapshotPending = false
-      if (value !== null) foldNet(snapshot.ts, value)
+      if (value === null) return
+      const hadBaseline = counters !== null
+      foldNet(snapshot.ts, value)
+      // Throughput is a DELTA, so the first reading only establishes the baseline.
+      // Waiting a whole TTL for the second one would leave 网络吞吐 blank for 20–40 s
+      // after the GUI opens, so the FIRST pair is taken 2.5 s apart and the steady
+      // state stays on the TTL (one PowerShell spawn per period, not per second).
+      if (!hadBaseline) {
+        setTimeout(() => {
+          snapshot = null
+          snapshotPending = false
+          refreshSnapshot(Date.now())
+        }, 2500)
+      }
     })
   }
 
