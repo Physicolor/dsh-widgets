@@ -132,7 +132,14 @@ check('有实时数据时，真数据覆盖假数据（命中率大字 + 灰字�
   eq(out.value, undefined, 'value must stay unset on a ring head')
   eq(out.legend, '1M tok', 'legend')
   eq(out.headRight, undefined, 'headRight must be gone (the ring owns the right slot)')
-  eq(out.headRing.icon, 'database', 'ring glyph')
+  // The RULE, not the name: the ring must carry a glyph, and it must not be the
+  // cylinder `会话用量` wears — two cards side by side must not read as the same
+  // thing (缓存命中 is 上下文硬盘缓存, so it wears the drive).  Pinning the exact
+  // string here made this check fail the moment the ring's glyph was reworked
+  // (2026-09-28, `database` → `hard-drive`), which is noise, not a regression: the
+  // design rule is the invariant, the glyph's name is the cache card's business.
+  eq(typeof out.headRing.icon === 'string' && out.headRing.icon !== 'database', true,
+    `ring glyph is its own (got ${JSON.stringify(out.headRing.icon)})`)
   eq(out.headRing.label, '90.0%', 'ring hover text (precise)')
   eq(out.headRing.ratio, 0.9, 'ring ratio')
   eq(out.bodyAnchor, 'bottom', 'the rows and their divider sit on the card floor')

@@ -58,29 +58,28 @@ export const databaseIcon = React.createElement('svg', { width: 16, height: 16, 
 
 /**
  * The disk glyph of the 缓存命中 card's head ring: a drive body (slanted shoulders,
- * rounded bottom corners) with the bay slot line across it.
+ * rounded bottom corners) with the bay slot line across it. Lucide's `hard-drive`
+ * (ISC), re-authored on this file's 16×16 grid (24-grid ÷1.5) — the same provenance
+ * as `databaseIcon` above.
  *
- * WHY IT IS THICKER THAN THE OTHER GLYPHS. The ring it sits in is stroked
+ * WHY IT IS STILL THE HEAVIEST GLYPH IN THIS FILE. The ring it sits in is stroked
  * `round(5 · scale)` at a 52 · scale box, while the glyph is a 16 grid drawn at
- * 20 · scale — so "as heavy as the ring" is exactly **4.0** here, and every other
- * glyph in this file (1.6) reads as a thin detail floating in a fat circle. The
- * owner asked for that weight (2026-09-28) with the caveat that it must not go
- * ugly, and at 3.6 (visual 4.5px, 90% of the ring) it does not: 2.3 units of
- * daylight above the slot and 1.9 below.
+ * 20 · scale, so the weights compare 1:1.25 — every other glyph here (1.6, i.e.
+ * 2px) reads as a thin detail floating in a fat circle, and the owner's rule is
+ * that the ring's middle must not look weak. **3.2** (visual 4px, 80% of the ring)
+ * is where that landed after two tries: the first cut ran at the ring's own weight
+ * (4.0 = 5px) and was judged too heavy — at that size the body's three horizontal
+ * bands had no daylight left. Do not raise it back toward 4.0.
  *
- * WHY THE GEOMETRY IS NOT LUCIDE'S `hard-drive`. Lucide draws the body only 10.7
- * units tall on a 16 grid (24-grid ÷1.5), which leaves the slot line 1.3 units of
- * clearance — at 3.6 the three horizontal bands merge into a slab. The body here
- * is stretched to 11.4 units (top 2.3, bottom 13.7) and the bottom corners opened
- * to r 2.4 (> the 1.8 half-stroke, or the corner pinches shut). The indicator dots
- * Lucide adds under the slot are DELIBERATELY absent: their diameter is the stroke
- * itself (3.6) and the clear band between the slot and the bottom edge is ~2 units,
- * so at this weight they land as two lumps glued to the slot line.
+ * THE INDICATOR DOTS ARE DELIBERATELY ABSENT. Lucide puts two under the slot; at
+ * this stroke their diameter IS the stroke (4px at a 20px glyph) and the clear band
+ * between the slot and the bottom edge is ~2.7px, so they land as two lumps glued
+ * to the slot line. The body + slot pair is what still reads as a drive at 16px.
  *
  * `currentColor`, so the ring paints it in its own tone (the cache card paints it
  * the same green/red as its arc).
  */
 export const hardDriveIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
-  React.createElement('path', { d: 'M4.8 2.3H11.2L14 6.5V11.3A2.4 2.4 0 0 1 11.6 13.7H4.4A2.4 2.4 0 0 1 2 11.3V6.5Z', stroke: 'currentColor', strokeWidth: 3.6, strokeLinejoin: 'round' }),
-  React.createElement('path', { d: 'M2 8.2H14', stroke: 'currentColor', strokeWidth: 3.6, strokeLinecap: 'round' }),
+  React.createElement('path', { d: 'M3.63 3.41 1.33 8v4a1.33 1.33 0 0 0 1.33 1.33h10.67A1.33 1.33 0 0 0 14.67 12V8l-2.3-4.59A1.33 1.33 0 0 0 11.17 2.67H4.83a1.33 1.33 0 0 0-1.2.74z', stroke: 'currentColor', strokeWidth: 3.2, strokeLinejoin: 'round' }),
+  React.createElement('path', { d: 'M1.33 8h13.34', stroke: 'currentColor', strokeWidth: 3.2, strokeLinecap: 'round' }),
 )
