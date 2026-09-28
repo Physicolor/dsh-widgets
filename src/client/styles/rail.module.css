@@ -11,10 +11,6 @@
  * anchor positioning; while a panel is present the client pins it to the
  * viewport's right edge (identical when no panel is open) so the panel — which
  * paints above the rail's conversation-scoped host — covers the rail. */
-:root {
-  --dsx-rail-right: anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)));
-}
-
 /* Native rail follow (Chrome 125+ / Edge): naming the conversation column as an
  * anchor lets the rail's `right: anchor(--dsx-center right)` be resolved in the
  * SAME style→layout pass that animates the shell's `grid-template-columns`

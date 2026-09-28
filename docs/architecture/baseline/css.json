@@ -1,13 +1,17 @@
 {
- "__combined": "b06cea7aab6b2ee43770b62052a32291df549cac71ac165368defca22c8d1673",
+ "__combined": "e9cab741ad979a8eccf8bf3be2a08503ee1d6443c65f6b8d23fffebcb8ef26fa",
  "sheets": {
+  "dsh-widgets/src/client/styles/tokens.module.css": {
+   "sha256": "345750d099cf19668d1872b9ea75c32bd61abd9b8b323c5b242caf2a614f5f71",
+   "bytes": 590
+  },
   "dsh-widgets/src/client/styles/card.module.css": {
-   "sha256": "bb72f9be3ba08a25dbfbf9361e74630804d04d3c7145de31c6ae0e131617722c",
-   "bytes": 4182
+   "sha256": "9882f4bcf052d697fc31ade0a56538db4893e9a160d43b7365623402a43c5717",
+   "bytes": 3688
   },
   "dsh-widgets/src/client/styles/rail.module.css": {
-   "sha256": "76e64ec236660361fde67dc0f37e1e25831ccc004a7a5deb46fb9e00a127fd27",
-   "bytes": 4296
+   "sha256": "7e86efbfc7c8e62f00b1e8d1bad74868eb4e0c1d67386539e6c5c1a6bebd7b46",
+   "bytes": 4194
   },
   "dsh-widgets/src/client/styles/panel.module.css": {
    "sha256": "5eb3188c9a612db9a17bebb6dd78d14fdc4ff20248b3ef9d7842241acc419d22",

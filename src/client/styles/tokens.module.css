@@ -1,0 +1,26 @@
+/* Harness Widgets — the design tokens.
+ *
+ * The two `:root` blocks the layer files used to own, in their ORIGINAL relative
+ * order (the card sheet came before the rail sheet, so the nav glyph comes first
+ * here too) — that keeps the move a pure permutation of two whole rules.
+ *
+ * Why they live together: a custom property IS the vocabulary the other sheets
+ * speak, and the import order in client/index.ts is the cascade order, so the
+ * vocabulary has to be defined before anything that reads it.
+ *
+ * G5: this sheet is NOT part of the byte-identical re-slice the layering phase
+ * proved. The concatenated sheet moves by exactly these two rules; the proof
+ * recorded with the change compares sheet by sheet instead (see the commit).
+ */
+
+:root {
+  /* The app icon's inner tiles (icon-v3) as OUTLINES on the 16px grid: the same
+     1.25 stroke as the official set, tiles inset to 1.1 so the stroke never
+     clips, and ~3-unit gaps (≈1.7px rendered between strokes) so the four cards
+     still separate at 1x. */
+  --dsx-nav-glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%20fill='none'%20stroke='%23fff'%20stroke-width='1.25'%20stroke-linejoin='round'%3E%3Crect%20x='1.1'%20y='1.1'%20width='4.6'%20height='5.5'%20rx='1.4'/%3E%3Crect%20x='1.1'%20y='9.4'%20width='4.6'%20height='5.5'%20rx='1.4'/%3E%3Crect%20x='8.9'%20y='1.1'%20width='6'%20height='7.1'%20rx='1.8'/%3E%3Crect%20x='8.9'%20y='10.9'%20width='4.4'%20height='4'%20rx='1.3'/%3E%3C/svg%3E");
+}
+
+:root {
+  --dsx-rail-right: anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)));
+}
