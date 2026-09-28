@@ -9,6 +9,5 @@ export default defineWidget({
   desc: () => t('widget.usage-weekly.desc'),
   builtin: false,
   group: 'opencode-go',
-  badgeLabel: () => t('badge.opencode'),
   render: usageRender('weekly', 'widget.usage-weekly.name'),
 })

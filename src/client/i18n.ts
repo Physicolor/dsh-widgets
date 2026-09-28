@@ -102,8 +102,6 @@ const ZH: Record<string, string> = {
   'group.other': '其它',
 
   // Badges (generic)
-  'badge.system': '系统',
-  'badge.external': '外部',
 
   // Settings panel rows
   'settings.columns.title': '最多列数',
@@ -189,8 +187,6 @@ const EN: Record<string, string> = {
   'group.pricing': 'Peak Pricing',
   'group.other': 'Others',
 
-  'badge.system': 'System',
-  'badge.external': 'External',
 
   'settings.columns.title': 'Max Columns',
   'settings.columns.desc': 'Largest column count the rail may use; steps down automatically when space runs short, and never exceeds it when space is plentiful',

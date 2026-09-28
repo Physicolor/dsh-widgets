@@ -648,7 +648,6 @@ export interface Widget {
   desc: string | (() => string)
   builtin: boolean
   group?: string
-  badgeLabel?: string | (() => string)
   /** Sizes this widget supports. Defaults to ['2x2'] when omitted. */
   sizes?: WidgetSize[]
   render: (stats: WidgetStats, meta?: WidgetRenderMeta) => WidgetRenderOut | null

@@ -256,7 +256,6 @@ export const DEFAULT_INSTALLED: string[] = [
  *  Registered with the locale service at apply() time. */
 export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, string> } = {
   zh: {
-    "badge.opencode": "OpenCode Go 用量配额",
     "usage.title": "OpenCode 用量",
     "usage.totalKey": "总 Key",
     "usage.cycleHint": "单击循环：{chain}",
@@ -264,7 +263,6 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "usage.rolling": "滚动",
     "usage.week": "周",
     "usage.month": "月",
-    "badge.commandcode": "Command Code 账户用量",
     "group.commandcode": "Command Code",
     "cc.notConfigured": "未配置 COMMANDCODE_API_KEY（host 自动读取环境变量 / 凭据，无需手动填写）",
     "cc.unconfigured": "未配置 COMMANDCODE_API_KEY — host 自动读取环境变量 / $DSH_HOME/.credentials.yaml / .env，重启后自动生效",
@@ -492,7 +490,6 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "widget.github-board.desc": "2×4 汇总板：Stars / 未关闭 Issue / 未回复 / 最近提交 并排，标题行给出仓库全名与最新 Release",
   },
   en: {
-    "badge.opencode": "OpenCode Go Usage Quota",
     "usage.title": "OpenCode Usage",
     "usage.totalKey": "All Keys",
     "usage.cycleHint": "Click to cycle: {chain}",
@@ -500,7 +497,6 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "usage.rolling": "Rolling",
     "usage.week": "Week",
     "usage.month": "Month",
-    "badge.commandcode": "Command Code Account Usage",
     "group.commandcode": "Command Code",
     "cc.notConfigured": "COMMANDCODE_API_KEY not configured (host auto-reads env / credentials, no manual entry)",
     "cc.unconfigured": "COMMANDCODE_API_KEY not configured — the host auto-reads env / $DSH_HOME/.credentials.yaml / .env; effective after a restart",

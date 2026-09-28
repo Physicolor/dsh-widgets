@@ -148,17 +148,6 @@
   cursor: pointer;
 }
 
-.dsx-restore {
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 12px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  background: transparent;
-  color: var(--dsw-alias-state-business-primary);
-  font-size: 12px;
-  cursor: pointer;
-}
-
 /* Entrance for the 组件配置 detail drawer: a TRANSLATE, never a cross-fade —
  * the panel itself opens with a slide, and a surface that owns a track must not
  * fade in (user's rule, 2026-09-25). */

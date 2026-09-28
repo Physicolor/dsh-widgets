@@ -9,7 +9,6 @@
  *
  * The shapes themselves are in `./types` (see the contract doc there).
  */
-import { t } from '../../i18n'
 import type { ConfigField, Widget, WidgetSize } from './types'
 
 /** Instance key = `${widgetId}@${size}` (e.g. `context-water@2x4`). Even the same
@@ -46,9 +45,6 @@ export function widgetDesc(w: Widget): string {
   return resolveLabel(w.desc)
 }
 
-export function widgetBadgeLabel(w: Widget): string | undefined {
-  return typeof w.badgeLabel === 'function' ? w.badgeLabel() : w.badgeLabel
-}
 
 export function widgetSimToggle(w: Widget): string | undefined {
   return typeof w.simToggle === 'function' ? w.simToggle() : w.simToggle
@@ -64,10 +60,6 @@ export function optionLabel(o: [string, string | (() => string)]): string {
   return resolveLabel(o[1])
 }
 
-/** Badge text for a widget. */
-export function badgeOf(w: Widget): string {
-  return widgetBadgeLabel(w) ?? (w.builtin ? t('badge.system') : t('badge.external'))
-}
 
 /** The group key for a widget (its own id when it is not grouped). */
 export function groupOf(w: Widget): string {

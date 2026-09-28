@@ -9,6 +9,5 @@ export default defineWidget({
   desc: () => t('widget.cc-window-5h.desc'),
   builtin: false,
   group: 'commandcode',
-  badgeLabel: () => t('badge.commandcode'),
   render: ccWindowValueRender('fiveHour'),
 })

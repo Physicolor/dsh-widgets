@@ -187,7 +187,6 @@ export default defineWidget({
   desc: () => t('widget.peak-pricing.desc'),
   builtin: false,
   group: 'pricing',
-  badgeLabel: () => t('widget.peak-pricing.name'),
   simToggle: () => t('sim.peak'),
   render: peakPricingRender,
   configSchema: [

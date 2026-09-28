@@ -351,17 +351,3 @@ body[data-ds-dark-theme] .dsx-select {
   overflow: hidden;
 }
 
-.dsx-mid {
-  font-size: 11px;
-  color: var(--dsw-alias-label-caption);
-  font-family: monospace;
-  margin-bottom: 4px;
-}
-
-.dsx-macts {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 4px;
-}
-

@@ -9,6 +9,5 @@ export default defineWidget({
   desc: () => t('widget.cc-usage.desc'),
   builtin: false,
   group: 'commandcode',
-  badgeLabel: () => t('badge.commandcode'),
   render: ccUsageRender,
 })

@@ -9,6 +9,5 @@ export default defineWidget({
   desc: () => t('widget.cc-credits.desc'),
   builtin: false,
   group: 'commandcode',
-  badgeLabel: () => t('badge.commandcode'),
   render: ccCreditsRender,
 })

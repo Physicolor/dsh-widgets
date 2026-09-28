@@ -11,6 +11,5 @@ export default defineWidget({
   desc: () => t('widget.cc-window-monthly.desc'),
   builtin: false,
   group: 'commandcode',
-  badgeLabel: () => t('badge.commandcode'),
   render: ccWindowValueRender('monthly'),
 })

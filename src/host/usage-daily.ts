@@ -69,11 +69,6 @@ function readAuthoritativeDaily(ctx: { get?: (name: string) => unknown }, provid
   }
 }
 
-/** Provider route whose traffic 「额度管理」measures: the Command Code pool. Its
- *  account payload (credits, billing period) describes exactly this route, so the
- *  token side must be folded from the same route or the two sides disagree. */
-const COMMANDCODE_ROUTE = 'commandcode'
-
 /** Register the daily-token route; returns the disposer `ctx.effect` wants. */
 export function registerUsageDaily(ctx: HostContext): () => void {
   // Authoritative daily token totals for the heatmap cards.

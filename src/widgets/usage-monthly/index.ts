@@ -9,6 +9,5 @@ export default defineWidget({
   desc: () => t('widget.usage-monthly.desc'),
   builtin: false,
   group: 'opencode-go',
-  badgeLabel: () => t('badge.opencode'),
   render: usageRender('monthly', 'widget.usage-monthly.name'),
 })

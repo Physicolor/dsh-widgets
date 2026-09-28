@@ -36,7 +36,6 @@ export default defineWidget({
   desc: () => t('widget.cc-subscription.desc'),
   builtin: false,
   group: 'commandcode',
-  badgeLabel: () => t('badge.commandcode'),
   render: ccSubscriptionRender,
   simToggle: () => t('widget.cc-subscription.simToggle'),
   example: { stats: previewStats, sim: { plan: 'individual-goat' }, simSteps: PLAN_TIER_STEPS },
