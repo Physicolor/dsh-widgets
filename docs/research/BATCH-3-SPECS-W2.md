@@ -1,7 +1,8 @@
 # BATCH-3 SPECS — 第三批部件规格书（Wave 2 草稿）
 
 > 与 `BATCH-3-SPECS.md`（Wave 1）同构。Worker 读本文件里**属于它的那一节** + `docs/research/WORKER-BRIEF-V2.md`。
-> Wave 2 的**数据面已经就位**：`/api/host/overview`（见 `src/host/overview.ts`）已实现并实测，契约切片是 `stats.host`（`HostOverview`）+ `stats.hostError`。
+> Wave 2 的**数据面已经就位**：`/api/host/overview`（见 `src/host/overview.ts`）、`/api/widgets-pricing`（`src/host/pricing.ts`）、`/api/github?notif=1`（`src/host/github.ts`）全部已实现、已实测、已进入 G7 门禁；契约切片是 `stats.host` / `stats.hostError` / `stats.pricing` / `stats.github.notifications`。
+> 另外：`WidgetRenderOut.valueTone` 现在接受 `'danger' | 'warn'` 两档（`danger` = 已经坏了，`warn` = 还没坏但正朝那走），这是本批新增的共享能力。
 > 共同硬约束与 Wave 1 完全一致（见 BRIEF §2 / §3）。
 
 **Wave 2 的共同点**：Wave 1 回答「agent 现在是什么形态」，Wave 2 回答「**这台机器还撑得住吗**」——网络、供电、内存大户、本地服务与代理出口。
@@ -170,19 +171,65 @@ LM Studio                    未运行     ← down 用 danger 或 muted（你�
 
 ---
 
-## 12. `session-cost` — 会话成本（口径最敏感的一张，单独详述）
+## 12. `session-cost` — 会话成本（口径最敏感的一张）
 
 ```jsonc
 {
   "widgetId": "session-cost", "order": 93, "group": "coding-plan", "sizes": ["2x2"],
-  "source": "cc", "skeleton": { "shape": "figures", "count": 2 }
+  "source": "cc", "skeleton": { "shape": "text" },
+  "name": { "zh": "会话成本", "en": "Session Cost" },
+  "desc": {
+    "zh": "把本会话的四桶 token 按价格表折成钱，并标出这个金额的来源（官方价 / 中转价 / 免费路由）",
+    "en": "Folds this session's four token buckets into money using the price table, and says which table it used (official / reseller / free route)"
+  },
+  "purpose": "官方价里缓存命中 0.02 元/M 与未命中 1 元/M 差 50×；今天没有任何地方把会话折成钱。"
 }
 ```
 
-**前置（主 Agent 负责）**：host 新增 `/api/widgets-pricing` 读取 `$DSH_HOME/storages/usage-center/pricing.json`（v2 schema），返回**规则表原样 + 读取状态**；widget 只消费。
-**本卡的纪律（不可让步）**：
-- 价格规则**拿不到**时：只印 token，**金额列留空**，绝不退回混合口径、绝不印 `$0.00`。
-- 订阅套餐路由（`sourceType: reseller` 且命中套餐）下把 token×单价当账单**是错的**：必须标 `estimated`，或干脆不印金额。**具体口径由 Wave 2 派发时的 spec 决定**，本文件只固定上面的硬约束。
+**数据**（**两者都已在共享层就位**）
+- `stats.usage` = `{ inputTokens, cacheReadTokens, outputTokens }`（本会话四桶；`inputTokens` 已含 cacheRead）。
+- `stats.modelSelection?.next ?? lastUsed` = `{ provider, model, reasoningEffort? }` → 用来选规则。
+- `stats.pricing` = `PriceTable`（来自 `/api/widgets-pricing`，读 usage-center 的 `storages/usage-center/pricing.json`）：
+  `{ available, version, currency, rules[], path, modifiedAt }`；规则含 `provider/model/effectiveFrom/effectiveTo/timezone/peakWindows/rates{inputCacheHit,inputCacheMiss,output,cacheWrite}/peakRates?/currency/sourceType/verifiedAt`。
+- `stats.commandCode.credits` —— **不读**。本卡是**会话金额**，不是额度占用；混进额度就是混合口径。
+
+**选规则（你实现，纯函数 + 注释里给手算例子）**
+1. 候选 = `rules` 中 `provider` 与 `model` 都能对上 `modelSelection` 的（`model` 允许规则里写 `*` 或 `deepseek/*` 这类通配前缀——**按你实测的表内容决定支持哪种**，并在 README 写清）；
+2. 再看生效窗口：`effectiveFrom <= now < effectiveTo`（两端都可为 null = 无界）；
+3. 多条命中时取 `effectiveFrom` 最新的一条；
+4. **一条都不命中 → 只印 token，金额留空**（不印 `$0.00`，不猜）。
+
+**高峰判定**：规则有 `peakRates` 且当前时刻落在 `peakWindows` 内（按规则自己的 `timezone`，默认 UTC）→ 用 `peakRates`，否则用 `rates`。**窗口外的秒数必须用 `rates`**——不要整段会话按当前时刻的费率算（那会把低峰时段也按高峰计价）。若这需要逐小时切分而你判断代价过高，**就在 README 里写明"按当前费率计整段"并把它标成 `estimated`**；这是允许的降级，但必须说出来。
+
+**金额公式**（每 M token 单价 × 桶大小 / 1e6）：
+```
+cost = inputCacheMiss × (uncachedInput)  // = inputTokens − cacheReadTokens（不得为负）
+     + inputCacheHit  × cacheReadTokens
+     + output         × outputTokens
+```
+`cacheWrite` 在 `usage` 里拿不到（契约只有三桶）→ **不要**编一个 0，README 说明这张卡不含 cacheWrite。
+
+**卡面（2×2）**
+```
+会话成本                       ← card.session-cost.title
+$0.42                          ← headAfter.big：本会话金额（拿不到规则时 → token 总量）
+官方价 · deepseek-v4-flash      ← legend：来源（sourceType 本地化）+ 模型名（截断）
+──────────────────────────────
+未缓存输入          200K  $0.04
+缓存读取           18.4M  $0.00
+输出               75.6K  $0.05
+```
+- **大数字 = 金额**，货币符号取规则的 `currency`。`sourceType` 必须在 legend 里说出来（`official`→「官方价」/`reseller`→「中转价」/`local`→「免费路由」/`fallback`→「估算价」），这是本卡的纪律：**金额永远带着它的出处**。
+- 拿不到规则 → 大数字改成 token 总量，legend 变「无价格表 · 仅 token」，明细的金额列**留空**（不是 `—`，也不是 `$0.00`——空列表示"这里本就没有这个数"）。
+- `pricing` 为 `null`（未读取）/ `available:false` → 同样走 token-only 形态，**卡仍然渲染**（token 本身有意义）。
+- `usage` 为 null 或总量为 0 → `render` 返回 `null`。
+- 无 `modelSelection` → 无法选规则 → token-only 形态。
+
+**tone 方向**：金额**不染色**（花得多不等于坏）。本卡是读数卡。
+
+**配置项**：无（第一版）。
+
+**验收**：规则命中 → 金额 + 出处；不命中 → token-only 且金额列留空（**截图必须能看到这一形态**，用 `example.simSteps` 给两态）；高峰窗口命中 → 用 `peakRates`（写一个纯函数用例证明）；`usage` 全 0 → null；`uncachedInput` 负数被钳成 0；手算例子在注释里；其余同 Wave 1。
 
 ---
 
@@ -191,11 +238,39 @@ LM Studio                    未运行     ← down 用 danger 或 muted（你�
 ```jsonc
 {
   "widgetId": "github-notify", "order": 94, "group": "github", "sizes": ["2x2"],
-  "source": "github", "skeleton": { "shape": "text" }
+  "source": "github", "skeleton": { "shape": "text" },
+  "name": { "zh": "待我处理", "en": "To Review" },
+  "desc": {
+    "zh": "GitHub 上等我的未读线程：review request / @提及 / 指派，以及最新的一条",
+    "en": "Unread GitHub threads waiting on me: review requests, mentions and assignments, plus the newest one"
+  },
+  "purpose": "「待我处理」是 GitHub 家族唯一还缺的待办语义——既有 5 张卡全是仓库状态，没有一张说「有人在等你」。"
 }
 ```
-**前置（主 Agent 负责）**：`src/host/github.ts` 的 payload 增加 `notifications` 切片（`GET /notifications`，复用既有三级凭据阶梯）。
-**卡面**：大数字 = 未读待处理数；明细三行 = review request / mention / assign 各多少；最新一条的标题进 legend（截断）。匿名模式下该端点**不可用**（60/h 且 notifications 需要认证）→ 该切片为 null → 卡返回 `null`，并在 README 里写明「需要 token 或 gh 登录」。
+
+**数据（已在共享层就位）**：`stats.github?.notifications` =
+`{ count, byReason: { review_requested, mention, assign, ci_activity, other }, newest: { title, repo, reason, updatedAt, url } | null }`
+- 采集器只在**装了本卡**时才发 `notif=1`（`/api/github?...&notif=1`），host 侧 5 分钟 memo + ETag（304 不扣配额）。
+- **匿名时该切片为 null**（GitHub 实测回 401，不是 0）→ `render` 返回 `null`。**不要**印「0 条待办」：那会把"我没法看"说成"没人等你"。README 写明「需要 token 或 `gh` 登录」。
+
+**卡面（2×2）**
+```
+待我处理                       ← card.github-notify.title
+3                              ← headAfter.big：未读总数
+dsh-widgets · review …          ← legend：最新一条（repo · reason，截断）
+──────────────────────────────
+Review 请求                  2
+提及                          1
+指派                          0
+```
+- `byReason` 的键集**恒定**（含 0 值行）——行数不能随数据变化。
+- `ci_activity` / `other` 不进明细（明细 3 行上限）；若它们 > 0 而前三项都为 0，大数字照印总数、明细三行全 0 —— 或者你决定用 `other` 顶替 `ci_activity`，把理由写进 README。
+- `newest.url` 只用于 hover 提示（卡片本身不可点击）。
+
+**tone 方向**：待办数**不染色**（有人等你不是错误）。
+
+**验收**：`notifications` 为 null（未请求 / 匿名）→ `null`；三次 `count` 与 `byReason` 之和不一致时的处理写清；键集恒定；其余同 Wave 1。
+
 
 ---
 
