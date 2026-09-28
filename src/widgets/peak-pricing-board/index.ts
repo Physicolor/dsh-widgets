@@ -1,9 +1,9 @@
 import { defineWidget } from '../../client/lib/contract/helpers'
 import type { ConfigField, WidgetRenderMeta, WidgetRenderOut, WidgetStats } from '../../client/lib/contract/types'
 import { t } from '../../client/i18n'
-import { HOLIDAY_TABLE_SOURCE } from '../peak-pricing/holidays'
-import type { Clock } from '../peak-pricing'
-import { DEFAULT_BILLING_WINDOWS, clockInZone, fmtMins, fmtRemaining, resolveScheduleConfig, trackDay } from './schedule'
+import { HOLIDAY_TABLE_SOURCE } from '../../client/lib/peak-holidays'
+import { fmtMins, type Clock } from '../../client/lib/peak-schedule'
+import { DEFAULT_BILLING_WINDOWS, clockInZone, fmtRemaining, resolveScheduleConfig, trackDay } from './schedule'
 
 /**
  * 峰谷时段表 — the 2×2 峰谷定价 card, widened.

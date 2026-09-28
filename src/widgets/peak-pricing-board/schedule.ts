@@ -7,18 +7,23 @@
  * prints is built in index.ts; here we only produce minutes and i18n KEYS, so the
  * schedule can be read (and probed) without a locale.
  *
- * THE RULE IS NOT OURS. The peak/off-peak verdict, the timezone clock and the
- * holiday lookup are all read-only imports from the 2×2 card (`../peak-pricing`):
- * `parsePeakWindows` / `clockAt` / `peakConfigOf` / `peakStatusNow`, plus
- * `yearOf` / `holidayFor` / `holidayTableCovers` from its `holidays` table. If the
- * two cards ever disagreed about what counts as peak, the rail would be lying on
- * one of them — so there is exactly ONE implementation, and it lives next door.
- * (See the unit README for the shared-layer note: this import is a real coupling,
- * and the captain may prefer to lift those helpers into `src/client/lib/`.)
+ * THE RULE IS NOT OURS, AND NO LONGER NEXT DOOR. The peak/off-peak verdict, the
+ * timezone clock, the window parser, the config reader and the holiday lookup are
+ * read from the SHARED layer — `src/client/lib/peak-schedule.ts` +
+ * `src/client/lib/peak-holidays.ts` — because the 2×2 峰谷定价 card must answer
+ * exactly the same question the same way: if the two ever disagreed, the rail
+ * would be lying on one of them. They used to be imported FROM the 2×2 unit (a
+ * real unit-to-unit coupling: deleting that directory broke this card, and the
+ * +8 offset was mirrored here because `clockAt` kept it inline); both moved into
+ * the shared layer on 2026-09-28, and `ZONE_OFFSET_MINS` is now read from there
+ * instead of being copied.
  */
 
 import {
+  DEFAULT_PEAK_WINDOWS,
+  ZONE_OFFSET_MINS,
   clockAt,
+  fmtMins,
   parsePeakWindows,
   peakConfigOf,
   peakStatusNow,
@@ -26,8 +31,8 @@ import {
   type PeakPricingConfig,
   type PeakStatus,
   type PeakWindow,
-} from '../peak-pricing'
-import { holidayFor, holidayTableCovers, yearOf } from '../peak-pricing/holidays'
+} from '../../client/lib/peak-schedule'
+import { holidayTableCovers, yearOf } from '../../client/lib/peak-holidays'
 
 /** A day's worth of PeakPricingConfig (what the schedule is computed from). */
 export type ScheduleConfig = PeakPricingConfig
@@ -35,26 +40,9 @@ export type ScheduleConfig = PeakPricingConfig
 /** Minutes in one day — the schedule's own horizon. */
 const DAY = 24 * 60
 
-/** The fixed offset `clockAt` applies for the non-`local` zones, in minutes.
- *
- *  DUPLICATED from the 2×2 card on purpose, and the ONE number this unit mirrors
- *  rather than imports: `clockAt` keeps its offset inline (China has no DST, so it
- *  is a constant, not a table), and the shared module is read-only for this task.
- *  It is used in exactly one place (`instantOf`, converting a wall clock back
- *  into the instant `peakStatusNow` re-reads) and both the shared clock and this
- *  constant would have to change together for a zone with DST — which is why the
- *  unit README asks the captain to lift `clockAt`/`peakStatusNow` into
- *  `src/client/lib/` and delete this line. */
-const BEIJING_OFFSET_MINS = 8 * 60
-
-/** The shipped timetable, as the 2×2 card's own config string. Used by the unit's
+/** The shipped timetable, as the shared config string. Used by the unit's
  *  example/probe so neither has to re-type it. */
-export const DEFAULT_BILLING_WINDOWS = '09:00-12:00, 14:00-18:00'
-
-/** Minutes since local midnight → `HH:MM`. */
-export function fmtMins(mins: number): string {
-  return `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`
-}
+export const DEFAULT_BILLING_WINDOWS = DEFAULT_PEAK_WINDOWS
 
 /** Minutes → `42m` / `1h 05m` — the countdown in the head. */
 export function fmtRemaining(mins: number): string {
@@ -243,7 +231,7 @@ export function clockInZone(now: Date, tz: string): Clock {
 function instantOf(clock: Clock, tz: string): Date {
   const [y, m, d] = clock.dateKey.split('-').map(Number)
   if (tz === 'local') return new Date(y, m - 1, d, Math.floor(clock.mins / 60), clock.mins % 60)
-  const utcMins = clock.mins - BEIJING_OFFSET_MINS
+  const utcMins = clock.mins - ZONE_OFFSET_MINS
   const shift = Math.floor(utcMins / DAY)
   return new Date(Date.UTC(y, m - 1, d + shift, Math.floor(utcMins / 60) - shift * 24, ((utcMins % 60) + 60) % 60))
 }

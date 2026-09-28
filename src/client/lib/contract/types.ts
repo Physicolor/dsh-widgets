@@ -425,7 +425,7 @@ export interface WidgetChart {
    *  a route with no published rate leaves the cell EMPTY rather than printing a
    *  fabricated `$0.00`). A hairline divider sits above the rows. The widget owns
    *  every string, including which unit each value carries. */
-  breakdown?: Array<{ label: string; value: string; cost?: string; tone?: BarDatum['tone']; /** Slow red blink on THIS row's value — the escalation a card-level `valuePulse` gives a big figure, for the one row that is live or alarming (峰谷时段表's peak band). The class and its reduced-motion opt-out already exist; this field is the hook that lets a row reach them. */ pulse?: boolean }>
+  breakdown?: Array<{ label: string; value: string; cost?: string; tone?: BarDatum['tone'] }>
   /** Quota ROWS in the official site's shape: the window name on the left, its
    *  percent hard right, and a SEGMENTED bar under them (filled cells = used) —
    *  the 套餐/额度 card family's window trio. */

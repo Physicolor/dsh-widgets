@@ -1,6 +1,12 @@
 /**
  * DeepSeek peak/off-peak pricing — China's public-holiday calendar.
  *
+ * SHARED LAYER since 2026-09-28. This table (and its lookups) used to live inside
+ * the 峰谷定价 unit, and the 峰谷时段表 unit imported it from there — a unit-to-unit
+ * dependency that made "delete one widget directory" unsafe and existed only so
+ * the two cards could not disagree about what a holiday is. A rule TWO cards must
+ * agree on belongs to neither of them: it lives here, and both read it.
+ *
  * WHY this exists: the off-peak discount is NOT a plain weekday clock. The
  * official pricing page (footnote 2, https://api-docs.deepseek.com/quick_start/pricing)
  * reads:
@@ -24,8 +30,8 @@
  * (https://www.gov.cn/zhengce/content/202511/content_7047090.htm). The next
  * year's arrangement is published around November of the year before; when it
  * lands, add its ranges, extend HOLIDAY_YEARS and update HOLIDAY_TABLE_SOURCE.
- * A year with no entry is never guessed at: the card keeps weekday behaviour and
- * says so in its hover hint, and the 额外低谷日 config field carries the dates in
+ * A year with no entry is never guessed at: the cards keep weekday behaviour and
+ * say so in their hover hint, and the 额外低谷日 config field carries the dates in
  * the meantime.
  */
 
@@ -35,7 +41,7 @@ export interface HolidayRange {
   start: string
   /** Last day, `YYYY-MM-DD`. */
   end: string
-  /** i18n key naming the holiday (see the unit's manifest locale). */
+  /** i18n key naming the holiday (see the pricing units' manifest locales). */
   key: string
 }
 
@@ -60,7 +66,7 @@ export const CN_HOLIDAYS: HolidayRange[] = [...CN_HOLIDAYS_2026]
 /** Years the table actually covers — a year missing here is reported, not guessed. */
 export const HOLIDAY_YEARS: number[] = [2026]
 
-/** Where the ranges above come from, quoted in the card's stale-table hint. */
+/** Where the ranges above come from, quoted in the cards' stale-table hint. */
 export const HOLIDAY_TABLE_SOURCE = '国办发明电〔2025〕7号'
 
 /** The i18n key given to holidays that come from the user's own config list. */

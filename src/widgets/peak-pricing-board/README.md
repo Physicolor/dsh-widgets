@@ -117,36 +117,23 @@ example: {
 日期是故意写死的（与 2×2 卡的预览状态一样）：2026-09-26 落在已收录的**中秋**区间里，
 2026-10-10 是**国庆**之后的第一个普通周六，所以每一步在任何机器上都可复现。
 
-## 已知耦合（请船长裁决）
+## 曾经的三处耦合（2026-09-28 已结清）
 
-1. **代码依赖方向**：本卡 `import` 了 `src/widgets/peak-pricing/` 里的规则与节假日表。
-   这是**只读**引用，没有改那个目录，也不复制规则（复制才是两张卡会分叉的写法）。
-   若认为「部件之间不应互相 import」，建议把这六个 helper 提到
-   `src/client/lib/peak-schedule.ts`（共享层），两张卡都从那里读；本卡届时只留渲染映射。
-2. **一处常量镜像**：`schedule.ts` 里的 `BEIJING_OFFSET_MINS = 8 * 60` 与 2×2 卡 `clockAt`
-   的 +8 **重复**了一次（`clockAt` 把偏移写在函数体内，没有导出）。它只在一处使用
-   （`instantOf`：把墙上时钟还原成 `peakStatusNow` 会再读一遍的那个瞬间），
-   有 DST 的时区会需要两处同时改。提取到共享层即可删除。
-3. **i18n key 不共用**：本卡自带 `card.peak-pricing-board.*` 字典（含节假日名），
+1. ~~**代码依赖方向**：本卡 `import` 了 `src/widgets/peak-pricing/` 里的规则与节假日表~~
+   **已解决**：规则与节假日表已提到共享层 —— `src/client/lib/peak-schedule.ts`
+   （窗口解析 / 时区时钟 / 配置读取 / 时段判定）与 `src/client/lib/peak-holidays.ts`
+   （节假日表与查询）。两张卡都从共享层读，**部件之间不再互相 import**，
+   「删掉一个单元目录」重新变得安全。本单元只剩渲染映射（`schedule.ts`）。
+   搬移是逐字的：G4 渲染快照 140 条**零差异**，两张卡的行为一字未变。
+2. ~~**一处常量镜像**：`schedule.ts` 里的 `BEIJING_OFFSET_MINS = 8 * 60`~~
+   **已解决**：`ZONE_OFFSET_MINS` 现在在共享层导出一次，`clockAt` 与 `instantOf` 同读它；
+   本单元的那份镜像已删除（有 DST 的时区再也不会需要两处同时改）。
+3. **i18n key 不共用**（保留，且是刻意的）：本卡自带 `card.peak-pricing-board.*` 字典（含节假日名），
    共享判定返回的 `card.peak.*` key 通过 `REASON_LOCAL` 映射过来。
    注册表会把所有单元的字典合并成一张表，两家共用一个 key 就等于互相可改。
-4. **需要共享层加一个字段（明细行呼吸）**：`高峰` 要和大数字一样呼吸，需要 breakdown 的行能带 class。
-   最小改动二处，改完本卡一行接上：
-
-   ```ts
-   // src/client/lib/contract/types.ts —— 在 breakdown 的行类型上加一个可选标记
-   breakdown?: Array<{ label: string; value: string; cost?: string; tone?: BarDatum['tone']; pulse?: boolean }>
-
-   // src/client/render/charts/breakdown.tsx —— 数值单元格挂上同一套呼吸 class
-   React.createElement('span', {
-     key: `v${i}`,
-     className: row.pulse ? 'dsx-stats-card-value dsx-value-pulse' : undefined,
-     style: { /* …原样式，tone 仍决定颜色… */ },
-   }, row.value)
-   ```
-
-   （`.dsx-value-pulse` 的 keyframes 已存在，`prefers-reduced-motion` 也已处理；不需要新增 CSS。）
-   本卡在这两处落地后把 `tone` 旁的 `pulse: track.status.peak && !track.wholeDayOff` 加上即可。
+4. ~~**明细行呼吸**~~ **车主要求不做**：只有 `EXPENSIVE` 大数字呼吸，时段行保持静态
+   —— 与 2×2 卡一致（那张卡的时段行本来就没有呼吸），设计语言统一优先于多加一处动效。
+   因此共享层**没有**加 `breakdown[].pulse`（曾经为它预留过，零消费者即删）。
 
 ## 自检
 

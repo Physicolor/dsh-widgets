@@ -53,9 +53,6 @@ export function BreakdownChart({ chart, scale }: ChartProps): React.ReactElement
     }, row.label))
     cells.push(React.createElement('span', {
       key: `v${i}`,
-      // `pulse` wears the SAME escalation class the big figures use, so the blink
-      // keyframes (and their reduced-motion opt-out) keep exactly one definition.
-      className: row.pulse === true ? 'dsx-stats-card-value dsx-value-pulse' : undefined,
       style: {
         fontSize: `${font}px`,
         lineHeight: 1.2,
