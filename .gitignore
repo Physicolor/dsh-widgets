@@ -33,3 +33,10 @@ docs/probe-*.png
 # Live probe artefacts (screenshots + jsonl) from the rail verification runs.
 .probe-rail/
 
+# Generated declarations. These are BUILD OUTPUT, not source: `tsc -p tsconfig.json`
+# emits ~106 .d.ts into lib/types/ (see scripts/build-types.mjs) so the package.json
+# `types` promise is real, but the runtime never reads them - unlike lib/*.js, which
+# the DSH plugin loader loads straight from this checkout. Regenerate with
+# `pnpm build` (or `pnpm run build:types`); verify with `pnpm run check:types`.
+lib/types/
+

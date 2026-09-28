@@ -31,9 +31,11 @@
   "scripts": {
     "gen:registry": "node scripts/gen-registry.mjs",
     "check:registry": "node scripts/gen-registry.mjs --check",
-    "build": "node scripts/gen-registry.mjs && tsdown",
+    "build": "node scripts/gen-registry.mjs && tsdown && node scripts/build-types.mjs",
+    "build:types": "node scripts/build-types.mjs",
     "check": "node scripts/gen-registry.mjs --check && tsc --noEmit",
-    "prepare": "tsdown"
+    "check:types": "node scripts/verify-published-types.mjs",
+    "prepare": "tsdown && node scripts/build-types.mjs"
   },
   "keywords": [
     "deepseek-harness",
