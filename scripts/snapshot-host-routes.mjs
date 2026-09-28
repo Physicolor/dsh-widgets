@@ -152,13 +152,19 @@ const CASES = [
   ['/api/widgets-usage-daily?refresh=1', { method: 'GET', url: '/api/widgets-usage-daily?provider=commandcode&refresh=1' }],
   ['/api/github (empty request)', { method: 'GET', url: '/api/github' }],
   ['/api/github?user=acme&repos=acme/widgets', { method: 'GET', url: '/api/github?user=acme&repos=acme/widgets' }],
+  ['/api/github?user=acme&notif=1', { method: 'GET', url: '/api/github?user=acme&notif=1' }],
   ['/api/widgets-state GET (fresh dir)', { method: 'GET', url: '/api/widgets-state' }],
   ['/api/widgets-state PUT', putBody({ savedAt: 1, state: { railOpen: true, order: ['sys-cpu@1x1'] } })],
   ['/api/widgets-state GET (after PUT)', { method: 'GET', url: '/api/widgets-state' }],
   ['/api/widgets-state DELETE (405)', { method: 'DELETE', url: '/api/widgets-state' }],
   ['/api/sysinfo (first sample)', { method: 'GET', url: '/api/sysinfo' }],
   ['/api/sysinfo (cache hit)', { method: 'GET', url: '/api/sysinfo' }],
+  ['/api/host/overview (first sample)', { method: 'GET', url: '/api/host/overview' }],
 ]
+
+/** Routes whose readings come from THIS machine, so only their top-level keys are
+ *  compared (see the `shape` fold below). */
+const MACHINE_DEPENDENT = new Set(['/api/sysinfo', '/api/host/overview'])
 
 /** Keys kept, numbers -> 0, strings -> "s". Arrays keep the shape of their first item. */
 function fingerprint(value) {
@@ -193,8 +199,11 @@ for (const [name, req] of CASES) {
   const captured = await invoke(handler, req)
   let parsed
   try { parsed = JSON.parse(captured.body) } catch { parsed = captured.body.slice(0, 200) }
-  // sysinfo is machine-dependent: compare its TOP-LEVEL keys only.
-  const shape = path === '/api/sysinfo' ? { keys: Object.keys(parsed ?? {}).sort() } : fingerprint(parsed)
+  // Some routes read THIS machine (hardware, listening ports, power source) and
+  // their deep shape is asserted by their own probes — `docs/verify-sysinfo.mjs`
+  // for the hardware half, `docs/research/HOST-DEVICE-AUDIT.md` for the rest. What
+  // this gate protects is that the CONTRACT's top-level keys did not move.
+  const shape = MACHINE_DEPENDENT.has(path) ? { keys: Object.keys(parsed ?? {}).sort() } : fingerprint(parsed)
   snapshot[name] = { status: captured.status, shape }
 }
 
