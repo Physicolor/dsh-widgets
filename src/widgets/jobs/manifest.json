@@ -1,0 +1,32 @@
+{
+  "id": "jobs",
+  "order": 86,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": false,
+  "locale": {
+    "zh": {
+      "widget.jobs.name": "后台作业",
+      "widget.jobs.desc": "本会话的后台作业：几个在跑、最久跑了多久、最近一个是什么",
+      "card.jobs.title": "后台作业",
+      "card.jobs.legend": "最久 {longest} · 共 {total} 个",
+      "card.jobs.idle": "已结束 {n} 个",
+      "card.jobs.longest": "最久",
+      "card.jobs.newest": "最近",
+      "card.jobs.failed": "失败",
+      "widget.jobs.simToggle": "切换 运行中 / 已跑完 / 空列表 预览"
+    },
+    "en": {
+      "widget.jobs.name": "Background Jobs",
+      "widget.jobs.desc": "This session's background jobs: how many are running, the longest one, and what the newest is",
+      "card.jobs.title": "Background Jobs",
+      "card.jobs.legend": "longest {longest} · {total} total",
+      "card.jobs.idle": "{n} finished",
+      "card.jobs.longest": "Longest",
+      "card.jobs.newest": "Newest",
+      "card.jobs.failed": "Failed",
+      "widget.jobs.simToggle": "Running / finished / empty preview"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "id": "window-forecast",
+  "order": 88,
+  "group": "coding-plan",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": false,
+  "source": "cc",
+  "skeleton": { "shape": "quotas" },
+  "locale": {
+    "zh": {
+      "widget.window-forecast.name": "窗口预测",
+      "widget.window-forecast.desc": "按当前速率，5 小时 / 周额度窗口会不会在重置前打满（额度管理只管月窗口）",
+      "widget.window-forecast.simToggle": "稍后读表",
+      "card.window-forecast.title": "窗口预测",
+      "card.window-forecast.win5h": "5h",
+      "card.window-forecast.winWeekly": "周",
+      "card.window-forecast.projected": "预计",
+      "card.window-forecast.fillIn": "预计 {d} 后打满",
+      "card.window-forecast.noFill": "不会打满 · {d}",
+      "card.window-forecast.resetLeft": "剩余重置"
+    },
+    "en": {
+      "widget.window-forecast.name": "Window Forecast",
+      "widget.window-forecast.desc": "At the current pace, will the 5h / weekly quota window hit its cap before it resets? (Quota Manager only covers the monthly window)",
+      "widget.window-forecast.simToggle": "Read later",
+      "card.window-forecast.title": "Window Forecast",
+      "card.window-forecast.win5h": "5h",
+      "card.window-forecast.winWeekly": "Weekly",
+      "card.window-forecast.projected": "est.",
+      "card.window-forecast.fillIn": "full in {d}",
+      "card.window-forecast.noFill": "no fill · {d}",
+      "card.window-forecast.resetLeft": "Until reset"
+    }
+  }
+}

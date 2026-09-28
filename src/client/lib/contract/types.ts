@@ -269,6 +269,11 @@ export interface PriceTable {
  */
 export interface GitHubNotifications {
   count: number
+  /** True when the upstream page was FULL, i.e. `count` is a floor ("30+"), not an
+   *  exact number. The same idea as `GitHubRepo.issueCountCapped`, and it exists
+   *  for the same reason: a card that prints a truncated page as an exact count is
+   *  lying by rounding. */
+  capped: boolean
   byReason: Record<string, number>
   newest: { title: string; repo: string; reason: string; updatedAt: string; url: string | null } | null
 }
@@ -957,9 +962,12 @@ export interface WidgetRenderOut {
   /** Value color override. `'danger'` renders the figure in the error red (the
    *  peak-pricing EXPENSIVE state); `'warn'` uses the warning amber, for a
    *  reading that is not wrong yet but is heading there (a quota window projected
-   *  to 94% of its cap). It follows the figure into whichever slot that card
-   *  renders it in — the title row, `headAfter.big`, or the body. */
-  valueTone?: 'danger' | 'warn'
+   *  to 94% of its cap); `'muted'` DE-EMPHASISES the figure, for a card whose
+   *  big slot currently holds nothing but the `—` placeholder (a desktop with no
+   *  battery) — at 20px a bare dash reads as a redaction bar, not as "no reading".
+   *  It follows the figure into whichever slot that card renders it in — the
+   *  title row, `headAfter.big`, or the body. */
+  valueTone?: 'danger' | 'warn' | 'muted'
   /** Slow red blink on the VALUE itself (e.g. peak pricing is live, or a plan
    *  projected past 100%): the text pulses between full and ~35% opacity in the
    *  error red. Text-level escalation — it deliberately does NOT paint the card. */

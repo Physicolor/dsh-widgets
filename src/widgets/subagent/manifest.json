@@ -1,0 +1,34 @@
+{
+  "id": "subagent",
+  "order": 84,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": false,
+  "locale": {
+    "zh": {
+      "widget.subagent.name": "子代理",
+      "widget.subagent.desc": "本会话派生的子代理数量、各自活跃时长与身份标签",
+      "card.subagent.title": "子代理",
+      "card.subagent.legendActive": "活跃时长 {dur}",
+      "card.subagent.legendEarliest": "最早 {ago} 前创建",
+      "card.subagent.longest": "最久",
+      "card.subagent.continuable": "持续型",
+      "card.subagent.recent": "最近",
+      "card.subagent.ago": "{ago} 前",
+      "widget.subagent.simToggle": "切换 活跃时长 / 创建时间 预览"
+    },
+    "en": {
+      "widget.subagent.name": "Subagents",
+      "widget.subagent.desc": "How many subagents this session spawned, how long each has been active, and their labels",
+      "card.subagent.title": "Subagents",
+      "card.subagent.legendActive": "active time {dur}",
+      "card.subagent.legendEarliest": "earliest created {ago} ago",
+      "card.subagent.longest": "Longest",
+      "card.subagent.continuable": "Continuable",
+      "card.subagent.recent": "Latest",
+      "card.subagent.ago": "{ago} ago",
+      "widget.subagent.simToggle": "Toggle active-time / created-at preview"
+    }
+  }
+}

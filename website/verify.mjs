@@ -576,7 +576,11 @@ try {
   await evalJs(cdp, `document.querySelector('.filter[data-filter="pricing"]').click()`);
   await new Promise((r) => setTimeout(r, 100));
   let visible = await evalJs(cdp, `Array.from(document.querySelectorAll('#gallery-grid .widget-card')).filter(c => !c.classList.contains('is-hidden')).length`);
-  check('Gallery filter: pricing = 1 card', visible === 1, `visible=${visible}`);
+  // The EXPECTED count is read from the page's own data instead of being pinned:
+  // a hardcoded 1 went stale the moment a second pricing card shipped, and the
+  // assertion then failed on a site that was perfectly correct (2026-09-29).
+  const pricingCount = await evalJs(cdp, `(window.DASH_WIDGETS?.widgets ?? []).filter(w => w.group === 'pricing').length`);
+  check(`Gallery filter: pricing = ${pricingCount} card(s)`, visible === pricingCount, `visible=${visible}`);
   await evalJs(cdp, `document.querySelector('.filter[data-filter="all"]').click()`);
 
   /* theme toggle light → dark + persistence */

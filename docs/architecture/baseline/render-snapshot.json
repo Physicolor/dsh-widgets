@@ -5566,6 +5566,131 @@
    }
   },
   {
+   "id": "model-config",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "提供方",
+       "value": "commandcode"
+      },
+      {
+       "label": "预设",
+       "value": "standard"
+      },
+      {
+       "label": "下次",
+       "tone": "primary",
+       "value": "换模型"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "medium"
+    },
+    "legend": "deepseek-v4-flash",
+    "title": "会话配置"
+   }
+  },
+  {
+   "id": "model-config",
+   "size": "2x2",
+   "sim": {
+    "state": "switched"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "提供方",
+       "value": "commandcode"
+      },
+      {
+       "label": "预设",
+       "value": "standard"
+      },
+      {
+       "label": "下次",
+       "tone": "primary",
+       "value": "换模型"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "medium"
+    },
+    "legend": "deepseek-v4-flash",
+    "title": "会话配置"
+   }
+  },
+  {
+   "id": "model-config",
+   "size": "2x2",
+   "sim": {
+    "state": "steady"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "提供方",
+       "value": "commandcode"
+      },
+      {
+       "label": "预设",
+       "value": "standard"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "high"
+    },
+    "legend": "deepseek-v4.1-flash",
+    "title": "会话配置"
+   }
+  },
+  {
+   "id": "model-config",
+   "size": "2x2",
+   "sim": {
+    "state": "noEffort"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "提供方",
+       "value": "commandcode"
+      },
+      {
+       "label": "预设",
+       "value": "standard"
+      },
+      {
+       "label": "下次",
+       "tone": "primary",
+       "value": "换模型"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "—"
+    },
+    "legend": "deepseek-v4-flash",
+    "title": "会话配置"
+   }
+  },
+  {
    "id": "peak-pricing-board",
    "size": "2x4",
    "sim": null,
@@ -5746,6 +5871,604 @@
     "legend": "恢复高峰 周一 09:00 · 还有 46h 30m",
     "title": "峰谷时段表",
     "valuePulse": false
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "目标",
+       "value": "把 dsh-widgets…"
+      },
+      {
+       "label": "阶段",
+       "tone": "danger",
+       "value": "受阻"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "12 / 40"
+    },
+    "legend": "受阻：等待你确认是否…",
+    "title": "目标进度"
+   }
+  },
+  {
+   "id": "subagent",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "持续型",
+       "value": "2 / 4"
+      },
+      {
+       "label": "最近 dsh-widgets 第三批 · subagent 卡面与预览链路复核",
+       "value": "4m 前"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "4"
+    },
+    "legend": "活跃时长 36m12s",
+    "title": "子代理",
+    "valueTone": "warn"
+   }
+  },
+  {
+   "id": "subagent",
+   "size": "2x2",
+   "sim": {
+    "noActive": false
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "持续型",
+       "value": "2 / 4"
+      },
+      {
+       "label": "最近 dsh-widgets 第三批 · subagent 卡面与预览链路复核",
+       "value": "4m 前"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "4"
+    },
+    "legend": "活跃时长 36m12s",
+    "title": "子代理",
+    "valueTone": "warn"
+   }
+  },
+  {
+   "id": "subagent",
+   "size": "2x2",
+   "sim": {
+    "noActive": true
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "持续型",
+       "value": "2 / 4"
+      },
+      {
+       "label": "最近 dsh-widgets 第三批 · subagent 卡面与预览链路复核",
+       "value": "4m 前"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "4"
+    },
+    "legend": "最早 48m 前创建",
+    "title": "子代理"
+   }
+  },
+  {
+   "id": "guard",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "当前",
+       "tone": "danger",
+       "value": "完全权限"
+      },
+      {
+       "label": "说明",
+       "value": "文件与命令均不询…"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "完全权限"
+    },
+    "legend": "4 个可选档位",
+    "title": "权限档位",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "guard",
+   "size": "2x2",
+   "sim": {
+    "currentValue": "danger-full-access"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "当前",
+       "tone": "danger",
+       "value": "完全权限"
+      },
+      {
+       "label": "说明",
+       "value": "文件与命令均不询…"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "完全权限"
+    },
+    "legend": "4 个可选档位",
+    "title": "权限档位",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "guard",
+   "size": "2x2",
+   "sim": {
+    "currentValue": "read-only"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "当前",
+       "value": "仅可查看"
+      },
+      {
+       "label": "说明",
+       "value": "只能读取文件…"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "仅可查看"
+    },
+    "legend": "4 个可选档位",
+    "title": "权限档位"
+   }
+  },
+  {
+   "id": "guard",
+   "size": "2x2",
+   "sim": {
+    "currentValue": "sandbox-off"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "当前",
+       "value": "sandbox-off"
+      },
+      {
+       "label": "说明",
+       "tone": "muted",
+       "value": "—"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "sandbox-off"
+    },
+    "legend": "4 个可选档位",
+    "title": "权限档位"
+   }
+  },
+  {
+   "id": "jobs",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "最久 npm run build --filter dsh-widgets",
+       "value": "12m4s"
+      },
+      {
+       "label": "最近 tail -f logs/dev.log",
+       "value": ""
+      },
+      {
+       "label": "失败",
+       "tone": "danger",
+       "value": "1"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "2"
+    },
+    "legend": "最久 12m4s · 共 4 个",
+    "title": "后台作业"
+   }
+  },
+  {
+   "id": "jobs",
+   "size": "2x2",
+   "sim": {
+    "state": "live",
+    "now": 1790251200000
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "最久 npm run build --filter dsh-widgets",
+       "value": "12m4s"
+      },
+      {
+       "label": "最近 tail -f logs/dev.log",
+       "value": ""
+      },
+      {
+       "label": "失败",
+       "tone": "danger",
+       "value": "1"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "2"
+    },
+    "legend": "最久 12m4s · 共 4 个",
+    "title": "后台作业"
+   }
+  },
+  {
+   "id": "jobs",
+   "size": "2x2",
+   "sim": {
+    "state": "idle",
+    "now": 1790251200000
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "最久",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "最近 tail -f logs/dev.log",
+       "value": ""
+      },
+      {
+       "label": "失败",
+       "tone": "danger",
+       "value": "1"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "0"
+    },
+    "legend": "已结束 4 个",
+    "title": "后台作业"
+   }
+  },
+  {
+   "id": "jobs",
+   "size": "2x2",
+   "sim": {
+    "state": "empty",
+    "now": 1790251200000
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "最久",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "最近",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "失败",
+       "tone": "muted",
+       "value": "0"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "0"
+    },
+    "legend": "已结束 0 个",
+    "title": "后台作业"
+   }
+  },
+  {
+   "id": "sys-disk",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "cardHint": "web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m",
+    "chart": {
+     "bars": [
+      {
+       "label": "C: 67.1G / 300G",
+       "ratio": 0.22353306426575598,
+       "tone": "primary",
+       "value": 22
+      },
+      {
+       "label": "D: 62.9G / 652G",
+       "ratio": 0.0963459891521553,
+       "tone": "danger",
+       "value": 9
+      }
+     ],
+     "kind": "bars"
+    },
+    "headAfter": {
+     "big": "D: 62.9G",
+     "smallLines": [
+      "剩余 · C: 22% · D: 9%",
+      "会话日志 346 文件 · 345M · +13/h"
+     ]
+    },
+    "title": "磁盘与自检",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-disk",
+   "size": "2x4",
+   "sim": {
+    "noHome": false
+   },
+   "out": {
+    "cardHint": "web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m",
+    "chart": {
+     "bars": [
+      {
+       "label": "C: 67.1G / 300G",
+       "ratio": 0.22353306426575598,
+       "tone": "primary",
+       "value": 22
+      },
+      {
+       "label": "D: 62.9G / 652G",
+       "ratio": 0.0963459891521553,
+       "tone": "danger",
+       "value": 9
+      }
+     ],
+     "kind": "bars"
+    },
+    "headAfter": {
+     "big": "D: 62.9G",
+     "smallLines": [
+      "剩余 · C: 22% · D: 9%",
+      "会话日志 346 文件 · 345M · +13/h"
+     ]
+    },
+    "title": "磁盘与自检",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-disk",
+   "size": "2x4",
+   "sim": {
+    "noHome": true
+   },
+   "out": {
+    "cardHint": "web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m",
+    "chart": {
+     "bars": [
+      {
+       "label": "C: 67.1G / 300G",
+       "ratio": 0.22353306426575598,
+       "tone": "primary",
+       "value": 22
+      },
+      {
+       "label": "D: 62.9G / 652G",
+       "ratio": 0.0963459891521553,
+       "tone": "danger",
+       "value": 9
+      }
+     ],
+     "kind": "bars"
+    },
+    "headAfter": {
+     "big": "D: 62.9G",
+     "smallLines": [
+      "剩余 · C: 22% · D: 9%",
+      "web 进程 525M · CPU 2.1% · 3h54m"
+     ]
+    },
+    "title": "磁盘与自检",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "window-forecast",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "5h",
+       "tone": "danger",
+       "value": "118% 预计"
+      },
+      {
+       "label": "周",
+       "value": "63% 预计"
+      },
+      {
+       "label": "剩余重置",
+       "value": "2h0m"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "118%"
+    },
+    "legend": "5h · 预计 1h14m 后打满",
+    "title": "窗口预测",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "window-forecast",
+   "size": "2x2",
+   "sim": {},
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "5h",
+       "tone": "danger",
+       "value": "118% 预计"
+      },
+      {
+       "label": "周",
+       "value": "63% 预计"
+      },
+      {
+       "label": "剩余重置",
+       "value": "2h0m"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "118%"
+    },
+    "legend": "5h · 预计 1h14m 后打满",
+    "title": "窗口预测",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "window-forecast",
+   "size": "2x2",
+   "sim": {
+    "aheadMs": 2700000
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "5h",
+       "tone": "warn",
+       "value": "94% 预计"
+      },
+      {
+       "label": "周",
+       "value": "63% 预计"
+      },
+      {
+       "label": "剩余重置",
+       "value": "1h15m"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "94%"
+    },
+    "legend": "5h · 不会打满 · 1h15m",
+    "title": "窗口预测",
+    "valueTone": "warn"
+   }
+  },
+  {
+   "id": "window-forecast",
+   "size": "2x2",
+   "sim": {
+    "aheadMs": 3600000
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "5h",
+       "value": "89% 预计"
+      },
+      {
+       "label": "周",
+       "value": "62% 预计"
+      },
+      {
+       "label": "剩余重置",
+       "value": "1h0m"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "89%"
+    },
+    "legend": "5h · 不会打满 · 1h0m",
+    "title": "窗口预测"
    }
   }
  ],
@@ -11316,6 +12039,131 @@
    }
   },
   {
+   "id": "model-config",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Via",
+       "value": "commandcode"
+      },
+      {
+       "label": "Preset",
+       "value": "standard"
+      },
+      {
+       "label": "Next",
+       "tone": "primary",
+       "value": "New model"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "medium"
+    },
+    "legend": "deepseek-v4-flash",
+    "title": "Session Config"
+   }
+  },
+  {
+   "id": "model-config",
+   "size": "2x2",
+   "sim": {
+    "state": "switched"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Via",
+       "value": "commandcode"
+      },
+      {
+       "label": "Preset",
+       "value": "standard"
+      },
+      {
+       "label": "Next",
+       "tone": "primary",
+       "value": "New model"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "medium"
+    },
+    "legend": "deepseek-v4-flash",
+    "title": "Session Config"
+   }
+  },
+  {
+   "id": "model-config",
+   "size": "2x2",
+   "sim": {
+    "state": "steady"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Via",
+       "value": "commandcode"
+      },
+      {
+       "label": "Preset",
+       "value": "standard"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "high"
+    },
+    "legend": "deepseek-v4.1-flash",
+    "title": "Session Config"
+   }
+  },
+  {
+   "id": "model-config",
+   "size": "2x2",
+   "sim": {
+    "state": "noEffort"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Via",
+       "value": "commandcode"
+      },
+      {
+       "label": "Preset",
+       "value": "standard"
+      },
+      {
+       "label": "Next",
+       "tone": "primary",
+       "value": "New model"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "—"
+    },
+    "legend": "deepseek-v4-flash",
+    "title": "Session Config"
+   }
+  },
+  {
    "id": "peak-pricing-board",
    "size": "2x4",
    "sim": null,
@@ -11496,6 +12344,604 @@
     "legend": "Back to peak Mon 09:00 · 46h 30m left",
     "title": "Peak Hours Board",
     "valuePulse": false
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Goal",
+       "value": "把 dsh-widgets…"
+      },
+      {
+       "label": "Phase",
+       "tone": "danger",
+       "value": "Blocked"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "12 / 40"
+    },
+    "legend": "Blocked: 等待你确认…",
+    "title": "Goal Progress"
+   }
+  },
+  {
+   "id": "subagent",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Continuable",
+       "value": "2 / 4"
+      },
+      {
+       "label": "Latest dsh-widgets 第三批 · subagent 卡面与预览链路复核",
+       "value": "4m ago"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "4"
+    },
+    "legend": "active time 36m12s",
+    "title": "Subagents",
+    "valueTone": "warn"
+   }
+  },
+  {
+   "id": "subagent",
+   "size": "2x2",
+   "sim": {
+    "noActive": false
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Continuable",
+       "value": "2 / 4"
+      },
+      {
+       "label": "Latest dsh-widgets 第三批 · subagent 卡面与预览链路复核",
+       "value": "4m ago"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "4"
+    },
+    "legend": "active time 36m12s",
+    "title": "Subagents",
+    "valueTone": "warn"
+   }
+  },
+  {
+   "id": "subagent",
+   "size": "2x2",
+   "sim": {
+    "noActive": true
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Continuable",
+       "value": "2 / 4"
+      },
+      {
+       "label": "Latest dsh-widgets 第三批 · subagent 卡面与预览链路复核",
+       "value": "4m ago"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "4"
+    },
+    "legend": "earliest created 48m ago",
+    "title": "Subagents"
+   }
+  },
+  {
+   "id": "guard",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Now",
+       "tone": "danger",
+       "value": "完全权限"
+      },
+      {
+       "label": "Allows",
+       "value": "文件与命令均…"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "完全权限"
+    },
+    "legend": "4 options",
+    "title": "Permissions",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "guard",
+   "size": "2x2",
+   "sim": {
+    "currentValue": "danger-full-access"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Now",
+       "tone": "danger",
+       "value": "完全权限"
+      },
+      {
+       "label": "Allows",
+       "value": "文件与命令均…"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "完全权限"
+    },
+    "legend": "4 options",
+    "title": "Permissions",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "guard",
+   "size": "2x2",
+   "sim": {
+    "currentValue": "read-only"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Now",
+       "value": "仅可查看"
+      },
+      {
+       "label": "Allows",
+       "value": "只能读取文件…"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "仅可查看"
+    },
+    "legend": "4 options",
+    "title": "Permissions"
+   }
+  },
+  {
+   "id": "guard",
+   "size": "2x2",
+   "sim": {
+    "currentValue": "sandbox-off"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Now",
+       "value": "sandbox-off"
+      },
+      {
+       "label": "Allows",
+       "tone": "muted",
+       "value": "—"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "sandbox-off"
+    },
+    "legend": "4 options",
+    "title": "Permissions"
+   }
+  },
+  {
+   "id": "jobs",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Longest npm run build --filter dsh-widgets",
+       "value": "12m4s"
+      },
+      {
+       "label": "Newest tail -f logs/dev.log",
+       "value": ""
+      },
+      {
+       "label": "Failed",
+       "tone": "danger",
+       "value": "1"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "2"
+    },
+    "legend": "longest 12m4s · 4 total",
+    "title": "Background Jobs"
+   }
+  },
+  {
+   "id": "jobs",
+   "size": "2x2",
+   "sim": {
+    "state": "live",
+    "now": 1790251200000
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Longest npm run build --filter dsh-widgets",
+       "value": "12m4s"
+      },
+      {
+       "label": "Newest tail -f logs/dev.log",
+       "value": ""
+      },
+      {
+       "label": "Failed",
+       "tone": "danger",
+       "value": "1"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "2"
+    },
+    "legend": "longest 12m4s · 4 total",
+    "title": "Background Jobs"
+   }
+  },
+  {
+   "id": "jobs",
+   "size": "2x2",
+   "sim": {
+    "state": "idle",
+    "now": 1790251200000
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Longest",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "Newest tail -f logs/dev.log",
+       "value": ""
+      },
+      {
+       "label": "Failed",
+       "tone": "danger",
+       "value": "1"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "0"
+    },
+    "legend": "4 finished",
+    "title": "Background Jobs"
+   }
+  },
+  {
+   "id": "jobs",
+   "size": "2x2",
+   "sim": {
+    "state": "empty",
+    "now": 1790251200000
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Longest",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "Newest",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "Failed",
+       "tone": "muted",
+       "value": "0"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "0"
+    },
+    "legend": "0 finished",
+    "title": "Background Jobs"
+   }
+  },
+  {
+   "id": "sys-disk",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "cardHint": "web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up",
+    "chart": {
+     "bars": [
+      {
+       "label": "C: 67.1G / 300G",
+       "ratio": 0.22353306426575598,
+       "tone": "primary",
+       "value": 22
+      },
+      {
+       "label": "D: 62.9G / 652G",
+       "ratio": 0.0963459891521553,
+       "tone": "danger",
+       "value": 9
+      }
+     ],
+     "kind": "bars"
+    },
+    "headAfter": {
+     "big": "D: 62.9G",
+     "smallLines": [
+      "free · C: 22% · D: 9%",
+      "Session logs 346 · 345M · +13/h"
+     ]
+    },
+    "title": "Disk & Self-check",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-disk",
+   "size": "2x4",
+   "sim": {
+    "noHome": false
+   },
+   "out": {
+    "cardHint": "web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up",
+    "chart": {
+     "bars": [
+      {
+       "label": "C: 67.1G / 300G",
+       "ratio": 0.22353306426575598,
+       "tone": "primary",
+       "value": 22
+      },
+      {
+       "label": "D: 62.9G / 652G",
+       "ratio": 0.0963459891521553,
+       "tone": "danger",
+       "value": 9
+      }
+     ],
+     "kind": "bars"
+    },
+    "headAfter": {
+     "big": "D: 62.9G",
+     "smallLines": [
+      "free · C: 22% · D: 9%",
+      "Session logs 346 · 345M · +13/h"
+     ]
+    },
+    "title": "Disk & Self-check",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-disk",
+   "size": "2x4",
+   "sim": {
+    "noHome": true
+   },
+   "out": {
+    "cardHint": "web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up",
+    "chart": {
+     "bars": [
+      {
+       "label": "C: 67.1G / 300G",
+       "ratio": 0.22353306426575598,
+       "tone": "primary",
+       "value": 22
+      },
+      {
+       "label": "D: 62.9G / 652G",
+       "ratio": 0.0963459891521553,
+       "tone": "danger",
+       "value": 9
+      }
+     ],
+     "kind": "bars"
+    },
+    "headAfter": {
+     "big": "D: 62.9G",
+     "smallLines": [
+      "free · C: 22% · D: 9%",
+      "web proc 525M · 2.1% CPU · 3h54m"
+     ]
+    },
+    "title": "Disk & Self-check",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "window-forecast",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "5h",
+       "tone": "danger",
+       "value": "118% est."
+      },
+      {
+       "label": "Weekly",
+       "value": "63% est."
+      },
+      {
+       "label": "Until reset",
+       "value": "2h0m"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "118%"
+    },
+    "legend": "5h · full in 1h14m",
+    "title": "Window Forecast",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "window-forecast",
+   "size": "2x2",
+   "sim": {},
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "5h",
+       "tone": "danger",
+       "value": "118% est."
+      },
+      {
+       "label": "Weekly",
+       "value": "63% est."
+      },
+      {
+       "label": "Until reset",
+       "value": "2h0m"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "118%"
+    },
+    "legend": "5h · full in 1h14m",
+    "title": "Window Forecast",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "window-forecast",
+   "size": "2x2",
+   "sim": {
+    "aheadMs": 2700000
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "5h",
+       "tone": "warn",
+       "value": "94% est."
+      },
+      {
+       "label": "Weekly",
+       "value": "63% est."
+      },
+      {
+       "label": "Until reset",
+       "value": "1h15m"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "94%"
+    },
+    "legend": "5h · no fill · 1h15m",
+    "title": "Window Forecast",
+    "valueTone": "warn"
+   }
+  },
+  {
+   "id": "window-forecast",
+   "size": "2x2",
+   "sim": {
+    "aheadMs": 3600000
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "5h",
+       "value": "89% est."
+      },
+      {
+       "label": "Weekly",
+       "value": "62% est."
+      },
+      {
+       "label": "Until reset",
+       "value": "1h0m"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "89%"
+    },
+    "legend": "5h · no fill · 1h0m",
+    "title": "Window Forecast"
    }
   }
  ]

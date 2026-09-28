@@ -82,7 +82,11 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
       // references — never a freshly built object, which would re-render for ever.
       const jobsBySession = useSessions ? useSessions((s: any) => s?.jobsBySession) : undefined
       const sessionsById = useSessions ? useSessions((s: any) => s?.byId) : undefined
-      const sessionId = useSession ? useSession((s: any) => s?.id) : undefined
+      // The session's own id: the client snapshot names it `sessionId` (verified
+      // against a live GUI, 2026-09-29 — reading `id` silently yielded undefined
+      // and the 后台作业 card never appeared). `id` stays as the fallback for a
+      // snapshot shape that carries it instead.
+      const sessionId = useSession ? useSession((s: any) => s?.sessionId ?? s?.id) : undefined
       // Bridge subscription: the sysinfo poll cadence depends on per-instance
       // refresh-interval config, so this collector re-renders on prefs changes
       // (emit) exactly like the capsule/rail bridges do.
@@ -574,7 +578,12 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
           ),
           jobs: normalizeJobs(
             typeof jobsBySession === 'object' && jobsBySession !== null && typeof sessionId === 'string'
-              ? (jobsBySession as Record<string, unknown>)[sessionId]
+              // The mirror omits a session that has no jobs, so an ABSENT key under a
+              // live mirror means "no jobs" (`[]`, which the 后台作业 card renders as
+              // 0 — the useful confirmation that the machine is idle), while a missing
+              // MIRROR means "cannot tell" (`null`, which hides the card). Collapsing
+              // the two would make the card vanish exactly when it is most reassuring.
+              ? ((jobsBySession as Record<string, unknown>)[sessionId] ?? [])
               : undefined,
           ),
         }

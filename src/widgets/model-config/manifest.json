@@ -1,0 +1,30 @@
+{
+  "id": "model-config",
+  "order": 82,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": false,
+  "locale": {
+    "zh": {
+      "widget.model-config.name": "会话配置",
+      "widget.model-config.desc": "本会话正在用的模型 / 推理档 / Agent 预设；下一轮请求换了路线时会显示出来",
+      "card.model-config.title": "会话配置",
+      "card.model-config.provider": "提供方",
+      "card.model-config.preset": "预设",
+      "card.model-config.next": "下次",
+      "card.model-config.switched": "换模型",
+      "card.model-config.simToggle": "换路线 / 稳定 / 无档位"
+    },
+    "en": {
+      "widget.model-config.name": "Session Config",
+      "widget.model-config.desc": "The model route, reasoning effort and agent preset this session runs; flags a route change queued for the next request",
+      "card.model-config.title": "Session Config",
+      "card.model-config.provider": "Via",
+      "card.model-config.preset": "Preset",
+      "card.model-config.next": "Next",
+      "card.model-config.switched": "New model",
+      "card.model-config.simToggle": "Route change / steady / no effort"
+    }
+  }
+}

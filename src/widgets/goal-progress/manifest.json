@@ -1,0 +1,40 @@
+{
+  "id": "goal-progress",
+  "order": 83,
+  "group": "system",
+  "builtin": true,
+  "sizes": [
+    "2x2"
+  ],
+  "defaultInstalled": false,
+  "locale": {
+    "zh": {
+      "widget.goal-progress.name": "目标进度",
+      "widget.goal-progress.desc": "当前目标的轮次进度与阶段（自主长跑时唯一可信的进度真相）",
+      "card.goal-progress.title": "目标进度",
+      "card.goal-progress.rounds": "{done} / {max}",
+      "card.goal-progress.legend": "{phase} · {ago} 前",
+      "card.goal-progress.blockedLegend": "{phase}：{reason}",
+      "card.goal-progress.objective": "目标",
+      "card.goal-progress.phase": "阶段",
+      "card.goal-progress.phase.active": "进行中",
+      "card.goal-progress.phase.paused": "已暂停",
+      "card.goal-progress.phase.blocked": "受阻",
+      "card.goal-progress.phase.complete": "已完成"
+    },
+    "en": {
+      "widget.goal-progress.name": "Goal Progress",
+      "widget.goal-progress.desc": "The active goal's round progress and lifecycle phase — the only progress truth an autonomous run has",
+      "card.goal-progress.title": "Goal Progress",
+      "card.goal-progress.rounds": "{done} / {max}",
+      "card.goal-progress.legend": "{phase} · {ago} ago",
+      "card.goal-progress.blockedLegend": "{phase}: {reason}",
+      "card.goal-progress.objective": "Goal",
+      "card.goal-progress.phase": "Phase",
+      "card.goal-progress.phase.active": "Active",
+      "card.goal-progress.phase.paused": "Paused",
+      "card.goal-progress.phase.blocked": "Blocked",
+      "card.goal-progress.phase.complete": "Complete"
+    }
+  }
+}

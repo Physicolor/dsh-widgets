@@ -344,6 +344,9 @@ let githubNotifLast: HostNotifications | null = null
 
 /** The reasons the 「待我处理」 card gives their own row. */
 const NOTIF_REASONS = ['review_requested', 'mention', 'assign', 'ci_activity'] as const
+/** Threads asked for in one page. A FULL page makes `count` a floor, which the
+ *  payload reports as `capped` (see HostNotifications). */
+const NOTIF_PAGE = 30
 
 /**
  * `GET /notifications` — the review queue. AUTHENTICATED ONLY.
@@ -361,7 +364,7 @@ const NOTIF_REASONS = ['review_requested', 'mention', 'assign', 'ci_activity'] a
 async function fetchNotifications(token: string): Promise<{ value: HostNotifications | null; error: string | null }> {
   try {
     const headers: Record<string, string> = { ...githubHeaders(token), 'If-None-Match': githubNotifEtag ?? '' }
-    const res = await githubFetch(`${GITHUB_API}/notifications?all=false&per_page=30`, { headers })
+    const res = await githubFetch(`${GITHUB_API}/notifications?all=false&per_page=${NOTIF_PAGE}`, { headers })
     // 304 = unchanged, and it does not consume the hourly budget. The last payload
     // is re-served rather than reported as an error: "unchanged" is not "empty".
     if (res.status === 304) return { value: githubNotifLast, error: githubNotifLast === null ? 'not-modified' : null }
@@ -381,6 +384,9 @@ async function fetchNotifications(token: string): Promise<{ value: HostNotificat
     const subject = asRecord(first?.subject)
     githubNotifLast = {
       count: list.length,
+      // A full page means the account has AT LEAST this many unread threads; the
+      // card prints `30+` rather than a number it cannot stand behind.
+      capped: list.length >= NOTIF_PAGE,
       byReason,
       newest: first === undefined ? null : {
         title: str(subject?.title) ?? '',

@@ -42,15 +42,18 @@ const HEAD_RING_ICONS: Record<string, React.ReactElement | null> = { database: d
 /**
  * The colour a `valueTone` figure wears.
  *
- * Two rungs, and the difference is the WHOLE point of the field: `danger` is a
- * state that is already wrong (peak pricing is live, a window is over its cap),
- * `warn` is a reading heading there but not there yet (a quota projected to 94%
- * of its cap). Collapsing them would either cry wolf or hide the warning.
+ * Three rungs, and the difference between them is the WHOLE point of the field:
+ * `danger` is a state that is already wrong (peak pricing is live, a window is
+ * over its cap); `warn` is a reading heading there but not there yet (a quota
+ * projected to 94% of its cap); `muted` DE-EMPHASISES it, which is what a big
+ * slot holding nothing but the `—` placeholder needs — at 20px a bare dash in
+ * the primary label colour reads as a redaction bar rather than as "no reading"
+ * (measured on the 供电 card's desktop state, 2026-09-29).
  */
 function valueColor(out: WidgetRenderOut): string {
-  return out.valueTone === 'warn'
-    ? 'var(--dsw-alias-state-warn-primary)'
-    : 'var(--dsw-alias-state-error-primary)'
+  if (out.valueTone === 'warn') return 'var(--dsw-alias-state-warn-primary)'
+  if (out.valueTone === 'muted') return 'var(--dsw-alias-label-tertiary)'
+  return 'var(--dsw-alias-state-error-primary)'
 }
 
 function RichBlock({ rich, scale }: { rich: WidgetRich; scale: number }): React.ReactElement {

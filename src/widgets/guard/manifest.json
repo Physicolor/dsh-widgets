@@ -1,0 +1,36 @@
+{
+  "id": "guard",
+  "order": 85,
+  "group": "system",
+  "builtin": true,
+  "sizes": [
+    "2x2"
+  ],
+  "defaultInstalled": false,
+  "locale": {
+    "zh": {
+      "widget.guard.name": "权限档位",
+      "widget.guard.desc": "本会话生效的权限档位与它允许做什么（投影已把 preset / 沙箱 / 审批三个旋钮折成一个值）",
+      "widget.guard.simToggle": "危险档位/只读档位",
+      "card.guard.title": "权限档位",
+      "card.guard.legend": "{n} 个可选档位",
+      "card.guard.current": "当前",
+      "card.guard.allows": "说明",
+      "card.guard.preset.readOnly": "仅可查看",
+      "card.guard.preset.workspaceWrite": "工作区内修改",
+      "card.guard.preset.fullAccess": "完全权限"
+    },
+    "en": {
+      "widget.guard.name": "Permissions",
+      "widget.guard.desc": "The effective permission preset and what it allows — the projection already folds preset, sandbox mode and approval policy into this one value",
+      "widget.guard.simToggle": "Dangerous/read-only",
+      "card.guard.title": "Permissions",
+      "card.guard.legend": "{n} options",
+      "card.guard.current": "Now",
+      "card.guard.allows": "Allows",
+      "card.guard.preset.readOnly": "Read Only",
+      "card.guard.preset.workspaceWrite": "Workspace Write",
+      "card.guard.preset.fullAccess": "Full access"
+    }
+  }
+}

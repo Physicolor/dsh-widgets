@@ -1,0 +1,36 @@
+{
+  "id": "sys-disk",
+  "order": 87,
+  "group": "device",
+  "builtin": false,
+  "sizes": ["2x4"],
+  "defaultInstalled": false,
+  "source": "sys",
+  "skeleton": { "shape": "figures", "count": 4 },
+  "locale": {
+    "zh": {
+      "widget.sys-disk.name": "磁盘与自检",
+      "widget.sys-disk.desc": "各盘剩余空间、DSH 会话日志的体积与增速、web 进程自身的占用——长跑 harness 最真实的运维风险",
+      "widget.sys-disk.simToggle": "切换 会话目录可读 / 读不到",
+      "card.sys-disk.title": "磁盘与自检",
+      "card.sys-disk.freeWord": "剩余",
+      "card.sys-disk.left": "{mount} {pct}%",
+      "card.sys-disk.more": "+{n}",
+      "card.sys-disk.home": "会话日志 {files} 文件 · {size} · +{recent}/h",
+      "card.sys-disk.proc": "web 进程 {rss} · CPU {cpu} · {uptime}",
+      "card.sys-disk.hint": "web 进程 PID {pid} · {rss} RSS · {cpu} CPU · 已跑 {uptime}"
+    },
+    "en": {
+      "widget.sys-disk.name": "Disk & Self-check",
+      "widget.sys-disk.desc": "Free space per drive, the DSH session-log footprint and its growth, and the web process's own usage — the operational risks a long-running harness actually hits",
+      "widget.sys-disk.simToggle": "Preview readable / unreadable session dir",
+      "card.sys-disk.title": "Disk & Self-check",
+      "card.sys-disk.freeWord": "free",
+      "card.sys-disk.left": "{mount} {pct}%",
+      "card.sys-disk.more": "+{n}",
+      "card.sys-disk.home": "Session logs {files} · {size} · +{recent}/h",
+      "card.sys-disk.proc": "web proc {rss} · {cpu} CPU · {uptime}",
+      "card.sys-disk.hint": "web process PID {pid} · {rss} RSS · {cpu} CPU · {uptime} up"
+    }
+  }
+}
