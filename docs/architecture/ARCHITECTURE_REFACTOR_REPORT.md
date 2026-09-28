@@ -320,6 +320,8 @@ import 就是两条，根因只有一个：缺 `@types/node`）。拆分文件�
 
 ## 16.6 §12 剩余项的复核结论
 
+> 本表是第二轮的复核结论。其中 **5–8 项的最终状态见 §17.3（第三轮已全部完成）**；1–4 项在 §16.1–§16.3 已落地。
+
 | # | 结论 |
 |---|---|
 | 1 | ✅ 已解决：`rail/measure.ts`（`railBudget`/`drawerEl` 仍归组合根，经访问器进出；观察器/计时器/`frameEl` 全部内移） |
@@ -359,5 +361,58 @@ import 就是两条，根因只有一个：缺 `@types/node`）。拆分文件�
   contract 靠 G4/G2 兜住；并且这轮**真的跑了 live 探针**（11/11、19/19、逐帧 0.0255），不再只靠字节推断。
 - 闸门从 6 个变成 7 个（+G7 host 路由契约），并且顺手修好了 G4 的幽灵产物漏洞与 G3 的容忍漏洞 ——
   这两个漏洞都属于「闸门看起来绿、其实什么都没测」这一类，比缺闸门更危险。
-- 仍未完成的都是**独立缺陷或可选拆分**，且每条都写清了修法与代价（§16.6 / §16.8），不是模糊地带。
+- 仍未完成的都是**独立缺陷或可选拆分**，且每条都写清了修法与代价（§16.6 / §16.8）—— 其中 §12 #5–#8 四项已在
+  **§17** 全部做掉。
+
+---
+
+# 17. 第三轮：把 §12 剩下的四项独立缺陷也做掉
+
+第二轮把「结构缺口」清完了；§16.6 列的四项（tsc 错误、`.d.ts`、死代码、token 层）当时**只复核没动手**，
+因为其中两项属于发布面。这一轮全部完成，并且每一项都带新的验证手段。
+
+## 17.1 本轮提交
+
+| 提交 | 内容 | 关键证据 |
+|---|---|---|
+| `db59bb5` | **§12 #5** 类型错误 35 → **0** | 装 `@types/node` + `@types/react-dom`（13 条）；新增 `src/client/slots-service.d.ts` 声明运行时 `slots` 服务（8 条）；修 22 条真实代码错误。G3 从「不恶化」升级为**必须 0 错**，`pnpm check` 全绿 |
+| `7b7e531` | **§12 #7** 死代码 | badge 整条链（`badgeOf` 无调用者、`widgetBadgeLabel` 只被它调、14 个单元的 `badgeLabel` 只喂给它、词典键 4 条）+ `GripIcon` + `COMMANDCODE_ROUTE` + 3 条死 CSS。**副作用：`contract/helpers.ts` 不再 import i18n，整个契约彻底零依赖** |
+| `a8e3094` | **§12 #8** token 层 | 两块 `:root` 提到 `styles/tokens.module.css`；逐 sheet 证明是「两条规则的纯置换」（未动的 sheet 字节相同、动的两个去掉各自 token 后字节相同、顺序保留） |
+| `78bce88` | **§12 #6** 发布 `.d.ts` | `scripts/build-types.mjs` 产出 106 个声明（tsdown 的 `dts:true` 实测只会吐 `lib/index.ts`，走不通）+ `lib/types/client/css-modules.d.ts` 与引用头；`npm pack --dry-run` 确认进包 |
+
+## 17.2 本轮新增的两个闸门与一处闸门升级
+
+| 闸门 | 作用 | 故意破坏验证 |
+|---|---|---|
+| **G8** `scripts/verify-published-types.mjs` | 建一个临时消费方（`node_modules/dsh-widgets` 是指向本仓库的 junction）导入两个入口，`skipLibCheck: false` 编译：走的是**真实 `exports` 映射**，声明里任何未解析的 import 都是错误 | ✅ 第一次运行就抓到 `/// <reference>` 指向了不存在的同级文件 |
+| G3 | 基线**清空**（0 容忍）：任何类型错误都红 | 0 错即硬门 |
+| G5 | 基线按 token 置换重录，并用 `--write` 之外的独立脚本证明「新旧 CSS 的差 = 恰好那两条规则」 | — |
+
+## 17.3 §16.6 四项的最终状态
+
+| # | §16.6 当时的结论 | 现在 |
+|---|---|---|
+| 5 | ⏳ 35 条，真修法是装类型包；`pnpm install` 不通过 | ✅ **0 条**。顺带查明 `pnpm install` 失败的原因：`.modules.yaml` 里记的虚拟仓库还是旧目录名 `harness-widgets`，一次重装即修好（现在 `pnpm install` 8 秒可用） |
+| 6 | ⏳ 只能给结论不动手（发布面） | ✅ 已发布面落地：声明产物 + css-modules shim + 新闸门 G8；`files` 里的承诺不再落空 |
+| 7 | ⏳ 死代码未清（含新发现的 `COMMANDCODE_ROUTE`） | ✅ 全部清除；「7 个空钩子」一条**已不可复现**（grep 空函数体与空 useEffect 均无命中），从清单里划掉 |
+| 8 | ⏳ token 块留在原位（§13.5 的取舍） | ✅ 提成 `tokens.module.css`，并用「逐 sheet 等价」替代「拼接字节全等」作为证据 |
+
+## 17.4 第三轮后的最终数字
+
+```text
+src/                        15,033 行 / 113 文件
+  client/index.ts              308      （起点 3,795，−92%）
+  host/ (10 文件)              31 + 1,072
+  rail/{rail-view,measure}     612 / 538
+  lib/contract/{types,helpers} 664 / 80   ← 两者都零 import
+  styles/ (6 文件, 含 tokens)  ~1,900
+最大手写文件                    rail/wave/RailWave.tsx 1,045（可选拆分，非缺陷）
+闸门                            8 个离线（G1–G8）+ 1 个 CI 内（verify-sysinfo）+ 一组 live 探针
+类型错误                        0
+```
+
+新增文档：**`docs/architecture/CODE_MAP.md`** —— 「我要改 X，去哪儿」的完整地图（含由
+`git ls-files` 生成的目录树、单元解剖、四层公共代码的边界、右栏显示链路与按钮归属、放大波算法拆解、
+设置面、数据流、样式与国际化、闸门清单、以及「改的时候别破坏的 9 条不变量」）。
+
 
