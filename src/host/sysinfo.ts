@@ -8,6 +8,7 @@
  */
 import { cpus, freemem, totalmem } from 'node:os'
 import { execFileP } from './exec'
+import { createMachineSampler } from './machine'
 import { type HostContext } from './context'
 
   // Machine-local hardware snapshot (System widgets): CPU utilization (delta
@@ -23,6 +24,10 @@ export function registerSysinfo(ctx: HostContext): () => void {
     /** Utilization sample history for the sparklines (newest last). */
     const history: Array<{ t: number; cpu: number | null; gpu: number | null }> = []
     const HISTORY_CAP = 120
+    // Disk / session-log / own-process readings: their own TTLs live in the
+    // sampler, so this route can be hit every 5 s without re-walking the session
+    // directory (see host/machine.ts).
+    const machine = createMachineSampler()
     return ctx.webServer.register({
       kind: 'exact',
       path: '/api/sysinfo',
@@ -92,6 +97,10 @@ export function registerSysinfo(ctx: HostContext): () => void {
             cpu: history.map((h) => h.cpu),
             gpu: history.map((h) => h.gpu),
           },
+          // Disk / session-log / own-process. Cheap on a cache hit (see
+          // host/machine.ts): the drive probe is ~2 ms and the directory walk is
+          // held for a minute, so riding the hardware poll costs nothing.
+          machine: await machine.sample(),
         }
         cache = { ts: now, payload }
         res.writeHead(200, { 'Content-Type': 'application/json' })

@@ -22,7 +22,7 @@ import type { CommandCodeData, GitHubData, SysInfo, UsageData, UsageMulti } from
 import { DEFAULT_TZ, accumulateHeatmap, buildHeatmapGrid, dateKey, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from '../lib/heatmap-accounting'
 import { ccPayloadDegraded } from '../families/cc/data'
 import { ingestSysInfo, resolveInterval } from '../families/sys/data'
-import { type Stats, deriveCompaction, deriveStats, deriveTools, deriveTrajectory } from './session-stats'
+import { type Stats, deriveCompaction, deriveStats, deriveTools, deriveTrajectory, normalizeGoal, normalizeModelSelection, normalizePermissions, normalizeSubagents } from './session-stats'
 import { type BridgeSnapshot, type BridgeState } from '../runtime/bridge'
 import { type Prefs } from '../runtime/prefs'
 
@@ -64,6 +64,17 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
       const contextPres = useProjection ? useProjection('contextPressure') : undefined
       const contextBrk = useProjection ? useProjection('contextBreakdown') : undefined
       const todosProj = useProjection ? useProjection('todos') : undefined
+      // Session-shape projections: WHICH model/preset this session runs, whether
+      // a goal is driving it, what it is allowed to do, and what children it has
+      // spawned. Each is read defensively — a deployment that composes none of
+      // them hands back undefined, and the cards built on them then render
+      // nothing instead of a fabricated value (see the normalizers in
+      // session-stats.ts: unknown members are dropped, never passed through).
+      const modelSelProj = useProjection ? useProjection('modelSelection') : undefined
+      const agentPresetProj = useProjection ? useProjection('agentPreset') : undefined
+      const goalProj = useProjection ? useProjection('goal') : undefined
+      const permsProj = useProjection ? useProjection('permissions') : undefined
+      const subagentProj = useProjection ? useProjection('subagentCatalog') : undefined
       // Bridge subscription: the sysinfo poll cadence depends on per-instance
       // refresh-interval config, so this collector re-renders on prefs changes
       // (emit) exactly like the capsule/rail bridges do.
@@ -504,9 +515,16 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
           // masquerade as a zero, or the record would override the preview's own
           // example and leave a reviewable card showing nothing.
           compactions: compaction.count > 0 ? compaction : null,
+          // Session shape (see the projection reads above): normalized here so
+          // every card downstream can trust the shape it is handed.
+          modelSelection: normalizeModelSelection(modelSelProj),
+          agentPreset: typeof agentPresetProj === 'string' && agentPresetProj !== '' ? agentPresetProj : null,
+          goal: normalizeGoal(goalProj),
+          permissions: normalizePermissions(permsProj),
+          subagents: normalizeSubagents(subagentProj),
         }
         setState({ stats })
-      }, [settled, projected, usage, contextPres, contextBrk, todosProj, timeline, runningCalls, now, snap.usageDaily, deps.getPrefs().cardConfigs?.heatmap?.monthMode, deps.getPrefs().cardConfigs?.heatmap?.timeZone])
+      }, [settled, projected, usage, contextPres, contextBrk, todosProj, modelSelProj, agentPresetProj, goalProj, permsProj, subagentProj, timeline, runningCalls, now, snap.usageDaily, deps.getPrefs().cardConfigs?.heatmap?.monthMode, deps.getPrefs().cardConfigs?.heatmap?.timeZone])
       return null
   }
 }

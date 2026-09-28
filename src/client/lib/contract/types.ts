@@ -253,6 +253,31 @@ export interface SysInfo {
     cpu: Array<number | null>
     gpu: Array<number | null>
   }
+  /** Disk space, the session-log footprint and the host process — the
+   *  device/self-check half (see MachineInfo). Absent on an older host half. */
+  machine?: MachineInfo
+}
+
+/**
+ * The machine / self-check half of `/api/sysinfo` (see `host/machine.ts`).
+ *
+ * Distinct from the hardware half next to it because its cadence is: CPU/GPU move
+ * every poll, while drive space, the session-log footprint and the host process's
+ * own memory move on the scale of minutes — the host caches each reading with its
+ * own TTL so a 5 s card poll does not walk the session directory twelve times a
+ * minute.
+ *
+ * `home` is `null` when the session directory cannot be read at all, which is a
+ * different statement from a directory that is genuinely empty (`files: 0`).
+ */
+export interface MachineInfo {
+  ts: number
+  /** Every mounted fixed drive, in drive-letter order. */
+  disks: Array<{ mount: string; total: number; free: number }>
+  /** The DSH home's session-log footprint; null when unreadable. */
+  home: { sessionsFiles: number; sessionsBytes: number; recentFiles: number } | null
+  /** The `dsh web` host process itself. */
+  proc: { pid: number; rss: number; cpuPercent: number | null; uptimeSec: number }
 }
 
 /** Session stats a widget render can read. */
@@ -327,6 +352,21 @@ export interface WidgetStats {
   /** The compaction fold (see CompactionSummary): how much history was folded
    *  away and when — the 上下文压缩 card's whole input. */
   compactions?: CompactionSummary | null
+  /** The model route of the last request and of the next one (projection
+   *  `modelSelection`). `null` when this deployment composes no session
+   *  controller — a card whose whole subject is the route then renders nothing. */
+  modelSelection?: ModelSelectionInfo | null
+  /** The agent preset this session runs (projection `agentPreset`); `null` when
+   *  the deployment composes none. */
+  agentPreset?: string | null
+  /** The durable goal (projection `goal`); `null` when this session has none. */
+  goal?: GoalInfo | null
+  /** The effective permission select (projection `permissions`); `null` when no
+   *  permission service is composed (clients then hide the control). */
+  permissions?: PermissionInfo | null
+  /** Direct children of this session (projection `subagentCatalog`), in catalog
+   *  order (oldest first). `null` = projection absent; `[]` = no children. */
+  subagents?: SubagentEntry[] | null
   /** Per-instance config merged by the shell (typed any: widgets with a
    *  configSchema read their keys from the same record the collector feeds). */
   [key: string]: unknown
@@ -405,6 +445,74 @@ export interface CompactionSummary {
 
 /** How many compaction events the fold keeps for the card's history rows. */
 export const COMPACTION_HISTORY = 5
+
+/**
+ * The model route a session is using — the `modelSelection` projection's own
+ * shape, re-stated here so a widget never imports the session controller.
+ *
+ * `reasoningEffort` is ABSENT when the route publishes no efforts at all, which
+ * is a different statement from "effort = the default" — cards print `—` for the
+ * first and the effort id for the second, never a guess.
+ */
+export interface ModelRoute {
+  provider: string
+  model: string
+  reasoningEffort?: string
+}
+
+/** The model route the last request used, and the one the NEXT request will use.
+ *  Both are null when the session has not recorded a model request yet. */
+export interface ModelSelectionInfo {
+  next: ModelRoute | null
+  lastUsed: ModelRoute | null
+}
+
+/**
+ * The durable goal of one session (the `goal` projection), flattened.
+ *
+ * `roundsStarted` counts ADMITTED user turns against `maxGoalRounds` — the only
+ * progress truth an autonomous run has. `phase` is the durable lifecycle
+ * (`active` | `paused` | `blocked` | `complete`); `blockedReason` is present
+ * exactly while it is `blocked`.
+ */
+export interface GoalInfo {
+  objective: string
+  phase: 'active' | 'paused' | 'blocked' | 'complete'
+  roundsStarted: number
+  maxGoalRounds: number
+  createdAt: number
+  updatedAt: number
+  blockedReason?: { code: string; message: string }
+}
+
+/**
+ * The effective permission select (the `permissions` projection): the preset the
+ * session currently runs (`currentValue`, a table key or `custom`) plus every
+ * switchable option with its human label.
+ *
+ * The projection folds the THREE knobs (preset + sandbox mode + approval policy)
+ * into this one value, which is why a card shows the preset's label rather than
+ * re-deriving sandbox/approval itself: the fold is the authority.
+ */
+export interface PermissionInfo {
+  currentValue: string
+  options: Array<{ value: string; name: string; description?: string }>
+}
+
+/**
+ * One direct child of this session (the `subagentCatalog` projection).
+ *
+ * Deliberately NARROW: the catalog carries identity and creation time, not
+ * liveness or spend. A card must therefore say how many children exist and how
+ * long ago they were created — it must NOT claim one is "running", which this
+ * projection cannot answer.
+ */
+export interface SubagentEntry {
+  id: string
+  createdAt: number
+  mode: 'one-shot' | 'continuable'
+  label?: string
+}
 
 /** One bar for a mini bar chart. */
 export interface BarDatum {

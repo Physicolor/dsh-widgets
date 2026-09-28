@@ -10,7 +10,7 @@
  * for a given input, which is what makes the numbers testable in isolation.
  */
 
-import { COMPACTION_HISTORY, TRAJECTORY_WINDOW, type CompactionSummary, type ToolCallSummary, type TrajectoryBeat } from '../lib/contract/types'
+import { COMPACTION_HISTORY, TRAJECTORY_WINDOW, type CompactionSummary, type GoalInfo, type ModelRoute, type ModelSelectionInfo, type PermissionInfo, type SubagentEntry, type ToolCallSummary, type TrajectoryBeat } from '../lib/contract/types'
 
 /** Session stats shape collected by the dock collector. */
 export interface Stats {
@@ -33,6 +33,106 @@ export interface Stats {
   trajectory?: TrajectoryBeat[]
   tools?: ToolCallSummary
   compactions?: CompactionSummary | null
+  modelSelection?: ModelSelectionInfo | null
+  agentPreset?: string | null
+  goal?: GoalInfo | null
+  permissions?: PermissionInfo | null
+  subagents?: SubagentEntry[] | null
+}
+
+/**
+ * Normalize the `modelSelection` projection into the contract's own shape.
+ *
+ * The projection's wire value is read defensively: a bundle whose session
+ * controller is older, newer, or absent hands us anything at all, and a card
+ * must never be the thing that throws inside the selector (the slot renderer
+ * answers a throwing selector by abdicating the whole entry — every card's data
+ * goes with it). Unknown members are DROPPED rather than passed through, so a
+ * widget can trust the shape it is handed.
+ *
+ * @param value - the raw projection value (any).
+ * @returns the normalized value, or null when there is nothing to report.
+ */
+export function normalizeModelSelection(value: unknown): ModelSelectionInfo | null {
+  if (value === null || typeof value !== 'object') return null
+  const route = (raw: unknown): ModelRoute | null => {
+    if (raw === null || typeof raw !== 'object') return null
+    const r = raw as Record<string, unknown>
+    if (typeof r.provider !== 'string' || typeof r.model !== 'string') return null
+    return {
+      provider: r.provider,
+      model: r.model,
+      ...(typeof r.reasoningEffort === 'string' ? { reasoningEffort: r.reasoningEffort } : {}),
+    }
+  }
+  const v = value as Record<string, unknown>
+  const next = route(v.next)
+  const lastUsed = route(v.lastUsed)
+  if (next === null && lastUsed === null) return null
+  return { next, lastUsed }
+}
+
+/** Normalize the `goal` projection; null when this session has no goal. */
+export function normalizeGoal(value: unknown): GoalInfo | null {
+  if (value === null || typeof value !== 'object') return null
+  const v = value as Record<string, unknown>
+  const snap = v.goal
+  if (snap === null || typeof snap !== 'object') return null
+  const g = snap as Record<string, unknown>
+  if (typeof g.objective !== 'string') return null
+  const phase = g.phase
+  if (phase !== 'active' && phase !== 'paused' && phase !== 'blocked' && phase !== 'complete') return null
+  const reason = g.blockedReason
+  const blockedReason = reason !== null && typeof reason === 'object' && typeof (reason as Record<string, unknown>).message === 'string'
+    ? {
+        code: String((reason as Record<string, unknown>).code ?? ''),
+        message: String((reason as Record<string, unknown>).message),
+      }
+    : undefined
+  return {
+    objective: g.objective,
+    phase,
+    roundsStarted: typeof v.roundsStarted === 'number' ? v.roundsStarted : 0,
+    maxGoalRounds: typeof g.maxGoalRounds === 'number' ? g.maxGoalRounds : 0,
+    createdAt: typeof v.createdAt === 'number' ? v.createdAt : 0,
+    updatedAt: typeof v.updatedAt === 'number' ? v.updatedAt : 0,
+    ...(blockedReason !== undefined ? { blockedReason } : {}),
+  }
+}
+
+/** Normalize the `permissions` projection; null when no permission service is composed. */
+export function normalizePermissions(value: unknown): PermissionInfo | null {
+  if (value === null || typeof value !== 'object') return null
+  const v = value as Record<string, unknown>
+  if (typeof v.currentValue !== 'string') return null
+  const options = Array.isArray(v.options)
+    ? v.options.flatMap((raw): PermissionInfo['options'] => {
+        if (raw === null || typeof raw !== 'object') return []
+        const o = raw as Record<string, unknown>
+        if (typeof o.value !== 'string' || typeof o.name !== 'string') return []
+        return [{ value: o.value, name: o.name, ...(typeof o.description === 'string' ? { description: o.description } : {}) }]
+      })
+    : []
+  return { currentValue: v.currentValue, options }
+}
+
+/** Normalize the `subagentCatalog` projection: identity rows only, unknown
+ *  members dropped. Returns null when the projection is absent (which is NOT the
+ *  same statement as "no children" — that is `[]`). */
+export function normalizeSubagents(value: unknown): SubagentEntry[] | null {
+  if (!Array.isArray(value)) return null
+  return value.flatMap((raw): SubagentEntry[] => {
+    if (raw === null || typeof raw !== 'object') return []
+    const e = raw as Record<string, unknown>
+    if (typeof e.id !== 'string' || typeof e.createdAt !== 'number') return []
+    const mode = e.mode === 'continuable' ? 'continuable' : 'one-shot'
+    return [{
+      id: e.id,
+      createdAt: e.createdAt,
+      mode,
+      ...(typeof e.label === 'string' && e.label !== '' ? { label: e.label } : {}),
+    }]
+  })
 }
 
 /** Coerce a possibly-undefined timestamp to a finite number (null when unusable). */
