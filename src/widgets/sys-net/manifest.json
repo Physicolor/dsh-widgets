@@ -1,0 +1,31 @@
+{
+  "id": "sys-net",
+  "order": 89,
+  "group": "device",
+  "builtin": false,
+  "sizes": [
+    "2x2"
+  ],
+  "source": "sys",
+  "skeleton": {
+    "shape": "text"
+  },
+  "locale": {
+    "zh": {
+      "widget.sys-net.name": "网络吞吐",
+      "widget.sys-net.desc": "本机网卡的实时收发速率（两次计数采样差分），以及当前最忙的那张网卡",
+      "card.sys-net.title": "网络吞吐",
+      "card.sys-net.busiest": "最忙",
+      "card.sys-net.simToggle": "在线 / 零流量 / 等待样本",
+      "card.sys-net.adapters": "{n} 张网卡"
+    },
+    "en": {
+      "widget.sys-net.name": "Network Throughput",
+      "widget.sys-net.desc": "Live per-adapter receive / transmit rate (a counter delta) for this machine, plus the busiest adapter",
+      "card.sys-net.title": "Network",
+      "card.sys-net.busiest": "Busy",
+      "card.sys-net.simToggle": "Live / idle / no sample",
+      "card.sys-net.adapters": "{n} links"
+    }
+  }
+}

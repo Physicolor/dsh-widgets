@@ -83,7 +83,7 @@
     "@id": "https://physicolor.github.io/dsh-widgets/#widgets",
     "name": "dsh-widgets widget library",
     "description": "Every widget unit shipped by dsh-widgets, generated from the src/widgets unit manifests.",
-    "numberOfItems": 50,
+    "numberOfItems": 55,
     "itemListOrder": "https://schema.org/ItemListOrderAscending",
     "itemListElement": [
             {
@@ -435,6 +435,41 @@
               "name": "窗口预测 / Window Forecast",
               "description": "按当前速率，5 小时 / 周额度窗口会不会在重置前打满（额度管理只管月窗口） At the current pace, will the 5h / weekly quota window hit its cap before it resets? (Quota Manager only covers the monthly window)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/window-forecast"
+            },
+            {
+              "@type": "ListItem",
+              "position": 51,
+              "name": "网络吞吐 / Network Throughput",
+              "description": "本机网卡的实时收发速率（两次计数采样差分），以及当前最忙的那张网卡 Live per-adapter receive / transmit rate (a counter delta) for this machine, plus the busiest adapter",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-net"
+            },
+            {
+              "@type": "ListItem",
+              "position": 52,
+              "name": "供电 / Power",
+              "description": "是否在用电池、剩余电量与预计续航，以及当前 Windows 电源方案 Whether this machine runs on battery, its charge and remaining runtime, and the active Windows power scheme",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-power"
+            },
+            {
+              "@type": "ListItem",
+              "position": 53,
+              "name": "内存大户 / Top Processes",
+              "description": "按工作集内存排序的前几名进程；多 agent / 多模型并行时回答「谁把内存吃满了」 The top processes by working-set memory — who is eating the RAM while several agents or models run at once",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-procs"
+            },
+            {
+              "@type": "ListItem",
+              "position": 54,
+              "name": "会话成本 / Session Cost",
+              "description": "把本会话的四桶 token 按价格表折成钱，并标出这个金额的来源（官方价 / 中转价 / 免费路由 / 估算价） Folds this session's four token buckets into money using the price table, and says which table it used (official / reseller / free route / estimated)",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/session-cost"
+            },
+            {
+              "@type": "ListItem",
+              "position": 55,
+              "name": "待我处理 / To Review",
+              "description": "GitHub 上等我的未读线程：review 请求 / @提及 / 指派，以及最新的一条；需要 token 或 gh 登录（未登录时该卡不出现） Unread GitHub threads waiting on you: review requests, mentions and assignments, plus the newest one — needs a token or a gh login (no card at all when signed out)",
+              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/github-notify"
             }
     ]
   }
@@ -1669,6 +1704,101 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
                 
                 <button type="button" class="widget-open" data-widget="window-forecast" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="device" data-widget="sys-net" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="sys-net" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">网络吞吐<span class="widget-name-en">Network Throughput</span></span>
+                <span class="widget-id">sys-net</span>
+              </div>
+              <p class="widget-desc">本机网卡的实时收发速率（两次计数采样差分），以及当前最忙的那张网卡<span class="widget-desc-en"> Live per-adapter receive / transmit rate (a counter delta) for this machine, plus the busiest adapter</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.device">设备状态</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="sys-net" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="device" data-widget="sys-power" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="sys-power" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">供电<span class="widget-name-en">Power</span></span>
+                <span class="widget-id">sys-power</span>
+              </div>
+              <p class="widget-desc">是否在用电池、剩余电量与预计续航，以及当前 Windows 电源方案<span class="widget-desc-en"> Whether this machine runs on battery, its charge and remaining runtime, and the active Windows power scheme</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.device">设备状态</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="sys-power" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="device" data-widget="sys-procs" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="sys-procs" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">内存大户<span class="widget-name-en">Top Processes</span></span>
+                <span class="widget-id">sys-procs</span>
+              </div>
+              <p class="widget-desc">按工作集内存排序的前几名进程；多 agent / 多模型并行时回答「谁把内存吃满了」<span class="widget-desc-en"> The top processes by working-set memory — who is eating the RAM while several agents or models run at once</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.device">设备状态</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="sys-procs" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="coding-plan" data-widget="session-cost" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="session-cost" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">会话成本<span class="widget-name-en">Session Cost</span></span>
+                <span class="widget-id">session-cost</span>
+              </div>
+              <p class="widget-desc">把本会话的四桶 token 按价格表折成钱，并标出这个金额的来源（官方价 / 中转价 / 免费路由 / 估算价）<span class="widget-desc-en"> Folds this session's four token buckets into money using the price table, and says which table it used (official / reseller / free route / estimated)</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.coding-plan">Coding Plan 用量</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
+                
+                <button type="button" class="widget-open" data-widget="session-cost" data-i18n="openDetail">解剖 / 审计</button>
+              </div>
+            </div>
+          </article>
+          <article class="widget-card" data-group="github" data-widget="github-notify" role="listitem">
+            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="github-notify" data-size="2x2"></div></div>
+            <div class="widget-body">
+              <div class="widget-name-row">
+                <span class="widget-name">待我处理<span class="widget-name-en">To Review</span></span>
+                <span class="widget-id">github-notify</span>
+              </div>
+              <p class="widget-desc">GitHub 上等我的未读线程：review 请求 / @提及 / 指派，以及最新的一条；需要 token 或 gh 登录（未登录时该卡不出现）<span class="widget-desc-en"> Unread GitHub threads waiting on you: review requests, mentions and assignments, plus the newest one — needs a token or a gh login (no card at all when signed out)</span></p>
+              <div class="widget-meta">
+                <span class="badge" data-i18n="group.github">GitHub</span>
+                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
+                <span class="badge" data-i18n="ia.readonly"></span>
+                <span class="badge badge-warn" data-i18n="badgeMarket">市场</span>
+                
+                <button type="button" class="widget-open" data-widget="github-notify" data-i18n="openDetail">解剖 / 审计</button>
               </div>
             </div>
           </article>

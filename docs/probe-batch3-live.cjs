@@ -31,6 +31,11 @@ const NEW_CARDS = [
   'jobs@2x2',
   'window-forecast@2x2',
   'sys-disk@2x4',
+  'sys-net@2x2',
+  'sys-power@2x2',
+  'sys-procs@2x2',
+  'session-cost@2x2',
+  'github-notify@2x2',
 ]
 
 async function main() {

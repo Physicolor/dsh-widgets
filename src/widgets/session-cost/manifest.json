@@ -1,0 +1,48 @@
+{
+  "id": "session-cost",
+  "order": 93,
+  "group": "coding-plan",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": false,
+  "source": "cc",
+  "skeleton": { "shape": "text" },
+  "locale": {
+    "zh": {
+      "widget.session-cost.name": "会话成本",
+      "widget.session-cost.desc": "把本会话的四桶 token 按价格表折成钱，并标出这个金额的来源（官方价 / 中转价 / 免费路由 / 估算价）",
+      "widget.session-cost.simToggle": "命中价 / 高峰价 / 无价格表",
+      "card.session-cost.title": "会话成本",
+      "card.session-cost.uncached": "未命中",
+      "card.session-cost.read": "缓存命中",
+      "card.session-cost.output": "输出",
+      "card.session-cost.src.official": "官方价",
+      "card.session-cost.src.reseller": "中转价",
+      "card.session-cost.src.local": "免费路由",
+      "card.session-cost.src.fallback": "估算价",
+      "card.session-cost.src.unknown": "来源未标注",
+      "card.session-cost.noTable": "无价格表 · 仅 token",
+      "card.session-cost.noRoute": "无模型路由 · 仅 token",
+      "card.session-cost.noRule": "无匹配价 · 仅 token",
+      "card.session-cost.estHint": "按当前费率估算整段：会话记录里没有逐请求时间戳，无法把高峰 / 低谷时段分开计价，所以金额是估算值（≈）"
+    },
+    "en": {
+      "widget.session-cost.name": "Session Cost",
+      "widget.session-cost.desc": "Folds this session's four token buckets into money using the price table, and says which table it used (official / reseller / free route / estimated)",
+      "widget.session-cost.simToggle": "List rate / peak rate / no price table",
+      "card.session-cost.title": "Session Cost",
+      "card.session-cost.uncached": "Miss",
+      "card.session-cost.read": "Hit",
+      "card.session-cost.output": "Output",
+      "card.session-cost.src.official": "Official rate",
+      "card.session-cost.src.reseller": "Reseller rate",
+      "card.session-cost.src.local": "Free route",
+      "card.session-cost.src.fallback": "Estimated rate",
+      "card.session-cost.src.unknown": "Source not stated",
+      "card.session-cost.noTable": "No price table · tokens",
+      "card.session-cost.noRoute": "No model route · tokens",
+      "card.session-cost.noRule": "No rate match · tokens",
+      "card.session-cost.estHint": "Estimated at the rate in effect now: the session record carries no per-request timestamps, so peak and off-peak hours cannot be priced apart (hence the ≈)."
+    }
+  }
+}

@@ -6082,7 +6082,7 @@
      "breakdown": [
       {
        "label": "当前",
-       "value": "sandbox-off"
+       "value": "Sandbox Off"
       },
       {
        "label": "说明",
@@ -6093,7 +6093,7 @@
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "sandbox-off"
+     "big": "Sandbox Off"
     },
     "legend": "4 个可选档位",
     "title": "权限档位"
@@ -6470,6 +6470,721 @@
     "legend": "5h · 不会打满 · 1h0m",
     "title": "窗口预测"
    }
+  },
+  {
+   "id": "sys-net",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Wi-Fi 6E",
+       "value": "1.2 MB/s"
+      },
+      {
+       "label": "Hyper-V",
+       "value": "12 KB/s"
+      },
+      {
+       "label": "Loopback",
+       "value": "0 B/s"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1.2 MB/s"
+    },
+    "legend": "↑ 92 KB/s · 3 张网卡",
+    "title": "网络吞吐"
+   }
+  },
+  {
+   "id": "sys-net",
+   "size": "2x2",
+   "sim": {
+    "mode": "live"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Wi-Fi 6E",
+       "value": "1.2 MB/s"
+      },
+      {
+       "label": "Hyper-V",
+       "value": "12 KB/s"
+      },
+      {
+       "label": "Loopback",
+       "value": "0 B/s"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1.2 MB/s"
+    },
+    "legend": "↑ 92 KB/s · 3 张网卡",
+    "title": "网络吞吐"
+   }
+  },
+  {
+   "id": "sys-net",
+   "size": "2x2",
+   "sim": {
+    "mode": "idle"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Wi-Fi 6E",
+       "value": "0 B/s"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "0 B/s"
+    },
+    "legend": "↑ 0 B/s · 1 张网卡",
+    "title": "网络吞吐"
+   }
+  },
+  {
+   "id": "sys-net",
+   "size": "2x2",
+   "sim": {
+    "mode": "cold"
+   },
+   "out": null
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "插电时系统不报告剩余续航，所以「剩余」一行为空，这不是读取失败",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "供电",
+       "value": "交流电"
+      },
+      {
+       "label": "剩余",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "电源方案",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "100%"
+    },
+    "legend": "插电 · 平衡",
+    "title": "供电"
+   }
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": {
+    "power": "ac"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "插电时系统不报告剩余续航，所以「剩余」一行为空，这不是读取失败",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "供电",
+       "value": "交流电"
+      },
+      {
+       "label": "剩余",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "电源方案",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "100%"
+    },
+    "legend": "插电 · 平衡",
+    "title": "供电"
+   }
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": {
+    "power": "battery"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "供电",
+       "value": "电池"
+      },
+      {
+       "label": "剩余",
+       "value": "134m0s"
+      },
+      {
+       "label": "电源方案",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "42%"
+    },
+    "legend": "电池 · 平衡",
+    "title": "供电"
+   }
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": {
+    "power": "low"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "供电",
+       "value": "电池"
+      },
+      {
+       "label": "剩余",
+       "value": "41m0s"
+      },
+      {
+       "label": "电源方案",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "14%"
+    },
+    "legend": "电池 · 平衡",
+    "title": "供电",
+    "valueTone": "warn"
+   }
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": {
+    "power": "critical"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "供电",
+       "value": "电池"
+      },
+      {
+       "label": "剩余",
+       "value": "17m0s"
+      },
+      {
+       "label": "电源方案",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "6%"
+    },
+    "legend": "电池 · 平衡",
+    "title": "供电",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": {
+    "power": "desktop"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "这台机器没有电池，只有电源方案是真实读数",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "供电",
+       "value": "交流电"
+      },
+      {
+       "label": "剩余",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "电源方案",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "—"
+    },
+    "legend": "台式机（无电池）",
+    "title": "供电",
+    "valueTone": "muted"
+   }
+  },
+  {
+   "id": "sys-procs",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "node",
+       "value": "650 MB"
+      },
+      {
+       "label": "msedge",
+       "value": "489 MB"
+      },
+      {
+       "label": "SecurityHealthService",
+       "value": "452 MB"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1.7 GB"
+    },
+    "legend": "Memory Compression",
+    "title": "内存大户"
+   }
+  },
+  {
+   "id": "sys-procs",
+   "size": "2x2",
+   "sim": {
+    "procs": 8
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "node",
+       "value": "650 MB"
+      },
+      {
+       "label": "msedge",
+       "value": "489 MB"
+      },
+      {
+       "label": "SecurityHealthService",
+       "value": "452 MB"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1.7 GB"
+    },
+    "legend": "Memory Compression",
+    "title": "内存大户"
+   }
+  },
+  {
+   "id": "sys-procs",
+   "size": "2x2",
+   "sim": {
+    "procs": 1
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "headAfter": {
+     "big": "1.7 GB"
+    },
+    "legend": "Memory Compression",
+    "title": "内存大户"
+   }
+  },
+  {
+   "id": "session-cost",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "按当前费率估算整段：会话记录里没有逐请求时间戳，无法把高峰 / 低谷时段分开计价，所以金额是估算值（≈）",
+    "chart": {
+     "breakdown": [
+      {
+       "cost": "$0.03",
+       "label": "未命中",
+       "value": "200K"
+      },
+      {
+       "cost": "$0.055",
+       "label": "缓存命中",
+       "value": "18.4M"
+      },
+      {
+       "cost": "$0.045",
+       "label": "输出",
+       "value": "75.6K"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "≈$0.131"
+    },
+    "legend": "官方价 · deepseek-v4.1-flash",
+    "title": "会话成本"
+   }
+  },
+  {
+   "id": "session-cost",
+   "size": "2x2",
+   "sim": {
+    "noTable": false,
+    "at": "2026-09-28T05:00:00Z"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "按当前费率估算整段：会话记录里没有逐请求时间戳，无法把高峰 / 低谷时段分开计价，所以金额是估算值（≈）",
+    "chart": {
+     "breakdown": [
+      {
+       "cost": "$0.03",
+       "label": "未命中",
+       "value": "200K"
+      },
+      {
+       "cost": "$0.055",
+       "label": "缓存命中",
+       "value": "18.4M"
+      },
+      {
+       "cost": "$0.045",
+       "label": "输出",
+       "value": "75.6K"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "≈$0.131"
+    },
+    "legend": "官方价 · deepseek-v4.1-flash",
+    "title": "会话成本"
+   }
+  },
+  {
+   "id": "session-cost",
+   "size": "2x2",
+   "sim": {
+    "noTable": false,
+    "at": "2026-09-28T02:00:00Z"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "按当前费率估算整段：会话记录里没有逐请求时间戳，无法把高峰 / 低谷时段分开计价，所以金额是估算值（≈）",
+    "chart": {
+     "breakdown": [
+      {
+       "cost": "$0.06",
+       "label": "未命中",
+       "value": "200K"
+      },
+      {
+       "cost": "$0.11",
+       "label": "缓存命中",
+       "value": "18.4M"
+      },
+      {
+       "cost": "$0.091",
+       "label": "输出",
+       "value": "75.6K"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "≈$0.261"
+    },
+    "legend": "官方价 · deepseek-v4.1-flash",
+    "title": "会话成本"
+   }
+  },
+  {
+   "id": "session-cost",
+   "size": "2x2",
+   "sim": {
+    "noTable": true
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "未命中",
+       "value": "200K"
+      },
+      {
+       "label": "缓存命中",
+       "value": "18.4M"
+      },
+      {
+       "label": "输出",
+       "value": "75.6K"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "18.7M"
+    },
+    "legend": "无价格表 · 仅 token",
+    "title": "会话成本"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "feat(widgets): the third-batch card specs\nPhysicolor/dsh-widgets · 2h\nhttps://github.com/Physicolor/dsh-widgets/pull/42",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review 请求",
+       "value": "2"
+      },
+      {
+       "label": "提及",
+       "value": "1"
+      },
+      {
+       "label": "指派",
+       "value": "0"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3"
+    },
+    "legend": "dsh-widgets · Review 请求",
+    "title": "待我处理"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "waiting"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "feat(widgets): the third-batch card specs\nPhysicolor/dsh-widgets · 2h\nhttps://github.com/Physicolor/dsh-widgets/pull/42",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review 请求",
+       "value": "2"
+      },
+      {
+       "label": "提及",
+       "value": "1"
+      },
+      {
+       "label": "指派",
+       "value": "0"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3"
+    },
+    "legend": "dsh-widgets · Review 请求",
+    "title": "待我处理"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "clear"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review 请求",
+       "value": "0"
+      },
+      {
+       "label": "提及",
+       "value": "0"
+      },
+      {
+       "label": "指派",
+       "value": "0"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "0"
+    },
+    "legend": "暂无待处理",
+    "title": "待我处理"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "capped"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Review: the third batch\nPhysicolor/dsh-widgets · 3m\nhttps://github.com/Physicolor/dsh-widgets/pull/117",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review 请求",
+       "value": "21"
+      },
+      {
+       "label": "提及",
+       "value": "6"
+      },
+      {
+       "label": "指派",
+       "value": "3"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "30+"
+    },
+    "legend": "dsh-widgets · Review 请求",
+    "title": "待我处理"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "ciOnly"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "CI failed on main\nPhysicolor/dsh-widgets · 25m\nhttps://github.com/Physicolor/dsh-widgets/actions\n另有 2 条 CI / 其它未列入上面三行",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review 请求",
+       "value": "0"
+      },
+      {
+       "label": "提及",
+       "value": "0"
+      },
+      {
+       "label": "指派",
+       "value": "0"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "2"
+    },
+    "legend": "dsh-widgets · CI 活动",
+    "title": "待我处理"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "thin"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "third-batch specs: @you\nPhysicolor/dsh-widgets · 6m\nhttps://github.com/Physicolor/dsh-widgets/pull/42#discussion_r1",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review 请求",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "提及",
+       "value": "1"
+      },
+      {
+       "label": "指派",
+       "tone": "muted",
+       "value": "—"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1"
+    },
+    "legend": "dsh-widgets · 提及",
+    "title": "待我处理"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "absent"
+   },
+   "out": null
   }
  ],
  "en": [
@@ -12555,7 +13270,7 @@
      "breakdown": [
       {
        "label": "Now",
-       "value": "sandbox-off"
+       "value": "Sandbox Off"
       },
       {
        "label": "Allows",
@@ -12566,7 +13281,7 @@
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "sandbox-off"
+     "big": "Sandbox Off"
     },
     "legend": "4 options",
     "title": "Permissions"
@@ -12943,6 +13658,721 @@
     "legend": "5h · no fill · 1h0m",
     "title": "Window Forecast"
    }
+  },
+  {
+   "id": "sys-net",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Wi-Fi 6E",
+       "value": "1.2 MB/s"
+      },
+      {
+       "label": "Hyper-V",
+       "value": "12 KB/s"
+      },
+      {
+       "label": "Loopback",
+       "value": "0 B/s"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1.2 MB/s"
+    },
+    "legend": "↑ 92 KB/s · 3 links",
+    "title": "Network"
+   }
+  },
+  {
+   "id": "sys-net",
+   "size": "2x2",
+   "sim": {
+    "mode": "live"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Wi-Fi 6E",
+       "value": "1.2 MB/s"
+      },
+      {
+       "label": "Hyper-V",
+       "value": "12 KB/s"
+      },
+      {
+       "label": "Loopback",
+       "value": "0 B/s"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1.2 MB/s"
+    },
+    "legend": "↑ 92 KB/s · 3 links",
+    "title": "Network"
+   }
+  },
+  {
+   "id": "sys-net",
+   "size": "2x2",
+   "sim": {
+    "mode": "idle"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Wi-Fi 6E",
+       "value": "0 B/s"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "0 B/s"
+    },
+    "legend": "↑ 0 B/s · 1 links",
+    "title": "Network"
+   }
+  },
+  {
+   "id": "sys-net",
+   "size": "2x2",
+   "sim": {
+    "mode": "cold"
+   },
+   "out": null
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Windows reports no runtime estimate while on mains power, so the Left row stays empty — that is not a read failure",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Source",
+       "value": "AC"
+      },
+      {
+       "label": "Left",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "Power plan",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "100%"
+    },
+    "legend": "Plugged in · 平衡",
+    "title": "Power"
+   }
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": {
+    "power": "ac"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Windows reports no runtime estimate while on mains power, so the Left row stays empty — that is not a read failure",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Source",
+       "value": "AC"
+      },
+      {
+       "label": "Left",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "Power plan",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "100%"
+    },
+    "legend": "Plugged in · 平衡",
+    "title": "Power"
+   }
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": {
+    "power": "battery"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Source",
+       "value": "Battery"
+      },
+      {
+       "label": "Left",
+       "value": "134m0s"
+      },
+      {
+       "label": "Power plan",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "42%"
+    },
+    "legend": "Battery · 平衡",
+    "title": "Power"
+   }
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": {
+    "power": "low"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Source",
+       "value": "Battery"
+      },
+      {
+       "label": "Left",
+       "value": "41m0s"
+      },
+      {
+       "label": "Power plan",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "14%"
+    },
+    "legend": "Battery · 平衡",
+    "title": "Power",
+    "valueTone": "warn"
+   }
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": {
+    "power": "critical"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Source",
+       "value": "Battery"
+      },
+      {
+       "label": "Left",
+       "value": "17m0s"
+      },
+      {
+       "label": "Power plan",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "6%"
+    },
+    "legend": "Battery · 平衡",
+    "title": "Power",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-power",
+   "size": "2x2",
+   "sim": {
+    "power": "desktop"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "This machine has no battery; only the power scheme is a real reading",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Source",
+       "value": "AC"
+      },
+      {
+       "label": "Left",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "Power plan",
+       "value": "平衡"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "—"
+    },
+    "legend": "Desktop (no battery)",
+    "title": "Power",
+    "valueTone": "muted"
+   }
+  },
+  {
+   "id": "sys-procs",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "node",
+       "value": "650 MB"
+      },
+      {
+       "label": "msedge",
+       "value": "489 MB"
+      },
+      {
+       "label": "SecurityHealthService",
+       "value": "452 MB"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1.7 GB"
+    },
+    "legend": "Memory Compression",
+    "title": "Top Processes"
+   }
+  },
+  {
+   "id": "sys-procs",
+   "size": "2x2",
+   "sim": {
+    "procs": 8
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "node",
+       "value": "650 MB"
+      },
+      {
+       "label": "msedge",
+       "value": "489 MB"
+      },
+      {
+       "label": "SecurityHealthService",
+       "value": "452 MB"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1.7 GB"
+    },
+    "legend": "Memory Compression",
+    "title": "Top Processes"
+   }
+  },
+  {
+   "id": "sys-procs",
+   "size": "2x2",
+   "sim": {
+    "procs": 1
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "headAfter": {
+     "big": "1.7 GB"
+    },
+    "legend": "Memory Compression",
+    "title": "Top Processes"
+   }
+  },
+  {
+   "id": "session-cost",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Estimated at the rate in effect now: the session record carries no per-request timestamps, so peak and off-peak hours cannot be priced apart (hence the ≈).",
+    "chart": {
+     "breakdown": [
+      {
+       "cost": "$0.03",
+       "label": "Miss",
+       "value": "200K"
+      },
+      {
+       "cost": "$0.055",
+       "label": "Hit",
+       "value": "18.4M"
+      },
+      {
+       "cost": "$0.045",
+       "label": "Output",
+       "value": "75.6K"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "≈$0.131"
+    },
+    "legend": "Official rate · deepseek-v4.1-flash",
+    "title": "Session Cost"
+   }
+  },
+  {
+   "id": "session-cost",
+   "size": "2x2",
+   "sim": {
+    "noTable": false,
+    "at": "2026-09-28T05:00:00Z"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Estimated at the rate in effect now: the session record carries no per-request timestamps, so peak and off-peak hours cannot be priced apart (hence the ≈).",
+    "chart": {
+     "breakdown": [
+      {
+       "cost": "$0.03",
+       "label": "Miss",
+       "value": "200K"
+      },
+      {
+       "cost": "$0.055",
+       "label": "Hit",
+       "value": "18.4M"
+      },
+      {
+       "cost": "$0.045",
+       "label": "Output",
+       "value": "75.6K"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "≈$0.131"
+    },
+    "legend": "Official rate · deepseek-v4.1-flash",
+    "title": "Session Cost"
+   }
+  },
+  {
+   "id": "session-cost",
+   "size": "2x2",
+   "sim": {
+    "noTable": false,
+    "at": "2026-09-28T02:00:00Z"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Estimated at the rate in effect now: the session record carries no per-request timestamps, so peak and off-peak hours cannot be priced apart (hence the ≈).",
+    "chart": {
+     "breakdown": [
+      {
+       "cost": "$0.06",
+       "label": "Miss",
+       "value": "200K"
+      },
+      {
+       "cost": "$0.11",
+       "label": "Hit",
+       "value": "18.4M"
+      },
+      {
+       "cost": "$0.091",
+       "label": "Output",
+       "value": "75.6K"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "≈$0.261"
+    },
+    "legend": "Official rate · deepseek-v4.1-flash",
+    "title": "Session Cost"
+   }
+  },
+  {
+   "id": "session-cost",
+   "size": "2x2",
+   "sim": {
+    "noTable": true
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Miss",
+       "value": "200K"
+      },
+      {
+       "label": "Hit",
+       "value": "18.4M"
+      },
+      {
+       "label": "Output",
+       "value": "75.6K"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "18.7M"
+    },
+    "legend": "No price table · tokens",
+    "title": "Session Cost"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "feat(widgets): the third-batch card specs\nPhysicolor/dsh-widgets · 2h\nhttps://github.com/Physicolor/dsh-widgets/pull/42",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review requests",
+       "value": "2"
+      },
+      {
+       "label": "Mentions",
+       "value": "1"
+      },
+      {
+       "label": "Assigned",
+       "value": "0"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3"
+    },
+    "legend": "dsh-widgets · Review requested",
+    "title": "To Review"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "waiting"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "feat(widgets): the third-batch card specs\nPhysicolor/dsh-widgets · 2h\nhttps://github.com/Physicolor/dsh-widgets/pull/42",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review requests",
+       "value": "2"
+      },
+      {
+       "label": "Mentions",
+       "value": "1"
+      },
+      {
+       "label": "Assigned",
+       "value": "0"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "3"
+    },
+    "legend": "dsh-widgets · Review requested",
+    "title": "To Review"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "clear"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review requests",
+       "value": "0"
+      },
+      {
+       "label": "Mentions",
+       "value": "0"
+      },
+      {
+       "label": "Assigned",
+       "value": "0"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "0"
+    },
+    "legend": "Nothing waiting",
+    "title": "To Review"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "capped"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Review: the third batch\nPhysicolor/dsh-widgets · 3m\nhttps://github.com/Physicolor/dsh-widgets/pull/117",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review requests",
+       "value": "21"
+      },
+      {
+       "label": "Mentions",
+       "value": "6"
+      },
+      {
+       "label": "Assigned",
+       "value": "3"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "30+"
+    },
+    "legend": "dsh-widgets · Review requested",
+    "title": "To Review"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "ciOnly"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "CI failed on main\nPhysicolor/dsh-widgets · 25m\nhttps://github.com/Physicolor/dsh-widgets/actions\n2 more in CI / other, not in the three rows",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review requests",
+       "value": "0"
+      },
+      {
+       "label": "Mentions",
+       "value": "0"
+      },
+      {
+       "label": "Assigned",
+       "value": "0"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "2"
+    },
+    "legend": "dsh-widgets · CI activity",
+    "title": "To Review"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "thin"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "third-batch specs: @you\nPhysicolor/dsh-widgets · 6m\nhttps://github.com/Physicolor/dsh-widgets/pull/42#discussion_r1",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Review requests",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "Mentions",
+       "value": "1"
+      },
+      {
+       "label": "Assigned",
+       "tone": "muted",
+       "value": "—"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "1"
+    },
+    "legend": "dsh-widgets · Mention",
+    "title": "To Review"
+   }
+  },
+  {
+   "id": "github-notify",
+   "size": "2x2",
+   "sim": {
+    "state": "absent"
+   },
+   "out": null
   }
  ]
 }

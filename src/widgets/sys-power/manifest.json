@@ -1,0 +1,48 @@
+{
+  "id": "sys-power",
+  "order": 90,
+  "group": "device",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": false,
+  "source": "sys",
+  "skeleton": { "shape": "text" },
+  "locale": {
+    "zh": {
+      "widget.sys-power.name": "供电",
+      "widget.sys-power.desc": "是否在用电池、剩余电量与预计续航，以及当前 Windows 电源方案",
+      "card.sys-power.title": "供电",
+      "card.sys-power.source.ac": "插电",
+      "card.sys-power.source.battery": "电池",
+      "card.sys-power.source.unknown": "供电未知",
+      "card.sys-power.desktop": "台式机（无电池）",
+      "card.sys-power.ac": "交流电",
+      "card.sys-power.dc": "电池",
+      "card.sys-power.row.source": "供电",
+      "card.sys-power.row.left": "剩余",
+      "card.sys-power.row.scheme": "电源方案",
+      "card.sys-power.hintAc": "插电时系统不报告剩余续航，所以「剩余」一行为空，这不是读取失败",
+      "card.sys-power.hintUnknown": "系统没有报告剩余续航估算值，所以「剩余」一行为空",
+      "card.sys-power.hintDesktop": "这台机器没有电池，只有电源方案是真实读数",
+      "card.sys-power.simToggle": "切换供电状态"
+    },
+    "en": {
+      "widget.sys-power.name": "Power",
+      "widget.sys-power.desc": "Whether this machine runs on battery, its charge and remaining runtime, and the active Windows power scheme",
+      "card.sys-power.title": "Power",
+      "card.sys-power.source.ac": "Plugged in",
+      "card.sys-power.source.battery": "Battery",
+      "card.sys-power.source.unknown": "Source unknown",
+      "card.sys-power.desktop": "Desktop (no battery)",
+      "card.sys-power.ac": "AC",
+      "card.sys-power.dc": "Battery",
+      "card.sys-power.row.source": "Source",
+      "card.sys-power.row.left": "Left",
+      "card.sys-power.row.scheme": "Power plan",
+      "card.sys-power.hintAc": "Windows reports no runtime estimate while on mains power, so the Left row stays empty — that is not a read failure",
+      "card.sys-power.hintUnknown": "No runtime estimate was reported, so the Left row stays empty",
+      "card.sys-power.hintDesktop": "This machine has no battery; only the power scheme is a real reading",
+      "card.sys-power.simToggle": "Cycle power states"
+    }
+  }
+}

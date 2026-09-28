@@ -1,0 +1,24 @@
+{
+  "id": "sys-procs",
+  "order": 91,
+  "group": "device",
+  "builtin": false,
+  "sizes": ["2x2"],
+  "defaultInstalled": false,
+  "source": "sys",
+  "skeleton": { "shape": "bars" },
+  "locale": {
+    "zh": {
+      "widget.sys-procs.name": "内存大户",
+      "widget.sys-procs.desc": "按工作集内存排序的前几名进程；多 agent / 多模型并行时回答「谁把内存吃满了」",
+      "widget.sys-procs.simToggle": "切换 多进程 / 单进程 预览",
+      "card.sys-procs.title": "内存大户"
+    },
+    "en": {
+      "widget.sys-procs.name": "Top Processes",
+      "widget.sys-procs.desc": "The top processes by working-set memory — who is eating the RAM while several agents or models run at once",
+      "widget.sys-procs.simToggle": "Toggle many- / one-process preview",
+      "card.sys-procs.title": "Top Processes"
+    }
+  }
+}
