@@ -11,6 +11,7 @@ import { registerGitHub } from './github'
 import { registerWidgetsState } from './state-file'
 import { registerSysinfo } from './sysinfo'
 import { registerHostOverview } from './overview'
+import { registerWidgetsPricing } from './pricing'
 import { type HostContext } from './context'
 
 /** Every host route this plugin owns, in registration order. */
@@ -22,4 +23,5 @@ export const HOST_ROUTES: ReadonlyArray<(ctx: HostContext) => () => void> = [
   registerWidgetsState,
   registerSysinfo,
   registerHostOverview,
+  registerWidgetsPricing,
 ]

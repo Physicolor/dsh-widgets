@@ -39,6 +39,20 @@ function ActionsBlock({ actions, onAction, scale }: { actions: WidgetAction[]; o
 /** The glyphs a head ring may hold (see `HeadRingIcon` in the contract). */
 const HEAD_RING_ICONS: Record<string, React.ReactElement | null> = { database: databaseIcon, 'hard-drive': hardDriveIcon }
 
+/**
+ * The colour a `valueTone` figure wears.
+ *
+ * Two rungs, and the difference is the WHOLE point of the field: `danger` is a
+ * state that is already wrong (peak pricing is live, a window is over its cap),
+ * `warn` is a reading heading there but not there yet (a quota projected to 94%
+ * of its cap). Collapsing them would either cry wolf or hide the warning.
+ */
+function valueColor(out: WidgetRenderOut): string {
+  return out.valueTone === 'warn'
+    ? 'var(--dsw-alias-state-warn-primary)'
+    : 'var(--dsw-alias-state-error-primary)'
+}
+
 function RichBlock({ rich, scale }: { rich: WidgetRich; scale: number }): React.ReactElement {
   if (rich.type === 'quote' && rich.text) {
     const ta = rich.align ?? 'left'
@@ -221,7 +235,10 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // alone, so a caption (e.g. the billing-period line) sits directly under it,
   // while the value still occupies its width and can never collide with it.
   const hasHeadRight = out.headRight !== undefined
-  const headValueTone = out.valueTone === 'danger' || out.valuePulse === true
+  // `headValueTone` decides whether the figure wears the escalation CLASS (the
+  // pulse rule keys off it); the VALUE colour is `valueColor` below, because a
+  // warn figure is tinted without being an escalation.
+  const headValueTone = out.valueTone !== undefined || out.valuePulse === true
   const titleLine = Math.round(titlePx * 1.2)
   const captionLine = Math.round(10 * scale * 1.2)
   const valueLine = Math.round(valuePx * 1.25)
@@ -253,7 +270,7 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
     style: {
       fontSize: `${valuePx}px`,
       fontWeight: 600,
-      color: headValueTone ? 'var(--dsw-alias-state-error-primary)' : 'var(--dsw-alias-label-primary)',
+      color: headValueTone ? valueColor(out) : 'var(--dsw-alias-label-primary)',
       fontVariantNumeric: 'tabular-nums',
       lineHeight: 1.25,
       whiteSpace: 'nowrap',
@@ -427,7 +444,7 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // header: `上下文已用 64% ~638K / 1M`), and in the head's left column when a
   // headRing is (the figure rides the ring, never both). Otherwise it goes to the
   // body.
-  if (out.value != null && out.headRight === undefined && !ringHead) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value' + (out.valuePulse ? ' dsx-value-pulse' : '') + (figureDrop ? ' dsx-figure-drop' : ''), style: { fontSize: `${valuePx}px`, color: out.valueTone === 'danger' ? 'var(--dsw-alias-state-error-primary)' : undefined } }, out.value))
+  if (out.value != null && out.headRight === undefined && !ringHead) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value' + (out.valuePulse ? ' dsx-value-pulse' : '') + (figureDrop ? ' dsx-figure-drop' : ''), style: { fontSize: `${valuePx}px`, color: out.valueTone === undefined ? undefined : valueColor(out) } }, out.value))
   if (out.sub) body.push(React.createElement('div', { key: 's', className: 'dsx-stats-card-sub', style: { fontSize: `${Math.round(10 * scale)}px` } }, out.sub))
   if (out.chart) {
       const c = renderChart({ chart: out.chart, side: unit, width: boxW, pad: innerPad, scale: unit / BASE_SIDE })

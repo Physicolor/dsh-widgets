@@ -215,6 +215,47 @@ export interface GitHubRepo {
 }
 
 /**
+ * One price rule from the usage-center table (see `host/pricing.ts`).
+ *
+ * `rates` and `peakRates` are four disjoint buckets per MILLION tokens in
+ * `currency`. `peakRates` is null when the provider publishes no peak/off-peak
+ * split; the card must then use `rates` for every hour rather than guessing a
+ * multiplier.
+ *
+ * `sourceType` is the provenance and is NOT cosmetic: `official` is the vendor's
+ * own list, `reseller` is a middleman's, `local` means the route is free, and
+ * `fallback` means the number is a stand-in. A card that prints money without
+ * saying which of those it used is claiming more than it knows.
+ */
+export interface PriceRule {
+  id: string
+  provider: string | null
+  model: string | null
+  effectiveFrom: string | null
+  effectiveTo: string | null
+  timezone: string | null
+  peakWindows: Array<{ days: number[]; start: string; end: string }>
+  rates: { inputCacheHit: number; inputCacheMiss: number; output: number; cacheWrite: number }
+  peakRates: { inputCacheHit: number; inputCacheMiss: number; output: number; cacheWrite: number } | null
+  currency: string | null
+  sourceType: string | null
+  verifiedAt: string | null
+  source: string | null
+}
+
+/** The `/api/widgets-pricing` payload. `available: false` means the storage file
+ *  is missing or unreadable — there is deliberately NO built-in fallback table. */
+export interface PriceTable {
+  available: boolean
+  version: number | null
+  currency: string | null
+  rules: PriceRule[]
+  /** Where the table was read from (diagnostics; not for display). */
+  path: string
+  modifiedAt: number | null
+}
+
+/**
  * The review queue behind 「待我处理」 (`GET /notifications`).
  *
  * AUTHENTICATED ONLY: anonymous answers 401 (measured), so this slice is null on
@@ -473,6 +514,10 @@ export interface WidgetStats {  turns: number
   /** Stable code when the host route could not answer at all: `'unloaded'`
    *  (route missing → dsh web not restarted) or `'unavailable'`. */
   hostError?: string | null
+  /** The usage-center price table (see PriceTable). `null` = not read (no card
+   *  on the rail prices anything) — which is NOT the same as `available: false`
+   *  ("there is no table, so print tokens and no money"). */
+  pricing?: PriceTable | null
   /** Per-instance config merged by the shell (typed any: widgets with a
    *  configSchema read their keys from the same record the collector feeds). */
   [key: string]: unknown
@@ -909,11 +954,12 @@ export interface WidgetRenderOut {
    *  (the official meter header), otherwise in the BODY — and never in a head that
    *  carries a `headRing`, whose figure is `headAfter.big` (see headRing). */
   value?: string
-  /** Value color override (e.g. 'danger' renders the value in the error red,
-   *  used by the peak-pricing EXPENSIVE state). It follows the figure into
-   *  whichever slot that card renders it in — the title row, `headAfter.big`, or
-   *  the body. */
-  valueTone?: 'danger'
+  /** Value color override. `'danger'` renders the figure in the error red (the
+   *  peak-pricing EXPENSIVE state); `'warn'` uses the warning amber, for a
+   *  reading that is not wrong yet but is heading there (a quota window projected
+   *  to 94% of its cap). It follows the figure into whichever slot that card
+   *  renders it in — the title row, `headAfter.big`, or the body. */
+  valueTone?: 'danger' | 'warn'
   /** Slow red blink on the VALUE itself (e.g. peak pricing is live, or a plan
    *  projected past 100%): the text pulses between full and ~35% opacity in the
    *  error red. Text-level escalation — it deliberately does NOT paint the card. */

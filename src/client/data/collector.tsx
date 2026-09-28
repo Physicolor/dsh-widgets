@@ -18,7 +18,7 @@
 import * as React from 'react'
 import { WIDGET_RUNTIME } from '../generated.registry'
 import { parseInstanceKey } from '../lib/contract/helpers'
-import type { CommandCodeData, GitHubData, HostOverview, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
+import type { CommandCodeData, GitHubData, HostOverview, PriceTable, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
 import { DEFAULT_TZ, accumulateHeatmap, buildHeatmapGrid, dateKey, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from '../lib/heatmap-accounting'
 import { ccPayloadDegraded } from '../families/cc/data'
 import { ingestSysInfo, resolveInterval } from '../families/sys/data'
@@ -359,6 +359,23 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
         const id = window.setInterval(refresh, secs * 1000)
         return () => window.clearInterval(id)
       }, [snap.prefs.installed, snap.prefs.cardConfigs])
+      // Price table: only fetched while a card that prices this session is on the
+      // rail, and on a slow clock — the file changes when a human edits it, not
+      // when a turn finishes.
+      const wantsPricing = (snap.prefs.installed ?? []).some((key) => key === 'session-cost' || key.startsWith('session-cost@'))
+      React.useEffect(() => {
+        if (!wantsPricing) return
+        let alive = true
+        const pull = (): void => {
+          fetch('/api/widgets-pricing')
+            .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
+            .then((data: PriceTable | null) => { if (alive && data !== null) setState({ pricing: data }) })
+            .catch(() => { /* keep the last table: a blip must not unpriced a card */ })
+        }
+        pull()
+        const id = window.setInterval(pull, 600_000)
+        return () => { alive = false; window.clearInterval(id) }
+      }, [wantsPricing])
       // One-second tick while a turn is running, so the in-flight LLM and tool
       // durations advance between settle boundaries instead of freezing.
       const [now, setNow] = React.useState(() => Date.now())

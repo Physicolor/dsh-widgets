@@ -11,7 +11,7 @@
  * without importing back into their own caller (which would be a cycle).
  */
 
-import type { CommandCodeData, GitHubData, HostOverview, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
+import type { CommandCodeData, GitHubData, HostOverview, PriceTable, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
 import type { Stats } from '../data/session-stats'
 import type { Prefs } from './prefs'
 
@@ -40,6 +40,10 @@ export interface BridgeSnapshot {
   /** `'unloaded'` when the host route is missing (dsh web not restarted),
    *  otherwise a transport code; `null` once a payload has arrived. */
   hostError: string | null
+  /** The price table usage-center keeps in storage (see host/pricing.ts). Read
+   *  only when a card that prices this session is installed; `null` = not read
+   *  yet, `available: false` = no table (cards then print tokens, not money). */
+  pricing: PriceTable | null
   /** GitHub family payload (contribution calendar + repo pulses) from the
    *  host `/api/github` route. */
   github: GitHubData | null
