@@ -601,7 +601,7 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "card.task.none": "No tasks",
     "card.task.sub": "{doing} in progress · {pending} pending",
     "widget.trajectory.name": "Trajectory",
-    "widget.trajectory.desc": "The official 轨迹 rail as a card: one colored bar per input / model / tool beat, rolling right as the model keeps calling tools",
+    "widget.trajectory.desc": "The official Trajectory rail as a card: one colored bar per input / model / tool beat, rolling right as the model keeps calling tools",
     "card.trajectory.legend": "In {input}  Model {model}  Tool {tool}",
     "card.trajectory.input": "Input",
     "card.trajectory.model": "Model",

@@ -34,6 +34,10 @@ const SITE = join(ROOT, 'website');
 const OUT = join(tmpdir(), 'dsh-widgets-website-verify');
 const require = createRequire(import.meta.url);
 
+/** How many units the site must show — derived, never hard-coded. */
+const WIDGET_COUNT = (await readdir(join(ROOT, 'src', 'widgets'), { withFileTypes: true }))
+  .filter((e) => e.isDirectory() && existsSync(join(ROOT, 'src', 'widgets', e.name, 'manifest.json'))).length
+
 const results = [];
 function check(name, ok, detail) {
   results.push({ name, ok: !!ok, detail: detail || '' });
@@ -241,7 +245,7 @@ async function openPage(url) {
   await cdp.send('Network.enable');
   await cdp.send('Log.enable');
   await cdp.send('Page.navigate', { url });
-  await waitFor(cdp, `document.readyState === 'complete' && document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 34`);
+  await waitFor(cdp, `document.readyState === 'complete' && document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === ${WIDGET_COUNT}`);
   await new Promise((r) => setTimeout(r, 400));
   return { edge, cdp };
 }
@@ -312,7 +316,7 @@ try {
 
   /* crawlability: the widget list must exist in the HTML source itself */
   const staticCards = (html.match(/<article class="widget-card"/g) || []).length;
-  check('Gallery is in the HTML source (34 static cards)', staticCards === 34, `found ${staticCards}`);
+  check(`Gallery is in the HTML source (${WIDGET_COUNT} static cards)`, staticCards === WIDGET_COUNT, `found ${staticCards}`);
   check('Static gallery carries names + descriptions', /widget-name/.test(html) && /widget-desc/.test(html) &&
     html.includes('轮次·步数') && html.includes('上下文水位'));
 
@@ -350,8 +354,8 @@ try {
     if (g['@graph']) graphs.push(...g['@graph']);
     if (g['@type'] === 'ItemList') ld = g;
   }
-  check('JSON-LD parses and lists all 34 widgets',
-    !!ld && ld.itemListElement.length === 34 && ld.numberOfItems === 34 && !ldErr,
+  check(`JSON-LD parses and lists all ${WIDGET_COUNT} widgets`,
+    !!ld && ld.itemListElement.length === WIDGET_COUNT && ld.numberOfItems === WIDGET_COUNT && !ldErr,
     ldErr || (ld ? `${ld.itemListElement.length} items in ${ldBlocks.length} block(s)` : 'no ItemList block'));
 
   /* serve + browser */
@@ -372,7 +376,7 @@ try {
     'All sections present': `['home','widgets','design','create','contribute','grammar','audit','anatomy'].every(id => !!document.getElementById(id))`,
     'Old sentence-sections removed': `!document.getElementById('why') && !document.getElementById('philosophy') && !document.getElementById('workflow')`,
     'No Playground/Demo residue': `!document.getElementById('playground') && !document.getElementById('deploy-modal') && !document.querySelector('.pg-deck') && !document.querySelector('.hs-sim') && !document.querySelector('.badge-demo')`,
-    '34 gallery cards': `document.getElementById('gallery-grid').children.length === 34`,
+    [`${WIDGET_COUNT} gallery cards`]: `document.getElementById('gallery-grid').children.length === ${WIDGET_COUNT}`,
     'Rails + hero showcase populated': `['rail-a','rail-b','rail-c'].every(id => document.getElementById(id).children.length >= 6) && document.getElementById('hs-cards').children.length === 7`
   };
   for (const [name, expr] of Object.entries(checks)) {
@@ -487,7 +491,7 @@ try {
     const flagged = document.querySelector('#au-list .au-row[data-w="cc-window-monthly"] .au-flag');
     return { rows: rows.length, dims: dims.length, scored: scored, flagged: !!flagged };
   })()`);
-  check('Audit: all 34 widgets scored on 5 dimensions', audit.rows === 34 && audit.dims === 5 && audit.scored === 34, JSON.stringify(audit));
+  check(`Audit: all ${WIDGET_COUNT} widgets scored on 5 dimensions`, audit.rows === WIDGET_COUNT && audit.dims === 5 && audit.scored === WIDGET_COUNT, JSON.stringify(audit));
   check('Audit: the real copy/implementation finding is flagged', audit.flagged === true);
 
   const auditDetail = await evalJs(cdp, `(() => {
@@ -529,7 +533,7 @@ try {
   check('Detail: closes cleanly', closed === true);
 
   /* gallery hydration */
-  check('Gallery: every card hydrated with the real widget render', await evalJs(cdp, `document.querySelectorAll('#gallery-grid .widget-stage-lg .wg-card').length === 34`));
+  check('Gallery: every card hydrated with the real widget render', await evalJs(cdp, `document.querySelectorAll('#gallery-grid .widget-stage-lg .wg-card').length === ${WIDGET_COUNT}`));
 
   /* regression: one wide (2×4) preview must never widen its grid column */
   const columns = await evalJs(cdp, `(() => {
@@ -560,7 +564,7 @@ try {
     document.documentElement.getAttribute('lang') === 'en' &&
     document.getElementById('nav-links').querySelector('a').textContent === 'Home' &&
     document.querySelector('.filter[data-filter="all"]').textContent === 'All' &&
-    document.getElementById('gallery-grid').children.length === 34
+    document.getElementById('gallery-grid').children.length === ${WIDGET_COUNT}
   `);
   check('Language toggle → English (nav/gallery/filter)', enState === true);
   await screenshot(cdp, join(OUT, 'light-en.png'));
@@ -673,7 +677,7 @@ try {
   /* mobile */
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await cdp.send('Page.navigate', { url });
-  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 34`);
+  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === ${WIDGET_COUNT}`);
   await new Promise((r) => setTimeout(r, 500));
   const burgerVisible = await evalJs(cdp, `getComputedStyle(document.getElementById('nav-burger')).display !== 'none'`);
   check('Mobile: burger visible', burgerVisible === true);
@@ -698,12 +702,12 @@ try {
     return { svg: svg, principles: grid, rows: rows, overflow: document.documentElement.scrollWidth <= window.innerWidth + 1 };
   })()`);
   check('Mobile: anatomy labels + audit table survive the narrow layout',
-    mobileOk.svg >= 8 && mobileOk.principles === 1 && mobileOk.rows === 34 && mobileOk.overflow === true, JSON.stringify(mobileOk));
+    mobileOk.svg >= 8 && mobileOk.principles === 1 && mobileOk.rows === WIDGET_COUNT && mobileOk.overflow === true, JSON.stringify(mobileOk));
 
   /* desktop 1920×1080 viewport */
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
   await cdp.send('Page.navigate', { url });
-  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === 34`);
+  await waitFor(cdp, `document.getElementById('gallery-grid') && document.getElementById('gallery-grid').children.length === ${WIDGET_COUNT}`);
   await new Promise((r) => setTimeout(r, 500));
   const wideOk = await evalJs(cdp, `
     document.documentElement.scrollWidth <= window.innerWidth + 1 &&

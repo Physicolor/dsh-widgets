@@ -11,6 +11,38 @@
 | GitHub Releases | 同一条目作为 release notes，锚定到发布它的那次提交（tag） | 仓库 → Releases |
 | `docs/` | 原始证据：CDP 探针脚本、截图、JSON 凭证、逐次事故的修复记录 | [`docs/`](docs/) |
 
+## v1.8.0 — 结构版本：两个巨石文件消失、类型错误归零、类型声明真正发布
+
+> 工程版本，**卡片行为零变化**：组件栏、放大波、设置页与每个部件的表现都与 v1.7.0 完全一致。变的是代码放在哪里、闸门能证明什么，以及两处长期存在的发布缺陷。每一步都不是「看着没问题」，而是对着上一版构建验证：渲染快照（110 份输出）、编译后 CSS 的拼接、host 路由指纹与实机探针都必须完全相同；凡是有意变化的，都必须能**证明**变化恰好只有那一处。
+
+### 变更 — 两个巨石文件消失
+
+- **`client/index.ts`：3,795 → 308 行。** 组件栏的槽位体（网格、放大层装配、加号面板、滑动抽屉）搬到 `rail/rail-view.tsx`，成为 `createRailView(deps)`；测量层（锚点探针、右栏宽度跟踪、ResizeObserver 扇出、预算/yield 节拍，以及唯一一处完整 dispose）搬到 `rail/measure.ts`，成为 `createRailMeasure(deps)`。两者接收过去靠闭包捕获的 bridge 句柄；组合根本身拥有的两个值——`railBudget`（bridge 快照的一部分）与 `drawerEl`（由组件栏视图的 ref 写入）——留在原处，经访问器跨边界。搬移可逐行审计：组件栏 body 与原文**只差三行**，且三行都是事件处理器里的读取——它们必须读到实时的偏好绑定，而不是渲染期快照。
+- **host 半：1,077 行单文件 → 九个模块 + 31 行入口。** `src/host/` 现在是一个上游渠道一个模块（`opencode` / `commandcode` / `usage-daily` / `github` / `sysinfo`）加状态文件，共用 `http.ts`（TTL memo 与请求体读取）、`exec.ts`（唯一的子进程缝）与 `context.ts`（ctx 契约）；`host/routes.ts` 是注册表，`src/index.ts` 只组装它。每个渠道导出 `registerX(ctx): () => void`，`ctx.effect` 仍由根调用，因此模块不会替插件接管生命周期。用新的 G7 闸门验证：拆分前与拆分后的 bundle 在 **14 个路由案例上指纹逐字节相同**。
+- **`lib/contract.ts`：730 行 → 零 import 的 `types.ts` + `helpers.ts`。** 类型与解析器工具互相穿插，且整个模块为了其中一个工具依赖了 i18n——于是任何只想用一个类型的文件都会把词典拖进自己的模块图。67 个文件里的 68 条 import 已重接；**故意不保留 barrel 文件**，因为 barrel 会把这个耦合原样带回来。同一轮还修掉了一处泄漏到英文界面的中文：某个部件自己的英文词典里写着 `The official 轨迹 rail as a card`。
+
+### 变更 — 死代码、token 层与验证工具
+
+- **孤立的徽章链整条清除。** `badgeOf` 没有调用者，`widgetBadgeLabel` 只被它调用，14 个单元的 `badgeLabel` 字段只喂给这个解析器，而配置页自己的注释就记着徽章已从 UI 移除。随之消失的还有：契约字段、单元声明、四个词典键、一个无引用的图标（`GripIcon`）、一个无引用的 host 常量（`COMMANDCODE_ROUTE`）与三条死 CSS 规则（`.dsx-macts` / `.dsx-mid` / `.dsx-restore`）。一个值得留下的副作用：`badgeOf` 走后，契约模块不再 import i18n。
+- **设计 token 有了唯一的家。** 两个 `:root` 块从 `card.module.css` 与 `rail.module.css` 提到 `styles/tokens.module.css`，并且第一个 import（import 顺序就是层叠顺序）。这是样式层唯一一次不是「字节级等分」的改动，因此换一种证明：未改动的样式表逐字节相同；丢掉 token 的两张表在移除该 token 后逐字节相同；新表恰好只声明那两个变量。
+- **97 个探针脚本不再硬编码 playwright 浏览器修订号。** 它们写死了 `ms-playwright/chromium-1243/…`，而本机已经升版，于是所有实机探针都启动失败。现在它们解析最新已安装的构建（`scripts/lib/chrome.cjs`，可用 `CHROME_PATH` 覆盖）。
+
+### 新增 — 为原本没有闸门的地方补上闸门
+
+- **G7 `scripts/snapshot-host-routes.mjs`**：用假 webServer、桩 credentials/fetch 与一次性 `DSH_HOME` 加载构建产物的 host bundle，把七条路由跑成 14 个案例，比对结构指纹（键名、类型、状态码）。**注册了却没有案例的路由会让它直接红**。故意破坏过（405 → 404）并确认报红；此前 G4/G5 完全没有覆盖 host 半区。
+- **G8 `scripts/verify-published-types.mjs`**：建一个临时消费方（`node_modules/dsh-widgets` 是指向本仓库的 junction），以 `skipLibCheck: false` 编译——走的是真实 `exports` 映射，声明里任何未解析的 import 都是错误而非被跳过。它第一次运行就抓到一处 reference 路径写错。
+
+### 修复 — 发布包，以及两个「绿着却什么都没测」的闸门
+
+- **发布包终于带上了它一直承诺的类型。** `package.json` 为两个入口声明了 `types` 并打包 `lib/types/**/*.d.ts`，但两个构建入口都关着声明产出——TypeScript 消费方因此什么都解析不到。tsdown 自带的 `dts` 选项在这里走不通（实测它会写出一个多余的 `lib/index.ts`），所以 `scripts/build-types.mjs` 走项目 tsconfig 产出 106 个声明文件，并把 `*.module.css` 的 ambient 声明拷到客户端入口旁边、由该入口引用。`lib/types/` 是构建产物，已加入 gitignore；`npm pack --dry-run` 确认声明确实进了包。
+- **G4 的 harness 从不清理输出目录。** `tsc` 不会删除旧产物，于是被重构删掉的模块会留下幽灵产物，满足过期的 import——这正是当年它自己那条 `lib/contract` import 已经坏掉、G4 却照常全绿的原因。现在编译前先清目录。
+- **G3 曾容忍一条全新的错误**，只因它的错误码恰好在「计数可增长」名单上（`Cannot find module './contract'` 是 TS2307，与既有「缺 `@types/node`」同一码）。现在的容忍只限**基线里已存在**的签名：已知缺类型错误随模块拆分增长可以接受，新的未解析模块不行。
+
+### 变更 — 类型检查变成真正的闸门
+
+- **35 条类型错误 → 0，`pnpm check` 从头到尾全绿。** 每一条都在源头处理：装上 `@types/node` 与 `@types/react-dom`；在 `src/client/slots-service.d.ts` 声明运行时的 `slots` 服务（上游没有任何包给 cordis 的 `Context` 打这个补丁，而曾经承载该类型的 `dsh-client-runtime` 已退役——该文件只声明外壳真正调用的两个方法，并写明为什么不能直接用 `SlotCore` 自己的泛型）；读内联自定义属性的地方改用 `document.querySelector<HTMLElement>`；设置页的详情抽屉改为**一次收窄**，不再留下十几处「可能为 undefined」的读取。
+- **新增 `docs/architecture/CODE_MAP.md`**：「我要改 X，去哪儿」的完整地图——单元解剖（以及生成器接受的九个 manifest 键）、四层公共代码的边界、组件栏如何显示、哪个文件拥有哪个按钮、拆在四个文件里的放大波算法、设置面、数据流、样式与 i18n 规则、八个闸门与九条不要破坏的不变量。
+
 ## v1.7.0 — 一个 Command Code 池里的每一把 Key 都在卡上，点一下即切换
 
 > 功能版本。Command Code provider 的「账户轮换」卡片能把多个订阅挂在一个安装下（`COMMANDCODE_API_KEY`、`COMMANDCODE_API_KEY_2` … `_4`），但组件族一直只读第一把——provider 在两个账号之间轮换，组件栏却只报一个账号的额度。现在每张 Command Code 卡片都带着整池数据，点一下在 `AllUser → Physicolor → Sparxie → AllUser` 之间循环：整池合计与每个账号自己的数字同屏。2026-09-20 对本机两个真实账号实测：`AllUser` 月窗口 14.5%（Σ20.29 / Σ140 额度），Physicolor 28.9%，Sparxie 0.0%；周窗口整池 7.1% vs 各账号 14.2% / 0.0%。以下每条都由 `docs/probe-cc-pool.mjs`（68 条断言）对真实上游复验。

@@ -158,11 +158,13 @@ Command Code provider 的「账户轮换」卡片可以把多个订阅挂在一�
 
 ## 工作原理
 
-- **部件单元 + 构建期发现（ARCH-001）**：每个部件都是 [`src/widgets/<id>/`](src/widgets/) 下的独立单元——`manifest.json`（机器可读契约：id / group / sizes / defaultInstalled / 该部件的 locale）+ `index.ts`（`defineWidget` 描述符：render + 名称/描述 thunk + configSchema + example）。注册表是**生成**的，从不手工维护：[`scripts/gen-registry.mjs`](scripts/gen-registry.mjs) 扫描各单元目录并产出 `src/client/generated.registry.ts`（`WIDGETS` / `ALL_INSTANCES` / `STATS_WIDGET_IDS` / `DEFAULT_INSTALLED` / 合并后的 `WIDGET_LOCALES`）。新增一个部件 = 新增一个单元目录；`pnpm build` 会重新生成，注册表过期时 `pnpm check:registry` 会直接报错。部件模板放在 [`src/widgets-template/`](src/widgets-template/)——在扫描根之外，因此永远不会被发现或注册；
-- **共享层（稳定内核）**：[`src/client/lib/`](src/client/lib/)——`contract.ts`（Widget 契约与解析器）、`format.ts`（纯格式化器 / 热度图网格构造）、`usage-view.ts`（OpenCode 用量族的渲染）、`heatmap-accounting.ts`（token 热度图自记账 provider）。部件单元引用这些模块；部件专属逻辑留在单元内；
+- **部件单元 + 构建期发现（ARCH-001）**：每个部件都是 [`src/widgets/<id>/`](src/widgets/) 下的独立单元——`manifest.json`（机器可读的那一半：id / order / group / builtin / defaultInstalled / sizes / 该部件的 locale，另可选 `source` 与 `skeleton`）+ `index.ts`（`defineWidget` 描述符：**纯数据**的 `render()`、名称/描述 thunk、configSchema、example）。注册表是**生成**的，从不手工维护：[`scripts/gen-registry.mjs`](scripts/gen-registry.mjs) 扫描各单元目录、拒绝未知 manifest 键与 id 三处不一致，并产出 `src/client/generated.registry.ts`（`WIDGETS` / `WIDGET_RUNTIME` / `ALL_IDS` / `ALL_INSTANCES` / `STATS_WIDGET_IDS` / `DEFAULT_INSTALLED` / 合并后的 `WIDGET_LOCALES`）。新增一个部件 = 新增一个单元目录；`pnpm build` 会重新生成，注册表过期时 `pnpm check:registry` 会直接报错。部件模板放在 [`src/widgets-template/`](src/widgets-template/)——在扫描根之外，因此永远不会被发现或注册；
+- **契约**：[`src/client/lib/contract/`](src/client/lib/contract/)——`types.ts`（单元 / 渲染层 / 外壳之间交换的全部形状，**零 import**：只想要类型的消费方不会把 i18n 或 React 拖进自己的模块图）+ `helpers.ts`（`defineWidget`、标签解析器、实例键、`sizesOf`）。其余与框架无关的工具并排放在 `lib/` 下（`format.ts`、`heatmap-accounting.ts`、`quota-math.ts`、`morph-spring.ts`）；某个数据源的载荷解析与该源的卡片渲染在 `src/client/families/<族>/{data,renders}.ts`，族与族之间互不引用；
 - **按部件 i18n**：部件文案放在各单元的 `manifest.json`（同族共用文案放 `src/widgets/_shared/locales.json` 一次）；外壳字典（`src/client/i18n.ts`）只管外壳 UI。生成的注册表把一切合并，外壳在 apply() 时向官方 locale 服务注册；
+- **组件栏由三个模块构成**：`rail/geometry.ts`（空间与预算解算，纯计算）、`rail/measure.ts`（锚点探针、宽度跟踪、ResizeObserver 扇出与让位节拍——直接写 DOM，因此不会比 React 的提交晚一帧）、`rail/rail-view.tsx`（`createRailView(deps)`：网格、放大波、加号面板与滑动抽屉）。`client/index.ts` 只做装配——bridge、四个槽位注册、页头胶囊与设置页（308 行）；
+- **放大波**：曲线在 `lib/morph-spring.ts`（`WAVE_SPRING`），布局与比例场在 `rail/wave/wave-geometry.ts`，交互与逐帧写样式在 `rail/wave/RailWave.tsx`；
 - **数据收集器**：挂载在 `conversation.composer.dock` slot，该 slot 仅在存在活跃会话时渲染——天然的「会话存活」信号；
-- **Host 半**：`webServer` + `credentials` 服务；注册 `/api/opencode-usage` / `/api/opencode-usage-multi` 同源代理路由，以及 `/api/widgets-state` 存储（组件栏配置持久化到 `profiles/web/dsh-widgets-state.json`——权威副本，浏览器换 origin、无痕模式、清除站点数据都丢不了）；
+- **Host 半**：[`src/host/`](src/host/)——一个上游渠道一个模块（`opencode` / `commandcode` / `usage-daily` / `github` / `sysinfo`）外加状态文件，共用 `host/http.ts`（memo 与请求体读取）、`host/exec.ts`（唯一的子进程缝）与 `host/context.ts`（ctx 契约）。[`src/index.ts`](src/index.ts) 是 31 行，只组装 `HOST_ROUTES`。路由：`/api/opencode-usage`、`/api/opencode-usage-multi`、`/api/commandcode-usage`、`/api/widgets-usage-daily`、`/api/github`、`/api/widgets-state`（组件栏配置的权威副本，持久化到 `profiles/web/dsh-widgets-state.json`——浏览器换 origin、无痕模式、清除站点数据都丢不了）与 `/api/sysinfo`；
 - **可逆清理**：所有注册都由 fiber 的 effect 生命周期管理；卸载即完全恢复；
 - **Slot 接入**：`conversation.input.overlay`（组件栏抽屉、放大浮层与设置抽屉——刻意放进对话子树，它会画在官方右栏面板**之下**，面板因此能吞掉组件栏）、`conversation.session.header.utilities`（「组件」胶囊，注册在 `order: 5`，避免与 `dsh-better-sidebar` 的底部面板开关撞号而换位）、`conversation.composer.dock`（数据收集器）、`settings.section`（设置页）；
 - **空间契约**：组件栏从不索取固定宽度。它的预算是「官方对话列宽 − 官方正文 measure − 74px 盒内缩」，两个数都读产品自己发布的变量并带几何回退；在预算内它是一个流式网格（`repeat(auto-fill, minmax(基准边长, 1fr))` 的语义：列数按基准边长自动填充、上限为用户设置；卡片边长 = 该列数下的等分宽度，按 10px 档位量化，夹在自动下限与「5 行可见」上限之间），因此正文始终保住产品自己的 measure。空间连单列都放不下时才让位。实测见 [CHANGELOG.md](CHANGELOG.md)。
@@ -183,15 +185,16 @@ dsh plugin --profile web add link:D:/dsh-home/plugins/dsh-widgets
 
 ```sh
 pnpm install
-pnpm run build      # gen-registry（发现）+ tsdown 构建 lib/
-pnpm run check      # 注册表最新性守卫 + tsc --noEmit
-pnpm check:registry # 仅注册表发现守卫
+pnpm run build       # gen-registry + tsdown 打包 + 发布用 .d.ts
+pnpm run check       # 注册表最新性守卫 + tsc --noEmit（0 错）
+pnpm run check:types # 用一个真实消费方验证两个入口的类型能解析
+pnpm check:registry  # 仅注册表发现守卫
 node scripts/validate-widget-unit.mjs [dir]   # 部件单元契约校验器（Worker 自检 / 评审）
 ```
 
-> 注意：`tsc --noEmit` 仍会在**未改动**的代码上报既有的 strict 模式错误——peer slot 类型（`@deepseek-ai/dsh-client-ui-slots`）只认识 `root` 这一个 slot 名，而运行时接受任意 slot id（插件实际可用；v1.3.0 重构把这类错误从 24 个降到 18 个，全部在改动文件之外），host 半则缺 `@types/node`。项目真正的门禁是 `pnpm build` + `pnpm check:registry`（两者均绿），外加运行中 bundle 的发现探针（`docs/verify-discovery.cjs`）。
+> **本仓库类型检查是干净的**，所以 `pnpm check` 是硬门；另有八个离线闸门守着每一次改动：G1 注册表过期、G2 单元契约与文案完整性、G3 类型检查、G4 每个部件 × 每个尺寸 × 每个预览状态的 **110 份渲染输出**（纯数据，不需要浏览器、不需要 React）、G5 编译后 CSS 的拼接、G6 纯搬移的增删行审计、G7 用桩驱动**构建产物**跑完 14 个 host 路由案例（不需要起服务）、G8 用一个真实消费方解析发布出去的声明。哪里实现什么，看 [`docs/architecture/CODE_MAP.md`](docs/architecture/CODE_MAP.md)；每一步用什么证明「没改行为」，看 [`docs/architecture/ARCHITECTURE_REFACTOR_REPORT.md`](docs/architecture/ARCHITECTURE_REFACTOR_REPORT.md)。
 
-- `peerDependencies`：`@deepseek-ai/cordis`、`@deepseek-ai/dsh-client-ui-slots`（由 DSH web profile 提供）；
+- `peerDependencies`：`@deepseek-ai/cordis`、`@deepseek-ai/dsh-client-ui-slots`（由 DSH web profile 提供；`@deepseek-ai/dsh-client-runtime` 已在 DSH 0.1.5 退役）；
 - `cordis.patch.yml` 插入一行 `widgets`；host 半与浏览器半分别由 loader 与 client-modules 加载。
 
 ## 兼容性
@@ -204,15 +207,15 @@ node scripts/validate-widget-unit.mjs [dir]   # 部件单元契约校验器（Wo
 
 每个版本的逐条记录——连同每条改动背后的实测数据——都在 **[`CHANGELOG.md`](CHANGELOG.md)**（[中文](CHANGELOG.zh-CN.md)）；每个版本同时以 [GitHub Release](https://github.com/Physicolor/dsh-widgets/releases) 发布，锚定到实际发布它的那个 commit。原始证据（CDP 探针、截图、JSON 回执、逐事件的修复记录）在 [`docs/`](docs/) 下。本 README 只保留当前版本的速览。
 
-### 最新版本 — v1.7.0
+### 最新版本 — v1.8.0
 
-**一个 Command Code 池里的每一把 Key 都在卡上，点一下即切换。** provider 的「账户轮换」卡片能把多个订阅挂在一个安装下（`COMMANDCODE_API_KEY`、`_2 … _4`）；host 路由现在读取**每一个**已配置成员、各自请求四个端点，并以 `keys` 下发、用该 Key 自己的账户名做标签。任何 Command Code 卡片（连同「额度管理」）点一下就在 `AllUser → <账户> …` 之间循环——`AllUser` 是整池合计、逐字段相加（窗口百分比 = `Σused / Σcap`；月窗口按各成员**自己的**套餐分别取月再相加），只配置一把 Key 时完全没有切换器。对真实账号复验：`docs/probe-cc-pool.mjs`（88 条断言）。
+**一次工程版本：卡片行为零变化。** v1.8.0 把结构债还清、把 1.7.x 留下的缺口补上；卡片、放大波与设置页的行为与之前完全一致——每一步都不是「看着没问题」，而是对着上一版构建逐项验证过的。
 
-**放大波现在是一条弹簧。** 进入/离开的进度是每帧写入的显式因子（`displayed = 1 + (target − 1) · p`，Apple 参数化：约 250ms 收敛、0.15% 过冲），移动中的指针再也不能让它重定向——「进入不连贯」与「交接瞬跳」这两个结构性缺陷都已消失，放大层的合成层也改为常驻提升（`docs/verify-rail-morph.cjs`）。
-
-**加载骨架画的是卡片自己的外形**——三个环、一整块绘图区、一列数字、三条堆叠额度条，或只有一行的文字卡（`docs/verify-skeleton-shapes.cjs`，19/19 实机通过）；设置里的「组件」一格改用组件自己的图标而非通用齿轮（`docs/verify-nav-glyph.cjs`）；卡片圆角为**超椭圆**（`corner-shape: squircle`，默认开，半径按短边比例）并一路生效到组件栏（`docs/verify-corner-shape.cjs`）。
-
-**本版还包含：** 「套餐」卡的档位徽章与档位阶梯预览、「用量 / 额度」重做（贴底数字行、官方式分段额度条）、「额度管理」的口径修复（只算 Command Code 路由）与按套餐的月窗口、以及折线图的空采样修复（`nvidia-smi` 漏采不再画成断线）。
+- **两个巨石文件消失了。** `client/index.ts` 从 **3,795 行降到 308 行**：组件栏的网格、测量层与视图各自成模块，组合根只做装配。host 那个 1,077 行的单文件变成 **31 行**，组装 [`src/host/`](src/host/) 下九个模块——一个上游渠道一个。`lib/contract.ts`（730 行，类型与解析器混装）拆成 **零 import** 的 `types.ts` 与 `helpers.ts`：只想要类型的消费方不再把 i18n 拖进模块图；
+- **`pnpm check` 全绿：0 条类型错误。** 原先剩的 35 条来自三处——缺 `@types/node` / `@types/react-dom`、运行时的 `slots` 服务（上游没有任何包给它类型，插件只声明自己真正调用的两个方法）、以及设置页里几处真实的空值缺陷；
+- **发布包终于带上了它承诺的类型**（`lib/types/**`），并且是用一个真实消费方编译两个入口验证过的；同时补上**两个闸门**：G7 用桩离线跑完七条 host 路由（14 个案例，不需要起服务），G8 验证发布出去的声明能被消费方解析。G4 还修了一个要紧的漏洞：它编译进一个从不清理的目录，于是被删模块的幽灵产物能满足过期 import、把真实破坏掩盖成绿灯；
+- **死代码清理**：整条孤立的徽章链（两个解析器、契约字段、14 处单元声明与对应词典键）、三条死 CSS 规则、一个无引用的图标与常量；设计 token 提成 `styles/tokens.module.css`，`styles/` 的读法是「token → 各层」；
+- **验证工具重新可用**：97 个探针脚本不再硬编码 playwright 浏览器修订号，升级浏览器后实机探针照样能跑。
 
 > 已知代价（记录在 changelog 中）：组件栏开启且视口 ≤1600px 时，正文滚动容器会掉到产品 `900px` 容器查询之下，于是 DSH 会隐藏它自己的轮次导航。
 

@@ -40,6 +40,7 @@ const GROUPS = {
   'opencode-go': { en: 'OpenCode Go', zh: 'OpenCode Go' },
   pricing: { en: 'Peak Pricing', zh: '峰谷定价' },
   device: { en: 'Device', zh: '设备状态' },
+  github: { en: 'GitHub', zh: 'GitHub' },
   other: { en: 'Others', zh: '其它' }
 };
 

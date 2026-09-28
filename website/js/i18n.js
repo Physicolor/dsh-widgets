@@ -20,7 +20,7 @@ window.DASH_I18N = (function () {
 
     /* WEBSITE-002: slimmed copy */
     p1b: 'Useful', p3b: 'Compact', p5b: 'Clear',
-    gSub: '全部 34 个正式组件。',
+    gSub: '全部 40 个正式组件。',
     gbGoodP: '一个主数字领衔，其余信息映衬——有限空间的正确打开方式。',
     gbBadP: '一次性塞满所有信息——读者看不出什么重要，于是什么都不重要。',
     makeTitle: '如何制作一个组件',
@@ -48,7 +48,7 @@ window.DASH_I18N = (function () {
     githubAria: 'GitHub 仓库',
 
     /* hero */
-    kicker: 'dsh-widgets · v1.7.0 · MIT · DeepSeek Harness 0.1.x',
+    kicker: 'dsh-widgets · v1.8.0 · MIT · DeepSeek Harness 0.1.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: '将对话区域中的留白空间，转化为高信息密度、可随时隐藏的辅助界面。',
@@ -77,7 +77,7 @@ window.DASH_I18N = (function () {
 
     /* gallery */
     gTitle: '组件画廊',
-    gSub: '全部 34 个正式组件——每一个都是 src/widgets/<id>/ 下独立、契约驱动的单元。',
+    gSub: '全部 40 个正式组件——每一个都是 src/widgets/<id>/ 下独立、契约驱动的单元。',
     gAll: '全部', gSystem: '系统', gCodingPlan: '用量热度', gCommandCode: 'Command Code', gOpenCodeGo: 'OpenCode Go', gPricing: '峰谷定价', gDevice: '设备状态', gOther: '其它',
     gEmpty: '该分类下暂无组件。',
     badgeBuiltin: '内置', badgeMarket: '市场', badgePre: '预装',
@@ -282,7 +282,7 @@ window.DASH_I18N = (function () {
     'an.box': '卡片盒',
 
     auTitle: 'DSH Visual Audit',
-    auSub: '几何告诉我们哪里没对齐，设计规则告诉我们那是否要紧。下面是全部 34 个组件按规则算出的结果——没有神经网络，只有测量与规则。',
+    auSub: '几何告诉我们哪里没对齐，设计规则告诉我们那是否要紧。下面是全部 40 个组件按规则算出的结果——没有神经网络，只有测量与规则。',
     auGeoTitle: 'Layer 1 · 几何测量',
     auGeoSub: '在浏览器里对真实渲染的卡片取 getBoundingClientRect：内边距、右槽对齐、块间距、溢出、动作区偏移。',
     auHeurTitle: 'Layer 2 · 设计规则',
@@ -318,12 +318,12 @@ window.DASH_I18N = (function () {
     dtVariants: '尺寸变体', dtIntent: '设计意图', dtGeometry: '几何测量', dtAudit: '规则化审计', dtSource: '源码入口',
     openDetail: '解剖 / 审计',
     'group.system': '系统', 'group.commandcode': 'Command Code', 'group.coding-plan': '用量热度',
-    'group.opencode-go': 'OpenCode Go', 'group.pricing': '峰谷定价', 'group.device': '设备状态', 'group.other': '其它',
+    'group.opencode-go': 'OpenCode Go', 'group.pricing': '峰谷定价', 'group.device': '设备状态', 'group.github': 'GitHub', 'group.other': '其它',
     'pattern.value': '主读数', 'pattern.valuePair': '主值 + 副值', 'pattern.bars': '柱状', 'pattern.rings': '环形',
     'pattern.heat': '热度图', 'pattern.line': '折线', 'pattern.segments': '分段条', 'pattern.meter': '状态计量',
     'pattern.text': '文本块', 'pattern.status': '状态字', 'pattern.chart': '图表',
     'ia.readonly': '只读', 'ia.action': '一键动作', 'ia.cycle': '点击切换',
-    footNote: '紧凑组件设计系统：34 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。',
+    footNote: '紧凑组件设计系统：40 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。',
     footSource: '组件源码'
   };
 
@@ -333,7 +333,7 @@ window.DASH_I18N = (function () {
 
     /* WEBSITE-002: slimmed copy */
     p1b: 'Useful', p3b: 'Compact', p5b: 'Clear',
-    gSub: 'All 34 current widgets.',
+    gSub: 'All 40 current widgets.',
     gbGoodP: 'One primary number leads; everything else supports it — the right way to use a small space.',
     gbBadP: 'Everything crammed in at once — the reader cannot tell what matters, so nothing matters.',
     makeTitle: 'How to make a widget',
@@ -360,7 +360,7 @@ window.DASH_I18N = (function () {
     menuToggleAria: 'Toggle navigation menu',
     githubAria: 'GitHub repository',
 
-    kicker: 'dsh-widgets · v1.7.0 · MIT · DeepSeek Harness 0.1.x',
+    kicker: 'dsh-widgets · v1.8.0 · MIT · DeepSeek Harness 0.1.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: 'Turn the idle whitespace of the conversation area into a high-information-density, hideable companion surface.',
@@ -386,7 +386,7 @@ window.DASH_I18N = (function () {
     why3Title: 'Optional', why3Body: 'An auxiliary layer that never blocks a conversation — the “Components” capsule in the session header hides the whole rail at any time.',
 
     gTitle: 'Widget Gallery',
-    gSub: 'All 34 current widgets — each one an independent, contract-driven unit under src/widgets/<id>/.',
+    gSub: 'All 40 current widgets — each one an independent, contract-driven unit under src/widgets/<id>/.',
     gAll: 'All', gSystem: 'System', gCodingPlan: 'Coding Plan', gCommandCode: 'Command Code', gOpenCodeGo: 'OpenCode Go', gPricing: 'Pricing', gDevice: 'Device', gOther: 'Other',
     gEmpty: 'No widgets in this category.',
     badgeBuiltin: 'Built-in', badgeMarket: 'Market', badgePre: 'Pre-installed',
@@ -587,7 +587,7 @@ window.DASH_I18N = (function () {
     'an.box': 'card box',
 
     auTitle: 'DSH Visual Audit',
-    auSub: 'Geometry tells us what is misaligned; the design rules tell us whether it matters. Below is every one of the 34 widgets scored by rules — no neural network, just measurements and rules.',
+    auSub: 'Geometry tells us what is misaligned; the design rules tell us whether it matters. Below is every one of the 40 widgets scored by rules — no neural network, just measurements and rules.',
     auGeoTitle: 'Layer 1 · geometric measurement',
     auGeoSub: 'getBoundingClientRect on the real rendered card: padding, right-slot alignment, block rhythm, overflow, action inset.',
     auHeurTitle: 'Layer 2 · design rules',
@@ -623,12 +623,12 @@ window.DASH_I18N = (function () {
     dtVariants: 'Size variants', dtIntent: 'Design intent', dtGeometry: 'Measured geometry', dtAudit: 'Rule-based audit', dtSource: 'Source',
     openDetail: 'Anatomy / audit',
     'group.system': 'System', 'group.commandcode': 'Command Code', 'group.coding-plan': 'Coding Plan Usage',
-    'group.opencode-go': 'OpenCode Go', 'group.pricing': 'Peak Pricing', 'group.device': 'Device', 'group.other': 'Others',
+    'group.opencode-go': 'OpenCode Go', 'group.pricing': 'Peak Pricing', 'group.device': 'Device', 'group.github': 'GitHub', 'group.other': 'Others',
     'pattern.value': 'Primary value', 'pattern.valuePair': 'Value pair', 'pattern.bars': 'Bars', 'pattern.rings': 'Rings',
     'pattern.heat': 'Heatmap', 'pattern.line': 'Sparkline', 'pattern.segments': 'Segment bar', 'pattern.meter': 'State meter',
     'pattern.text': 'Text block', 'pattern.status': 'Status word', 'pattern.chart': 'Chart',
     'ia.readonly': 'Read-only', 'ia.action': 'One-tap action', 'ia.cycle': 'Tap to cycle',
-    footNote: 'A compact widget design system: 34 widgets, spatial grammar, rule-based visual audit — built for DeepSeek Harness.',
+    footNote: 'A compact widget design system: 40 widgets, spatial grammar, rule-based visual audit — built for DeepSeek Harness.',
     footSource: 'Widget source'
   };
 

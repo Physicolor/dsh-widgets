@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>dsh-widgets — DeepSeek Harness Widget Design System &amp; Component Library</title>
-  <meta name="description" content="dsh-widgets 是面向 DeepSeek Harness 的紧凑组件设计系统：34 个真实 Widget、连续放大的空间几何、基于几何测量的视觉审计（Visual Audit），以及 Agent 生产流程。A compact widget design system and component library for DeepSeek Harness — 33 real dashboard widgets, geometry-based UI auditing, and an agent production pipeline." />
+  <meta name="description" content="dsh-widgets 是面向 DeepSeek Harness 的紧凑组件设计系统：40 个真实 Widget、连续放大的空间几何、基于几何测量的视觉审计（Visual Audit），以及 Agent 生产流程。A compact widget design system and component library for DeepSeek Harness — 33 real dashboard widgets, geometry-based UI auditing, and an agent production pipeline." />
   <link rel="canonical" href="https://physicolor.github.io/dsh-widgets/" />
   <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
   <meta name="author" content="Physicolor" />
@@ -14,7 +14,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="dsh-widgets" />
   <meta property="og:title" content="dsh-widgets — DeepSeek Harness Widget Design System" />
-  <meta property="og:description" content="34 real compact widgets for DeepSeek Harness, with the spatial geometry behind them, a measured visual audit, and an agent production pipeline." />
+  <meta property="og:description" content="40 real compact widgets for DeepSeek Harness, with the spatial geometry behind them, a measured visual audit, and an agent production pipeline." />
   <meta property="og:url" content="https://physicolor.github.io/dsh-widgets/" />
   <meta property="og:image" content="https://physicolor.github.io/dsh-widgets/assets/og.png" />
   <meta property="og:image:width" content="1200" />
@@ -24,7 +24,7 @@
   <meta property="og:locale:alternate" content="en_US" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="dsh-widgets — DeepSeek Harness Widget Design System" />
-  <meta name="twitter:description" content="34 real compact widgets for DeepSeek Harness — spatial design grammar, measured visual audit, agent production pipeline." />
+  <meta name="twitter:description" content="40 real compact widgets for DeepSeek Harness — spatial design grammar, measured visual audit, agent production pipeline." />
   <meta name="twitter:image" content="https://physicolor.github.io/dsh-widgets/assets/og.png" />
 
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -62,9 +62,9 @@
         "codeRepository": "https://github.com/Physicolor/dsh-widgets",
         "programmingLanguage": "TypeScript",
         "author": { "@type": "Person", "name": "Physicolor" },
-        "description": "A right-hand widget rail for the DeepSeek Harness Web UI: 34 compact dashboard widgets on a 150px grid with a continuous magnification wave, per-instance sizing, and a geometry-based visual audit.",
+        "description": "A right-hand widget rail for the DeepSeek Harness Web UI: 40 compact dashboard widgets on a 150px grid with a continuous magnification wave, per-instance sizing, and a geometry-based visual audit.",
         "featureList": [
-          "34 compact widgets on a 150px grid",
+          "40 compact widgets on a 150px grid",
           "Continuous dock-style magnification (peak 1.2, 3-step influence)",
           "Right-anchored reflow that keeps the rail edge flush",
           "Rule-based geometry + layout-heuristic visual audit",
@@ -160,7 +160,7 @@
               "@type": "ListItem",
               "position": 11,
               "name": "对话轨迹 / Trajectory",
-              "description": "官方「轨迹」三色泳道的卡片版：输入 / 模型 / 工具 每次触发一根色条，随模型调用工具实时右移滚动 The official 轨迹 rail as a card: one colored bar per input / model / tool beat, rolling right as the model keeps calling tools",
+              "description": "官方「轨迹」三色泳道的卡片版：输入 / 模型 / 工具 每次触发一根色条，随模型调用工具实时右移滚动 The official Trajectory rail as a card: one colored bar per input / model / tool beat, rolling right as the model keeps calling tools",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/trajectory"
             },
             {
@@ -438,14 +438,14 @@
             <p class="hero-tagline" data-i18n="heroTagline">紧凑组件设计系统 · 空间几何 · 可测量的视觉审计</p>
             <div class="hero-desc">
               <p class="lead-main" data-i18n="heroLead1">将对话区域中的留白空间，转化为高信息密度、可随时隐藏的辅助界面。</p>
-              <p class="lead-en" data-i18n="heroLead2">34 compact widgets for DeepSeek Harness on a 150px grid — with the spatial geometry behind them, a measured visual audit, and the agent pipeline that produces each unit.</p>
+              <p class="lead-en" data-i18n="heroLead2">40 compact widgets for DeepSeek Harness on a 150px grid — with the spatial geometry behind them, a measured visual audit, and the agent pipeline that produces each unit.</p>
             </div>
             <div class="hero-cta">
               <a class="btn btn-primary" href="#widgets" data-i18n="ctaWidgets">浏览全部组件</a>
               <a class="btn btn-ghost" href="#grammar" data-i18n="ctaGrammar">看设计语法</a>
             </div>
             <dl class="hero-stats">
-              <div class="hero-stat"><dt>34</dt><dd data-i18n="statWidgets">组件</dd></div>
+              <div class="hero-stat"><dt>40</dt><dd data-i18n="statWidgets">组件</dd></div>
               <div class="hero-stat"><dt>7</dt><dd data-i18n="statCats">分类</dd></div>
               <div class="hero-stat"><dt>150</dt><dd data-i18n="statUnit">px 网格单元</dd></div>
               <div class="hero-stat"><dt>13</dt><dd data-i18n="statRules">条审计规则</dd></div>
@@ -606,7 +606,7 @@
     <section class="audit" id="audit" aria-label="视觉审计">
       <div class="wrap">
         <h2 class="section-title reveal" data-i18n="auTitle">DSH Visual Audit</h2>
-        <p class="section-sub reveal" data-i18n="auSub">几何告诉我们哪里没对齐，设计规则告诉我们那是否要紧。下面是全部 34 个组件按规则算出的结果——没有神经网络，只有测量与规则。</p>
+        <p class="section-sub reveal" data-i18n="auSub">几何告诉我们哪里没对齐，设计规则告诉我们那是否要紧。下面是全部 40 个组件按规则算出的结果——没有神经网络，只有测量与规则。</p>
 
         <div class="au-method reveal">
           <div class="au-layer-card">
@@ -626,7 +626,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
         </div>
 
         <div class="au-layout reveal">
-          <div class="au-list" id="au-list" role="table" aria-label="34 个组件的规则化审计"></div>
+          <div class="au-list" id="au-list" role="table" aria-label="40 个组件的规则化审计"></div>
           <div class="au-detail" id="au-detail"></div>
         </div>
         <div class="au-cases reveal" id="au-cases"></div>
@@ -639,7 +639,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
     <section class="gallery" id="widgets" aria-label="组件画廊">
       <div class="wrap">
         <h2 class="section-title reveal" data-i18n="gTitle">组件画廊</h2>
-        <p class="section-sub reveal" data-i18n="gSub">全部 34 个正式组件：真实渲染、真实数据格式、真实尺寸。点开任意一个可以看它的解剖与审计。</p>
+        <p class="section-sub reveal" data-i18n="gSub">全部 40 个正式组件：真实渲染、真实数据格式、真实尺寸。点开任意一个可以看它的解剖与审计。</p>
         <div class="filters reveal" role="group" aria-label="按分类筛选组件">
           <button class="filter is-active" data-filter="all" type="button" data-i18n="gAll">全部</button>
           <button class="filter" data-filter="system" type="button" data-i18n="gSystem">系统</button>
@@ -849,7 +849,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="widget-name">对话轨迹<span class="widget-name-en">Trajectory</span></span>
                 <span class="widget-id">trajectory</span>
               </div>
-              <p class="widget-desc">官方「轨迹」三色泳道的卡片版：输入 / 模型 / 工具 每次触发一根色条，随模型调用工具实时右移滚动<span class="widget-desc-en"> The official 轨迹 rail as a card: one colored bar per input / model / tool beat, rolling right as the model keeps calling tools</span></p>
+              <p class="widget-desc">官方「轨迹」三色泳道的卡片版：输入 / 模型 / 工具 每次触发一根色条，随模型调用工具实时右移滚动<span class="widget-desc-en"> The official Trajectory rail as a card: one colored bar per input / model / tool beat, rolling right as the model keeps calling tools</span></p>
               <div class="widget-meta">
                 <span class="badge" data-i18n="group.system">系统</span>
                 <span class="badge badge-size">2×2</span>
@@ -1326,7 +1326,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
               </div>
               <p class="widget-desc">GitHub 提交热度图（同款 5 级绿）。2×2 近 3 个月，2×4 近一年（与 GitHub 个人页同款窗口）；默认读本机已登录的账号，也可填用户名<span class="widget-desc-en"> GitHub contribution calendar in GitHub's own five-step green. 2×2 covers ~3 months, 2×4 the last year (the window GitHub's profile header reports); reads this machine's login unless a user is set</span></p>
               <div class="widget-meta">
-                <span class="badge" data-i18n="group.github">github</span>
+                <span class="badge" data-i18n="group.github">GitHub</span>
                 <span class="badge badge-size">2×2 2×4</span>
                 <span class="badge badge-pattern" data-i18n="pattern.value"></span>
                 <span class="badge" data-i18n="ia.readonly"></span>
@@ -1345,7 +1345,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
               </div>
               <p class="widget-desc">仓库 Stars（副标题是仓库名，副行是 Forks）；同时监控多个仓库时单击卡片切换<span class="widget-desc-en"> Repo stars with the repo name above and forks below; tap the card to cycle when several repos are watched</span></p>
               <div class="widget-meta">
-                <span class="badge" data-i18n="group.github">github</span>
+                <span class="badge" data-i18n="group.github">GitHub</span>
                 <span class="badge badge-size">2×2</span>
                 <span class="badge badge-pattern" data-i18n="pattern.value"></span>
                 <span class="badge" data-i18n="ia.readonly"></span>
@@ -1364,7 +1364,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
               </div>
               <p class="widget-desc">未关闭 Issue 数（不含 PR），副行是其中没有任何人回复的数量——配了 token 才测得到，否则显示「回复（配置 token 后可测）」<span class="widget-desc-en"> Open issues (PRs excluded), with how many nobody has answered underneath — measured only with a token, otherwise the line says so</span></p>
               <div class="widget-meta">
-                <span class="badge" data-i18n="group.github">github</span>
+                <span class="badge" data-i18n="group.github">GitHub</span>
                 <span class="badge badge-size">2×2</span>
                 <span class="badge badge-pattern" data-i18n="pattern.value"></span>
                 <span class="badge" data-i18n="ia.readonly"></span>
@@ -1383,7 +1383,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
               </div>
               <p class="widget-desc">距离最近一次 push 多久（12s / 5m / 3h / 6d），副行是最新 Release tag<span class="widget-desc-en"> How long since the last push (12s / 5m / 3h / 6d), with the newest release tag underneath</span></p>
               <div class="widget-meta">
-                <span class="badge" data-i18n="group.github">github</span>
+                <span class="badge" data-i18n="group.github">GitHub</span>
                 <span class="badge badge-size">2×2</span>
                 <span class="badge badge-pattern" data-i18n="pattern.value"></span>
                 <span class="badge" data-i18n="ia.readonly"></span>
@@ -1402,7 +1402,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
               </div>
               <p class="widget-desc">2×4 汇总板：Stars / 未关闭 Issue / 未回复 / 最近提交 并排，标题行给出仓库全名与最新 Release<span class="widget-desc-en"> 2×4 board: stars / open issues / unanswered / last push side by side, with the full repo name and newest release on the title row</span></p>
               <div class="widget-meta">
-                <span class="badge" data-i18n="group.github">github</span>
+                <span class="badge" data-i18n="group.github">GitHub</span>
                 <span class="badge badge-size">2×4</span>
                 <span class="badge badge-pattern" data-i18n="pattern.value"></span>
                 <span class="badge" data-i18n="ia.readonly"></span>
@@ -1581,8 +1581,8 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
         <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
           <rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" opacity=".55" /><rect x="3" y="14" width="7" height="7" rx="2" opacity=".55" /><rect x="14" y="14" width="7" height="7" rx="2" />
         </svg>
-        <span><b>dsh-widgets</b> v1.7.0 · MIT</span>
-        <p class="footer-note" data-i18n="footNote">紧凑组件设计系统：34 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。</p>
+        <span><b>dsh-widgets</b> v1.8.0 · MIT</span>
+        <p class="footer-note" data-i18n="footNote">紧凑组件设计系统：40 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。</p>
       </div>
       <nav class="footer-links" aria-label="页脚">
         <a href="https://github.com/Physicolor/dsh-widgets" target="_blank" rel="noopener">GitHub</a>
