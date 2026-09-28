@@ -71,7 +71,10 @@ export default defineWidget({
       headRing: {
         ratio,
         tone: cacheTone(ratio),
-        icon: 'database',
+        // 硬盘, NOT the cylinder: 会话用量 owns `database` (a store of tokens), and
+        // the official name for this mechanism is 上下文硬盘缓存 (Context Caching on
+        // Disk) — two cards side by side must not wear the same glyph.
+        icon: 'hard-drive',
         // Hover only: the tile rounds to whole percent, the tooltip does not.
         label: `${pct.toFixed(1)}%`,
       },

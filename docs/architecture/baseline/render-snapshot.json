@@ -94,7 +94,7 @@
      "big": "99%"
     },
     "headRing": {
-     "icon": "database",
+     "icon": "hard-drive",
      "label": "98.9%",
      "ratio": 0.989247311827957,
      "tone": "success"
@@ -1879,50 +1879,436 @@
      "bars": [
       {
        "label": "9.18",
-       "ratio": 0,
-       "tone": "muted",
-       "value": -4800
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
       },
       {
        "label": "9.19",
-       "ratio": 1,
+       "ratio": 0.05017921146953405,
        "tone": "primary",
-       "value": 4025
+       "value": 1400000
       },
       {
        "label": "9.20",
-       "ratio": 0,
-       "tone": "muted",
-       "value": 0
+       "ratio": 0.17921146953405018,
+       "tone": "primary",
+       "value": 5000000
       },
       {
        "label": "9.21",
-       "ratio": 0,
-       "tone": "muted",
-       "value": -2400
+       "ratio": 1,
+       "tone": "primary",
+       "value": 27900000
       },
       {
        "label": "9.22",
-       "ratio": 0,
-       "tone": "muted",
-       "value": 0
+       "ratio": 0.2867383512544803,
+       "tone": "primary",
+       "value": 8000000
       },
       {
        "label": "9.23",
-       "ratio": 0,
-       "tone": "muted",
-       "value": 0
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
       },
       {
        "label": "9.24",
-       "ratio": 0.9937888198757764,
+       "ratio": 0.2222222222222222,
        "tone": "primary",
-       "value": 4000
+       "value": 6200000
       }
      ],
      "kind": "barsV"
     },
-    "legend": "4K  825",
+    "legend": "27.9M  62.7M",
+    "title": "Token 用量"
+   }
+  },
+  {
+   "id": "heatmap-bars",
+   "size": "2x2",
+   "sim": {
+    "range": "7"
+   },
+   "out": {
+    "chart": {
+     "bars": [
+      {
+       "label": "9.18",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.19",
+       "ratio": 0.05017921146953405,
+       "tone": "primary",
+       "value": 1400000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17921146953405018,
+       "tone": "primary",
+       "value": 5000000
+      },
+      {
+       "label": "9.21",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 27900000
+      },
+      {
+       "label": "9.22",
+       "ratio": 0.2867383512544803,
+       "tone": "primary",
+       "value": 8000000
+      },
+      {
+       "label": "9.23",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.2222222222222222,
+       "tone": "primary",
+       "value": 6200000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "legend": "27.9M  62.7M",
+    "title": "Token 用量"
+   }
+  },
+  {
+   "id": "heatmap-bars",
+   "size": "2x2",
+   "sim": {
+    "range": "30"
+   },
+   "out": {
+    "cardHint": "每根柱 = 2 天（悬停柱看该柱合计；标签是该柱的结束日）",
+    "chart": {
+     "bars": [
+      {
+       "label": "8.27",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "8.29",
+       "ratio": 0.28690807799442897,
+       "tone": "primary",
+       "value": 10300000
+      },
+      {
+       "label": "8.31",
+       "ratio": 0.31197771587743733,
+       "tone": "primary",
+       "value": 11200000
+      },
+      {
+       "label": "9.2",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.4",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      },
+      {
+       "label": "9.6",
+       "ratio": 0.25348189415041783,
+       "tone": "primary",
+       "value": 9100000
+      },
+      {
+       "label": "9.8",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.10",
+       "ratio": 0.4456824512534819,
+       "tone": "primary",
+       "value": 16000000
+      },
+      {
+       "label": "9.12",
+       "ratio": 0.8662952646239555,
+       "tone": "primary",
+       "value": 31100000
+      },
+      {
+       "label": "9.14",
+       "ratio": 0.23676880222841226,
+       "tone": "primary",
+       "value": 8500000
+      },
+      {
+       "label": "9.16",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "9.18",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17827298050139276,
+       "tone": "primary",
+       "value": 6400000
+      },
+      {
+       "label": "9.22",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "legend": "35.9M  259M",
+    "title": "Token 用量"
+   }
+  },
+  {
+   "id": "heatmap-bars",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "chart": {
+     "bars": [
+      {
+       "label": "9.18",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.19",
+       "ratio": 0.05017921146953405,
+       "tone": "primary",
+       "value": 1400000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17921146953405018,
+       "tone": "primary",
+       "value": 5000000
+      },
+      {
+       "label": "9.21",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 27900000
+      },
+      {
+       "label": "9.22",
+       "ratio": 0.2867383512544803,
+       "tone": "primary",
+       "value": 8000000
+      },
+      {
+       "label": "9.23",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.2222222222222222,
+       "tone": "primary",
+       "value": 6200000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "headRight": "MAX 27.9M  TOTAL 62.7M",
+    "title": "Token 用量"
+   }
+  },
+  {
+   "id": "heatmap-bars",
+   "size": "2x4",
+   "sim": {
+    "range": "7"
+   },
+   "out": {
+    "chart": {
+     "bars": [
+      {
+       "label": "9.18",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.19",
+       "ratio": 0.05017921146953405,
+       "tone": "primary",
+       "value": 1400000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17921146953405018,
+       "tone": "primary",
+       "value": 5000000
+      },
+      {
+       "label": "9.21",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 27900000
+      },
+      {
+       "label": "9.22",
+       "ratio": 0.2867383512544803,
+       "tone": "primary",
+       "value": 8000000
+      },
+      {
+       "label": "9.23",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.2222222222222222,
+       "tone": "primary",
+       "value": 6200000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "headRight": "MAX 27.9M  TOTAL 62.7M",
+    "title": "Token 用量"
+   }
+  },
+  {
+   "id": "heatmap-bars",
+   "size": "2x4",
+   "sim": {
+    "range": "30"
+   },
+   "out": {
+    "cardHint": "每根柱 = 2 天（悬停柱看该柱合计；标签是该柱的结束日）",
+    "chart": {
+     "bars": [
+      {
+       "label": "8.27",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "8.29",
+       "ratio": 0.28690807799442897,
+       "tone": "primary",
+       "value": 10300000
+      },
+      {
+       "label": "8.31",
+       "ratio": 0.31197771587743733,
+       "tone": "primary",
+       "value": 11200000
+      },
+      {
+       "label": "9.2",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.4",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      },
+      {
+       "label": "9.6",
+       "ratio": 0.25348189415041783,
+       "tone": "primary",
+       "value": 9100000
+      },
+      {
+       "label": "9.8",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.10",
+       "ratio": 0.4456824512534819,
+       "tone": "primary",
+       "value": 16000000
+      },
+      {
+       "label": "9.12",
+       "ratio": 0.8662952646239555,
+       "tone": "primary",
+       "value": 31100000
+      },
+      {
+       "label": "9.14",
+       "ratio": 0.23676880222841226,
+       "tone": "primary",
+       "value": 8500000
+      },
+      {
+       "label": "9.16",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "9.18",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17827298050139276,
+       "tone": "primary",
+       "value": 6400000
+      },
+      {
+       "label": "9.22",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "headRight": "MAX 35.9M  TOTAL 259M",
     "title": "Token 用量"
    }
   },
@@ -5180,111 +5566,6 @@
    }
   },
   {
-   "id": "heatmap-bars-wide",
-   "size": "2x4",
-   "sim": null,
-   "out": {
-    "cardHint": "每根柱 = 2 天（悬停柱看该柱合计；标签是该柱的结束日）",
-    "chart": {
-     "bars": [
-      {
-       "label": "8.27",
-       "ratio": 0.520891364902507,
-       "tone": "primary",
-       "value": 18700000
-      },
-      {
-       "label": "8.29",
-       "ratio": 0.28690807799442897,
-       "tone": "primary",
-       "value": 10300000
-      },
-      {
-       "label": "8.31",
-       "ratio": 0.31197771587743733,
-       "tone": "primary",
-       "value": 11200000
-      },
-      {
-       "label": "9.2",
-       "ratio": 1,
-       "tone": "primary",
-       "value": 35900000
-      },
-      {
-       "label": "9.4",
-       "ratio": 0.37047353760445684,
-       "tone": "primary",
-       "value": 13300000
-      },
-      {
-       "label": "9.6",
-       "ratio": 0.25348189415041783,
-       "tone": "primary",
-       "value": 9100000
-      },
-      {
-       "label": "9.8",
-       "ratio": 0.4206128133704735,
-       "tone": "primary",
-       "value": 15100000
-      },
-      {
-       "label": "9.10",
-       "ratio": 0.4456824512534819,
-       "tone": "primary",
-       "value": 16000000
-      },
-      {
-       "label": "9.12",
-       "ratio": 0.8662952646239555,
-       "tone": "primary",
-       "value": 31100000
-      },
-      {
-       "label": "9.14",
-       "ratio": 0.23676880222841226,
-       "tone": "primary",
-       "value": 8500000
-      },
-      {
-       "label": "9.16",
-       "ratio": 0.520891364902507,
-       "tone": "primary",
-       "value": 18700000
-      },
-      {
-       "label": "9.18",
-       "ratio": 0.4206128133704735,
-       "tone": "primary",
-       "value": 15100000
-      },
-      {
-       "label": "9.20",
-       "ratio": 0.17827298050139276,
-       "tone": "primary",
-       "value": 6400000
-      },
-      {
-       "label": "9.22",
-       "ratio": 1,
-       "tone": "primary",
-       "value": 35900000
-      },
-      {
-       "label": "9.24",
-       "ratio": 0.37047353760445684,
-       "tone": "primary",
-       "value": 13300000
-      }
-     ],
-     "kind": "barsV"
-    },
-    "headRight": "MAX 35.9M  TOTAL 259M",
-    "title": "用量柱状图"
-   }
-  },
-  {
    "id": "peak-pricing-board",
    "size": "2x4",
    "sim": null,
@@ -5563,7 +5844,7 @@
      "big": "99%"
     },
     "headRing": {
-     "icon": "database",
+     "icon": "hard-drive",
      "label": "98.9%",
      "ratio": 0.989247311827957,
      "tone": "success"
@@ -7348,50 +7629,436 @@
      "bars": [
       {
        "label": "9.18",
-       "ratio": 0,
-       "tone": "muted",
-       "value": -4800
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
       },
       {
        "label": "9.19",
-       "ratio": 1,
+       "ratio": 0.05017921146953405,
        "tone": "primary",
-       "value": 4025
+       "value": 1400000
       },
       {
        "label": "9.20",
-       "ratio": 0,
-       "tone": "muted",
-       "value": 0
+       "ratio": 0.17921146953405018,
+       "tone": "primary",
+       "value": 5000000
       },
       {
        "label": "9.21",
-       "ratio": 0,
-       "tone": "muted",
-       "value": -2400
+       "ratio": 1,
+       "tone": "primary",
+       "value": 27900000
       },
       {
        "label": "9.22",
-       "ratio": 0,
-       "tone": "muted",
-       "value": 0
+       "ratio": 0.2867383512544803,
+       "tone": "primary",
+       "value": 8000000
       },
       {
        "label": "9.23",
-       "ratio": 0,
-       "tone": "muted",
-       "value": 0
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
       },
       {
        "label": "9.24",
-       "ratio": 0.9937888198757764,
+       "ratio": 0.2222222222222222,
        "tone": "primary",
-       "value": 4000
+       "value": 6200000
       }
      ],
      "kind": "barsV"
     },
-    "legend": "4K  825",
+    "legend": "27.9M  62.7M",
+    "title": "Token Usage"
+   }
+  },
+  {
+   "id": "heatmap-bars",
+   "size": "2x2",
+   "sim": {
+    "range": "7"
+   },
+   "out": {
+    "chart": {
+     "bars": [
+      {
+       "label": "9.18",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.19",
+       "ratio": 0.05017921146953405,
+       "tone": "primary",
+       "value": 1400000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17921146953405018,
+       "tone": "primary",
+       "value": 5000000
+      },
+      {
+       "label": "9.21",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 27900000
+      },
+      {
+       "label": "9.22",
+       "ratio": 0.2867383512544803,
+       "tone": "primary",
+       "value": 8000000
+      },
+      {
+       "label": "9.23",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.2222222222222222,
+       "tone": "primary",
+       "value": 6200000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "legend": "27.9M  62.7M",
+    "title": "Token Usage"
+   }
+  },
+  {
+   "id": "heatmap-bars",
+   "size": "2x2",
+   "sim": {
+    "range": "30"
+   },
+   "out": {
+    "cardHint": "each bar = 2 days (hover a bar for its total; the label is the day the bar ends on)",
+    "chart": {
+     "bars": [
+      {
+       "label": "8.27",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "8.29",
+       "ratio": 0.28690807799442897,
+       "tone": "primary",
+       "value": 10300000
+      },
+      {
+       "label": "8.31",
+       "ratio": 0.31197771587743733,
+       "tone": "primary",
+       "value": 11200000
+      },
+      {
+       "label": "9.2",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.4",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      },
+      {
+       "label": "9.6",
+       "ratio": 0.25348189415041783,
+       "tone": "primary",
+       "value": 9100000
+      },
+      {
+       "label": "9.8",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.10",
+       "ratio": 0.4456824512534819,
+       "tone": "primary",
+       "value": 16000000
+      },
+      {
+       "label": "9.12",
+       "ratio": 0.8662952646239555,
+       "tone": "primary",
+       "value": 31100000
+      },
+      {
+       "label": "9.14",
+       "ratio": 0.23676880222841226,
+       "tone": "primary",
+       "value": 8500000
+      },
+      {
+       "label": "9.16",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "9.18",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17827298050139276,
+       "tone": "primary",
+       "value": 6400000
+      },
+      {
+       "label": "9.22",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "legend": "35.9M  259M",
+    "title": "Token Usage"
+   }
+  },
+  {
+   "id": "heatmap-bars",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "chart": {
+     "bars": [
+      {
+       "label": "9.18",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.19",
+       "ratio": 0.05017921146953405,
+       "tone": "primary",
+       "value": 1400000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17921146953405018,
+       "tone": "primary",
+       "value": 5000000
+      },
+      {
+       "label": "9.21",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 27900000
+      },
+      {
+       "label": "9.22",
+       "ratio": 0.2867383512544803,
+       "tone": "primary",
+       "value": 8000000
+      },
+      {
+       "label": "9.23",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.2222222222222222,
+       "tone": "primary",
+       "value": 6200000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "headRight": "MAX 27.9M  TOTAL 62.7M",
+    "title": "Token Usage"
+   }
+  },
+  {
+   "id": "heatmap-bars",
+   "size": "2x4",
+   "sim": {
+    "range": "7"
+   },
+   "out": {
+    "chart": {
+     "bars": [
+      {
+       "label": "9.18",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.19",
+       "ratio": 0.05017921146953405,
+       "tone": "primary",
+       "value": 1400000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17921146953405018,
+       "tone": "primary",
+       "value": 5000000
+      },
+      {
+       "label": "9.21",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 27900000
+      },
+      {
+       "label": "9.22",
+       "ratio": 0.2867383512544803,
+       "tone": "primary",
+       "value": 8000000
+      },
+      {
+       "label": "9.23",
+       "ratio": 0.25448028673835127,
+       "tone": "primary",
+       "value": 7100000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.2222222222222222,
+       "tone": "primary",
+       "value": 6200000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "headRight": "MAX 27.9M  TOTAL 62.7M",
+    "title": "Token Usage"
+   }
+  },
+  {
+   "id": "heatmap-bars",
+   "size": "2x4",
+   "sim": {
+    "range": "30"
+   },
+   "out": {
+    "cardHint": "each bar = 2 days (hover a bar for its total; the label is the day the bar ends on)",
+    "chart": {
+     "bars": [
+      {
+       "label": "8.27",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "8.29",
+       "ratio": 0.28690807799442897,
+       "tone": "primary",
+       "value": 10300000
+      },
+      {
+       "label": "8.31",
+       "ratio": 0.31197771587743733,
+       "tone": "primary",
+       "value": 11200000
+      },
+      {
+       "label": "9.2",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.4",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      },
+      {
+       "label": "9.6",
+       "ratio": 0.25348189415041783,
+       "tone": "primary",
+       "value": 9100000
+      },
+      {
+       "label": "9.8",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.10",
+       "ratio": 0.4456824512534819,
+       "tone": "primary",
+       "value": 16000000
+      },
+      {
+       "label": "9.12",
+       "ratio": 0.8662952646239555,
+       "tone": "primary",
+       "value": 31100000
+      },
+      {
+       "label": "9.14",
+       "ratio": 0.23676880222841226,
+       "tone": "primary",
+       "value": 8500000
+      },
+      {
+       "label": "9.16",
+       "ratio": 0.520891364902507,
+       "tone": "primary",
+       "value": 18700000
+      },
+      {
+       "label": "9.18",
+       "ratio": 0.4206128133704735,
+       "tone": "primary",
+       "value": 15100000
+      },
+      {
+       "label": "9.20",
+       "ratio": 0.17827298050139276,
+       "tone": "primary",
+       "value": 6400000
+      },
+      {
+       "label": "9.22",
+       "ratio": 1,
+       "tone": "primary",
+       "value": 35900000
+      },
+      {
+       "label": "9.24",
+       "ratio": 0.37047353760445684,
+       "tone": "primary",
+       "value": 13300000
+      }
+     ],
+     "kind": "barsV"
+    },
+    "headRight": "MAX 35.9M  TOTAL 259M",
     "title": "Token Usage"
    }
   },
@@ -10646,111 +11313,6 @@
     },
     "legend": "Model · of window time",
     "title": "Trajectory Share"
-   }
-  },
-  {
-   "id": "heatmap-bars-wide",
-   "size": "2x4",
-   "sim": null,
-   "out": {
-    "cardHint": "each bar = 2 days (hover a bar for its total; the label is the day the bar ends on)",
-    "chart": {
-     "bars": [
-      {
-       "label": "8.27",
-       "ratio": 0.520891364902507,
-       "tone": "primary",
-       "value": 18700000
-      },
-      {
-       "label": "8.29",
-       "ratio": 0.28690807799442897,
-       "tone": "primary",
-       "value": 10300000
-      },
-      {
-       "label": "8.31",
-       "ratio": 0.31197771587743733,
-       "tone": "primary",
-       "value": 11200000
-      },
-      {
-       "label": "9.2",
-       "ratio": 1,
-       "tone": "primary",
-       "value": 35900000
-      },
-      {
-       "label": "9.4",
-       "ratio": 0.37047353760445684,
-       "tone": "primary",
-       "value": 13300000
-      },
-      {
-       "label": "9.6",
-       "ratio": 0.25348189415041783,
-       "tone": "primary",
-       "value": 9100000
-      },
-      {
-       "label": "9.8",
-       "ratio": 0.4206128133704735,
-       "tone": "primary",
-       "value": 15100000
-      },
-      {
-       "label": "9.10",
-       "ratio": 0.4456824512534819,
-       "tone": "primary",
-       "value": 16000000
-      },
-      {
-       "label": "9.12",
-       "ratio": 0.8662952646239555,
-       "tone": "primary",
-       "value": 31100000
-      },
-      {
-       "label": "9.14",
-       "ratio": 0.23676880222841226,
-       "tone": "primary",
-       "value": 8500000
-      },
-      {
-       "label": "9.16",
-       "ratio": 0.520891364902507,
-       "tone": "primary",
-       "value": 18700000
-      },
-      {
-       "label": "9.18",
-       "ratio": 0.4206128133704735,
-       "tone": "primary",
-       "value": 15100000
-      },
-      {
-       "label": "9.20",
-       "ratio": 0.17827298050139276,
-       "tone": "primary",
-       "value": 6400000
-      },
-      {
-       "label": "9.22",
-       "ratio": 1,
-       "tone": "primary",
-       "value": 35900000
-      },
-      {
-       "label": "9.24",
-       "ratio": 0.37047353760445684,
-       "tone": "primary",
-       "value": 13300000
-      }
-     ],
-     "kind": "barsV"
-    },
-    "headRight": "MAX 35.9M  TOTAL 259M",
-    "title": "Usage Bars"
    }
   },
   {

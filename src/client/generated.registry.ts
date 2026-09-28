@@ -52,7 +52,6 @@ import w_github_push from '../widgets/github-push'
 import w_github_board from '../widgets/github-board'
 import w_usage_mix from '../widgets/usage-mix'
 import w_trajectory_stats from '../widgets/trajectory-stats'
-import w_heatmap_bars_wide from '../widgets/heatmap-bars-wide'
 import w_peak_pricing_board from '../widgets/peak-pricing-board'
 
 /** Every discovered widget, in manifest display order (then by id). */
@@ -99,7 +98,6 @@ export const WIDGETS: import('./lib/contract/types').Widget[] = [
   w_github_board,
   w_usage_mix,
   w_trajectory_stats,
-  w_heatmap_bars_wide,
   w_peak_pricing_board,
 ]
 
@@ -192,7 +190,6 @@ export const ALL_IDS: string[] = [
   'github-board',
   'usage-mix',
   'trajectory-stats',
-  'heatmap-bars-wide',
   'peak-pricing-board',
 ]
 
@@ -216,6 +213,7 @@ export const ALL_INSTANCES: string[] = [
   `heatmap@2x2`,
   `heatmap@2x4`,
   `heatmap-bars@2x2`,
+  `heatmap-bars@2x4`,
   `quota-manage@2x2`,
   `usage-bars@2x2`,
   `usage-rings@2x2`,
@@ -244,7 +242,6 @@ export const ALL_INSTANCES: string[] = [
   `github-board@2x4`,
   `usage-mix@2x2`,
   `trajectory-stats@2x2`,
-  `heatmap-bars-wide@2x4`,
   `peak-pricing-board@2x4`,
 ]
 
@@ -450,7 +447,17 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "config.timeZone.beijing": "北京 (UTC+8)",
     "config.timeZone.local": "跟随系统",
     "widget.heatmap-bars.name": "用量柱状图",
-    "widget.heatmap-bars.desc": "最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致",
+    "widget.heatmap-bars.desc": "逐日 Token 用量柱状图，窗口可在 7 天 / 30 天之间配置；2×4 宽版把合计与峰值移到标题行右端并带 MAX/TOTAL 标头",
+    "widget.heatmap-bars.simToggle": "切换 7 天 / 30 天预览",
+    "card.heatmap-bars.title": "Token 用量",
+    "card.heatmap-bars.max": "MAX",
+    "card.heatmap-bars.total": "TOTAL",
+    "card.heatmap-bars.hint": "每根柱 = 2 天（悬停柱看该柱合计；标签是该柱的结束日）",
+    "config.bars.range": "窗口",
+    "config.bars.range.7": "近 7 天",
+    "config.bars.range.30": "近 30 天",
+    "config.bars.range.hint": "近 7 天 = 每天一根柱；近 30 天 = 每两天一根柱（30 根日柱在卡片宽度里只有 6px 宽，读不出量级）",
+    "config.bars.monthMode.hint": "只对「近 7 天」生效：近 30 天窗口永远是滚动的",
     "config.monthMode.rolling7": "滚动(最近7天)",
     "config.monthMode.weekly": "每周对齐",
     "widget.quota-manage.name": "额度管理",
@@ -551,12 +558,6 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "card.trajectory-stats.input": "输入",
     "card.trajectory-stats.model": "模型",
     "card.trajectory-stats.tool": "工具",
-    "widget.heatmap-bars-wide.name": "用量柱状图 · 30 天",
-    "widget.heatmap-bars-wide.desc": "近 30 天 Token 用量的宽版（2×4）柱状图：每根柱两天、柱宽与 7 日柱状图一致；数字带 MAX/TOTAL 标头落在标题行右端",
-    "card.heatmap-bars-wide.title": "用量柱状图",
-    "card.heatmap-bars-wide.max": "MAX",
-    "card.heatmap-bars-wide.total": "TOTAL",
-    "card.heatmap-bars-wide.hint": "每根柱 = 2 天（悬停柱看该柱合计；标签是该柱的结束日）",
     "widget.peak-pricing-board.name": "峰谷时段表",
     "widget.peak-pricing-board.desc": "2×4 宽版峰谷定价：今天接下来的计费时刻表——高峰 09:00–12:00 / 14:00–18:00、其余低谷，正在计费的那一行高亮，并给出距离下一段切换还有多久；周末与中国法定节假日写明「全天低谷」的原因（与 2×2 峰谷定价同一套规则；可自定时段 / 时区 / 额外低谷日）",
     "card.peak-pricing-board.title": "峰谷时段表",
@@ -772,7 +773,17 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "config.timeZone.beijing": "Beijing (UTC+8)",
     "config.timeZone.local": "Follow system",
     "widget.heatmap-bars.name": "Token Bars",
-    "widget.heatmap-bars.desc": "Vertical bars of the last 7 days of token usage; same height as the calendar view",
+    "widget.heatmap-bars.desc": "Daily token-usage bars with a 7-day / 30-day window setting; the 2×4 moves the figures into the title row with MAX/TOTAL labels",
+    "widget.heatmap-bars.simToggle": "7-day / 30-day preview",
+    "card.heatmap-bars.title": "Token Usage",
+    "card.heatmap-bars.max": "MAX",
+    "card.heatmap-bars.total": "TOTAL",
+    "card.heatmap-bars.hint": "each bar = 2 days (hover a bar for its total; the label is the day the bar ends on)",
+    "config.bars.range": "Window",
+    "config.bars.range.7": "Last 7 days",
+    "config.bars.range.30": "Last 30 days",
+    "config.bars.range.hint": "7 days = one bar per day; 30 days = one bar per two days (thirty daily bars are 6px wide in a card and show no magnitude)",
+    "config.bars.monthMode.hint": "Only applies to the 7-day window: the 30-day window always rolls",
     "config.monthMode.rolling7": "Rolling (last 7 days)",
     "config.monthMode.weekly": "Weekly aligned",
     "widget.quota-manage.name": "Quota Manager",
@@ -873,12 +884,6 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "card.trajectory-stats.input": "Input",
     "card.trajectory-stats.model": "Model",
     "card.trajectory-stats.tool": "Tool",
-    "widget.heatmap-bars-wide.name": "Usage Bars · 30 Days",
-    "widget.heatmap-bars-wide.desc": "Wide (2×4) token-usage bars for the last 30 days: two days per bar, the same bar weight as the 7-day card, MAX/TOTAL figures at the right end of the title row",
-    "card.heatmap-bars-wide.title": "Usage Bars",
-    "card.heatmap-bars-wide.max": "MAX",
-    "card.heatmap-bars-wide.total": "TOTAL",
-    "card.heatmap-bars-wide.hint": "each bar = 2 days (hover a bar for its total; the label is the day the bar ends on)",
     "widget.peak-pricing-board.name": "Peak Hours Board",
     "widget.peak-pricing-board.desc": "The 2×4 peak-pricing timetable: how the rest of today bills — peak 09:00–12:00 / 14:00–18:00, off-peak otherwise, the row billing right now highlighted, plus how long until the rate flips; weekends and Chinese public holidays say why they are off-peak all day (same rule as the 2×2 Peak Pricing card; windows, zone and extra off-peak days configurable)",
     "card.peak-pricing-board.title": "Peak Hours Board",

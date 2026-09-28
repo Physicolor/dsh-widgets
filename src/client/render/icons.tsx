@@ -55,3 +55,32 @@ export const databaseIcon = React.createElement('svg', { width: 16, height: 16, 
   React.createElement('path', { d: 'M2 12.6a6 2.1 0 0 0 12 0', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }),
   React.createElement('path', { d: 'M2 8a6 2.1 0 0 0 12 0', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' }),
 )
+
+/**
+ * The disk glyph of the 缓存命中 card's head ring: a drive body (slanted shoulders,
+ * rounded bottom corners) with the bay slot line across it.
+ *
+ * WHY IT IS THICKER THAN THE OTHER GLYPHS. The ring it sits in is stroked
+ * `round(5 · scale)` at a 52 · scale box, while the glyph is a 16 grid drawn at
+ * 20 · scale — so "as heavy as the ring" is exactly **4.0** here, and every other
+ * glyph in this file (1.6) reads as a thin detail floating in a fat circle. The
+ * owner asked for that weight (2026-09-28) with the caveat that it must not go
+ * ugly, and at 3.6 (visual 4.5px, 90% of the ring) it does not: 2.3 units of
+ * daylight above the slot and 1.9 below.
+ *
+ * WHY THE GEOMETRY IS NOT LUCIDE'S `hard-drive`. Lucide draws the body only 10.7
+ * units tall on a 16 grid (24-grid ÷1.5), which leaves the slot line 1.3 units of
+ * clearance — at 3.6 the three horizontal bands merge into a slab. The body here
+ * is stretched to 11.4 units (top 2.3, bottom 13.7) and the bottom corners opened
+ * to r 2.4 (> the 1.8 half-stroke, or the corner pinches shut). The indicator dots
+ * Lucide adds under the slot are DELIBERATELY absent: their diameter is the stroke
+ * itself (3.6) and the clear band between the slot and the bottom edge is ~2 units,
+ * so at this weight they land as two lumps glued to the slot line.
+ *
+ * `currentColor`, so the ring paints it in its own tone (the cache card paints it
+ * the same green/red as its arc).
+ */
+export const hardDriveIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('path', { d: 'M4.8 2.3H11.2L14 6.5V11.3A2.4 2.4 0 0 1 11.6 13.7H4.4A2.4 2.4 0 0 1 2 11.3V6.5Z', stroke: 'currentColor', strokeWidth: 3.6, strokeLinejoin: 'round' }),
+  React.createElement('path', { d: 'M2 8.2H14', stroke: 'currentColor', strokeWidth: 3.6, strokeLinecap: 'round' }),
+)

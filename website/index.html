@@ -83,7 +83,7 @@
     "@id": "https://physicolor.github.io/dsh-widgets/#widgets",
     "name": "dsh-widgets widget library",
     "description": "Every widget unit shipped by dsh-widgets, generated from the src/widgets unit manifests.",
-    "numberOfItems": 44,
+    "numberOfItems": 43,
     "itemListOrder": "https://schema.org/ItemListOrderAscending",
     "itemListElement": [
             {
@@ -188,7 +188,7 @@
               "@type": "ListItem",
               "position": 15,
               "name": "用量柱状图 / Token Bars",
-              "description": "最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致 Vertical bars of the last 7 days of token usage; same height as the calendar view",
+              "description": "逐日 Token 用量柱状图，窗口可在 7 天 / 30 天之间配置；2×4 宽版把合计与峰值移到标题行右端并带 MAX/TOTAL 标头 Daily token-usage bars with a 7-day / 30-day window setting; the 2×4 moves the figures into the title row with MAX/TOTAL labels",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/heatmap-bars"
             },
             {
@@ -383,13 +383,6 @@
             {
               "@type": "ListItem",
               "position": 43,
-              "name": "用量柱状图 · 30 天 / Usage Bars · 30 Days",
-              "description": "近 30 天 Token 用量的宽版（2×4）柱状图：每根柱两天、柱宽与 7 日柱状图一致；数字带 MAX/TOTAL 标头落在标题行右端 Wide (2×4) token-usage bars for the last 30 days: two days per bar, the same bar weight as the 7-day card, MAX/TOTAL figures at the right end of the title row",
-              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/heatmap-bars-wide"
-            },
-            {
-              "@type": "ListItem",
-              "position": 44,
               "name": "峰谷时段表 / Peak Hours Board",
               "description": "2×4 宽版峰谷定价：今天接下来的计费时刻表——高峰 09:00–12:00 / 14:00–18:00、其余低谷，正在计费的那一行高亮，并给出距离下一段切换还有多久；周末与中国法定节假日写明「全天低谷」的原因（与 2×2 峰谷定价同一套规则；可自定时段 / 时区 / 额外低谷日） The 2×4 peak-pricing timetable: how the rest of today bills — peak 09:00–12:00 / 14:00–18:00, off-peak otherwise, the row billing right now highlighted, plus how long until the rate flips; weekends and Chinese public holidays say why they are off-peak all day (same rule as the 2×2 Peak Pricing card; windows, zone and extra off-peak days configurable)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/peak-pricing-board"
@@ -953,10 +946,10 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="widget-name">用量柱状图<span class="widget-name-en">Token Bars</span></span>
                 <span class="widget-id">heatmap-bars</span>
               </div>
-              <p class="widget-desc">最近 7 天 Token 用量的垂直柱状图，柱区高度与日历图一致<span class="widget-desc-en"> Vertical bars of the last 7 days of token usage; same height as the calendar view</span></p>
+              <p class="widget-desc">逐日 Token 用量柱状图，窗口可在 7 天 / 30 天之间配置；2×4 宽版把合计与峰值移到标题行右端并带 MAX/TOTAL 标头<span class="widget-desc-en"> Daily token-usage bars with a 7-day / 30-day window setting; the 2×4 moves the figures into the title row with MAX/TOTAL labels</span></p>
               <div class="widget-meta">
                 <span class="badge" data-i18n="group.coding-plan">Coding Plan 用量</span>
-                <span class="badge badge-size">2×2</span>
+                <span class="badge badge-size">2×2 2×4</span>
                 <span class="badge badge-pattern" data-i18n="pattern.chart"></span>
                 <span class="badge" data-i18n="ia.readonly"></span>
                 <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
@@ -1475,25 +1468,6 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
                 
                 <button type="button" class="widget-open" data-widget="trajectory-stats" data-i18n="openDetail">解剖 / 审计</button>
-              </div>
-            </div>
-          </article>
-          <article class="widget-card" data-group="coding-plan" data-widget="heatmap-bars-wide" role="listitem">
-            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="heatmap-bars-wide" data-size="2x2"></div></div>
-            <div class="widget-body">
-              <div class="widget-name-row">
-                <span class="widget-name">用量柱状图 · 30 天<span class="widget-name-en">Usage Bars · 30 Days</span></span>
-                <span class="widget-id">heatmap-bars-wide</span>
-              </div>
-              <p class="widget-desc">近 30 天 Token 用量的宽版（2×4）柱状图：每根柱两天、柱宽与 7 日柱状图一致；数字带 MAX/TOTAL 标头落在标题行右端<span class="widget-desc-en"> Wide (2×4) token-usage bars for the last 30 days: two days per bar, the same bar weight as the 7-day card, MAX/TOTAL figures at the right end of the title row</span></p>
-              <div class="widget-meta">
-                <span class="badge" data-i18n="group.coding-plan">Coding Plan 用量</span>
-                <span class="badge badge-size">2×4</span>
-                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
-                <span class="badge" data-i18n="ia.readonly"></span>
-                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
-                
-                <button type="button" class="widget-open" data-widget="heatmap-bars-wide" data-i18n="openDetail">解剖 / 审计</button>
               </div>
             </div>
           </article>

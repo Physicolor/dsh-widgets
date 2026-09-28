@@ -14,7 +14,7 @@ import { BASE_SIDE, HEAD_GAP_PX, cardInnerPad, cardRadius } from './card-geometr
 import { CHART_FILLS_BODY, renderChart } from './charts/registry'
 import { Donut } from './charts/donut'
 import { CHART_TONES } from './charts/theme'
-import { databaseIcon } from './icons'
+import { databaseIcon, hardDriveIcon } from './icons'
 import { DEFAULT_CORNER_PERCENT } from '../runtime/prefs'
 import { t } from '../i18n'
 import type { WidgetAction, WidgetRenderOut, WidgetRich } from '../lib/contract/types'
@@ -37,7 +37,7 @@ function ActionsBlock({ actions, onAction, scale }: { actions: WidgetAction[]; o
 }
 
 /** The glyphs a head ring may hold (see `HeadRingIcon` in the contract). */
-const HEAD_RING_ICONS: Record<string, React.ReactElement | null> = { database: databaseIcon }
+const HEAD_RING_ICONS: Record<string, React.ReactElement | null> = { database: databaseIcon, 'hard-drive': hardDriveIcon }
 
 function RichBlock({ rich, scale }: { rich: WidgetRich; scale: number }): React.ReactElement {
   if (rich.type === 'quote' && rich.text) {

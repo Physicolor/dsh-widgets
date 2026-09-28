@@ -563,9 +563,13 @@ export type WidgetSize = '2x2' | '2x4'
  * A closed vocabulary, not a React node: the render output is pure DATA — the
  * offline render gate (G4) snapshots every widget's output as JSON, and the
  * renderer maps each name to one inline SVG from `render/icons.tsx`.
- *  - `database` — a stroked cylinder: the usage / token-store glyph.
+ *  - `database` — a stroked cylinder: the usage / token-store glyph (会话用量's
+ *    plan quota; a store of tokens);
+ *  - `hard-drive` — a drive body with its bay slot: the 缓存命中 glyph. The
+ *    official term for the mechanism is 上下文硬盘缓存 (Context Caching on Disk),
+ *    and it is the one shape that cannot be read as "usage" beside `database`.
  */
-export type HeadRingIcon = 'database'
+export type HeadRingIcon = 'database' | 'hard-drive'
 
 /** Extra render context. `sim` lets a preview force a widget into a specific
  *  state (e.g. peak-pricing preview toggling EXPENSIVE/CHEAP) so its states can
