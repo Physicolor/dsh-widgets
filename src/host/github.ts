@@ -77,13 +77,13 @@ function str(value: unknown): string | null {
 
 /** GET/POST upstream with a hard timeout; returns `{ status, text }` so the
  *  caller can tell a rate limit (403/429) from a missing resource (404). */
-async function githubFetch(url: string, init: RequestInit = {}): Promise<{ status: number; text: string; ok: boolean }> {
+async function githubFetch(url: string, init: RequestInit = {}): Promise<{ status: number; text: string; ok: boolean; etag: string | null }> {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), GITHUB_TIMEOUT_MS)
   try {
     const res = await fetch(url, { ...init, signal: ctrl.signal })
     const text = await res.text()
-    return { status: res.status, text, ok: res.ok }
+    return { status: res.status, text, ok: res.ok, etag: res.headers.get('etag') }
   } finally { clearTimeout(timer) }
 }
 
@@ -323,9 +323,91 @@ async function fetchGitHubRepo(fullName: string, cred: GitHubCred): Promise<Host
   }
 }
 
-/** The two slice caches. Declared at module scope on purpose: the route is
- *  registered inside `ctx.effect`, but the memo must outlive a re-registration
- *  (a plugin reload would otherwise re-spend the anonymous budget). */
+/** The payload of the `notif=1` slice: the review queue behind 「待我处理」. */
+interface HostNotifications {
+  /** Unread threads GitHub reports for this account. */
+  count: number
+  /** Unread threads per reason, for the card's rows. `other` folds every reason
+   *  the card has no row for, so the rows always add up to `count`. */
+  byReason: Record<string, number>
+  /** The newest unread thread. */
+  newest: { title: string; repo: string; reason: string; updatedAt: string; url: string | null } | null
+}
+
+/** The notifications slice cache + its ETag, both at module scope for the same
+ *  reason the other memos are: a reload must not re-spend the caller's budget. */
+const githubNotifMemo = memoTtl<{ value: HostNotifications | null; error: string | null }>(5 * 60_000)
+let githubNotifEtag: string | null = null
+/** The last successful notifications payload, so a `304 Not Modified` keeps the
+ *  card populated instead of blanking it — a 304 means "unchanged", not "empty". */
+let githubNotifLast: HostNotifications | null = null
+
+/** The reasons the 「待我处理」 card gives their own row. */
+const NOTIF_REASONS = ['review_requested', 'mention', 'assign', 'ci_activity'] as const
+
+/**
+ * `GET /notifications` — the review queue. AUTHENTICATED ONLY.
+ *
+ * Measured 2026-09-29: anonymous answers **401**, not an empty list, so the slice
+ * is reported as absent (`error: 'anonymous'`) rather than as zero threads — the
+ * card then does not render at all, which is the honest outcome on a machine with
+ * no token and no `gh` login.
+ *
+ * The ETag is load-bearing: a `304 Not Modified` does NOT consume the account's
+ * 5000/h budget (measured: the rate-limit counter stayed at 4993 across a 304),
+ * and GitHub's own `x-poll-interval` is 60 s, so a 5-minute cache costs almost
+ * nothing while still being fresh enough to act on.
+ */
+async function fetchNotifications(token: string): Promise<{ value: HostNotifications | null; error: string | null }> {
+  try {
+    const headers: Record<string, string> = { ...githubHeaders(token), 'If-None-Match': githubNotifEtag ?? '' }
+    const res = await githubFetch(`${GITHUB_API}/notifications?all=false&per_page=30`, { headers })
+    // 304 = unchanged, and it does not consume the hourly budget. The last payload
+    // is re-served rather than reported as an error: "unchanged" is not "empty".
+    if (res.status === 304) return { value: githubNotifLast, error: githubNotifLast === null ? 'not-modified' : null }
+    if (res.status === 401 || res.status === 403) return { value: null, error: `http:${res.status}` }
+    if (!res.ok) return { value: null, error: `http:${res.status}` }
+    if (res.etag !== null) githubNotifEtag = res.etag
+    const parsed = JSON.parse(res.text) as unknown
+    const list = (Array.isArray(parsed) ? parsed : []).map(asRecord).filter((n): n is Record<string, unknown> => n !== null)
+    const byReason: Record<string, number> = {}
+    for (const key of NOTIF_REASONS) byReason[key] = 0
+    byReason.other = 0
+    for (const thread of list) {
+      const reason = str(thread.reason) ?? 'other'
+      byReason[NOTIF_REASONS.includes(reason as never) ? reason : 'other'] += 1
+    }
+    const first = list[0]
+    const subject = asRecord(first?.subject)
+    githubNotifLast = {
+      count: list.length,
+      byReason,
+      newest: first === undefined ? null : {
+        title: str(subject?.title) ?? '',
+        repo: str(asRecord(first.repository)?.full_name) ?? '',
+        reason: str(first.reason) ?? '',
+        updatedAt: str(first.updated_at) ?? '',
+        // `subject.url` is an API URL when present (there is no html_url), so it
+        // is converted here rather than handed to the client as a link it cannot
+        // open. A null subject URL stays null — never a link to nowhere.
+        url: notificationsHtmlUrl(str(subject?.url)),
+      },
+    }
+    return { value: githubNotifLast, error: null }
+  } catch (error) {
+    return { value: null, error: error instanceof Error && error.name === 'AbortError' ? 'timeout' : 'unavailable' }
+  }
+}
+
+/** `https://api.github.com/repos/o/r/issues/12` -> `https://github.com/o/r/issues/12`. */
+function notificationsHtmlUrl(apiUrl: string | null): string | null {
+  if (apiUrl === null) return null
+  return apiUrl.startsWith(`${GITHUB_API}/`) ? `https://github.com/${apiUrl.slice(GITHUB_API.length + 1)}` : null
+}
+
+/** The slice caches. Declared at module scope on purpose: the route is registered
+ *  inside `ctx.effect`, but the memo must outlive a re-registration (a plugin
+ *  reload would otherwise re-spend the anonymous budget). */
 const githubAuthMemo = memoTtl<GitHubCred>(GITHUB_AUTH_TTL_MS)
 const githubViewerMemo = memoTtl<string | null>(30 * 60_000)
 const githubRecentMemo = memoTtl<string[]>(GITHUB_REPOS_TTL_MS)
@@ -366,7 +448,7 @@ async function fetchRecentRepos(cred: GitHubCred): Promise<string[]> {
  *  machine is signed in as", resolved through the token's own viewer. Without
  *  a token there is nothing to resolve, and each empty slice is reported as
  *  such (`no-user` / `no-repo`) instead of being silently dropped. */
-async function buildGitHubBody(ctx: CredentialsCtx, login: string, repos: string[]): Promise<string> {
+async function buildGitHubBody(ctx: CredentialsCtx, login: string, repos: string[], wantNotifications: boolean): Promise<string> {
   const cred = await githubAuthMemo('cred', () => resolveGitHubCred(ctx))
     .catch((): GitHubCred => ({ token: null, auth: 'anonymous' }))
   const viewer = cred.token === null ? null : await githubViewerMemo('viewer', () => fetchViewerLogin(cred)).catch(() => null)
@@ -375,20 +457,32 @@ async function buildGitHubBody(ctx: CredentialsCtx, login: string, repos: string
     ? repos
     : (cred.token === null ? [] : await githubRecentMemo('recent', () => fetchRecentRepos(cred)).catch(() => []))
   const errors: Record<string, string> = {}
-  const [contrib, repoList] = await Promise.all([
+  const [contrib, repoList, notif] = await Promise.all([
     effectiveLogin === ''
       ? Promise.resolve({ value: null, error: 'no-user' } as { value: HostContributions | null; error: string | null })
       : githubContribMemo(`c:${effectiveLogin}`, () => fetchContributions(effectiveLogin, cred)).catch((): { value: HostContributions | null; error: string | null } => ({ value: null, error: 'unavailable' })),
     Promise.all(effectiveRepos.map((full) => githubReposMemo(`r:${full}:${cred.auth}`, () => fetchGitHubRepo(full, cred)).catch(() => null))),
+    // The review queue rides the SAME request as the rest of the family: one
+    // slot-driven pull on the client covers every github-* card, so a second
+    // route would only add a second poll loop (and the G7 gate — every route
+    // must have a probe case).
+    !wantNotifications
+      ? Promise.resolve({ value: null, error: null } as { value: HostNotifications | null; error: string | null })
+      : cred.token === null
+        // Anonymous answers 401 on this endpoint (measured), so it is reported as
+        // absent-by-credential rather than as "0 notifications".
+        ? Promise.resolve({ value: null, error: 'anonymous' } as { value: HostNotifications | null; error: string | null })
+        : githubNotifMemo(`n:${cred.auth}`, () => fetchNotifications(cred.token as string)).catch((): { value: HostNotifications | null; error: string | null } => ({ value: null, error: 'unavailable' })),
   ])
   if (contrib.error !== null) errors.contributions = contrib.error
+  if (notif.error !== null) errors.notifications = notif.error
   if (effectiveRepos.length === 0) errors.repos = 'no-repo'
   const kept: HostRepo[] = []
   repoList.forEach((repo, i) => {
     if (repo === null) errors[effectiveRepos[i]!] = 'unavailable'
     else kept.push(repo)
   })
-  return JSON.stringify({ auth: cred.auth, login: effectiveLogin, contributions: contrib.value, repos: kept, errors })
+  return JSON.stringify({ auth: cred.auth, login: effectiveLogin, contributions: contrib.value, repos: kept, notifications: notif.value, errors })
 }
 
 /** Register the GitHub route; returns the disposer `ctx.effect` wants. */
@@ -422,9 +516,11 @@ export function registerGitHub(ctx: HostContext): () => void {
       const url = (req as ReqLike | undefined)?.url ?? ''
       let login = ''
       let wanted: string[] = []
+      let wantNotifications = false
       try {
         const params = new URL(url, 'http://localhost').searchParams
         login = (params.get('user') ?? '').trim().slice(0, 64)
+        wantNotifications = params.get('notif') === '1'
         wanted = (params.get('repos') ?? '')
           .split(',')
           .map((s) => s.trim())
@@ -436,7 +532,7 @@ export function registerGitHub(ctx: HostContext): () => void {
         wanted = Array.from(new Set(wanted)).slice(0, GITHUB_MAX_REPOS)
       } catch { /* malformed url -> empty request, answered below */ }
       try {
-        const body = await buildGitHubBody(ctx, login, wanted)
+        const body = await buildGitHubBody(ctx, login, wanted, wantNotifications)
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(body)
       } catch (error) {

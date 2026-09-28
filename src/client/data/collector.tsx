@@ -291,12 +291,20 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
         .filter((s) => /^[\w.-]+\/[\w.-]+$/.test(s)))))
         .slice(0, 4)
       const ghRequest = `${ghUser}|${ghRepos.join(',')}`
+      // Whether any installed card shows the review queue. Part of the effect's
+      // identity: installing 待我处理 must make the NEXT pull ask for `notif=1`,
+      // not wait for some other config edit.
+      const ghNotif = (snap.prefs.installed ?? []).some((key) => key === 'github-notify' || key.startsWith('github-notify@'))
       React.useEffect(() => {
         if (ghKeys.length === 0) return
         const pull = (): void => {
           const params = new URLSearchParams()
           if (ghUser !== '') params.set('user', ghUser)
           if (ghRepos.length > 0) params.set('repos', ghRepos.join(','))
+          // The review queue is only fetched when a card that shows it is
+          // installed: it is an authenticated-only call, and asking for it costs
+          // an upstream round trip (cheap on a 304, but still a round trip).
+          if (ghNotif) params.set('notif', '1')
           const query = params.toString()
           fetch(`/api/github${query === '' ? '' : `?${query}`}`)
             .then(async (r) => {
@@ -319,7 +327,7 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
         const id = window.setInterval(() => { if (!document.hidden) pull() }, 600_000)
         document.addEventListener('visibilitychange', onVisible)
         return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
-      }, [ghRequest, ghKeys.length])
+      }, [ghRequest, ghKeys.length, ghNotif])
       // Hardware snapshot (System widgets): the installed sys-* instances drive
       // ONE shared poll loop —the effective cadence is the SHORTEST refresh
       // interval among them (5/10/30/60 s presets + custom numeric, clamped

@@ -214,9 +214,28 @@ export interface GitHubRepo {
   newestIssue: { number: number; title: string; comments: number; updatedAt: string } | null
 }
 
+/**
+ * The review queue behind 「待我处理」 (`GET /notifications`).
+ *
+ * AUTHENTICATED ONLY: anonymous answers 401 (measured), so this slice is null on
+ * a machine with neither a token nor a `gh` login — and the card that reads it
+ * renders nothing, rather than claiming "0 to review".
+ *
+ * `byReason` always carries the same key set (`review_requested` / `mention` /
+ * `assign` / `ci_activity` / `other`), because a row that vanishes when its count
+ * is zero makes the card change height for no reason. `other` folds every reason
+ * the card has no row for, so the rows add up to `count`.
+ */
+export interface GitHubNotifications {
+  count: number
+  byReason: Record<string, number>
+  newest: { title: string; repo: string; reason: string; updatedAt: string; url: string | null } | null
+}
+
 /** The payload of the host `/api/github` route. Every slice is independently
  *  nullable: the contribution calendar and the repo list are fetched (and
- *  cached) separately, so a slow scrape never delays the repo numbers. */
+ *  cached) separately, so a slow scrape never delays the repo numbers.
+ *  `notifications` is only present when the request asked for it (`notif=1`). */
 export interface GitHubData {
   auth: GitHubAuth
   /** The login the calendar was actually built for — the configured `user`, or
@@ -225,6 +244,9 @@ export interface GitHubData {
   login: string
   contributions: GitHubContributions | null
   repos: GitHubRepo[]
+  /** The review queue; null unless the request asked for it AND a credential was
+   *  available (see GitHubNotifications). */
+  notifications?: GitHubNotifications | null
   /** Per-slice failure notes, e.g. `{ contributions: 'rate-limit' }`, or
    *  `no-user` / `no-repo` when an empty config could not be resolved. */
   errors: Record<string, string>
