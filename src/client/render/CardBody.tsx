@@ -481,7 +481,13 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // header: `上下文已用 64% ~638K / 1M`), and in the head's left column when a
   // headRing is (the figure rides the ring, never both). Otherwise it goes to the
   // body.
-  if (out.value != null && out.headRight === undefined && !accessoryHead) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value' + (out.valuePulse ? ' dsx-value-pulse' : '') + (figureDrop ? ' dsx-figure-drop' : ''), style: { fontSize: `${valuePx}px`, color: out.valueTone === undefined ? undefined : valueColor(out) } }, out.value))
+  // `value` is suppressed by `headRing` ONLY — the ring head carries its figure in
+  // `headAfter.big`, so a `value` there would print the same reading twice. A
+  // `headIcon` head has no such conflict: the accessory occupies the right slot and
+  // renders no figure at all, so suppressing `value` for it made the field silently
+  // unusable on any icon-bearing card (found by the guard card's builder,
+  // 2026-09-29 — its name rendered nowhere until it moved to `sub`).
+  if (out.value != null && out.headRight === undefined && out.headRing === undefined) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value' + (out.valuePulse ? ' dsx-value-pulse' : '') + (figureDrop ? ' dsx-figure-drop' : ''), style: { fontSize: `${valuePx}px`, color: out.valueTone === undefined ? undefined : valueColor(out) } }, out.value))
   if (out.sub) body.push(React.createElement('div', { key: 's', className: 'dsx-stats-card-sub', style: { fontSize: `${Math.round(10 * scale)}px` } }, out.sub))
   if (out.chart) {
       const c = renderChart({ chart: out.chart, side: unit, width: boxW, pad: innerPad, scale: unit / BASE_SIDE })
