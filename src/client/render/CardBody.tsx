@@ -14,7 +14,7 @@ import { BASE_SIDE, HEAD_GAP_PX, cardInnerPad, cardRadius } from './card-geometr
 import { CHART_FILLS_BODY, renderChart } from './charts/registry'
 import { Donut } from './charts/donut'
 import { CHART_TONES } from './charts/theme'
-import { databaseIcon, hardDriveIcon } from './icons'
+import { batteryIcon, databaseIcon, githubMarkIcon, hardDriveIcon, permissionFullAccessIcon, permissionReadOnlyIcon, permissionWorkspaceWriteIcon } from './icons'
 import { DEFAULT_CORNER_PERCENT } from '../runtime/prefs'
 import { t } from '../i18n'
 import type { WidgetAction, WidgetRenderOut, WidgetRich } from '../lib/contract/types'
@@ -36,8 +36,18 @@ function ActionsBlock({ actions, onAction, scale }: { actions: WidgetAction[]; o
   return React.createElement('div', { style: { display: 'flex', gap: Math.round(6 * scale), marginTop: Math.round(6 * scale), flexWrap: 'wrap' } }, btnEls)
 }
 
-/** The glyphs a head ring may hold (see `HeadRingIcon` in the contract). */
-const HEAD_RING_ICONS: Record<string, React.ReactElement | null> = { database: databaseIcon, 'hard-drive': hardDriveIcon }
+/** The glyphs a head ring may hold (see `HeadRingIcon` in the contract), plus the
+ *  bare head accessories (`HeadIconName`) — one table, because both are "the glyph
+ *  this card's head shows on its right". */
+const HEAD_RING_ICONS: Record<string, React.ReactElement | null> = {
+  database: databaseIcon,
+  'hard-drive': hardDriveIcon,
+  'permission-read-only': permissionReadOnlyIcon,
+  'permission-workspace-write': permissionWorkspaceWriteIcon,
+  'permission-full-access': permissionFullAccessIcon,
+  github: githubMarkIcon,
+  battery: batteryIcon,
+}
 
 /**
  * The colour a `valueTone` figure wears.
@@ -299,6 +309,12 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   }, text)
 
   const headRing = out.headRing
+  // A BARE glyph in the same right-hand slot the ring owns, for a head whose
+  // accessory is an IDENTITY rather than a dial (the permission shield, the GitHub
+  // mark). It shares the ring's layout — the ladder stacks left, the accessory takes
+  // the right — because a card may have exactly one of them, never both.
+  const headIcon = out.headIcon
+
   // Head-with-donut: the ladder's three rungs stack in a LEFT column and the ring
   // owns the right, so the tile's empty middle goes to work instead of leaving a gap
   // between the head and the rows. The ring is a LAYOUT NEIGHBOUR of the ladder, not a
@@ -308,7 +324,7 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // The ring itself carries NO figure: the number is already on the tile at 20px, and
   // a caption inside a 52px circle reads as cramped. It holds the widget's glyph and
   // the precise figure rides its hover text.
-  const ringHead = headRing !== undefined
+  const accessoryHead = headRing !== undefined || headIcon !== undefined
   const ringFigure = out.headAfter?.big ?? null
   // Head-ring geometry, named once: the stroke, and the daylight its two round caps
   // need so a near-100% value still shows an opening (see `cappedArcInk`). ~1.2× the
@@ -316,7 +332,7 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // qualitative dial and the exact figure is printed at 20px beside it.
   const RING_STROKE = Math.max(4, Math.round(5 * scale))
   const RING_CAP_GAP = Math.max(3, Math.round(RING_STROKE * 1.2))
-  const headFlex = ringHead
+  const headFlex = accessoryHead
     ? React.createElement('div', { key: 't', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 0 } },
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', minWidth: 0 } },
           titleEl,
@@ -330,27 +346,43 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
             ? React.createElement('span', { key: 'lg', style: { display: 'flex', marginTop: `${CAPTION_GAP}px`, minWidth: 0 } }, captionEl(out.legend, 'cl'))
             : null,
         ),
-        React.createElement(Donut, {
-          // 52px at the 150px side (the body ring is 44px) — the owner asked for a
-          // bigger circle, and the tile has the room once the figure sits left.
-          // `inset` keeps the thicker stroke inside the box: r + stroke/2 ≤ radius.
-          radius: 26 * scale,
-          ratio: headRing.ratio,
-          tone: headRing.tone ?? 'primary',
-          stroke: RING_STROKE,
-          inset: RING_STROKE / 2 + 0.5,
-          // Daylight between the caps, scaled with the stroke: below 100% the ring
-          // must show its head and tail as two capped ends (see cappedArcInk).
-          capGap: RING_CAP_GAP,
-          title: headRing.label,
-          center: headRing.icon === undefined
-            ? null
-            : React.createElement('span', {
-                // A fixed 16px glyph box, scaled visually: the ring's middle is
-                // painted in the ring's own tone, so "green = good" reads twice.
-                style: { display: 'flex', color: CHART_TONES[headRing.tone ?? 'primary'] ?? CHART_TONES.primary, transform: `scale(${((20 * scale) / 16).toFixed(3)})` },
-              }, HEAD_RING_ICONS[headRing.icon] ?? null),
-        }),
+        headRing !== undefined
+          ? React.createElement(Donut, {
+              // 52px at the 150px side (the body ring is 44px) — the owner asked for a
+              // bigger circle, and the tile has the room once the figure sits left.
+              // `inset` keeps the thicker stroke inside the box: r + stroke/2 ≤ radius.
+              radius: 26 * scale,
+              ratio: headRing.ratio,
+              tone: headRing.tone ?? 'primary',
+              stroke: RING_STROKE,
+              inset: RING_STROKE / 2 + 0.5,
+              // Daylight between the caps, scaled with the stroke: below 100% the ring
+              // must show its head and tail as two capped ends (see cappedArcInk).
+              capGap: RING_CAP_GAP,
+              title: headRing.label,
+              center: headRing.icon === undefined
+                ? null
+                : React.createElement('span', {
+                    // A fixed 16px glyph box, scaled visually: the ring's middle is
+                    // painted in the ring's own tone, so "green = good" reads twice.
+                    style: { display: 'flex', color: CHART_TONES[headRing.tone ?? 'primary'] ?? CHART_TONES.primary, transform: `scale(${((20 * scale) / 16).toFixed(3)})` },
+                  }, HEAD_RING_ICONS[headRing.icon] ?? null),
+            })
+          // The bare accessory: one glyph, no arc — an identity, not a dial. It is
+          // drawn at 34px (the ring's 52px minus the ring itself) in `primary` unless
+          // the widget asked for a tone, because a mark that changes colour for no
+          // stated reason is exactly the "why is this yellow?" defect this slot exists
+          // to avoid.
+          : React.createElement('span', {
+              key: 'hi',
+              style: {
+                display: 'flex',
+                flex: 'none',
+                color: headIcon === undefined ? undefined : (CHART_TONES[headIcon.tone ?? 'primary'] ?? CHART_TONES.primary),
+                transform: `scale(${((34 * scale) / 16).toFixed(3)})`,
+                transformOrigin: 'top right',
+              },
+            }, headIcon === undefined ? null : (HEAD_RING_ICONS[headIcon.name] ?? null)),
       )
     : React.createElement('div', { key: 't', style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, minHeight: `${titleLine}px` } },
     titleEl,
@@ -362,7 +394,7 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   const headEls: Array<React.ReactElement> = [
     headFlex,
   ]
-  if (out.headAfter && !ringHead) {
+  if (out.headAfter && !accessoryHead) {
     // Prominent figure + the grey subtitle on their own row under the title.
     //
     // SKIPPED when a headRing is present: the ring head's LEFT COLUMN already renders
@@ -402,7 +434,7 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
         : out.headAfter.small != null ? captionEl(out.headAfter.small, 'ha-sm', { lineHeight: 1.25 }) : null,
     ))
   }
-  if (out.legend && !ringHead) {
+  if (out.legend && !accessoryHead) {
     // Small caption right under the title; unlike headAfter it does not change the
     // vertical alignment, so a bottom-anchored card (e.g. heatmap) keeps it. One
     // line, ellipsized: a long localized caption must never wrap and push the card's
@@ -447,7 +479,7 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // header: `上下文已用 64% ~638K / 1M`), and in the head's left column when a
   // headRing is (the figure rides the ring, never both). Otherwise it goes to the
   // body.
-  if (out.value != null && out.headRight === undefined && !ringHead) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value' + (out.valuePulse ? ' dsx-value-pulse' : '') + (figureDrop ? ' dsx-figure-drop' : ''), style: { fontSize: `${valuePx}px`, color: out.valueTone === undefined ? undefined : valueColor(out) } }, out.value))
+  if (out.value != null && out.headRight === undefined && !accessoryHead) body.push(React.createElement('div', { key: 'v', className: 'dsx-stats-card-value' + (out.valuePulse ? ' dsx-value-pulse' : '') + (figureDrop ? ' dsx-figure-drop' : ''), style: { fontSize: `${valuePx}px`, color: out.valueTone === undefined ? undefined : valueColor(out) } }, out.value))
   if (out.sub) body.push(React.createElement('div', { key: 's', className: 'dsx-stats-card-sub', style: { fontSize: `${Math.round(10 * scale)}px` } }, out.sub))
   if (out.chart) {
       const c = renderChart({ chart: out.chart, side: unit, width: boxW, pad: innerPad, scale: unit / BASE_SIDE })

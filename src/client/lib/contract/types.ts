@@ -857,7 +857,27 @@ export type WidgetSize = '2x2' | '2x4'
  *    official term for the mechanism is 上下文硬盘缓存 (Context Caching on Disk),
  *    and it is the one shape that cannot be read as "usage" beside `database`.
  */
-export type HeadRingIcon = 'database' | 'hard-drive'
+export type HeadRingIcon = 'database' | 'hard-drive' | 'battery'
+
+/**
+ * A bare glyph in the head's right-hand slot — the same LAYOUT neighbourhood
+ * `headRing` owns, for a head whose accessory is an IDENTITY rather than a dial.
+ *
+ * The distinction matters: a ring is a READING (an arc that means "this much of
+ * that"), while these say WHAT the card is about — the permission shield the user
+ * already sees in the composer, the vendor mark of the account the card belongs to.
+ * Drawing a shield inside a ring would invent a fraction nobody measured, which is
+ * why this is a separate field and not `headRing` with the arc switched off.
+ *
+ * A closed vocabulary for the same reason `HeadRingIcon` is one: the render output
+ * is pure DATA (the offline gate snapshots it as JSON), so the renderer maps each
+ * name to one inline SVG.
+ */
+export type HeadIconName =
+  | 'permission-read-only'
+  | 'permission-workspace-write'
+  | 'permission-full-access'
+  | 'github'
 
 /** Extra render context. `sim` lets a preview force a widget into a specific
  *  state (e.g. peak-pricing preview toggling EXPENSIVE/CHEAP) so its states can
@@ -940,6 +960,20 @@ export interface WidgetRenderOut {
     icon?: HeadRingIcon
     /** Hover text only — never drawn in the ring (see above). */
     label?: string
+  }
+  /**
+   * Optional BARE glyph in the head's right slot (see `HeadIconName`): the card's
+   * identity mark, with no arc around it.
+   *
+   * Mutually exclusive with `headRing` in practice — they share the slot, and the
+   * renderer draws whichever is present (the ring first if a card somehow sets
+   * both). `tone` defaults to the primary label colour on purpose: a mark that
+   * turns amber for an unstated reason is the "why is this yellow?" defect.
+   */
+  headIcon?: {
+    name: HeadIconName
+    /** Mark colour; omit for the neutral label colour. */
+    tone?: BarDatum['tone']
   }
   /**
    * Card-level hover tooltip: a diagnostic that must NOT be printed on the tile.

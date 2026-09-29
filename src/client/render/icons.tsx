@@ -83,3 +83,56 @@ export const hardDriveIcon = React.createElement('svg', { width: 16, height: 16,
   React.createElement('path', { d: 'M3.63 3.41 1.33 8v4a1.33 1.33 0 0 0 1.33 1.33h10.67A1.33 1.33 0 0 0 14.67 12V8l-2.3-4.59A1.33 1.33 0 0 0 11.17 2.67H4.83a1.33 1.33 0 0 0-1.2.74z', stroke: 'currentColor', strokeWidth: 3.2, strokeLinejoin: 'round' }),
   React.createElement('path', { d: 'M1.33 8h13.34', stroke: 'currentColor', strokeWidth: 3.2, strokeLinecap: 'round' }),
 )
+
+// ---- Head-accessory glyphs (added 2026-09-29 for the permission / vendor / power cards) ----
+
+/**
+ * The three PERMISSION glyphs, copied path-for-path from the official permission
+ * selector (`@deepseek-ai/dsh-client-ui-conversation/lib/client.js`, `permissionGlyphs`).
+ *
+ * They are reproduced rather than imported because DSH's icon paths are not a
+ * published API — but they are the SAME drawings, so the rail reads as the product:
+ * a shield with a check (read-only), a shield with a list and a pencil
+ * (workspace-write), a shield with an exclamation (full access). 16px viewBoxes with
+ * `currentColor`, exactly as the source.
+ */
+const SHIELD_OUTLINE = 'M8.20554 0.899994L14.7901 3.36857V7.01026C14.7901 12 11.0466 14.2103 8.20554 15.3C5.36446 14.2103 1.62012 12 1.62012 7.01026V3.36857L8.20554 0.899994Z'
+
+export const permissionReadOnlyIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('path', { d: SHIELD_OUTLINE, stroke: 'currentColor', strokeWidth: 1.31831, strokeLinejoin: 'round' }),
+  React.createElement('path', { d: 'M12.1654 5.7552L8.9447 9.41475C8.73044 9.65816 8.53628 9.8804 8.35774 10.0423C8.1713 10.2114 7.94235 10.3717 7.64016 10.4254C7.48207 10.4535 7.32 10.4552 7.16151 10.4294C6.85843 10.3801 6.62728 10.2223 6.43836 10.0559C6.25752 9.89653 6.06037 9.67732 5.84264 9.43705L4.72925 8.20897L5.63557 7.38707L6.74897 8.61594C6.98603 8.87755 7.12974 9.03533 7.24673 9.13839C7.31033 9.19443 7.34485 9.21476 7.35823 9.22122C7.38068 9.22484 7.40352 9.22515 7.42593 9.22122C7.40522 9.22502 7.42893 9.23294 7.53583 9.136C7.65132 9.03126 7.79316 8.87139 8.02643 8.60638L11.2479 4.94763L12.1654 5.7552Z', fill: 'currentColor' }),
+)
+
+export const permissionWorkspaceWriteIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('path', { d: 'M8.08887 0.251709C8.20479 0.23085 8.32486 0.241168 8.43652 0.282959L15.0215 2.75171C15.2787 2.84819 15.4492 3.09414 15.4492 3.3689V7.0105C15.4492 7.10986 15.4441 7.2081 15.4414 7.30542C15.0285 7.07175 14.5905 6.87695 14.1309 6.73022V3.82495L8.20508 1.60327L2.2793 3.82495V7.0105C2.27936 9.7171 3.4745 11.5379 5.02734 12.7947C5.01025 12.9942 5 13.1962 5 13.4001C5.00001 13.7617 5.02722 14.1169 5.08008 14.4636C2.91555 13.0393 0.961014 10.752 0.960938 7.0105V3.3689C0.960938 3.09417 1.13146 2.84821 1.38867 2.75171L7.97461 0.282959L8.08887 0.251709Z', fill: 'currentColor' }),
+  React.createElement('path', { d: 'M11.3525 5.64688V6.85688H5V5.64688H11.3525Z', fill: 'currentColor' }),
+  React.createElement('path', { d: 'M9.5824 8.29376V9.50376H5V8.29376H9.5824Z', fill: 'currentColor' }),
+  React.createElement('path', { d: 'M14.6647 15.6852H10.0338C10.3878 15.3751 10.7567 15.0517 11.0772 14.7706C11.2531 14.6164 11.4144 14.4746 11.5511 14.3547H14.6647V15.6852Z', fill: 'currentColor' }),
+  React.createElement('path', { d: 'M8.14852 14.1308L7.33925 15.4976C7.22458 15.6912 7.42245 15.9194 7.63037 15.8333L9.09785 15.2254L15.0399 10.0719L14.0905 8.97733L8.14852 14.1308Z', fill: 'currentColor' }),
+)
+
+export const permissionFullAccessIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('path', { d: SHIELD_OUTLINE, stroke: 'currentColor', strokeWidth: 1.31831, strokeLinejoin: 'round' }),
+  React.createElement('path', { d: 'M9.10094 4.5V8.75939H7.59888V4.5H9.10094Z', fill: 'currentColor' }),
+  React.createElement('path', { d: 'M9.10094 9.8114V11.5H7.59888V9.8114H9.10094Z', fill: 'currentColor' }),
+)
+
+/**
+ * GitHub's own mark (Octicons `mark-github`, 16×16), so the 待我处理 card says which
+ * account it is about. Reproduced for the same reason as the permission glyphs: it is
+ * the drawing people already recognise, not a re-draw.
+ */
+export const githubMarkIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('path', { d: 'M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z', fill: 'currentColor' }),
+)
+
+/**
+ * A battery with a bolt — the 供电 head's ring glyph. A stroked body + terminal reads
+ * at 20px inflated inside a 52px ring; the bolt marks "power source" rather than a
+ * generic battery (the ring's arc already IS the charge level).
+ */
+export const batteryIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('rect', { x: 1.2, y: 4.2, width: 12.2, height: 7.6, rx: 2.1, stroke: 'currentColor', strokeWidth: 1.5 }),
+  React.createElement('path', { d: 'M14.6 6.6v2.8', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' }),
+  React.createElement('path', { d: 'M8.45 5.6 6.2 8.55h1.9L7.4 10.5l2.4-3.05H7.85z', fill: 'currentColor' }),
+)

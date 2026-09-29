@@ -3,16 +3,20 @@
   "order": 93,
   "group": "coding-plan",
   "builtin": true,
-  "sizes": ["2x2"],
+  "sizes": [
+    "2x2"
+  ],
   "defaultInstalled": false,
   "source": "cc",
-  "skeleton": { "shape": "text" },
+  "skeleton": {
+    "shape": "text"
+  },
   "locale": {
     "zh": {
-      "widget.session-cost.name": "会话成本",
+      "widget.session-cost.name": "本会话成本",
       "widget.session-cost.desc": "把本会话的四桶 token 按价格表折成钱，并标出这个金额的来源（官方价 / 中转价 / 免费路由 / 估算价）",
       "widget.session-cost.simToggle": "命中价 / 高峰价 / 无价格表",
-      "card.session-cost.title": "会话成本",
+      "card.session-cost.title": "本会话成本",
       "card.session-cost.uncached": "未命中",
       "card.session-cost.read": "缓存命中",
       "card.session-cost.output": "输出",
