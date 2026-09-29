@@ -11,6 +11,89 @@
 | GitHub Releases | 同一条目作为 release notes，锚定到发布它的那次提交（tag） | 仓库 → Releases |
 | `docs/` | 原始证据：CDP 探针脚本、截图、JSON 凭证、逐次事故的修复记录 | [`docs/`](docs/) |
 
+## v1.8.1 — 两批卡片、统一的头部阶梯，以及回来的限额
+
+> 以修复为主线的一版，同时把 v1.8.0 之后已提交却从未发布的两批卡片一起发出。注册表从 **40 个部件单元长到 55 个**（新增 17、退役 2），分三批落地——会话与机器、设备家族、成本与待审队列——每一批都由新的 host 通道供数；另有一轮收口按车主评审重做了九张已发布的卡。在此之上是两个只有在真实组件栏上才会显形的问题：**Command Code 的月限额从所有卡上消失**（三个上游端点实测 14–21 秒，而 host 四个切片共用 8 秒预算），以及**两张相邻的环卡头部肉眼可见地不一致**（一行会随数据来去的阶梯把整个头部推移了）。本版的每一处改动，都先在闸门 diff 或探针上被证明，然后才重写基线。
+
+### 新增 — 17 个部件单元（40 → 55）
+
+- **第三批的四个单元**（`298cd66`）：`usage-mix`（跨平台额度看板）、`trajectory-stats`（三车道占比 + 每实例的大车道点击切换）、`heatmap-bars-wide`（30 天柱状，15 个两日桶）与 `peak-pricing-board`（时段时间表 + 倒计时，四个钉住时钟的预览状态）。`todo-board` 被并进 `task` 而不是并排发布——同 id 同顺序，已安装的 `task@2x2` 原地升级，市场里也只有一张「任务」。
+- **第一批（wave 1）——七张卡，回答「agent 在做什么、这台机器好不好」**（`79063f2`）：`goal-progress`（目标阶段、目标、轮次/上限、最近变更）、`guard`（当前生效的权限档）、`jobs`（后台作业：在跑、最长、最新）、`subagent`（已派发的子代理与可续跑数）、`sys-disk`（剩余空间 + DSH 会话日志体积与近一小时增量）、`window-forecast`（5h / 周窗口会不会在重置前触及限额）与 `model-config`（agent 当前跑的模型路由 / 推理档 / 预设）。
+- **第二批（wave 2）——设备家族、成本与待审队列**（`cd50a73`）：`sys-net`（由计数器差分得到逐网卡收发速率，并指出最忙链路）、`sys-power`（电池 vs 交流、电量、剩余续航、当前 Windows 电源方案）、`sys-procs`（按工作集排序的进程）、`session-cost`（用价格表给本会话 token 计价，并在旁边印出价格来源）与 `github-notify`（待审队列——唯一一张会告诉你「有人在等你」的 GitHub 卡）。
+- **`sys-services` —— 本地依赖看板**（`fd66438`）：本机关键本地端点的存活与延迟（DSH web；Ollama / LM Studio 为 opt-in，关掉时**一行都不画**，这样没装的运行时不会永久挂着「down」），以及代理出口是否真的通——**端口在听不等于出口通**。
+- **退役两个单元**：`heatmap-bars-wide` 并入 `heatmap-bars`（`e96acc1`），`model-config` 直接删除（`8be5852`，324 行）。这也是注册表最终是 55 而不是 57 的原因。
+
+### 新增 — 新卡所读的 host 通道与数据
+
+- **`/api/host/overview`**（`src/host/overview.ts`）：把网络吞吐、供电来源、Top 进程、本地服务存活与代理出口合成**一条**路由。之所以是一条：`powershell.exe` 光是启动就有约 270ms 的下限（整轮冷启动实测约 1.5s；TCP 探测 0.2–0.3ms/端口），所以电池 + 进程 + 计数器 + 电源方案由同一段合并脚本产出；`proxy` 走 stale-while-revalidate 且 handler 从不 await 它，因此首次调用之后路由不再被最贵的部分阻塞。
+- **待审切片**（`src/host/github.ts` 的 `notif=1`）：GitHub 未读线程，附按原因分类的计数与最新标题；ETag 感知、仅登录态可用。
+- **价格表通道**（`src/host/pricing.ts`，`/api/widgets-pricing`）：`dsh-usage-center` 存储表的**只读者**（`$DSH_HOME/storages/usage-center/pricing.json`），提供 provider 口径、生效窗口、峰谷时段与来源（按 mtime 缓存）。文件缺失或不可解析时回答 `available: false`——绝不退回本插件自己编的表。
+- **五个会话形状投影**（`src/client/data/session-stats.ts`）：`normalizeModelSelection` / `normalizeGoal` / `normalizePermissions` / `normalizeSubagents` 防御式读取 host 投影，遇到不认识的成员**丢弃**而不是透传（投影的值是 `unknown`，一个会抛的选择器会连累整个 slot 里所有卡的数据），并保持 `null`（投影缺失）与 `[]`（没有子节点）的区别；`deriveTrajectory` 把已结算节点、在跑的工具调用与当前步骤时间线折成官方的轨迹三车道——**包含在飞的工作**，所以模型干活时卡是会动的。
+- **`sysinfo` 的机器半边**（`src/host/machine.ts`）：`createMachineSampler()` 报告固定磁盘（`fs.statfs`）、`$DSH_HOME/sessions` 总字节数与 mtime 落在最近一小时的文件数，以及 `dsh web` 进程自身的 PID / RSS / CPU / 运行时长。
+
+### 新增 — 共享的头部、语气与图表层
+
+- **第三批的共享原语**（`298cd66`）：`breakdown` 图表；donut / `headRing` 配件；segments 语气调色板与数值模式；强调色（官方模型车道配色，`lanes.tsx` 也改读它）；头部的字号阶梯（标题 / 数字 / 灰字的构建器，让环头与堆叠头共用同一套排版）；42px 圆角圆盘；格子溢出守卫（预览里表现为裁切、组件栏上表现为长高，两种都会自报）；数值变化的落字动画；活数据预览（`buildLiveStats` / `buildPreviewStats`）；圆角端点规则（只有 100% 才闭合圆环）；`ConfigField.hint`。该批收尾时 G1/G2/G3/G3b/G4/G5/G7/G8 全绿：44 个单元、140 份渲染输出、24 条路由、15 项预览检查。
+- **裸 `headIcon` 角标**（`src/client/render/CardBody.tsx`，契约里的 `HeadIconName`）：权限盾与 GitHub 标占据头部右槽而不带弧线，用于「配件是身份、不是表盘」的头部——这是一份**封闭**词表，因为渲染输出是离线闸门要快照成 JSON 的数据。它与 `headRing`、`corner` 共用这个槽位，一张卡只能用其中一个。
+- **五档 value tone**（`64d706a`）：`danger`（已经错了）、`warn`（正在往那儿去）、`success`（因为安全所以好）、`business`（信息性的活动状态）与 `muted`（大字位只放一个 `—`，否则 20px 的孤立破折号读起来像涂黑）。档位由 widget 决定；渲染器**从不**从数值反推颜色。
+- **`WidgetChart.density`**（`b32ffc6`）：图表行的相对尺寸，clamp 在 0.8–1.6。它存在的原因是：图表行高是按最紧的卡写死的预算，而 `scale` 表达不了「给这张图更多空间」——2×2 与 2×4 的 `unit` 都是 150，所以一张丢掉数字的 2×4 会空出约 44px 却无处可花。
+- **峰谷规则提到共享层**（`7236f16`）：两张峰谷卡都改读 `src/client/lib/peak-schedule.ts` 与 `peak-holidays.ts`，`ZONE_OFFSET_MINS` 只导出一次；2×4 只留自己的渲染映射。已证明是纯搬移：G4 的 140 份输出**零差异**，G5 的样式表哈希不变。为一条车主已否决的「呼吸式高峰行」预留的 `breakdown[].pulse` 字段被删掉，而不是当作投机接口发出去。
+- **`quota-manage` 得到带超圈的头环**（车主的要求）：`headRing`（`ratio: shown / 100`、`overshoot: true`、语气按 `primary → warn → danger` 升级），只要读数是预测或超额就把数字印成整数百分比，`src/client/render/icons.tsx` 新增 `gauge` 字形，`src/client/render/charts/donut.tsx` 处理超圈——第一圈闭合圆环，超出部分从同一 12 点起点再画一段 dash，并用一个模糊阴影圆盘（`blur(stroke * 0.45)`）压在色带**下面**，只留一弯月牙贴着尾端圆角。第二个预览状态（`simSteps: [{ over: false }, { over: true }]`）把 ratio 1.35 的超圈状态一起发出去。
+- **`src/client/render/charts/quota-fit.ts`** —— `quotas` 图表格子几何的纯模块：`quotaGeometry(barW, boxH, rows, labelH, scale)` 先选出竖直方向能放下的最大正方格，再由宽度**反推**格数（`QUOTA_MIN_CELLS` 6、`QUOTA_MAX_CELLS` 32、`QUOTA_GAP_RATIO` 0.18、`QUOTA_BREATHING` 6）——宽格子因此得到更多格，而不是更宽的格。
+- **图表渲染器现在是一个组件**（`src/client/render/charts/registry.ts`）：`renderChart` 改为返回 `React.createElement(render, props)` 而不再直接调用 `render(props)`，于是渲染器自己的 hooks（`quotas` 的量测 hook）落在它自己的 fiber 上，而不是 `CardBody` 的。
+
+### 变更 — 收口：九张卡按车主评审重做
+
+- **`guard` 的数字位改成 20px 的权限名**（`af6a34d`），并用产品自己的语义档上色：完全访问 = `danger` + `valuePulse`，工作区可写 = `business`，只读 = `success`——名字与盾牌同一个来源，标记与文字永不打架。实测放不进 124px 文本列的标签（`Workspace Write`，149.8px）或从未量过的名字退回 10px 的 `sub` 行：**小一号的真标签胜过被截断的大字**。
+- **`goal-progress` 的空态移到卡片左下角**（`af6a34d`）：没有目标就没有明细行去压住卡底，所以这两行改为 `value` + `sub` 并带 `bodyAnchor: 'bottom'`，而不是挂在头部阶梯上——改前实测距顶 13px，第二行下方 76px 全是空的。
+- **`sys-disk` 第三版**（`160148f`）：直接删掉 20px 的 `D: 剩余 …` 数字位（它只是把下面那行「同一块盘 + 分母」重说一遍），灰字收成一行 `legend`（会话日志字节 · 近一小时新增文件数），磁盘条用 `density` 花掉腾出的空间。等级色只出现在条上，一个阈值不再同时涂两个地方。
+- **`sys-services` 的灰字回到预算内**（`8b491a3`）：探测未完成时出口图例为 `null`，失败文案截到错误码——把码包成 `出口不通（码）` 会吃掉 124px 灰字框里约 40px，把 `ECONNRESET` 截断；Ollama / LM Studio 变成带 hint 的配置行。
+- **`github-notify`、`jobs`、`subagent`、`sys-procs`、`sys-power`** 在同一轮里重做——`src/widgets/<id>/README.md` 与 `index.ts` 中的标题、图例、空态与提示行——官网的生成目录同时重新生成（`website/js/data.js`、`website/index.html`）。
+- **`dateKey` 不再每次调用都构造 `Intl.DateTimeFormat`**（`src/client/lib/heatmap-accounting.ts`）：按 timezone 缓存 formatter。`dateKey` 每个热力图格子跑一次，而回合流式输出时组件栏是连续重渲染的（实测 13 次网格构建/秒 = 1,196 次调用/秒；它一度成为空闲页面第二热的函数，占 10.8% 采样、约 75ms/s 单核）。
+
+### 变更 — 16 个单元改名，改成它们真正回答的问题
+
+- **Command Code 家族**（`src/widgets/*/manifest.json` + `_shared/locales.json`，重新生成进 `src/client/generated.registry.ts`）：额度 → **用量柱状图** / Usage Bars，窗口 → **用量环形图** / Usage Rings，用量 → **账期用量** / Billing Usage，账户 → **账户身份** / Account Identity，套餐 → **套餐档位** / Plan Tier，5h 窗口 → **5 小时窗口** / 5h Window，周 / 月窗口卡改为 **周窗口** / **月窗口**。
+- **其余**：额度管理 → **额度预测** / Quota Forecast，系统监控 → **系统看板** / System Board，速率 → **解码速率** / Decode Rate，首 token 平均 → **首 token 延迟** / First-token Latency，问题 → **未关闭 Issue** / Open Issues，提交 → **最近提交** / Latest Push，GitHub 待我处理 → **待我处理** / To Review，加上热力图 / 环图 / 柱状图家族（用量热度图 → **Token 热度图**，用量柱状图 → **Token 柱状图**，用量对比 → **用量柱状图**，用量环图 → **用量环形图**）与会话成本 → **本会话成本**。
+- **共享词典随后跟进**：`cc.account` → 账户身份、`cc.roleUsage` → 账期用量、`cc.roleWindow` → 用量环形图、`cc.win5h` → 5 小时窗口，额度行统一为全名——`cc.limit5h` 5 小时 → **5 小时限额** / 5-hour limit、`cc.limitWeek` 周 → **周限额** / Weekly limit、`cc.limitMonth` 月 → **月限额** / Monthly limit；Command Code 的限流预测文案从「打满」改为「触及限额」（`fillIn` "cap in {d}"、`noFill` "no cap · {d}"），剩余重置 → **额度重置** / Quota reset，`usage-mix` 的图例变成 `{win} · {at}`。
+
+### 变更 — 头部是一条定高阶梯
+
+- **环头永远画满三行**（`src/client/render/CardBody.tsx`：`figureRung(reserve)` / `captionRung(reserve)`）。环是与阶梯的渲染高度居中的，所以一行随数据来去的阶梯会推移整个头部：实测（side 150）没有灰字的「套餐总览」是标题 15.7 / 数字 35.3 / 环 13，而**有**灰字的同一张卡是 13 / 32.6 / 17.3（标题与数字下移 2.7px，环上移 4.3px）。缺失的那行现在用不换行空格**占位**，这也是两张相邻卡终于穿上同一个头部的原因；裸角标头保留原来的顶对齐规则——它的阶梯高度不移动任何东西。
+- **同一轮的其他部分**：`pinnedByChart`（每张图表卡都固定为 `unit × unit`）、`ELASTIC_CHARTS`（`line`、`lanes`、`quotas`）给图表 `flex: 1` 与 `minHeight: 0`、卡片与 `SkeletonBody` 都用 `boxSizing: 'border-box'`，以及给头部套上 `flex: 'none'`，让**只有正文**吸收高度缺口。
+- **`quotas` 图表量自己的盒子**（`src/client/render/charts/quotas.tsx`）：一个 `useFittedGeometry` layout effect（ResizeObserver 盯盒子与首行标签行）、来自 `quota-fit.ts` 的正方格与格数、边界格用硬停 `linear-gradient` 画出（两种墨色都用 `color-mix(..., transparent)` 调好）、无圆角，行底对齐，余高当作呼吸空间。
+- **环的墨量按绘制长度算**（`src/client/lib/arc.ts`）：`cappedArcInk` 在 ratio < 1 时返回 `ratio · 周长 − stroke`、≥ 1 时返回 `ratio · 周长`，`capGap` 降级为下限；比一个 stroke 还细的份额会在 12 点画一个端点大小的圆点（`stroke * 0.5`）而不是什么都不画。这就是「99% 的环读成 95%」的修复——旧的 `c − stroke − capGap` 在 99% 时仍留下约 7px 固定缝隙，约整圈的 5%。
+
+### 修复 — Command Code 的月限额（2026-09-30）
+
+- **月限额在每张卡上都回来了。** `/alpha/whoami`、`/alpha/usage/summary`、`/alpha/billing/subscriptions` 实测**连续六次都是 14–21 秒**，而 `/alpha/billing/credits` 约 1 秒——二十分钟后再测又变成 3.6–4.2 秒，也就是说这三个端点的上游延迟是**变化**的。host 却只有一个 8 秒预算，于是它们每次轮询都被丢掉，整个家族按报告原样退化：用量环形图只画两个环、额度只列 `5 小时限额 / 周限额` 而没有月限额行、额度预测退化成 `-%` 且今日推荐 `—`（它的外推需要 subscription 的套餐与账期），切换器显示 `Key 1` / `Key 2` 而不是账号名。
+- **`src/host/commandcode.ts` 改为按切片规划。** `credits` 保留 8 秒，且是路由唯一 await 的切片；慢的三个给 30 秒，并在**带外**刷新。按 `(成员, 端点)` 的切片存储保留上一个好值（TTL：credits = `ROUTE_CACHE_MS`、usage 5 分钟、subscription 10 分钟、whoami 60 分钟），后台刷新绝不把已知切片抹成 null，重试地板为陈旧切片 60 秒、从未拿到的切片 15 秒，存储键是 `ref:tail`，因此换 key 不会继续吐上一个账号的数据。冷调用最多为「从未见过的切片」等 `COMMANDCODE_COLD_WAIT_MS`（1500ms）——实测 1 秒 credits 加这一段，改前是 8 秒——宿主启动时预热每个成员的四个切片。
+- **客户端半边**（`src/client/data/collector.tsx`）：只要回复是降级的就安排 5 秒后补看一次——**包括首次那份本身就残缺的冷载荷**——而不再要求「当前已有完整载荷才会补看」。月限额因此在页面加载后约 25 秒内出现，而不是等 60 秒轮询。
+- **对真实上游验证**：`docs/probe-cc-pool.mjs`（同一轮修好：渲染层已搬到 `families/cc/data.ts` + `renders.ts`；探针现在会等过路由 memo 拿到**完整**池、遇到 null 切片只判失败不崩溃，并额外渲染额度预测）**92 条断言全绿**——池月 40.5%、Physicolor 78.7%、Sparxie 2.1%、真实账号名、额度预测 66% / 账期 10-10 / 今日推荐 160M；修复前同一探针挂 24 条。新 `docs/probe-cc-slices.mjs` 用可控延迟的 fetch 桩钉住流水线本身（13 条断言：不为自己没有的切片阻塞、带外补齐、刷新失败保留 last-good、按 TTL 重取、memo 仍合并突发），`--live` 还会打印真实上游逐端点的延迟。
+- **G7 保持全绿**：instant 桩下首个 body 依旧完整，17 个路由案例的状态与形状不变。
+
+### 修复 — 真实组件栏上暴露的缺陷
+
+- **图表卡撑破格子。** 2026-09-29 实测 Command Code 额度卡在 160px 槽位里盒出 172.8px，格子溢出守卫画了红框；图表卡现在固定尺寸（`pinnedByChart`）并让正文弹性吃掉剩余高度。同一轮还修了头部被压缩（`AllUser` 灰字从 15px 被挤到 6.3px，而下面的图表仍溢出 10px 并盖住它）与骨架屏（原来只设 `minHeight`，160px 的格子站成 160 × 181）。
+- **React #310 会清空整个组件栏槽位。** 渲染器内联调用时它的 hooks 落在 `CardBody` 的 fiber 上，于是普通的「先无图、后有图」切换（`/api/commandcode-usage` 先 503、后成功）会渲染出比上一轮更多的 hooks，DSH 的 slot 边界随即清空抽屉；`renderChart` 现在创建真实元素。
+- **额度行曾是方格纸碎片。** 卡片 132px 的条上排 24 格，出来是 3.6 × 12px，而官方行在 740px 条上约 28 × 26px；格数现在按正方间距由宽度推导，读数落在的那一格按其精确份额填充，而不是被四舍五入掉、也不是留下裸露的卡底。
+- **轨迹占比溢出格子。** 这张卡带着一行 `segments` 图表 76px 预算里没算的图例，于是 150px 格子里站成 161px（红色守卫框）；车道名移到数字自己那 29px 的行上。`usage-mix` 的数字 + 灰字需要 45 + 65px，而环只留约 64px，因此在预览里被裁切——灰字改为独立的图例行，也就是它高度审计里本来就算过的形状。
+- **第三批抓到的真实缺陷**（`298cd66`）：头部数字被渲染两次（`headRing` + `headAfter`）、毫秒数被送进 token 格式化器、池序号表整体高一位、以及一个点了没反应的预览开关。
+- **overview 的第一对吞吐量改为秒级到位**（`src/host/overview.ts`，`fc6eb61`）：PowerShell 计数器是累计值，所以采样器在首次快照后 2.5 秒再排一次，而不是让第一张卡干等一整个 TTL。**通知会说明分页被截断**（`src/host/github.ts`）：整页 30 条线程会让 `count` 变成下限，载荷现在明说这一点。
+- **`lib/client.js` 重新构建**（`e57da93`）：有并行写入者改了缓存环的字形几何，构建产物不再落后于源码。
+- **两处「什么都没在测」的断言被修好**：`docs/verify-i18n.mjs` 断言的 `card.task.sub` 已从词典删除（它只证明了该键仍报 MISSING），现在断言 `card.task.small` → `active · 2 pending`；`docs/verify-skeleton-shapes.cjs` 新增正方形格子断言（卡片必须 `w × w`，2×4 不得比宽更高），`docs/market-test.cjs` 跟随改名后的热度图标签。
+
+### 变更 — 闸门、探针、预览与文档
+
+- **G7 `scripts/snapshot-host-routes.mjs` 增加案例**：`/api/host/overview` 与 `notif=1` 切片（`98e82ba`）、价格表通道（`0c41433`），让「注册了却没有案例就是红」这条规则保持诚实——今天共 17 个案例。
+- **离线卡片画廊**（`scripts/preview/gallery.mjs`、`src/client/render/preview/gallery.tsx`、`tsdown.gallery.config.ts`，`28e05db`）：一条命令打包渲染闭包，写出一个用**真主题 token**（由 `scripts/preview/dump-theme-tokens.cjs` dump）的页面，把每一格截图进 `docs/preview/cards/`，并写出一个**头部阶梯 fixture 页**供 `docs/probe-head-ladder.cjs` 量测——「没有灰字的环头」是任何 widget 预览数据都到不了的状态，也正是出缺陷的那个状态。探针在 150 / 190 两种尺寸、六种头部形状上钉住 49 条断言（标题钉在内容区顶端、标题→数字 4px、环 y 与环直径在所有环变体上唯一、灰字行是占位而非丢失、无溢出）。
+- **实机组件栏仍单独跑**（`98a2a38`、`be8e7fd`）：`docs/probe-batch3-live.cjs` 驱动真实 GUI，检查离线画廊查不了的事——每张卡的数据源在运行中的会话里是否真的解析得出，因为投影缺失的卡会渲染 `null`，在组件栏上留一个洞。它会快照并恢复组件栏布局（`12a9d60`）：只往 `localStorage` 塞值是不够的，应用会把自己的布局同步回来。
+- **基线在「有意变化」处才刷新**（`ae0db31`、`695ecc8`，加上 `docs/architecture/baseline/render-snapshot.json` 里的超圈预览状态），随版本一起的还有 `docs/preview/cards/` 下重新生成的 96 张卡片截图——它们就是评审面。
+- **`docs/architecture/CODE_MAP.md` 新增七条不变量（10–16）**：图表卡固定为格子、头部永不被压缩、图表渲染器按组件渲染、骨架屏就是格子本身、额度格为正方且格数由宽度推导、改名要过两条适配探针、超额表盘用 `headRing.overshoot`。
+- **本批的研究与 worker 文档**：第三批的 brief、规格与两份数据审计（`cf40933`、`HOST-DEVICE-AUDIT.md`、`PROJECTIONS-AUDIT.md`），第二批的设备 / 成本 / 通知规格（`38c42ce`、`75a1b8b`），交付报告（`c1d8175`、`docs/research/BATCH-3-REPORT.md`），以及那条规则——**已安装的卡在它自己的数据源应答之后才渲染，0 是一个读数，不是「没有」**（`85cf904`、`WORKER-BRIEF-V3.md`）。
+- **`website/` 跟随改名与版本同步**（`website/js/data.js`、`website/js/i18n.js`、`website/index.html`），并且 `node website/verify.mjs` 现在会把每一处手写版本号与 `package.json` 对齐、把文案里的每个数量与 manifest 列表对齐——发版前审计发现结构化数据仍写着 `softwareVersion: 1.6.0`、文案仍写 40 个 Widget，而此前没有任何检查看过这两处（现在是 88 项检查）。
+- **面向英文的文档补齐**（`9abbe6a`）：`website/README.md` 仍在描述重构前的目录树（`components.tsx`、`lib/*-view.ts`、指向 `client/index.ts` 的行号区间）并自称 34 个 widget——每一处替换都对照当前仓库核过，最后再跑一遍 grep，只要还有陈旧名字就不写盘；`docs/screenshots/README.md` 原来是英文标题 + 中文正文，现在整篇英文。留档一句：npm 上的 1.8.0 tarball 是在这次提交**之前**构建的，因此那一个文件与已发布的 tarball 不一致。
+
 ## v1.8.0 — 结构版本：两个巨石文件消失、类型错误归零、类型声明真正发布
 
 > 工程版本，**卡片行为零变化**：组件栏、放大波、设置页与每个部件的表现都与 v1.7.0 完全一致。变的是代码放在哪里、闸门能证明什么，以及两处长期存在的发布缺陷。每一步都不是「看着没问题」，而是对着上一版构建验证：渲染快照（110 份输出）、编译后 CSS 的拼接、host 路由指纹与实机探针都必须完全相同；凡是有意变化的，都必须能**证明**变化恰好只有那一处。
@@ -408,7 +491,6 @@
 - **Bug 修复**：usage-bars 图表标签（x 轴）不再溢出图表容器 — 图表外层改为按内容定尺寸，与真实 `ChartBlock` 一致。
 - 插件代码零改动 — 无构建/注册表影响。
 
-
 ## v1.3.3（插件 — OpenCode 用量实时刷新）
 
 - 🔄 **OpenCode 用量不再「仅挂载拉一次」**：用量组件族（用量对比 / 环形 / 滚动 / 每周 / 每月）此前只在 collector 挂载时 fetch 一次，而 `conversation.composer.dock` 在会话间被组件复用——刷新或新建会话才会重新挂载，导致继续对话/切换会话后用量停留在旧值。现在 collector 在**每次对话完成（`running` true → false）时重新拉取** `/api/opencode-usage` 与 `/api/opencode-usage-multi`（多 Key 池），回合结束后配额扣减即时上卡，无需刷新；进行中的回合不会重复请求。
@@ -425,7 +507,6 @@
 - **模板**：`src/widgets-template/` 存放骨架与契约指南；它在物理上位于发现根目录之外，因此模板永远不会被注册。
 - **逐组件 CSS 现在安全**：`tsdown` 的 CSS-module tag id 改用相对 src 的路径，而不再是裸文件名（两个都发布 `index.module.css` 的单元不再碰撞）。
 - **市场分组名改为字典驱动**（`group.<group-id>`，回退到组件名），不再是硬编码映射表。
-
 
 ## v1.2.3
 **性能 — 右面板开合动画掉帧修复（与 dsh-better-sidebar / dsh-ui-harmonizer 协同）：**
