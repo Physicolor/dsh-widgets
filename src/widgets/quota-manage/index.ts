@@ -156,14 +156,18 @@ function quotaRender(stats: WidgetStats, meta?: WidgetRenderMeta): ReturnType<No
   const simOver = meta?.sim?.over === true
   const over = (shownPct !== null && shownPct > 100) || simOver
   const shown = simOver && shownPct !== null ? Math.max(shownPct, SIM_OVER * 100) : shownPct
-  const big = shown === null ? '-%' : plan !== null && plan.projectable && !simOver ? `${Math.round(shown)}%` : `${shown.toFixed(1)}%`
+  // Whole percent whenever the reading is a FORECAST (or an overrun): the figure
+  // shares its row with the ring, and a 6-glyph "135.0%" ellipsized to "135...." on
+  // the live card — measured 2026-09-29 before this rule. Decimals are only worth
+  // their width for a *measured* reading (the used percent of a young period).
+  const wholePct = over || (plan !== null && plan.projectable && !simOver)
+  const big = shown === null ? '-%' : wholePct ? `${Math.round(shown)}%` : `${shown.toFixed(1)}%`
 
   const period = periodEndOf(cc)
-  // The grey slot carries the 账期 line ALONE, on the head row's FLOOR so its
-  // bottom edge lines up with the big figure's (`smallAlign: 'bottom'`). The pool
-  // view name used to ride above it as a stacked two-line block; that stack was
-  // rejected as ugly, and the pool is still switched by tapping the card — it is
-  // simply no longer labelled on the head.
+  // The grey 账期 line moved UNDER the figure (the ring head's left column stacks
+  // title → figure → caption). It used to share the figure's own row
+  // (`headAfter.small`, bottom-aligned), which the owner read as cramped next to the
+  // number (2026-09-29).
   const grey = period !== null ? periodLine(period) : null
 
   // Today's tokens come from the log FOLDED TO THIS PLAN'S ROUTE, so they degrade
@@ -179,7 +183,25 @@ function quotaRender(stats: WidgetStats, meta?: WidgetRenderMeta): ReturnType<No
 
   return {
     title,
-    headAfter: { big, ...(grey !== null ? { small: grey, smallAlign: 'bottom' as const } : {}) },
+    // The figure the card leads with; the 账期 line rides the caption BENEATH it.
+    headAfter: { big },
+    legend: grey ?? undefined,
+    // The dial in the head's right slot (owner's ask, 2026-09-29): the month's
+    // occupancy as a ring. `overshoot: true` is the point of it — this number is a
+    // PROJECTION, so it can pass 100%, and the overrun is drawn as a second lap whose
+    // round tail cap sweeps over the head rather than being clamped into a closed
+    // circle. Tone escalates the same way the figure does (over → danger).
+    headRing: shown === null
+      ? undefined
+      : {
+          ratio: shown / 100,
+          overshoot: true,
+          // The gauge names what the ring meters (see `gaugeIcon` for why not a
+          // clock/wallet/cylinder).
+          icon: 'gauge' as const,
+          tone: over ? ('danger' as const) : shown >= 90 ? ('warn' as const) : ('primary' as const),
+          label: big,
+        },
     // The two token figures keep the card's FLOOR (the posture every other card
     // has): the head is the title + the figure row, nothing else.
     bodyAnchor: 'bottom',
@@ -245,6 +267,11 @@ export default defineWidget({
   group: 'coding-plan',
   render: quotaRender,
   simToggle: () => t('widget.quota-manage.simToggle'),
-  example: { stats: previewStats, sim: { over: false } },
+  // The two states a live rail cannot be asked for on demand: a calm month and the
+  // overrun. `sim` MUST be `simSteps[0]` (deep-equal) — the preview locates the
+  // current step by comparison, so anything else makes the first click a no-op. The
+  // overrun is also what exercises the head ring's `overshoot` lap (ratio 1.35) in
+  // the offline snapshot.
+  example: { stats: previewStats, sim: { over: false }, simSteps: [{ over: false }, { over: true }] },
 })
 

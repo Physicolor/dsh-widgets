@@ -8,7 +8,7 @@
   "skeleton": { "shape": "bars" },
   "locale": {
     "zh": {
-      "widget.usage-bars.name": "用量对比",
+      "widget.usage-bars.name": "用量柱状图",
       "widget.usage-bars.desc": "OpenCode 滚动/周/月三窗口用量柱状图"
     },
     "en": {

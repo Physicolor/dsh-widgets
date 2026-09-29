@@ -8,11 +8,11 @@
   "skeleton": { "shape": "rings", "count": 3 },
   "locale": {
     "zh": {
-      "widget.cc-windows.name": "窗口",
+      "widget.cc-windows.name": "用量环形图",
       "widget.cc-windows.desc": "5h / 周 / 月 三窗口用量环图"
     },
     "en": {
-      "widget.cc-windows.name": "Windows",
+      "widget.cc-windows.name": "Usage Rings",
       "widget.cc-windows.desc": "5h / weekly / monthly usage as rings"
     }
   }

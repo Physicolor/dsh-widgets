@@ -8,7 +8,7 @@
   "skeleton": { "shape": "rings", "count": 3 },
   "locale": {
     "zh": {
-      "widget.usage-rings.name": "用量环图",
+      "widget.usage-rings.name": "用量环形图",
       "widget.usage-rings.desc": "OpenCode 滚动/周/月三窗口用量环形图"
     },
     "en": {

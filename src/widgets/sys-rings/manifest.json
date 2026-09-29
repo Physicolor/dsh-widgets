@@ -8,7 +8,7 @@
   "skeleton": { "shape": "rings", "count": 2 },
   "locale": {
     "zh": {
-      "widget.sys-rings.name": "CPU·GPU 环图",
+      "widget.sys-rings.name": "CPU·GPU 环形图",
       "widget.sys-rings.desc": "CPU / GPU 利用率双环形图"
     },
     "en": {

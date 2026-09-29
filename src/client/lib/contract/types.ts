@@ -874,7 +874,7 @@ export type WidgetSize = '2x2' | '2x4'
  *    shape, 2026-09-29 — the ring's arc already IS the charge level, so a battery
  *    glyph said the same thing twice.)
  */
-export type HeadRingIcon = 'database' | 'hard-drive' | 'power'
+export type HeadRingIcon = 'database' | 'hard-drive' | 'power' | 'gauge'
 
 /**
  * A bare glyph in the head's right-hand slot — the same LAYOUT neighbourhood
@@ -977,6 +977,14 @@ export interface WidgetRenderOut {
     icon?: HeadRingIcon
     /** Hover text only — never drawn in the ring (see above). */
     label?: string
+    /**
+     * Let `ratio` exceed 1 (a quota that can OVERRUN). The first lap closes the ring
+     * and the overrun is painted as a second pass from the same origin, so its round
+     * tail cap sweeps over the head — the owner's ask for 额度预测 (2026-09-29):
+     * 「大于 100 则环形图尾部圆角盖过头部套圈」. Absent = clamped, which is what
+     * every other dial wants (a 130% cache-hit rate is not a thing).
+     */
+    overshoot?: boolean
   }
   /**
    * Optional BARE glyph in the head's right slot (see `HeadIconName`): the card's

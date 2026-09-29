@@ -149,14 +149,21 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
             // the old collector only re-asked on mount/turn-settle, the degraded
             // payload stayed on screen for the rest of the session. So: a degraded
             // reply never REPLACES a complete one, it schedules one extra look 5 s
-            // out (`ccPayloadDegraded` was exported for this and never called), and
-            // the 30 s poll covers a provider that stays down.
-            if (ccPayloadDegraded(next) && deps.getState().commandCode !== null && !ccPayloadDegraded(deps.getState().commandCode)) {
+            // out, and the 30 s poll covers a provider that stays down.
+            //
+            // The retry also fires when there is NO complete payload yet (2026-09-30):
+            // the host answers a cold call with the fast `credits` slice while the
+            // three slow ones are still in flight (they take 14–21 s upstream), so a
+            // fresh page load's FIRST answer is partial by design and the month would
+            // otherwise wait for the 30 s poll. One pending timer at a time, and each
+            // look is a cache read host-side while the slices are in flight — not an
+            // upstream call.
+            if (ccPayloadDegraded(next)) {
               if (!ccRetryPending.current) {
                 ccRetryPending.current = true
                 window.setTimeout(() => { ccRetryPending.current = false; ccPullRef.current() }, 5000)
               }
-              return
+              if (deps.getState().commandCode !== null && !ccPayloadDegraded(deps.getState().commandCode)) return
             }
             setState({ commandCode: next, commandCodeError: null })
           })

@@ -8,11 +8,11 @@
   "skeleton": { "shape": "quotas", "count": 3 },
   "locale": {
     "zh": {
-      "widget.cc-credits.name": "额度",
+      "widget.cc-credits.name": "用量柱状图",
       "widget.cc-credits.desc": "Credits 余额与 5h / 周额度窗口用量"
     },
     "en": {
-      "widget.cc-credits.name": "Credits",
+      "widget.cc-credits.name": "Usage Bars",
       "widget.cc-credits.desc": "Credit balance with 5h / weekly window usage"
     }
   }

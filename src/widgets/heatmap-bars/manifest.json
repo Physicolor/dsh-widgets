@@ -6,7 +6,7 @@
   "sizes": ["2x2", "2x4"],
   "locale": {
     "zh": {
-      "widget.heatmap-bars.name": "用量柱状图",
+      "widget.heatmap-bars.name": "Token 柱状图",
       "widget.heatmap-bars.desc": "逐日 Token 用量柱状图，窗口可在 7 天 / 30 天之间配置；2×4 宽版把合计与峰值移到标题行右端并带 MAX/TOTAL 标头",
       "widget.heatmap-bars.simToggle": "切换 7 天 / 30 天预览",
       "card.heatmap-bars.title": "Token 用量",

@@ -12,7 +12,7 @@
       "widget.cc-window-weekly.desc": "周额度窗口用量百分比与重置时间"
     },
     "en": {
-      "widget.cc-window-weekly.name": "Weekly window",
+      "widget.cc-window-weekly.name": "Weekly Window",
       "widget.cc-window-weekly.desc": "Weekly quota window usage percent and reset time"
     }
   }

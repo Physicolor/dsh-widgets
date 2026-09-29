@@ -14,10 +14,19 @@ import { BASE_SIDE, HEAD_GAP_PX, cardInnerPad, cardRadius } from './card-geometr
 import { CHART_FILLS_BODY, renderChart } from './charts/registry'
 import { Donut } from './charts/donut'
 import { CHART_TONES } from './charts/theme'
-import { databaseIcon, githubMarkIcon, hardDriveIcon, permissionFullAccessIcon, permissionReadOnlyIcon, permissionWorkspaceWriteIcon, powerIcon } from './icons'
+import { databaseIcon, gaugeIcon, githubMarkIcon, hardDriveIcon, permissionFullAccessIcon, permissionReadOnlyIcon, permissionWorkspaceWriteIcon, powerIcon } from './icons'
 import { DEFAULT_CORNER_PERCENT } from '../runtime/prefs'
 import { t } from '../i18n'
 import type { WidgetAction, WidgetRenderOut, WidgetRich } from '../lib/contract/types'
+
+/**
+ * Chart kinds that STRETCH to fill the card's leftover height instead of asking for
+ * their own. `CHART_FILLS_BODY` (charts/registry.ts) is the same set for the
+ * wrapper's `flex: 1`, PLUS `quotas`: the quota rows size themselves from the box
+ * they are given (charts/quota-fit.ts), so their wrapper must flex even though the
+ * chart does not paint into every pixel like a sparkline does. Keep the two in step.
+ */
+const ELASTIC_CHARTS: ReadonlySet<NonNullable<WidgetRenderOut['chart']>['kind']> = new Set(['line', 'lanes', 'quotas'])
 
 function ActionsBlock({ actions, onAction, scale }: { actions: WidgetAction[]; onAction?: (id: string) => void; scale: number }): React.ReactElement {
   const btnStyle: React.CSSProperties = {
@@ -42,6 +51,7 @@ function ActionsBlock({ actions, onAction, scale }: { actions: WidgetAction[]; o
 const HEAD_RING_ICONS: Record<string, React.ReactElement | null> = {
   database: databaseIcon,
   'hard-drive': hardDriveIcon,
+  gauge: gaugeIcon,
   'permission-read-only': permissionReadOnlyIcon,
   'permission-workspace-write': permissionWorkspaceWriteIcon,
   'permission-full-access': permissionFullAccessIcon,
@@ -152,7 +162,12 @@ function SkeletonBody({ out, unit, width, squircle, cornerPercent = DEFAULT_CORN
   }
   return React.createElement('div', {
     className: 'dsx-stats-card dsx-sk-card' + (squircle ? ' dsx-squircle' : ''),
-    style: { position: 'relative', display: 'flex', flexDirection: 'column', width: `${boxW}px`, minHeight: `${unit}px`, borderRadius: `${radius}px`, padding: `${pad}px` },
+    // The placeholder is EXACTLY the tile: a real card is pinned to `unit` × `unit`
+    // (see `pinnedByChart`), so a skeleton that only set `minHeight` stood 13% taller
+    // than the card it stands in for — measured 2026-09-29 on the rail: 160 × 181.
+    // The owner read that as "the cards are not square", and it also made the deck
+    // jump the moment the data landed. `border-box` so `unit` is the whole tile.
+    style: { position: 'relative', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', width: `${boxW}px`, minHeight: `${unit}px`, height: `${unit}px`, borderRadius: `${radius}px`, padding: `${pad}px` },
   },
     React.createElement('div', { className: 'dsx-stats-card-title', style: { fontSize: `${Math.round(13 * scale)}px`, minWidth: 0 } }, out.title),
     // The body owns the card's remaining height (so a chart block reads as a
@@ -169,6 +184,14 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   const valuePx = Math.round(20 * scale)
   const radius = cardRadius(unit, cornerPercent)
   const innerPad = cardInnerPad(unit)
+  // Body shape, decided once (both are read by the guard, the chart wrapper and the
+  // foot, which are three different places in this file):
+  //  - `pinnedByChart`: the card's height is pinned to the tile. Every chart card is
+  //    (see the height note at the bottom of this file);
+  //  - `elasticBody`: the chart CLAIMS the leftover height instead of asking for its
+  //    own (see ELASTIC_CHARTS).
+  const pinnedByChart = out.chart !== undefined
+  const elasticBody = out.chart !== undefined && ELASTIC_CHARTS.has(out.chart.kind)
   // Whole-card cycle (pooled usage widgets): a press plays a short press-down
   // (scale dip) and, on click, cycles the view; the release springs back.
   const cyclable = out.cycle !== undefined
@@ -222,7 +245,11 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   React.useLayoutEffect(() => {
     const el = cardRef.current
     if (el === null) return
-    const pinned = pinBox === true || (out.chart !== undefined && CHART_FILLS_BODY.has(out.chart.kind))
+    // A card whose HEIGHT is already pinned by its own style (every chart card, and
+    // every preview tile) can only ever fail the guard by CLIPPING, so the check is
+    // the scroll-vs-client one; a card that still lets its content size it is
+    // measured against the tile it was asked for.
+    const pinned = pinBox === true || pinnedByChart
     const overflow = pinned ? el.scrollHeight > el.clientHeight + 1 : el.clientHeight > unit + 1
     if (!overflow) {
       el.removeAttribute('data-dsx-overflow')
@@ -326,8 +353,41 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // The ring itself carries NO figure: the number is already on the tile at 20px, and
   // a caption inside a 52px circle reads as cramped. It holds the widget's glyph and
   // the precise figure rides its hover text.
+  //
+  // A RING HEAD'S LADDER HAS A CONSTANT HEIGHT — all three rungs are always there,
+  // and a rung the widget has no text for is reserved with a non-breaking space.
+  //
+  // The ring is CENTRED against the ladder (it is a dial beside the readings), so the
+  // ladder's rendered height decides where the title, the figure and the ring sit. A
+  // rung that comes and goes therefore moved the whole head: 套餐总览 drops its grey
+  // caption whenever the tightest reset is more than a day out (and 额度预测 before its
+  // period is known), and measured 2026-09-30 at side 150 the caption-less card drew
+  // title 15.7 / figure 35.3 / ring 13 while the identical card WITH a caption drew
+  // 13 / 32.6 / 17.3 — two neighbours in the same rail with visibly different heads
+  // (the title and the figure fell 2.7px, the ring rose 4.3px). Reserving the rungs
+  // makes every ring card's head identical whatever data it has, which is the rule
+  // every non-ring card already obeys (its ladder is TOP-aligned, so its title never
+  // moves; see the `headIcon` branch, which is top-aligned for the same reason).
   const accessoryHead = headRing !== undefined || headIcon !== undefined
   const ringFigure = out.headAfter?.big ?? null
+  const ringHead = headRing !== undefined
+  /** The figure rung. A RING head always draws it — reserving the line with a
+   *  non-breaking space when the widget has no figure — while a bare-mark head keeps
+   *  the old rule (its ladder is top-aligned, so an empty rung there is dead height
+   *  above the body, not a fixed axis). */
+  const figureRung = (reserve: boolean): React.ReactElement | null => {
+    if (ringFigure === null && !reserve) return null
+    return React.createElement('span', { key: 'ha', style: { display: 'flex', alignItems: 'baseline', gap: HEAD_GAP_PX, marginTop: `${FIGURE_GAP}px`, minWidth: 0, whiteSpace: 'nowrap' } },
+      figureEl(ringFigure ?? '\u00a0', 'fg'),
+      out.headAfter?.small != null ? captionEl(out.headAfter.small, 'sm', { lineHeight: 1.25 }) : null,
+    )
+  }
+  /** The caption rung, reserved the same way (a nbsp keeps the identical line box). */
+  const captionRung = (reserve: boolean): React.ReactElement | null => {
+    const text = out.legend !== undefined && out.legend !== null && out.legend !== '' ? out.legend : null
+    if (text === null && !reserve) return null
+    return React.createElement('span', { key: 'lg', style: { display: 'flex', marginTop: `${CAPTION_GAP}px`, minWidth: 0 } }, captionEl(text ?? '\u00a0', 'cl'))
+  }
   // Head-ring geometry, named once: the stroke, and the daylight its two round caps
   // need so a near-100% value still shows an opening (see `cappedArcInk`). ~1.2× the
   // stroke is what reads as a deliberate gap rather than an accident; the ring is a
@@ -345,15 +405,8 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
       },
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', minWidth: 0 } },
           titleEl,
-          ringFigure === null
-            ? null
-            : React.createElement('span', { key: 'ha', style: { display: 'flex', alignItems: 'baseline', gap: HEAD_GAP_PX, marginTop: `${FIGURE_GAP}px`, minWidth: 0, whiteSpace: 'nowrap' } },
-                figureEl(ringFigure, 'fg'),
-                out.headAfter?.small != null ? captionEl(out.headAfter.small, 'sm', { lineHeight: 1.25 }) : null,
-              ),
-          out.legend != null
-            ? React.createElement('span', { key: 'lg', style: { display: 'flex', marginTop: `${CAPTION_GAP}px`, minWidth: 0 } }, captionEl(out.legend, 'cl'))
-            : null,
+          figureRung(ringHead),
+          captionRung(ringHead),
         ),
         headRing !== undefined
           ? React.createElement(Donut, {
@@ -368,6 +421,9 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
               // Daylight between the caps, scaled with the stroke: below 100% the ring
               // must show its head and tail as two capped ends (see cappedArcInk).
               capGap: RING_CAP_GAP,
+              // A dial whose value can overrun (额度预测's month projection) draws the
+              // overrun as a second lap that sweeps over the head (see Donut).
+              overshoot: headRing.overshoot === true,
               title: headRing.label,
               center: headRing.icon === undefined
                 ? null
@@ -502,9 +558,11 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
       const c = renderChart({ chart: out.chart, side: unit, width: boxW, pad: innerPad, scale: unit / BASE_SIDE })
     if (c) body.push(React.createElement('div', {
       key: 'c',
-      // The stretch wrapper owns the card's remaining height so an elastic
-      // chart (line sparkline) can fill it; fixed-footprint charts ignore it.
-      style: stretchChart ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : undefined,
+      // The stretch wrapper owns the card's remaining height so an elastic chart
+      // (line sparkline, quotas) can fill it; fixed-footprint charts ignore it.
+      // `minHeight: 0` matters: without it the flex item keeps its content's
+      // automatic minimum size and the elastic chart could push the card taller.
+      style: stretchChart || elasticBody ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : undefined,
     }, c))
   }
   if (out.rich) body.push(React.createElement('div', { key: 'r' }, RichBlock({ rich: out.rich, scale })))
@@ -548,9 +606,19 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // top-aligned, its two figures sat 12px under the 账期 line, leaving 55px of
   // empty tile below them).
   const headAnchorsTop = out.headAfter !== undefined && out.bodyAnchor !== 'bottom'
+  // `topAligned` is about WHERE the body sits when the body is only as tall as its
+  // content. An ELASTIC chart takes the card's whole leftover height instead, so the
+  // body flexes in both cases and only `justifyContent` differs.
   const topAligned = vj || headAnchorsTop || stretchChart
-  const footStyle: React.CSSProperties = topAligned
-    ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, justifyContent: vj ?? 'flex-start' }
+  const footStyle: React.CSSProperties = topAligned || elasticBody
+    ? {
+        flex: '1 1 0',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        justifyContent: vj ?? (elasticBody && !topAligned ? 'flex-end' : 'flex-start'),
+      }
     : { marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }
   return React.createElement('div', {
     ref: cardRef,
@@ -566,13 +634,30 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
     // shows the tile the rail actually seats instead of whatever height the
     // content asks for — measured 2026-09-20: the credits card rendered 200×250
     // in the market and read as a non-square rounded rectangle.
-    style: { position: 'relative', width: `${boxW}px`, minHeight: `${unit}px`, height: pinBox || stretchChart ? `${unit}px` : undefined, borderRadius: `${radius}px`, padding: `${innerPad}px` },
+    //
+    // A CHART card is pinned even in the RAIL (`pinnedByChart`): the slot the rail
+    // seats it in is already exactly `unit` tall, so a card that let its content
+    // size it grew OUT of that slot — measured 2026-09-29, the Command Code 额度
+    // card boxed 172.8px in a 160px slot (and the tile-fits guard drew its red
+    // outline). Pinned, the card is exactly the tile and its elastic body gets the
+    // leftover height to draw in.
+    //
+    // `border-box` so `height: unit` means the TILE, padding included: with
+    // `content-box` the box would be `unit + 2 * padding` and the pin would add
+    // 26px instead of removing the overflow.
+    style: { position: 'relative', boxSizing: 'border-box', width: `${boxW}px`, minHeight: `${unit}px`, height: pinBox || pinnedByChart || stretchChart ? `${unit}px` : undefined, borderRadius: `${radius}px`, padding: `${innerPad}px` },
     title: out.cardHint ?? out.cycle?.hint,
     onClick: cyclable ? () => { pressDown(); if (onCycle) onCycle(out) } : undefined,
     onPointerDown: cyclable ? pressDown : undefined,
   },
     corner,
-    head,
+    // The HEAD keeps its own height, always: the card is a fixed box, and without
+    // this the flex algorithm solved an over-tall card by SHRINKING the head's tail
+    // instead of the body — measured 2026-09-29 on the 额度 card, whose `AllUser`
+    // caption was squeezed from 15px to 6.3px (clipped) while the chart below it
+    // still overflowed by 10px and covered it. The body is the only part that
+    // absorbs a shortfall (it measures itself for exactly that).
+    React.createElement('div', { key: 'head', style: { flex: 'none', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 0 } }, head),
     React.createElement('div', { key: 'foot', style: footStyle }, body),
     out.actions ? ActionsBlock({ actions: out.actions, onAction, scale }) : null,
   )

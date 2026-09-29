@@ -159,16 +159,23 @@ export function ccCreditsRender(stats: WidgetStats): WidgetRenderOut | null {
     credits?.purchasedCredits !== undefined && credits.purchasedCredits > 0 ? `${t('cc.purchased')} ${fmtCredit(credits.purchasedCredits)}` : '',
   ].filter(Boolean)
   // No 额度 role word: `69.16 credits` says what the card is, and the user asked
-  // for exactly two things on top — `credits` and the number. The line is used
-  // only for the pool view, plus the free/purchased extras when they exist.
-  const legend = extras.length > 0 ? ccLegend(extras.join(' / '), view) : view.multi ? view.mode : undefined
+  // for exactly two things on top — `credits` and the number. The line now carries
+  // ONLY the free/purchased extras, when they exist.
+  //
+  // The POOL VIEW used to ride this line (`AllUser` on its own row under the
+  // figure); the owner moved it onto the month row's own label (2026-09-29:
+  // 「在月限额后面写 月限额 AllUser」), which also hands the row back ~12px of height.
+  const legend = extras.length > 0 ? ccLegend(extras.join(' / '), view) : undefined
   const fh = fiveHourWindow(c)
   const wk = weeklyWindow(c)
   const mo = monthlyWindow(c)
   const quotas: NonNullable<WidgetRenderOut['chart']>['quotas'] = []
   if (fh) quotas.push({ label: t('cc.limit5h'), pct: fh.pct, tone: windowTone(fh.pct, fh.exceeded) })
   if (wk) quotas.push({ label: t('cc.limitWeek'), pct: wk.pct, tone: windowTone(wk.pct, wk.exceeded) })
-  if (mo) quotas.push({ label: t('cc.limitMonth'), pct: mo.pct, tone: windowTone(mo.pct, mo.exceeded) })
+  // The month row names the pool when there is one to name (`月限额 AllUser`) — the
+  // same condition the old legend line used, so a single-key install keeps its clean
+  // label instead of inventing a pool that does not exist.
+  if (mo) quotas.push({ label: view.multi ? `${t('cc.limitMonth')} ${view.mode}` : t('cc.limitMonth'), pct: mo.pct, tone: windowTone(mo.pct, mo.exceeded) })
   // The reset dates are still worth knowing, but they do not fit a 2×2 tile
   // beside three bars; they ride the hover tooltip on the row's own label.
   if (quotas.length === 0) return { title: title(), legend, headAfter, cycle }

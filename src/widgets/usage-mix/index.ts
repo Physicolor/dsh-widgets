@@ -356,20 +356,23 @@ function usageMixRender(stats: WidgetStats): WidgetRenderOut | null {
       : { label: r.label, value: `${w.pct.toFixed(1)}%`, tone: toneOf(w.pct) })
   }
 
-  // The ladder, one rung per field (the 缓存命中 shape): blue title above, the
-  // figure in `headAfter.big`, the grey caption under it. `value` stays empty —
-  // with a headRing it would have no owner and print the figure twice. When the
-  // 今日 switch is off (or the day has no reading) the tightest quota takes the
-  // figure row instead, so the tile never opens on a blank line; the caption
-  // rides the ladder EITHER WAY — it describes the ring's window, not the figure.
+  // The ladder, one rung per field: blue title above, the figure in
+  // `headAfter.big`, the grey caption as the `legend` line UNDER it. `value` stays
+  // empty — with a headRing it would have no owner and print the figure twice.
+  //
+  // The caption is the LEGEND (its own line), not `headAfter.small` (the figure's own
+  // row): the ring leaves the head's left column ~64px, and figure + caption side by
+  // side needed 45 + 65 of them — measured 2026-09-29, both clipped to 「9...」 /
+  // 「5h 重...」 on the preview. The card's own height audit (see the header) already
+  // budgets the caption as its own 2+12px line, so this is the shape it was costed for.
   const headAfter: NonNullable<WidgetRenderOut['headAfter']> = {
     big: showToday && today !== null ? fmtTokens(today) : peak === null ? '—' : `${peak.pct.toFixed(1)}%`,
-    ...(caption === null ? {} : { small: caption }),
   }
 
   return {
     title: t('widget.usage-mix.name'),
     headAfter,
+    ...(caption === null ? {} : { legend: caption }),
     // The head's right slot: the board's tightest quota as a donut, with the
     // 缓存命中 head-ring geometry but the INVERTED urgency ramp — there high is
     // good (green), here high means a plan about to block (red). `icon` is the

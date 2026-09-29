@@ -161,3 +161,33 @@ export const powerIcon = React.createElement('svg', { width: 20, height: 20, vie
     strokeLinejoin: 'round',
   }),
 )
+
+/**
+ * The gauge glyph of the 额度预测 card's head ring.
+ *
+ * WHY A GAUGE, AND WHAT ELSE WAS CONSIDERED (the owner asked for a fitting glyph,
+ * 2026-09-29). The card forecasts how much of a monthly CREDIT allowance will be
+ * spent by the period's end, so the glyph has to name what the ring measures:
+ *  - 额度/money — the official set has NO coin/wallet/credit glyph at all (the whole
+ *    `@deepseek-ai` client vocabulary is 73 icons: money-adjacent are only Clock,
+ *    Database, Data, Gauge, Light, Sparkle), so a wallet would have to be invented;
+ *  - a CLOCK would merely restate the 账期 line the card already prints under the
+ *    figure;
+ *  - the DATABASE cylinder is what 峰谷定价's ring already wears;
+ *  - the GAUGE means "metered against a cap", which is exactly the card's question,
+ *    and it is the product's own glyph for it.
+ *
+ * The drawing is `@deepseek-ai/dsh-client-ui-primitives`'s `IconGaugeOutline16`
+ * verbatim (dial arc open at the bottom, needle to the upper right, filled hub at
+ * y=8.75) — reproduced rather than imported, like every other glyph here. Only the
+ * STROKE is raised, 1.25 → 2.4: the ring it sits in is stroked `round(5 · scale)`
+ * at a 52 · scale box while the glyph is drawn at 20 · scale, so upstream's hairline
+ * would read as a weak detail floating in a fat circle — the same call the drive
+ * glyph's comment records (2.8 there; a dial keeps a little lighter so its needle
+ * and hub do not merge into a blob).
+ */
+export const gaugeIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('path', { d: 'M3.49 13.26A6.375 6.375 0 1 1 12.51 13.26', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round' }),
+  React.createElement('path', { d: 'M8 8.75L11.4 5.35', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round' }),
+  React.createElement('circle', { cx: 8, cy: 8.75, r: 1.55, fill: 'currentColor' }),
+)

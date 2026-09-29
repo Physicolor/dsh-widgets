@@ -7,11 +7,11 @@
   "defaultInstalled": true,
   "locale": {
     "zh": {
-      "widget.ttft.name": "首 token 平均",
+      "widget.ttft.name": "首 token 延迟",
       "widget.ttft.desc": "平均首 token 延迟"
     },
     "en": {
-      "widget.ttft.name": "Avg TTFT",
+      "widget.ttft.name": "First-token Latency",
       "widget.ttft.desc": "Average first-token latency"
     }
   }

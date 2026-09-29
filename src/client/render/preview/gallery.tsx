@@ -24,6 +24,15 @@ import type { WidgetSize } from '../../lib/contract/types'
 import { CardBody } from '../CardBody'
 import { exampleOut } from './example-out'
 
+/**
+ * `CardBody` is re-exported for the HEAD-LADDER FIXTURE page the gallery build
+ * writes next to `index.html` (scripts/preview/gallery.mjs): that page mounts the
+ * real renderer with hand-written `WidgetRenderOut`s, so the head contract can be
+ * measured in the states no widget's preview data reaches (a ring head with no
+ * caption). The gallery page itself never uses this export.
+ */
+export { CardBody }
+
 /** The gap the rail puts between two card columns (2×4 spans two of them). */
 const COLUMN_GAP = 12
 

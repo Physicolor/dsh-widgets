@@ -6,7 +6,7 @@
   "sizes": ["2x2", "2x4"],
   "locale": {
     "zh": {
-      "widget.heatmap.name": "用量热度图",
+      "widget.heatmap.name": "Token 热度图",
       "widget.heatmap.desc": "每日 Token 用量热度图（自记账）。2×2 显示近 3 个月日历，2×4 显示近半年全部用量点；大小可在市场左右切换",
       "card.heatmap.title": "Token 用量",
       "config.monthMode": "窗口对齐方式",

@@ -4,17 +4,17 @@
  *
  * The rest of the coding-plan family answers 「用了多少」 (额度管理 projects the
  * MONTH, 窗口 draws the three used-percents). None of them answers the question a
- * long task actually dies on: 「还有 40 分钟就重置了，可按现在的速度 20 分钟后就打满」.
+ * long task actually dies on: 「还有 40 分钟就重置了，可按现在的速度 20 分钟后就触及限额」.
  *
  *   「窗口预测」                    blue title (13px)
  *   「118%」                        headAfter.big — the WORSE of the two windows'
  *                                   projected occupancy at its reset (20px)
- *   「5h · 预计 1h14m 后打满」        legend — WHICH window that figure is, and
+ *   「5h · 预计 1h14m 后触及限额」        legend — WHICH window that figure is, and
  *                                   its verdict (grey 10px)
  *   ──────────────────────────────  hairline, then the three rows on the floor
  *   「5h              118% 预计」
  *   「周               63% 预计」
- *   「剩余重置           2h0m」      the NEARER of the two resets
+ *   「额度重置           2h0m」      the NEARER of the two resets
  *
  * WHAT IS PROJECTED (`projectWindow`, pure + exported so it can be reviewed):
  *   The provider reports `used` / `cap` and the wall-clock `resetAt` per window,
@@ -23,12 +23,12 @@
  *   unverifiable clock) and the pace is `used ÷ elapsed` over that span:
  *
  *     fiveHour: used 6, cap 10, resets in 1h  → start 4h ago, rate 1.5/h
- *               projected = 6 + 1.5×1 = 7.5 → 75% ⇒ 重置前不会打满
+ *               projected = 6 + 1.5×1 = 7.5 → 75% ⇒ 重置前不会触及限额
  *               time to cap = (10 − 6) ÷ 1.5 = 2h40m > 1h left
  *     weekly:   used 30, cap 40, resets in 2d → start 5d ago, rate 6/day
- *               projected = 30 + 6×2 = 42 → 105% ⇒ 会打满
+ *               projected = 30 + 6×2 = 42 → 105% ⇒ 会触及限额
  *               time to cap = (40 − 30) ÷ 6 = 1d16h < 2d left
- *   ⇒ head figure 105% (the worse of the two), legend 「周 · 预计 1d16h 后打满」,
+ *   ⇒ head figure 105% (the worse of the two), legend 「周 · 预计 1d16h 后触及限额」,
  *     rows 75% / 105%. Every number on the card comes out of that one function.
  *
  * DEGRADATION — 「宁可 — 不猜」, the family's rule. A window whose reading cannot
@@ -209,7 +209,7 @@ function windowForecastRender(stats: WidgetStats, meta?: WidgetRenderMeta): Retu
   const willFill = head.f.ratio > DANGER_RATIO
   // The grey line: WHICH window the figure belongs to + its verdict. The calm
   // wording carries the reset countdown (the spec's ask) in the short form the
-  // ~126px caption actually has room for — the full 「重置前不会打满」 plus a
+  // ~126px caption actually has room for — the full 「重置前不会触及限额」 plus a
   // countdown measured ~140px and ellipsized.
   const verdict = willFill
     ? t('card.window-forecast.fillIn', { d: fmtSpan(head.f.fillMs) })

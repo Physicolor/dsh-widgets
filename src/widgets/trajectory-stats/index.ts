@@ -180,10 +180,18 @@ function trajectoryStatsRender(stats: WidgetStats): WidgetRenderOut | null {
 
   return {
     title: t('widget.trajectory-stats.name'),
-    // The figure is the SELECTED lane's share, and the legend under it names
-    // exactly that lane — the figure can never be read against the wrong row.
-    headAfter: { big },
-    legend: `${laneName(shownLane)} · ${t('card.trajectory-stats.legend')}`,
+    // The figure is the SELECTED lane's share and its caption names exactly that lane
+    // — the figure can never be read against the wrong row — on the FIGURE'S OWN ROW
+    // (`headAfter.small`), not as a `legend` line beneath it.
+    //
+    // That is a height fix, not a taste one (2026-09-29): the `segments` chart's own
+    // budget comment (see charts/segments.tsx) computes its 76px from a head of
+    // title + figure row ALONE — 26 padding + 16 title + 29 figure = 79 left for the
+    // bar + 3 legend rows. This card ALSO carried a legend line (+16px), so it needed
+    // 92 of those 79: it stood 161px tall in a 150px tile and the tile-fits guard drew
+    // its red outline. Moving the lane name onto the figure's row costs nothing —
+    // the row is 29px of line box with room beside the number.
+    headAfter: { big, small: laneName(shownLane) },
     bodyAnchor: 'bottom',
     chart: {
       kind: 'segments',
