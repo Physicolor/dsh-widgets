@@ -62,14 +62,14 @@ export const databaseIcon = React.createElement('svg', { width: 16, height: 16, 
  * (ISC), re-authored on this file's 16×16 grid (24-grid ÷1.5) — the same provenance
  * as `databaseIcon` above.
  *
- * WHY IT IS STILL THE HEAVIEST GLYPH IN THIS FILE. The ring it sits in is stroked
- * `round(5 · scale)` at a 52 · scale box, while the glyph is a 16 grid drawn at
- * 20 · scale, so the weights compare 1:1.25 — every other glyph here (1.6, i.e.
+ * HOW HEAVY IT IS, AND WHY IT IS NOT HEAVIER. The ring it sits in is stroked
+ * `round(5 · scale)` at a 52 · scale box while the glyph is a 16 grid drawn at
+ * 20 · scale, so the weights compare 1:1.25; every other glyph here (1.6, i.e.
  * 2px) reads as a thin detail floating in a fat circle, and the owner's rule is
- * that the ring's middle must not look weak. **3.2** (visual 4px, 80% of the ring)
- * is where that landed after two tries: the first cut ran at the ring's own weight
- * (4.0 = 5px) and was judged too heavy — at that size the body's three horizontal
- * bands had no daylight left. Do not raise it back toward 4.0.
+ * that the ring's middle must not look weak. Three passes settled on **2.8**
+ * (visual 3.5px, 70% of the ring): 4.0 (= the ring's own 5px) closed the body's
+ * three horizontal bands into a slab, and 3.2 (4px) still read heavy on a live
+ * card. Do not raise it back.
  *
  * THE INDICATOR DOTS ARE DELIBERATELY ABSENT. Lucide puts two under the slot; at
  * this stroke their diameter IS the stroke (4px at a 20px glyph) and the clear band
@@ -80,8 +80,8 @@ export const databaseIcon = React.createElement('svg', { width: 16, height: 16, 
  * the same green/red as its arc).
  */
 export const hardDriveIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
-  React.createElement('path', { d: 'M3.63 3.41 1.33 8v4a1.33 1.33 0 0 0 1.33 1.33h10.67A1.33 1.33 0 0 0 14.67 12V8l-2.3-4.59A1.33 1.33 0 0 0 11.17 2.67H4.83a1.33 1.33 0 0 0-1.2.74z', stroke: 'currentColor', strokeWidth: 3.2, strokeLinejoin: 'round' }),
-  React.createElement('path', { d: 'M1.33 8h13.34', stroke: 'currentColor', strokeWidth: 3.2, strokeLinecap: 'round' }),
+  React.createElement('path', { d: 'M3.63 3.41 1.33 8v4a1.33 1.33 0 0 0 1.33 1.33h10.67A1.33 1.33 0 0 0 14.67 12V8l-2.3-4.59A1.33 1.33 0 0 0 11.17 2.67H4.83a1.33 1.33 0 0 0-1.2.74z', stroke: 'currentColor', strokeWidth: 2.8, strokeLinejoin: 'round' }),
+  React.createElement('path', { d: 'M1.33 8h13.34', stroke: 'currentColor', strokeWidth: 2.8, strokeLinecap: 'round' }),
 )
 
 // ---- Head-accessory glyphs (added 2026-09-29 for the permission / vendor / power cards) ----
