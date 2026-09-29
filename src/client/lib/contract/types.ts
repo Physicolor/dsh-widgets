@@ -806,6 +806,20 @@ export interface WidgetChart {
    *  absent). Kept on the chart so a unit-localized word stays in the widget's
    *  dictionary instead of leaking into the renderer. */
   heatmapUnit?: string
+  /**
+   * Relative size of a chart's ROWS — label line, bar and the gap between rows —
+   * default 1 (the shipped geometry). Clamped to 0.8–1.6.
+   *
+   * It exists because a chart's row metrics are a HEIGHT BUDGET authored for the
+   * tightest card (`quotas` was tuned for 150px minus a title and a 25px figure),
+   * and `scale` cannot express "give this chart more room": `scale` is
+   * `unit / BASE_SIDE`, and `unit` is the same 150 for 2×2 and 2×4 — so a 2×4 card
+   * that drops its figure has ~44px of dead space and no way to spend it on the
+   * rows. 磁盘与自检 hit exactly that (2026-09-29) and asked for this field rather
+   * than faking it with a transform, which would have scaled the title and the
+   * card's padding too.
+   */
+  density?: number
 }
 
 /** An interactive action on a card (e.g. one-click Compact). */

@@ -14,7 +14,12 @@ export function QuotasChart({ chart, side, width, pad, scale }: ChartProps): Rea
     // cells make the reading coarse on purpose: 1% of a 5-hour window is one
     // cell, which a smooth 126px bar could not show at all.
     const CELLS = 24
-    const cellH = Math.max(5, Math.round(9 * scale))
+    // `density` (see WidgetChart) scales the whole row — label line, bar and the gap
+    // between rows — for a card with the vertical room and no figure to spend it on.
+    // CLAMPED on purpose: this geometry IS a height budget (see the note below), and
+    // an unbounded multiplier would push the last bar through the card floor.
+    const density = Math.min(1.6, Math.max(0.8, chart.density ?? 1))
+    const cellH = Math.max(5, Math.round(9 * scale * density))
     const rows = chart.quotas.map((q, i) => {
       const pct = Math.max(0, Math.min(100, q.pct))
       const filled = Math.max(0, Math.min(CELLS, Math.round((pct / 100) * CELLS)))
@@ -35,15 +40,15 @@ export function QuotasChart({ chart, side, width, pad, scale }: ChartProps): Rea
       // gap and a 9px bar ≈ 21px, and the rows are 5px apart (3·21 + 2·5 = 73).
       // A 10/3/7 version measured 100px and clipped the last bar against the
       // card floor. At side 200 (the market stage) every term scales with it.
-      return React.createElement('div', { key: i, style: { display: 'flex', flexDirection: 'column', gap: Math.round(2 * scale) } },
+      return React.createElement('div', { key: i, style: { display: 'flex', flexDirection: 'column', gap: Math.round(2 * scale * density) } },
         React.createElement('div', { style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, minWidth: 0 } },
-          React.createElement('span', { style: { fontSize: `${Math.round(9 * scale)}px`, lineHeight: 1.15, fontWeight: 500, color: 'var(--dsw-alias-label-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, q.label),
-          React.createElement('span', { style: { fontSize: `${Math.round(9 * scale)}px`, lineHeight: 1.15, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none' } }, `${Math.round(pct)}%`),
+          React.createElement('span', { style: { fontSize: `${Math.round(9 * scale * density)}px`, lineHeight: 1.15, fontWeight: 500, color: 'var(--dsw-alias-label-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, q.label),
+          React.createElement('span', { style: { fontSize: `${Math.round(9 * scale * density)}px`, lineHeight: 1.15, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none' } }, `${Math.round(pct)}%`),
         ),
         React.createElement('div', { style: { display: 'flex', gap: 2, width: '100%' } }, ...cells),
       )
     })
-    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: Math.round(5 * scale), width: '100%' } }, ...rows)
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: Math.round(5 * scale * density), width: '100%' } }, ...rows)
   }
   return null
 }
