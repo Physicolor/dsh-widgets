@@ -368,18 +368,20 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
                     style: { display: 'flex', color: CHART_TONES[headRing.tone ?? 'primary'] ?? CHART_TONES.primary, transform: `scale(${((20 * scale) / 16).toFixed(3)})` },
                   }, HEAD_RING_ICONS[headRing.icon] ?? null),
             })
-          // The bare accessory: one glyph, no arc — an identity, not a dial. It is
-          // drawn at 34px (the ring's 52px minus the ring itself) in `primary` unless
-          // the widget asked for a tone, because a mark that changes colour for no
-          // stated reason is exactly the "why is this yellow?" defect this slot exists
-          // to avoid.
+          // The bare accessory: one glyph, no arc — an identity, not a dial. 24px at
+          // the base side: the ring it shares the slot with is 52px and carries a 20px
+          // glyph in its middle, so a BARE mark has to stay near that size — at 34px
+          // it read as a logo pasted over the corner (measured on a real card,
+          // 2026-09-29). `primary` unless the widget asked for a tone, because a mark
+          // that changes colour for no stated reason is exactly the "why is this
+          // yellow?" defect this slot exists to avoid.
           : React.createElement('span', {
               key: 'hi',
               style: {
                 display: 'flex',
                 flex: 'none',
                 color: headIcon === undefined ? undefined : (CHART_TONES[headIcon.tone ?? 'primary'] ?? CHART_TONES.primary),
-                transform: `scale(${((34 * scale) / 16).toFixed(3)})`,
+                transform: `scale(${((24 * scale) / 16).toFixed(3)})`,
                 transformOrigin: 'top right',
               },
             }, headIcon === undefined ? null : (HEAD_RING_ICONS[headIcon.name] ?? null)),

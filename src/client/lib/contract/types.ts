@@ -965,10 +965,11 @@ export interface WidgetRenderOut {
    * Optional BARE glyph in the head's right slot (see `HeadIconName`): the card's
    * identity mark, with no arc around it.
    *
-   * Mutually exclusive with `headRing` in practice — they share the slot, and the
-   * renderer draws whichever is present (the ring first if a card somehow sets
-   * both). `tone` defaults to the primary label colour on purpose: a mark that
-   * turns amber for an unstated reason is the "why is this yellow?" defect.
+   * Mutually exclusive with `headRing` AND with `corner` in practice: the ring shares
+   * this slot, and `corner` (the two-tap action capsule) also lives top-right — a
+   * card that sets both paints the glyph under the button (seen on a real card during
+   * the 2026-09-29 smoke test). The renderer draws whichever is present; picking a
+   * combination is the widget's job.
    */
   headIcon?: {
     name: HeadIconName
