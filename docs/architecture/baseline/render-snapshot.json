@@ -5566,131 +5566,6 @@
    }
   },
   {
-   "id": "model-config",
-   "size": "2x2",
-   "sim": null,
-   "out": {
-    "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "提供方",
-       "value": "commandcode"
-      },
-      {
-       "label": "预设",
-       "value": "standard"
-      },
-      {
-       "label": "下次",
-       "tone": "primary",
-       "value": "换模型"
-      }
-     ],
-     "kind": "breakdown"
-    },
-    "headAfter": {
-     "big": "medium"
-    },
-    "legend": "deepseek-v4-flash",
-    "title": "会话配置"
-   }
-  },
-  {
-   "id": "model-config",
-   "size": "2x2",
-   "sim": {
-    "state": "switched"
-   },
-   "out": {
-    "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "提供方",
-       "value": "commandcode"
-      },
-      {
-       "label": "预设",
-       "value": "standard"
-      },
-      {
-       "label": "下次",
-       "tone": "primary",
-       "value": "换模型"
-      }
-     ],
-     "kind": "breakdown"
-    },
-    "headAfter": {
-     "big": "medium"
-    },
-    "legend": "deepseek-v4-flash",
-    "title": "会话配置"
-   }
-  },
-  {
-   "id": "model-config",
-   "size": "2x2",
-   "sim": {
-    "state": "steady"
-   },
-   "out": {
-    "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "提供方",
-       "value": "commandcode"
-      },
-      {
-       "label": "预设",
-       "value": "standard"
-      }
-     ],
-     "kind": "breakdown"
-    },
-    "headAfter": {
-     "big": "high"
-    },
-    "legend": "deepseek-v4.1-flash",
-    "title": "会话配置"
-   }
-  },
-  {
-   "id": "model-config",
-   "size": "2x2",
-   "sim": {
-    "state": "noEffort"
-   },
-   "out": {
-    "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "提供方",
-       "value": "commandcode"
-      },
-      {
-       "label": "预设",
-       "value": "standard"
-      },
-      {
-       "label": "下次",
-       "tone": "primary",
-       "value": "换模型"
-      }
-     ],
-     "kind": "breakdown"
-    },
-    "headAfter": {
-     "big": "—"
-    },
-    "legend": "deepseek-v4-flash",
-    "title": "会话配置"
-   }
-  },
-  {
    "id": "peak-pricing-board",
    "size": "2x4",
    "sim": null,
@@ -6369,7 +6244,7 @@
      "big": "118%"
     },
     "legend": "5h · 预计 1h14m 后打满",
-    "title": "窗口预测",
+    "title": "限流预测",
     "valueTone": "danger"
    }
   },
@@ -6401,7 +6276,7 @@
      "big": "118%"
     },
     "legend": "5h · 预计 1h14m 后打满",
-    "title": "窗口预测",
+    "title": "限流预测",
     "valueTone": "danger"
    }
   },
@@ -6435,7 +6310,7 @@
      "big": "94%"
     },
     "legend": "5h · 不会打满 · 1h15m",
-    "title": "窗口预测",
+    "title": "限流预测",
     "valueTone": "warn"
    }
   },
@@ -6468,7 +6343,7 @@
      "big": "89%"
     },
     "legend": "5h · 不会打满 · 1h0m",
-    "title": "窗口预测"
+    "title": "限流预测"
    }
   },
   {
@@ -7031,7 +6906,7 @@
      "big": "≈$0.131"
     },
     "legend": "官方价 · deepseek-v4.1-flash",
-    "title": "会话成本"
+    "title": "本会话成本"
    }
   },
   {
@@ -7068,7 +6943,7 @@
      "big": "≈$0.131"
     },
     "legend": "官方价 · deepseek-v4.1-flash",
-    "title": "会话成本"
+    "title": "本会话成本"
    }
   },
   {
@@ -7105,7 +6980,7 @@
      "big": "≈$0.261"
     },
     "legend": "官方价 · deepseek-v4.1-flash",
-    "title": "会话成本"
+    "title": "本会话成本"
    }
   },
   {
@@ -7137,7 +7012,7 @@
      "big": "18.7M"
     },
     "legend": "无价格表 · 仅 token",
-    "title": "会话成本"
+    "title": "本会话成本"
    }
   },
   {
@@ -12913,131 +12788,6 @@
    }
   },
   {
-   "id": "model-config",
-   "size": "2x2",
-   "sim": null,
-   "out": {
-    "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "Via",
-       "value": "commandcode"
-      },
-      {
-       "label": "Preset",
-       "value": "standard"
-      },
-      {
-       "label": "Next",
-       "tone": "primary",
-       "value": "New model"
-      }
-     ],
-     "kind": "breakdown"
-    },
-    "headAfter": {
-     "big": "medium"
-    },
-    "legend": "deepseek-v4-flash",
-    "title": "Session Config"
-   }
-  },
-  {
-   "id": "model-config",
-   "size": "2x2",
-   "sim": {
-    "state": "switched"
-   },
-   "out": {
-    "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "Via",
-       "value": "commandcode"
-      },
-      {
-       "label": "Preset",
-       "value": "standard"
-      },
-      {
-       "label": "Next",
-       "tone": "primary",
-       "value": "New model"
-      }
-     ],
-     "kind": "breakdown"
-    },
-    "headAfter": {
-     "big": "medium"
-    },
-    "legend": "deepseek-v4-flash",
-    "title": "Session Config"
-   }
-  },
-  {
-   "id": "model-config",
-   "size": "2x2",
-   "sim": {
-    "state": "steady"
-   },
-   "out": {
-    "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "Via",
-       "value": "commandcode"
-      },
-      {
-       "label": "Preset",
-       "value": "standard"
-      }
-     ],
-     "kind": "breakdown"
-    },
-    "headAfter": {
-     "big": "high"
-    },
-    "legend": "deepseek-v4.1-flash",
-    "title": "Session Config"
-   }
-  },
-  {
-   "id": "model-config",
-   "size": "2x2",
-   "sim": {
-    "state": "noEffort"
-   },
-   "out": {
-    "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "Via",
-       "value": "commandcode"
-      },
-      {
-       "label": "Preset",
-       "value": "standard"
-      },
-      {
-       "label": "Next",
-       "tone": "primary",
-       "value": "New model"
-      }
-     ],
-     "kind": "breakdown"
-    },
-    "headAfter": {
-     "big": "—"
-    },
-    "legend": "deepseek-v4-flash",
-    "title": "Session Config"
-   }
-  },
-  {
    "id": "peak-pricing-board",
    "size": "2x4",
    "sim": null,
@@ -13716,7 +13466,7 @@
      "big": "118%"
     },
     "legend": "5h · full in 1h14m",
-    "title": "Window Forecast",
+    "title": "Throttle Forecast",
     "valueTone": "danger"
    }
   },
@@ -13748,7 +13498,7 @@
      "big": "118%"
     },
     "legend": "5h · full in 1h14m",
-    "title": "Window Forecast",
+    "title": "Throttle Forecast",
     "valueTone": "danger"
    }
   },
@@ -13782,7 +13532,7 @@
      "big": "94%"
     },
     "legend": "5h · no fill · 1h15m",
-    "title": "Window Forecast",
+    "title": "Throttle Forecast",
     "valueTone": "warn"
    }
   },
@@ -13815,7 +13565,7 @@
      "big": "89%"
     },
     "legend": "5h · no fill · 1h0m",
-    "title": "Window Forecast"
+    "title": "Throttle Forecast"
    }
   },
   {

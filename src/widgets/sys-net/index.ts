@@ -19,9 +19,9 @@ import type { HostOverview, WidgetRenderMeta, WidgetStats } from '../../client/l
  * WHY THERE IS NO TONE AND NO RING: throughput is a READING, not a verdict — 2 MB/s
  * is not "good" and 0 B/s is not "bad" (an idle machine is a healthy machine). A
  * ring would additionally need a denominator, and a rate has none: a share of
- * what? This is the same call 内存大户 makes, and it is why the thresholds this
- * widget owns are DISPLAY budgets (see the label-budget note on `shortAdapter`)
- * rather than colour steps.
+ * what? This is the same call 进程内存占用 (sys-procs) makes, and it is why the
+ * thresholds this widget owns are DISPLAY budgets (see the label-budget note on
+ * `shortAdapter`) rather than colour steps.
  *
  * THE ONE HONEST AMBIGUITY: `net` is derived from CUMULATIVE adapter counters
  * (`Win32_PerfRawData_Tcpip_NetworkInterface`), so the very first call can only
