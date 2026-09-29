@@ -253,7 +253,11 @@ body.dsx-hide-statsline [data-slot='conversation.composer.dock'] > div * {
    pricing's EXPENSIVE state and by a plan projected past 100%.
    ponytail: opacity-only blink; swap for a colour tween if it reads too soft. */
 .dsx-stats-card-value.dsx-value-pulse {
-  color: var(--dsw-alias-state-error-primary);
+  /* NO `color` here: the colour is the widget's call (`valueTone`, applied inline).
+   * Hard-coding the error red made the breathe effect red-only and silently
+   * overrode every other tone (found 2026-09-29, when 权限档位 needed a red, a blue
+   * and a green figure). A card that sets `valuePulse` with no `valueTone` still
+   * breathes red — that is the renderer's own default tone. */
   animation: dsx-value-breathe 1.6s ease-in-out infinite alternate;
 }
 

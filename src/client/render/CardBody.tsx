@@ -14,7 +14,7 @@ import { BASE_SIDE, HEAD_GAP_PX, cardInnerPad, cardRadius } from './card-geometr
 import { CHART_FILLS_BODY, renderChart } from './charts/registry'
 import { Donut } from './charts/donut'
 import { CHART_TONES } from './charts/theme'
-import { batteryIcon, databaseIcon, githubMarkIcon, hardDriveIcon, permissionFullAccessIcon, permissionReadOnlyIcon, permissionWorkspaceWriteIcon } from './icons'
+import { databaseIcon, githubMarkIcon, hardDriveIcon, permissionFullAccessIcon, permissionReadOnlyIcon, permissionWorkspaceWriteIcon, powerIcon } from './icons'
 import { DEFAULT_CORNER_PERCENT } from '../runtime/prefs'
 import { t } from '../i18n'
 import type { WidgetAction, WidgetRenderOut, WidgetRich } from '../lib/contract/types'
@@ -46,24 +46,26 @@ const HEAD_RING_ICONS: Record<string, React.ReactElement | null> = {
   'permission-workspace-write': permissionWorkspaceWriteIcon,
   'permission-full-access': permissionFullAccessIcon,
   github: githubMarkIcon,
-  battery: batteryIcon,
+  power: powerIcon,
 }
 
 /**
  * The colour a `valueTone` figure wears.
  *
- * Three rungs, and the difference between them is the WHOLE point of the field:
- * `danger` is a state that is already wrong (peak pricing is live, a window is
- * over its cap); `warn` is a reading heading there but not there yet (a quota
- * projected to 94% of its cap); `muted` DE-EMPHASISES it, which is what a big
- * slot holding nothing but the `—` placeholder needs — at 20px a bare dash in
- * the primary label colour reads as a redaction bar rather than as "no reading"
- * (measured on the 供电 card's desktop state, 2026-09-29).
+ * The rungs are the product's own semantic aliases, and the widget picks one — the
+ * renderer never infers a colour from a number (see `valueTone` in the contract):
+ * `danger` = already wrong, `warn` = heading there, `success` = good because SAFE,
+ * `business` = an informational active state, `muted` = the big slot holds a lone
+ * `—` and a bare dash in the primary colour reads as a redaction bar.
  */
 function valueColor(out: WidgetRenderOut): string {
-  if (out.valueTone === 'warn') return 'var(--dsw-alias-state-warn-primary)'
-  if (out.valueTone === 'muted') return 'var(--dsw-alias-label-tertiary)'
-  return 'var(--dsw-alias-state-error-primary)'
+  switch (out.valueTone) {
+    case 'warn': return 'var(--dsw-alias-state-warn-primary)'
+    case 'success': return 'var(--dsw-alias-state-success-primary)'
+    case 'business': return 'var(--dsw-alias-state-business-primary)'
+    case 'muted': return 'var(--dsw-alias-label-tertiary)'
+    default: return 'var(--dsw-alias-state-error-primary)'
+  }
 }
 
 function RichBlock({ rich, scale }: { rich: WidgetRich; scale: number }): React.ReactElement {
@@ -333,7 +335,14 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   const RING_STROKE = Math.max(4, Math.round(5 * scale))
   const RING_CAP_GAP = Math.max(3, Math.round(RING_STROKE * 1.2))
   const headFlex = accessoryHead
-    ? React.createElement('div', { key: 't', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 0 } },
+    ? React.createElement('div', {
+        key: 't',
+        // A RING is centred against the ladder (it is a dial sitting beside the
+        // readings); a bare ICON is a corner mark, so it aligns to the TOP and must
+        // start where the title starts — centred, it floated ~17px down from the
+        // corner and read as a gap above it (the owner's note, 2026-09-29).
+        style: { display: 'flex', alignItems: headRing !== undefined ? 'center' : 'flex-start', justifyContent: 'space-between', gap: 8, minWidth: 0 },
+      },
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', minWidth: 0 } },
           titleEl,
           ringFigure === null
@@ -368,20 +377,20 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
                     style: { display: 'flex', color: CHART_TONES[headRing.tone ?? 'primary'] ?? CHART_TONES.primary, transform: `scale(${((20 * scale) / 16).toFixed(3)})` },
                   }, HEAD_RING_ICONS[headRing.icon] ?? null),
             })
-          // The bare accessory: one glyph, no arc — an identity, not a dial. 24px at
-          // the base side: the ring it shares the slot with is 52px and carries a 20px
-          // glyph in its middle, so a BARE mark has to stay near that size — at 34px
-          // it read as a logo pasted over the corner (measured on a real card,
-          // 2026-09-29). `primary` unless the widget asked for a tone, because a mark
-          // that changes colour for no stated reason is exactly the "why is this
-          // yellow?" defect this slot exists to avoid.
+          // The bare accessory: one glyph, no arc — an identity, not a dial. 30px and
+          // top-right aligned: it is a corner MARK, so it reads at the same visual
+          // weight as the 20px figure it sits above, and it starts on the title's own
+          // top line. (24px centred was the first attempt; the owner read it as small
+          // and floating, 2026-09-29.) `primary` unless the widget asked for a tone,
+          // because a mark that changes colour for no stated reason is exactly the
+          // "why is this yellow?" defect this slot exists to avoid.
           : React.createElement('span', {
               key: 'hi',
               style: {
                 display: 'flex',
                 flex: 'none',
                 color: headIcon === undefined ? undefined : (CHART_TONES[headIcon.tone ?? 'primary'] ?? CHART_TONES.primary),
-                transform: `scale(${((24 * scale) / 16).toFixed(3)})`,
+                transform: `scale(${((30 * scale) / 16).toFixed(3)})`,
                 transformOrigin: 'top right',
               },
             }, headIcon === undefined ? null : (HEAD_RING_ICONS[headIcon.name] ?? null)),

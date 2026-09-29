@@ -856,8 +856,11 @@ export type WidgetSize = '2x2' | '2x4'
  *  - `hard-drive` — a drive body with its bay slot: the 缓存命中 glyph. The
  *    official term for the mechanism is 上下文硬盘缓存 (Context Caching on Disk),
  *    and it is the one shape that cannot be read as "usage" beside `database`.
+ *  - `power` — a lightning bolt: a power source. (The owner rejected the battery
+ *    shape, 2026-09-29 — the ring's arc already IS the charge level, so a battery
+ *    glyph said the same thing twice.)
  */
-export type HeadRingIcon = 'database' | 'hard-drive' | 'battery'
+export type HeadRingIcon = 'database' | 'hard-drive' | 'power'
 
 /**
  * A bare glyph in the head's right-hand slot — the same LAYOUT neighbourhood
@@ -994,15 +997,22 @@ export interface WidgetRenderOut {
    *  (the official meter header), otherwise in the BODY — and never in a head that
    *  carries a `headRing`, whose figure is `headAfter.big` (see headRing). */
   value?: string
-  /** Value color override. `'danger'` renders the figure in the error red (the
-   *  peak-pricing EXPENSIVE state); `'warn'` uses the warning amber, for a
-   *  reading that is not wrong yet but is heading there (a quota window projected
-   *  to 94% of its cap); `'muted'` DE-EMPHASISES the figure, for a card whose
-   *  big slot currently holds nothing but the `—` placeholder (a desktop with no
-   *  battery) — at 20px a bare dash reads as a redaction bar, not as "no reading".
-   *  It follows the figure into whichever slot that card renders it in — the
-   *  title row, `headAfter.big`, or the body. */
-  valueTone?: 'danger' | 'warn' | 'muted'
+  /** Value color override, in the product's own semantic vocabulary.
+   *
+   *  The rungs mean what they say and the widget picks one — the renderer never
+   *  infers a colour from a number:
+   *   - `danger`  — the error red: a state that is already wrong (full access, a
+   *                 window over its cap);
+   *   - `warn`    — the warning amber: heading somewhere bad but not there yet;
+   *   - `success` — the success green: a state that is good because it is SAFE
+   *                 (read-only permission);
+   *   - `business`— the brand blue: an informational active state that is neither
+   *                 good nor bad (workspace-write);
+   *   - `muted`   — de-emphasised: the big slot holds nothing but `—`.
+   *
+   *  It follows the figure into whichever slot that card renders it in — the title
+   *  row, `headAfter.big`, or the body. */
+  valueTone?: 'danger' | 'warn' | 'success' | 'business' | 'muted'
   /** Slow red blink on the VALUE itself (e.g. peak pricing is live, or a plan
    *  projected past 100%): the text pulses between full and ~35% opacity in the
    *  error red. Text-level escalation — it deliberately does NOT paint the card. */

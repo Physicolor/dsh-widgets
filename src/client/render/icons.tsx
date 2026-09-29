@@ -127,12 +127,14 @@ export const githubMarkIcon = React.createElement('svg', { width: 16, height: 16
 )
 
 /**
- * A battery with a bolt — the 供电 head's ring glyph. A stroked body + terminal reads
- * at 20px inflated inside a 52px ring; the bolt marks "power source" rather than a
- * generic battery (the ring's arc already IS the charge level).
+ * A LIGHTNING BOLT — the 供电 head's ring glyph.
+ *
+ * The owner's call (2026-09-29): a bolt says "power source" at a glance, while a
+ * battery shape duplicates what the ring's arc already IS (the charge level). The
+ * outline is Lucide's `zap` (ISC), rescaled from its 24-unit grid into this file's
+ * 16-unit convention and FILLED: at 20px inside a ring a 1.5px-stroked bolt closed
+ * up into a blob, while the solid form still reads as a bolt.
  */
-export const batteryIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
-  React.createElement('rect', { x: 1.2, y: 4.2, width: 12.2, height: 7.6, rx: 2.1, stroke: 'currentColor', strokeWidth: 1.5 }),
-  React.createElement('path', { d: 'M14.6 6.6v2.8', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' }),
-  React.createElement('path', { d: 'M8.45 5.6 6.2 8.55h1.9L7.4 10.5l2.4-3.05H7.85z', fill: 'currentColor' }),
+export const powerIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
+  React.createElement('path', { d: 'M8.667 1.333 2 9.333h6l-0.666 5.334L12 6.667H6l0.667-5.334z', fill: 'currentColor' }),
 )
