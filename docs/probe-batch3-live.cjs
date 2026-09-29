@@ -20,6 +20,7 @@ const path = require('node:path')
 const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
 const { chromePath } = require('../scripts/lib/chrome.cjs')
 const { mintCookie } = require('../scripts/diag-auth-lib.cjs')
+const hostState = require('./lib/widgets-state.cjs')
 
 const ORIGIN = 'http://127.0.0.1:3080'
 const OUT = path.join(__dirname, 'batch3-live')
@@ -42,7 +43,17 @@ const NEW_CARDS = [
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true })
-  const browser = await chromium.launch({ executablePath: chromePath(), headless: true })
+  // SNAPSHOT THE HOST STATE FIRST — and this is the lesson of 2026-09-29: seeding
+  // localStorage alone is NOT non-invasive. The app boots from the seeded layout and
+  // then syncs it straight back to `dsh-widgets-state.json`, so a "read-only" probe
+  // still hands the owner a rail showing the probe's cards. The layout is therefore
+  // snapshotted before and written back (with the NEWEST stamp) after the browser
+  // closes — the documented `hostState.snapshot()/restore()` discipline.
+  const snap = hostState.snapshot('batch3-live')
+  console.log('[probe] host layout snapshotted ->', snap.backup)
+  let browser = null
+  try {
+    browser = await chromium.launch({ executablePath: chromePath(), headless: true })
   const context = await browser.newContext({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 2 })
   await context.addCookies([mintCookie('127.0.0.1:3080')])
   // Seeded BEFORE any page script runs, so the app boots straight into the probe
@@ -108,9 +119,15 @@ async function main() {
   for (const e of errors.slice(0, 6)) console.log('  !', e)
 
   await page.screenshot({ path: path.join(OUT, 'page.png'), fullPage: true })
-  const rail = await page.$('.dsx-stats-rail')
-  if (rail !== null) await rail.screenshot({ path: path.join(OUT, 'rail.png') })
-  await browser.close()
+  const railEl = await page.$('.dsx-stats-rail')
+  if (railEl !== null) await railEl.screenshot({ path: path.join(OUT, 'rail.png') })
+  } finally {
+    // Close the browser BEFORE restoring, so no page can flush the probe layout back
+    // on top of the restore (the race the helper documents).
+    if (browser !== null) await browser.close()
+    const restored = hostState.restore(snap)
+    console.log('[probe] host layout restored:', JSON.stringify(restored))
+  }
 }
 
 main().catch((error) => { console.error('[probe]', error); process.exit(1) })
