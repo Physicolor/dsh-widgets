@@ -206,7 +206,7 @@ function sysPowerRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRend
           // Only an ESCALATION is ever stated: a healthy charge leaves the figure
           // in the default label colour (no `valueTone` key at all).
           ...(tone === undefined ? {} : { valueTone: tone }),
-          headRing: { ratio: percent / 100, tone, icon: 'battery' as const, label: `${percent}%` },
+          headRing: { ratio: percent / 100, tone, icon: 'power' as const, label: `${percent}%` },
         }),
     ...(hint === undefined ? {} : { cardHint: hint }),
     chart: { kind: 'breakdown', breakdown: rows },

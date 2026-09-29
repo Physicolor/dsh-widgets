@@ -429,6 +429,32 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
   const scaleArr = p === 1 ? target : target.map((v) => 1 + (v - 1) * p)
   const focusLayout = placeCards(scaleArr)
   const focusedAdd = addSlotFor(focusLayout)
+  /**
+   * Paint order for the overlay, by RANK inside the magnified set — not by a
+   * continuous function of the scale.
+   *
+   * `zIndex = round((scale - 1) * 50)` changed on every slot on every frame, and a
+   * z-index change is a PAINT-ORDER change: it invalidates the property trees and
+   * re-layerizes the deck (trace, 2026-09-29: `z-index` rewritten 2038x/s on a 240 Hz
+   * display, with PrePaint + Layerize ≈ 2.2 ms of every frame). Pinning it out of the
+   * stylesheet entirely (`--fix-zindex` in scripts/diag-sweep-jank.cjs) cut the slow
+   * frames from 111 to 80 in the same 20 s window, which is what this replaces.
+   *
+   * The ranking keeps the same visible order where it can be seen at all: a magnified
+   * card paints above a resting one (1+ vs 0), and among magnified cards the bigger
+   * one wins. The values only move when the magnified SET or its ORDER changes — a
+   * pointer crossing a card boundary — instead of every frame. Ties keep index order,
+   * which is the DOM order the old equal-z case fell back to anyway.
+   */
+  const zRanks = new Map<number, number>()
+  {
+    const magnified: Array<{ i: number; s: number }> = []
+    for (let i = 0; i < focusLayout.length; i++) {
+      if (focusLayout[i].s > 1.001) magnified.push({ i, s: focusLayout[i].s })
+    }
+    magnified.sort((a, b) => a.s - b.s)
+    for (let k = 0; k < magnified.length; k++) zRanks.set(magnified[k].i, k + 1)
+  }
   const addCenter = { x: railW - 2 * pad - focusedAdd.right - side / 2, y: focusedAdd.top + side / 2 }
   const addTarget = engaged && n > 0 ? stepScale(Math.hypot(addCenter.x - rawX, addCenter.y - rawY) / (side + pad)) : 1
   const addScale = 1 + (addTarget - 1) * p
@@ -977,10 +1003,31 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
         const baseW = it.baseW
         // Resting-size box, scaled about its top-right corner: identical geometry
         // to {top, right, w: baseW*s, h: side*s}, without re-laying-out the card.
-        // `top`/`right` are part of the tween: a magnified neighbour PUSHES the
-        // cards around it, and transitioning only the transform left those pushes
-        // snapping into place while the scales glided (the other half of the
-        // "not continuous" report).
+        //
+        // 2026-09-29 — THE PUSH IS NOW A TRANSFORM DELTA, NOT `top`/`right`.
+        // Measured with a devtools timeline during a fast 2-D scrub over the rail
+        // (scripts/diag-trace.cjs + scripts/diag-railsweepwrites.cjs): writing the
+        // moved geometry through `top`/`right` rewrote ~1700 LAYOUT properties per
+        // second (top 1048/s, right 689/s across the moving slots), and each frame
+        // paid for it — PrePaint + Layout + Paint + Layerize ≈ 7 ms/frame, main
+        // thread 80% busy, ~92 fps on a 240 Hz display, 98 dropped frames in 15 s.
+        // A layout property on a composited slot cannot ride the compositor; the
+        // same displacement expressed in `transform` can, so the slot's box is now
+        // pinned at its REST seat and the whole per-frame animation — the push the
+        // magnified neighbour causes AND the scale — is one transform write.
+        //
+        // The visual result is unchanged bit for bit: `right` is measured from the
+        // rail's right edge, so the slot's top-right corner sits at
+        // `contentW - right`, which makes the delta `rest.right - c.right` in X and
+        // `c.top - rest.top` in Y; `transform-origin: top right` then scales about
+        // exactly the corner the old code placed at `{top: c.top, right: c.right}`.
+        // Both halves of the motion come from the same `scaleArr`, so the push still
+        // glides with the scale instead of snapping (the failure the old comment
+        // warned about was a CSS transition on the transform alone — there is no
+        // transition here, every frame is written).
+        const rest = restLayout[idx] ?? { top: c.top, right: c.right, w: baseW, h: side }
+        const dx = rest.right - c.right
+        const dy = c.top - rest.top
         const focused = engaged && peak > 1.001 && c.s >= peak - 0.0005
         // `will-change: transform` is PERMANENT here, not gated on `morph`.
         //
@@ -996,7 +1043,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
         // and the static deck stays unpromoted. Rail scrolling was re-measured
         // with the hint resident (scripts/diag-rail-scroll-perf.cjs) and shows no
         // regression (p95 28ms / 55 slow frames vs p95 30ms / 62 without it).
-        const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${baseW}px`, height: `${side}px`, transformOrigin: 'top right', transform: `scale(${c.s.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: Math.round((c.s - 1) * 50), pointerEvents: morph ? 'auto' as const : 'none' as const }
+        const slotStyle = { position: 'absolute' as const, top: `${rest.top.toFixed(2)}px`, right: `${rest.right.toFixed(2)}px`, width: `${baseW}px`, height: `${side}px`, transformOrigin: 'top right', transform: `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${c.s.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: zRanks.get(idx) ?? 0, pointerEvents: morph ? 'auto' as const : 'none' as const }
         return React.createElement('div', {
           key: it.w.id,
           className: 'dsx-stats-card-slot' + (focused ? ' dsx-slot-focused' : ''),
@@ -1012,8 +1059,10 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
       // Mirror the add button at its WAVE position (focusedAdd), scaled by its own
       // wave factor —it displaces with the magnified deck like a card. It is the
       // ONLY add button reachable while the wave is live (the deck's copy is
-      // visibility:hidden), so it carries the real click handler.
-      React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), tabIndex: morph ? 0 : -1, onClick: onAddClick, style: { position: 'absolute', top: `${focusedAdd.top.toFixed(2)}px`, right: `${focusedAdd.right.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, transformOrigin: 'top right', transform: `scale(${addScale.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: 30, pointerEvents: morph ? 'auto' as const : 'none' as const } },
+      // visibility:hidden), so it carries the real click handler. Same
+      // transform-delta treatment as the slots above: `restAdd` is the seat, the
+      // per-frame displacement rides the transform.
+      React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), tabIndex: morph ? 0 : -1, onClick: onAddClick, style: { position: 'absolute', top: `${restAdd.top.toFixed(2)}px`, right: `${restAdd.right.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, transformOrigin: 'top right', transform: `translate3d(${(restAdd.right - focusedAdd.right).toFixed(2)}px, ${(focusedAdd.top - restAdd.top).toFixed(2)}px, 0) scale(${addScale.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: 30, pointerEvents: morph ? 'auto' as const : 'none' as const } },
         React.createElement('span', { className: 'dsx-stats-add-icon' },
           React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
         ),
