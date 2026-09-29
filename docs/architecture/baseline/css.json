@@ -1,5 +1,5 @@
 {
- "__combined": "4e171e73a79dc6b2e64da0e3265ae081bfa7c90335c799ebcba4a71f28446cf4",
+ "__combined": "275e0dd10330a434d1998845754ca2d4d396de74025d296c5fc58e8a5fbe76bb",
  "sheets": {
   "dsh-widgets/src/client/styles/tokens.module.css": {
    "sha256": "345750d099cf19668d1872b9ea75c32bd61abd9b8b323c5b242caf2a614f5f71",
@@ -22,8 +22,8 @@
    "bytes": 6467
   },
   "dsh-widgets/src/client/styles/primitives.module.css": {
-   "sha256": "1355beb3e843c82e05cb04126619e0fc3068a3fd22c2d580245553dd0aba38e3",
-   "bytes": 4401
+   "sha256": "d103e51226ec67a3f44f7ae0b7f4c20159dbeddab269b22230a706f3f6ead345",
+   "bytes": 4358
   }
  }
 }

@@ -54,11 +54,18 @@ import type { BarDatum, GoalInfo, WidgetRenderMeta, WidgetRenderOut, WidgetStats
  * HEAD LADDER (BRIEF §2): the blue 13px title, the 20px phase word as
  * `headAfter.big`, and the grey caption as `legend` — which is present only when
  * the word cannot say the thing that matters: the blocked REASON (a blocked run's
- * one actionable fact, carried nowhere else on the card) or the empty state's
- * one-line explanation. `value` is deliberately NOT set (the renderer would push
- * it into the body and print a second figure), and `bodyAnchor: 'bottom'` keeps
- * the three rows on the card floor so the leftover height falls between the head
- * and the rows, as on every other card.
+ * one actionable fact, carried nowhere else on the card). `value` is deliberately
+ * NOT set on a goal-bearing card (the renderer would push it into the body and
+ * print a second figure), and `bodyAnchor: 'bottom'` keeps the three rows on the
+ * card floor so the leftover height falls between the head and the rows, as on
+ * every other card.
+ *
+ * THE EMPTY STATE IS THE ONE BRANCH THAT INVERTS THAT LADDER, on purpose (the
+ * owner's note, revision round 2): with no goal there are no rows and therefore
+ * nothing keeping the floor down, so the two lines that remain — 无目标 and 当前会话
+ * 没有目标 — become the body (`value` + `sub`, bottom-anchored) and land in the
+ * card's LEFT BOTTOM CORNER instead of dangling under the title. The goal-bearing
+ * layout is untouched. See the branch itself for the measurement that prompted it.
  *
  * HEIGHT BUDGET (measured against the shipped geometry — `card-geometry.ts` +
  * `CardBody.tsx` at unit 150, i.e. scale 1):
@@ -67,6 +74,10 @@ import type { BarDatum, GoalInfo, WidgetRenderMeta, WidgetRenderOut, WidgetStats
  *   + 3 × 12 + 2 × 4 = 51) = 120 / 150 with no caption, 134 / 150 with one — the
  *   same envelope the 任务 / 缓存 cards keep. Three rows is a HARD cap: a fourth is
  *   +16px and overflows the tile.
+ *   The EMPTY state has no rows at all: pad 24 + head (title 16) + foot (value 25 +
+ *   foot gap 6 + sub 12 = 43) = 83 / 150, and the 67px that are left are the flex
+ *   gap ABOVE the foot — the slack sits between the title and the bottom-left
+ *   lines, never below them (that is what `bodyAnchor: 'bottom'` buys).
  *
  * TONE DIRECTION (the widget's own call, per §2): ONLY `blocked` is coloured
  * (`valueTone: 'danger'` — the phase word itself turns red), because it is the one
@@ -327,11 +338,31 @@ function goalRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRenderOu
   // NO GOAL IS STILL A READING (see the header note): the tile keeps its slot and
   // says so quietly — the fifth phase word plus one grey line, no rows, no divider,
   // no colour. This is the branch the card used to answer with `null`.
+  //
+  // THE TWO LINES SIT ON THE CARD'S FLOOR, IN ITS LEFT CORNER (the owner's note,
+  // revision round 2). They used to ride the HEAD ladder (`headAfter.big` +
+  // `legend`), which stacks them directly under the title — measured 13px from the
+  // top and 76px of dead tile below the second line, so the empty card read as a
+  // half-filled card rather than a deliberately quiet one. The empty state has no
+  // rows to hold the floor down, so the two lines ARE its body: `value` (the 20px
+  // figure slot, same rung the phase word would never get on this branch) plus
+  // `sub` (the 10px grey line under it), with `bodyAnchor: 'bottom'` keeping that
+  // foot on the card floor — the posture the 额度管理 figure row takes. The head is
+  // then the blue title alone, and the leftover height falls BETWEEN title and
+  // foot, which is exactly where a card's slack belongs.
+  //
+  // It is deliberately NOT `headAfter` + `bodyAnchor: 'bottom'`: that combination
+  // anchors the BODY, which on this branch is empty, leaving the ladder rungs
+  // stacked at the top (the defect being fixed). `headAfter` / `legend` are
+  // therefore absent here, and `value` is free to be the body figure — the mutex
+  // the contract describes (`value` is pushed into the body whenever `headAfter`
+  // is present) is what makes this branch possible at all.
   if (g === null || g === undefined) {
     return {
       title: t('card.goal-progress.title'),
-      headAfter: { big: t(NO_GOAL_KEY) },
-      legend: t('card.goal-progress.noGoal'),
+      value: t(NO_GOAL_KEY),
+      sub: t('card.goal-progress.noGoal'),
+      bodyAnchor: 'bottom',
     }
   }
 

@@ -5786,11 +5786,10 @@
     "state": "none"
    },
    "out": {
-    "headAfter": {
-     "big": "无目标"
-    },
-    "legend": "当前会话没有目标",
-    "title": "目标进度"
+    "bodyAnchor": "bottom",
+    "sub": "当前会话没有目标",
+    "title": "目标进度",
+    "value": "无目标"
    }
   },
   {
@@ -6012,8 +6011,10 @@
      "name": "permission-full-access",
      "tone": "danger"
     },
-    "sub": "完全权限",
-    "title": "权限档位"
+    "title": "权限档位",
+    "value": "完全权限",
+    "valuePulse": true,
+    "valueTone": "danger"
    }
   },
   {
@@ -6028,8 +6029,10 @@
      "name": "permission-full-access",
      "tone": "danger"
     },
-    "sub": "完全权限",
-    "title": "权限档位"
+    "title": "权限档位",
+    "value": "完全权限",
+    "valuePulse": true,
+    "valueTone": "danger"
    }
   },
   {
@@ -6041,10 +6044,12 @@
    "out": {
     "bodyAnchor": "bottom",
     "headIcon": {
-     "name": "permission-read-only"
+     "name": "permission-read-only",
+     "tone": "success"
     },
-    "sub": "仅可查看",
-    "title": "权限档位"
+    "title": "权限档位",
+    "value": "仅可查看",
+    "valueTone": "success"
    }
   },
   {
@@ -6056,10 +6061,12 @@
    "out": {
     "bodyAnchor": "bottom",
     "headIcon": {
-     "name": "permission-workspace-write"
+     "name": "permission-workspace-write",
+     "tone": "primary"
     },
-    "sub": "工作区内修改",
-    "title": "权限档位"
+    "title": "权限档位",
+    "value": "工作区内修改",
+    "valueTone": "business"
    }
   },
   {
@@ -13184,11 +13191,10 @@
     "state": "none"
    },
    "out": {
-    "headAfter": {
-     "big": "No goal"
-    },
-    "legend": "No goal in this session",
-    "title": "Goal Progress"
+    "bodyAnchor": "bottom",
+    "sub": "No goal in this session",
+    "title": "Goal Progress",
+    "value": "No goal"
    }
   },
   {
@@ -13410,8 +13416,10 @@
      "name": "permission-full-access",
      "tone": "danger"
     },
-    "sub": "完全权限",
-    "title": "Permissions"
+    "title": "Permissions",
+    "value": "Full access",
+    "valuePulse": true,
+    "valueTone": "danger"
    }
   },
   {
@@ -13426,8 +13434,10 @@
      "name": "permission-full-access",
      "tone": "danger"
     },
-    "sub": "完全权限",
-    "title": "Permissions"
+    "title": "Permissions",
+    "value": "Full access",
+    "valuePulse": true,
+    "valueTone": "danger"
    }
   },
   {
@@ -13439,10 +13449,12 @@
    "out": {
     "bodyAnchor": "bottom",
     "headIcon": {
-     "name": "permission-read-only"
+     "name": "permission-read-only",
+     "tone": "success"
     },
-    "sub": "仅可查看",
-    "title": "Permissions"
+    "title": "Permissions",
+    "value": "Read Only",
+    "valueTone": "success"
    }
   },
   {
@@ -13454,9 +13466,10 @@
    "out": {
     "bodyAnchor": "bottom",
     "headIcon": {
-     "name": "permission-workspace-write"
+     "name": "permission-workspace-write",
+     "tone": "primary"
     },
-    "sub": "工作区内修改",
+    "sub": "Workspace Write",
     "title": "Permissions"
    }
   },

@@ -81,7 +81,13 @@ copyFileSync(TOKENS, join(OUT_DIR, 'theme-tokens.css'))
 //    without it the gallery shows bare text on the page background. Class names
 //    are compiled with the `[local]` pattern (never hashed), so the source files
 //    can be inlined verbatim.
-const CARD_CSS = ['card.module.css', 'tokens.module.css']
+//    `primitives.module.css` is inlined TOO, and that is not cosmetic: it carries
+//    `.dsx-value-pulse`'s breathe animation. The gallery used to omit it, so a card
+//    whose escalation IS the animation looked static here while it pulsed on the
+//    rail — the guard card's builder had to inject the sheet by hand to prove the
+//    effect existed (2026-09-29). The gallery must load every layer the rail loads,
+//    or "verified visually" means something weaker than it sounds.
+const CARD_CSS = ['card.module.css', 'tokens.module.css', 'primitives.module.css']
   .map((name) => readFileSync(join(ROOT, 'src', 'client', 'styles', name), 'utf8'))
   .join('\n')
 const options = { ...(ONLY ? { only: ONLY } : {}), ...(SIZES ? { sizes: SIZES } : {}) }
