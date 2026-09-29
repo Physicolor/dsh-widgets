@@ -6556,7 +6556,7 @@
      "big": "100%"
     },
     "headRing": {
-     "icon": "battery",
+     "icon": "power",
      "label": "100%",
      "ratio": 1
     },
@@ -6585,7 +6585,7 @@
      "big": "100%"
     },
     "headRing": {
-     "icon": "battery",
+     "icon": "power",
      "label": "100%",
      "ratio": 1
     },
@@ -6618,7 +6618,7 @@
      "big": "42%"
     },
     "headRing": {
-     "icon": "battery",
+     "icon": "power",
      "label": "42%",
      "ratio": 0.42
     },
@@ -6651,7 +6651,7 @@
      "big": "14%"
     },
     "headRing": {
-     "icon": "battery",
+     "icon": "power",
      "label": "14%",
      "ratio": 0.14,
      "tone": "warn"
@@ -6686,7 +6686,7 @@
      "big": "6%"
     },
     "headRing": {
-     "icon": "battery",
+     "icon": "power",
      "label": "6%",
      "ratio": 0.06,
      "tone": "danger"
@@ -13954,7 +13954,7 @@
      "big": "100%"
     },
     "headRing": {
-     "icon": "battery",
+     "icon": "power",
      "label": "100%",
      "ratio": 1
     },
@@ -13983,7 +13983,7 @@
      "big": "100%"
     },
     "headRing": {
-     "icon": "battery",
+     "icon": "power",
      "label": "100%",
      "ratio": 1
     },
@@ -14016,7 +14016,7 @@
      "big": "42%"
     },
     "headRing": {
-     "icon": "battery",
+     "icon": "power",
      "label": "42%",
      "ratio": 0.42
     },
@@ -14049,7 +14049,7 @@
      "big": "14%"
     },
     "headRing": {
-     "icon": "battery",
+     "icon": "power",
      "label": "14%",
      "ratio": 0.14,
      "tone": "warn"
@@ -14084,7 +14084,7 @@
      "big": "6%"
     },
     "headRing": {
-     "icon": "battery",
+     "icon": "power",
      "label": "6%",
      "ratio": 0.06,
      "tone": "danger"
