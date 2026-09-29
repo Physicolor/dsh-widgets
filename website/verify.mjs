@@ -314,6 +314,30 @@ try {
   });
   check('gen-site --check: data.js + index.html up to date', gen.code === 0, gen.out.slice(0, 200));
 
+  /* release copy: the strings gen-site does NOT own. The 2026-09-30 pre-release
+     audit found the site two releases behind — the JSON-LD still advertised
+     `softwareVersion: 1.6.0` and the terminal title 1.6.0 while the package was
+     1.8.0 — because nothing checked the hand-written copy. Every version string the
+     page shows is now asserted against package.json, and so is every count the
+     prose claims. */
+  const pkgVersion = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8')).version;
+  const i18nText = await readFile(join(SITE, 'js', 'i18n.js'), 'utf8');
+  const dataText = await readFile(join(SITE, 'js', 'data.js'), 'utf8');
+  const wanted = [
+    ['data.js version field', dataText.includes(`version: '${pkgVersion}'`)],
+    ['JSON-LD softwareVersion', html.includes(`"softwareVersion": "${pkgVersion}"`)],
+    ['hero kicker (static HTML)', html.includes(`v${pkgVersion} · MIT`)],
+    ['footer (static HTML)', html.includes(`<b>dsh-widgets</b> v${pkgVersion} · MIT`)],
+    ['terminal title (static HTML)', html.includes(`dsh-widgets@${pkgVersion}`)],
+    [`hero kicker x2 (zh + en dictionary)`, (i18nText.match(new RegExp(`kicker: 'dsh-widgets · v${pkgVersion}`, 'g')) || []).length === 2],
+    [`terminal title x2 (zh + en dictionary)`, (i18nText.match(new RegExp(`termTitle: 'dsh-widgets@${pkgVersion}`, 'g')) || []).length === 2],
+  ];
+  for (const [name, ok] of wanted) check(`Release copy: ${name} carries v${pkgVersion}`, ok);
+  const countHits = [...i18nText.matchAll(/(\d+)\s*(?:个\s?Widget|widgets)/g)];
+  check(`Release copy: the prose counts say ${WIDGET_COUNT}`,
+    countHits.length > 0 && countHits.every((m) => Number(m[1]) === WIDGET_COUNT),
+    countHits.map((m) => m[0]).join(', ') || 'no count found');
+
   /* crawlability: the widget list must exist in the HTML source itself */
   const staticCards = (html.match(/<article class="widget-card"/g) || []).length;
   check(`Gallery is in the HTML source (${WIDGET_COUNT} static cards)`, staticCards === WIDGET_COUNT, `found ${staticCards}`);
