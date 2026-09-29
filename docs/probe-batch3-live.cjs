@@ -24,7 +24,8 @@ const { mintCookie } = require('../scripts/diag-auth-lib.cjs')
 const ORIGIN = 'http://127.0.0.1:3080'
 const OUT = path.join(__dirname, 'batch3-live')
 const NEW_CARDS = [
-  'model-config@2x2',
+  // 12 of the batch's 13 survive the revision round (`model-config` was deleted —
+  // the composer already shows the model and reasoning effort).
   'goal-progress@2x2',
   'subagent@2x2',
   'guard@2x2',
@@ -34,6 +35,7 @@ const NEW_CARDS = [
   'sys-net@2x2',
   'sys-power@2x2',
   'sys-procs@2x2',
+  'sys-services@2x2',
   'session-cost@2x2',
   'github-notify@2x2',
 ]
