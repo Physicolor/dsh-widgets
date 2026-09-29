@@ -130,11 +130,36 @@ export const githubMarkIcon = React.createElement('svg', { width: 16, height: 16
  * A LIGHTNING BOLT — the 供电 head's ring glyph.
  *
  * The owner's call (2026-09-29): a bolt says "power source" at a glance, while a
- * battery shape duplicates what the ring's arc already IS (the charge level). The
- * outline is Lucide's `zap` (ISC), rescaled from its 24-unit grid into this file's
- * 16-unit convention and FILLED: at 20px inside a ring a 1.5px-stroked bolt closed
- * up into a blob, while the solid form still reads as a bolt.
+ * battery shape duplicates what the ring's arc already IS (the charge level).
+ *
+ * The path is Lucide's CURRENT `zap` (`icons/zap.svg`, ISC), fetched rather than
+ * remembered: its four corners are already `a1.5 1.5` ARCS, which is what makes the
+ * silhouette soft — the previous version used the OLD straight-corner path and the
+ * owner read it as angular/ugly. Lucide's own spec says sharp 90° corners of an
+ * element this size should carry a ~2px radius; this path is that, authored upstream.
+ * ([spec](https://lucide.dev/contribute/icons/specification), [zap](https://lucide.dev/icons/zap))
+ *
+ * Rendered STROKED with round caps and joins like every other glyph in this file,
+ * but at 2.6 (not Lucide's 2.0): at the ring's 20px box a 2.0 stroke reads as a
+ * hairline next to 缓存命中's stroked drive, and the heavier weight keeps the bolt
+ * solid while the round joins keep it soft.
+ *
+ * KEEP IT IN THE SOURCE GRID: the box is declared 20px with the native 24-unit
+ * viewBox, so the geometry stays bit-identical to upstream and the renderer's
+ * `scale(20/16)` lands it at the same visual size as every 16-unit glyph.
  */
-export const powerIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
-  React.createElement('path', { d: 'M8.667 1.333 2 9.333h6l-0.666 5.334L12 6.667H6l0.667-5.334z', fill: 'currentColor' }),
+export const powerIcon = React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': true },
+  React.createElement('path', {
+    d: 'M15.914 4a1.5 1.5 0 0 0-2.474-1.561l-9 9A1.5 1.5 0 0 0 5.5 14h4.002a.5.5 0 0 1 .471.666L8.086 20a1.5 1.5 0 0 0 2.475 1.56l9-9A1.5 1.5 0 0 0 18.5 10h-3.997a.5.5 0 0 1-.472-.667z',
+    fill: 'currentColor',
+    // A hair of stroke on top of the fill, with ROUND joins: the official arcs give
+    // the corners their soft radius, and this only thickens the silhouette so the
+    // bolt still reads as a solid mark at 20px (pure fill came out a little thin
+    // beside the stroked drive glyph; pure stroke came out a wispy outline — both
+    // renderered and looked at, 2026-09-29).
+    stroke: 'currentColor',
+    strokeWidth: 1.1,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+  }),
 )

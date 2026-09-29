@@ -430,30 +430,41 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
   const focusLayout = placeCards(scaleArr)
   const focusedAdd = addSlotFor(focusLayout)
   /**
-   * Paint order for the overlay, by RANK inside the magnified set — not by a
-   * continuous function of the scale.
+   * Paint order for the overlay, in THREE TIERS — not by a continuous function of
+   * the scale, and not by a full ranking either.
    *
    * `zIndex = round((scale - 1) * 50)` changed on every slot on every frame, and a
    * z-index change is a PAINT-ORDER change: it invalidates the property trees and
-   * re-layerizes the deck (trace, 2026-09-29: `z-index` rewritten 2038x/s on a 240 Hz
-   * display, with PrePaint + Layerize ≈ 2.2 ms of every frame). Pinning it out of the
-   * stylesheet entirely (`--fix-zindex` in scripts/diag-sweep-jank.cjs) cut the slow
-   * frames from 111 to 80 in the same 20 s window, which is what this replaces.
+   * re-layerizes the deck. Pinning it out of the stylesheet entirely
+   * (`--fix-zindex` in scripts/diag-sweep-jank.cjs) cut the slow frames from 111 to
+   * 80 in the same 20 s window, which is what this replaces.
    *
-   * The ranking keeps the same visible order where it can be seen at all: a magnified
-   * card paints above a resting one (1+ vs 0), and among magnified cards the bigger
-   * one wins. The values only move when the magnified SET or its ORDER changes — a
-   * pointer crossing a card boundary — instead of every frame. Ties keep index order,
-   * which is the DOM order the old equal-z case fell back to anyway.
+   * A full ranking was tried first and still churned (~925 z-index writes/s measured
+   * with scripts/diag-railsweepwrites.cjs): with a steep bell several cards sit just
+   * above the cut-off and swap order constantly while the pointer moves. Tiers cannot
+   * churn that way — the values only move when a card becomes the peak, or enters or
+   * leaves the magnified set.
+   *
+   * Nothing is lost visually: `placeCards` lays the scaled boxes out with `pad`
+   * spacing, so they do not overlap in the first place; the tiers only guarantee that
+   * the peak paints above the rest of the magnified set and that the magnified set
+   * paints above the resting cards. Ties fall back to DOM order, which is what the old
+   * equal-z case did too.
    */
-  const zRanks = new Map<number, number>()
-  {
-    const magnified: Array<{ i: number; s: number }> = []
-    for (let i = 0; i < focusLayout.length; i++) {
-      if (focusLayout[i].s > 1.001) magnified.push({ i, s: focusLayout[i].s })
-    }
-    magnified.sort((a, b) => a.s - b.s)
-    for (let k = 0; k < magnified.length; k++) zRanks.set(magnified[k].i, k + 1)
+  // A card counts as "magnified" for PAINT ORDER from 2% up, not from the first
+  // fraction of a percent: the bell is continuous, so a threshold at 1.001 lets the
+  // boundary cards of the influence radius flicker in and out of the tier on every
+  // frame (measured: 285 z-index writes/s with the 1.001 cut, on cards whose scale
+  // differs from 1 by well under a pixel). At 1.02 only cards that are visibly bigger
+  // are ranked, which is where stacking could ever be seen.
+  const Z_TIER_MIN_SCALE = 1.02
+  let peakIdx = -1
+  for (let i = 0; i < focusLayout.length; i++) {
+    if (peakIdx === -1 || focusLayout[i].s > focusLayout[peakIdx].s) peakIdx = i
+  }
+  const zTier = (i: number): number => {
+    if (focusLayout[i].s <= Z_TIER_MIN_SCALE) return 0
+    return i === peakIdx ? 2 : 1
   }
   const addCenter = { x: railW - 2 * pad - focusedAdd.right - side / 2, y: focusedAdd.top + side / 2 }
   const addTarget = engaged && n > 0 ? stepScale(Math.hypot(addCenter.x - rawX, addCenter.y - rawY) / (side + pad)) : 1
@@ -979,8 +990,21 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
    * The layer therefore widens its own hit box to cover the overhang while the
    * morph is live, with the left padding compensated so the CARDS do not move.
    */
+  /**
+   * Quantisation step for the hit box's left overhang (px).
+   *
+   * `overhang` feeds the magnify layer's WIDTH and its PADDING-LEFT, so every change
+   * re-lays-out the layer's whole subtree — 22 absolutely positioned slots — and it
+   * used to change on nearly every frame of a spring (measured 2026-09-29 with
+   * scripts/diag-railsweepwrites.cjs: padding 129/s + width 65/s during a scrub).
+   * Rounding UP to a step keeps the surface tight — at most 8px of extra left edge,
+   * inside the 7px `TILE_TOLERANCE` the hit oracle already grants around a painted
+   * tile — while making the write rare. Rounding up, never down: a hit box that is
+   * briefly smaller than the painted cards would drop the hover on the overhang.
+   */
+  const OVERHANG_STEP = 8
   const overhang = morph && engaged
-    ? Math.max(0, Math.ceil(focusLayout.reduce((m, c, i) => Math.max(m, c.right + items[i].baseW * c.s), 0) - (railW - 2 * pad)))
+    ? Math.ceil(Math.max(0, focusLayout.reduce((m, c, i) => Math.max(m, c.right + items[i].baseW * c.s), 0) - (railW - 2 * pad)) / OVERHANG_STEP) * OVERHANG_STEP
     : 0
   const magnifyLayer = React.createElement('div', { key: '__magnify', ref: magnifyLayerRef, className: 'dsx-magnify-layer', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: RAIL_RIGHT_VAR, width: `${railW + overhang}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad + overhang}px`, zIndex: 25, overflow: 'visible', background: 'transparent', transform: `translateX(${shiftX}px)`, opacity: morph ? 1 : 0,
     // While the wave is live the LAYER ITSELF is hit-capable, not just the cards:
@@ -1043,7 +1067,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
         // and the static deck stays unpromoted. Rail scrolling was re-measured
         // with the hint resident (scripts/diag-rail-scroll-perf.cjs) and shows no
         // regression (p95 28ms / 55 slow frames vs p95 30ms / 62 without it).
-        const slotStyle = { position: 'absolute' as const, top: `${rest.top.toFixed(2)}px`, right: `${rest.right.toFixed(2)}px`, width: `${baseW}px`, height: `${side}px`, transformOrigin: 'top right', transform: `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${c.s.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: zRanks.get(idx) ?? 0, pointerEvents: morph ? 'auto' as const : 'none' as const }
+        const slotStyle = { position: 'absolute' as const, top: `${rest.top.toFixed(2)}px`, right: `${rest.right.toFixed(2)}px`, width: `${baseW}px`, height: `${side}px`, transformOrigin: 'top right', transform: `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${c.s.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: zTier(idx), pointerEvents: morph ? 'auto' as const : 'none' as const }
         return React.createElement('div', {
           key: it.w.id,
           className: 'dsx-stats-card-slot' + (focused ? ' dsx-slot-focused' : ''),
