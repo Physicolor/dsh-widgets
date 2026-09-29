@@ -150,16 +150,14 @@ export const githubMarkIcon = React.createElement('svg', { width: 16, height: 16
  */
 export const powerIcon = React.createElement('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', 'aria-hidden': true },
   React.createElement('path', {
-    d: 'M15.914 4a1.5 1.5 0 0 0-2.474-1.561l-9 9A1.5 1.5 0 0 0 5.5 14h4.002a.5.5 0 0 1 .471.666L8.086 20a1.5 1.5 0 0 0 2.475 1.56l9-9A1.5 1.5 0 0 0 18.5 10h-3.997a.5.5 0 0 1-.472-.667z',
+    // Lucide's `zap`, with the CORNER ARCS TIGHTENED (1.5 → 0.7, the neck's 0.5 →
+    // 0.25) and the fill kept SOLID (no stroke at all). The owner's two calls,
+    // 2026-09-29: 「实心，要实心的闪电」 and 「圆角不要这么大的，小一点圆角」 — the
+    // upstream radius is designed for a STROKED 2px icon and reads bulbous once the
+    // shape is filled at 20px. Only the arc radii change; every endpoint and line is
+    // upstream's, so the silhouette cannot shear the way a hand-rescaled path did.
+    d: 'M15.914 4a0.7 0.7 0 0 0-2.474-1.561l-9 9A0.7 0.7 0 0 0 5.5 14h4.002a0.25 0.25 0 0 1 .471.666L8.086 20a0.7 0.7 0 0 0 2.475 1.56l9-9A0.7 0.7 0 0 0 18.5 10h-3.997a0.25 0.25 0 0 1-.472-.667z',
     fill: 'currentColor',
-    // A hair of stroke on top of the fill, with ROUND joins: the official arcs give
-    // the corners their soft radius, and this only thickens the silhouette so the
-    // bolt still reads as a solid mark at 20px (pure fill came out a little thin
-    // beside the stroked drive glyph; pure stroke came out a wispy outline — both
-    // renderered and looked at, 2026-09-29).
-    stroke: 'currentColor',
-    strokeWidth: 1.1,
-    strokeLinecap: 'round',
     strokeLinejoin: 'round',
   }),
 )
