@@ -3,49 +3,62 @@ import type { BarDatum, MachineInfo, SysInfo, WidgetRenderMeta, WidgetRenderOut,
 import { t } from '../../client/i18n'
 
 /**
- * 磁盘与自检 (sys-disk, 2×4) — REVISION 2 (the owner's review, 2026-09-29).
+ * 磁盘与自检 (sys-disk, 2×4) — REVISION 3 (the owner's second review,
+ * 2026-09-29). Revision 2's history is kept in README §4 so the earlier rulings
+ * stay checkable; what follows is only what is true of the CARD AS IT IS NOW.
  *
  * WHAT IT ANSWERS: "does this box still have somewhere to write, and how much of
  * the disk is the harness itself eating". Every 用量 card answers "what did it
  * cost"; this one answers "is the box still habitable".
  *
- * WHAT THE OWNER CHANGED (each line below is one of his points, and the reason
- * the code looks the way it does):
- *   1. The first grey line (`剩余 · C: 22% · D: 9%`) is GONE. It restated the
- *      chart in words; the rows underneath already carry every drive's
- *      remaining. One reading, one place.
- *   2. The second grey line is now TWO self-explaining lines: what the thing is
- *      (`DSH 会话日志 345M`) and what the growth number means
- *      (`近 1 小时新增 13 个文件`). The old `会话日志 346 文件 · 345M · +13/h`
- *      needed the host source to decode — `+13/h` could be files, bytes or
- *      sessions. (Kept rather than deleted: see README §4.4 — this is the
- *      card's second subject and it costs ZERO extra height, because a stacked
- *      `smallLines` block rides the 20px figure's own 25px row.)
- *   3. The chart is HORIZONTAL — `kind: 'quotas'`, the official quota-row idiom
- *      (label left, percent hard right, a 24-cell bar underneath it on the next
- *      line). `bars` is the VERTICAL primitive: it draws columns up from a
- *      baseline and its only text channel is UNDER the column, which is exactly
- *      the "grey text plus chart" pile the owner rejected. Read the two
- *      renderers (`render/charts/bars.tsx`, `render/charts/quotas.tsx`) before
- *      changing this back — `bars` cannot be made horizontal by parameters.
- *   4. The FILL is the USED share and the printed text is the REMAINING one.
- *      `quotas.pct` is the FILL share, so the percent hard right is the used one
- *      and it agrees with the bar next to it; the label carries the remaining
- *      bytes. The previous version filled by FREE, which meant the alarming
- *      drive drew the SHORTEST bar — backwards on both counts.
- *   5. The big figure is unchanged: the TIGHTEST drive's free space WITH its
- *      mount (`D: 剩余 62.9G`). Free space is the resource that actually runs
- *      out, and the mount is what tells the reader which drive the red number
- *      belongs to.
+ * THE OWNER'S FOUR POINTS, and where each one landed:
+ *   1. The 20px figure (`D: 剩余 62.9G`) is DELETED. It restated, in the biggest
+ *      type on the tile, the very same reading the D: row two lines below
+ *      carries (`D: 剩余 62.9G / 652G`) — one reading, one place. There is now
+ *      no `headAfter` and no `value`, so nothing on this card prints a drive's
+ *      remaining bytes twice.
+ *   2. The session-log subject is ONE line (`legend`), immediately under the
+ *      title: `DSH 会话日志 345M · 近 1 小时 +25 个文件`. It names the thing AND
+ *      its unit AND what the growth counts, in that order, so it needs no
+ *      decoder — the revision-2 `+13/h` did. It is the card's second subject
+ *      (nothing else in the product shows the harness's own disk footprint) and
+ *      `legend` is exactly the "one grey line under the title" slot, so it
+ *      costs the head nothing beyond its own 12.5px line box.
+ *   3. Everything else is the chart's, and the chart is HORIZONTAL —
+ *      `kind: 'quotas'`, the official quota-row idiom (label left, percent hard
+ *      right, a 24-cell bar under them). `bars` is the VERTICAL primitive: its
+ *      only text channel is UNDER the column, which is the pile the owner
+ *      rejected in revision 2. Read `render/charts/bars.tsx` and
+ *      `render/charts/quotas.tsx` before changing this back — `bars` cannot be
+ *      made horizontal by parameters.
+ *   4. Kept: one row per drive, tightest first, >3 drives folded into the hover,
+ *      the FILL isUSED and the printed text REMAINING, and red only in the
+ *      danger band (which is now the BAR's colour alone — the deleted figure was
+ *      the other carrier of that band, and the bar is the honest one: it is the
+ *      shape of the thing itself).
  *
  * WHERE THE SPACE GOES (all MEASURED in the gallery, 2×4 at scale 1 — outer
- * 312×150, client 310×148, 12px inset → 286×124 of content):
- *   title 16 + [4 + figure row 25] = 45, then the `quotas` rows: each row is a
- *   9px label line (line-height 1.15 ≈ 10.4) + a 2px gap + a 9px segmented bar
- *   ≈ 21.4, with 5px between rows. Three rows = 74 ≤ the 79px left; four rows =
- *   100 > 79 and the card would GROW past its grid row (the rail only sets
- *   `min-height`, so an over-tall card bursts the layout instead of clipping —
- *   CardBody's tile-fits guard paints it red). Hence MAX_ROWS = 3.
+ * 312×150, 12px inset → 286 content width; revision-2 numbers from the same
+ * probe, kept here because they are the reason this revision exists):
+ *   R2 head: title 16 + [4 + figure row 25] + [2 + grey line 12.5] = 59.5, and
+ *   the 2↑3 drive rows (21.3 each, 5 apart) were pushed to the FLOOR: the card
+ *   measured `scrollH = clientH = 148` with 1px between the last bar and the
+ *   padding floor, i.e. ZERO slack, and 60.3px of dead air between the head and
+ *   the chart. That is what "拥挤" was.
+ *   R3 head: title 16 + [2 + legend 12.5] = 30.5. The chart still owns its fixed
+ *   21.3px rows (`quotas` sizes them from the card SCALE, which is 1 at every
+ *   2×4 — see SHARED LAYER below) and still hangs on the floor, so the 29px the
+ *   deleted figure row freed show up as air ABOVE the chart. Three rows (74px)
+ *   still fit; four (100px) still would not, so MAX_ROWS stays 3.
+ *
+ * SHARED LAYER — the one thing this revision could NOT do from the widget side.
+ * `quotas` writes its row metrics as literals scaled by the card scale factor
+ * (`9px` label, `9px` cell, `2px`/`5px` gaps in render/charts/quotas.tsx), and
+ * that factor is `unit / BASE_SIDE` = 1 for every card the rail seats. A widget
+ * therefore cannot ask for a denser quota row, and the freed 29px cannot become
+ * a bigger chart. The precise ask is filed in README §8.3 / the handover: one
+ * optional field on `WidgetChart`. Until it lands, this card takes the biggest
+ * chart the shared renderer offers (all of it), which is the honest maximum.
  *
  * TONE DIRECTION — set HERE, never inferred by the renderer: the criterion is
  * FREE space, and less is worse. The band is therefore read off the free share
@@ -54,19 +67,15 @@ import { t } from '../../client/i18n'
  * is the opposite pole of 利用率 (sys-cpu / sys-gpu / sys-rings), where a high
  * number means a busy machine.
  *
- * HEAD WIDTH — the 20px figure and the grey block share ONE nowrap flex row, and
- * a flex row shrinks BOTH when it runs out of room, so a longer grey line does
- * not truncate itself: it starts ellipsizing the FIGURE, which is the one string
- * on this tile that must never lose a glyph (CardBody's `figureEl` carries
- * `text-overflow: ellipsis`). MEASURED in the gallery, 286px of row width:
- * `D: 剩余 62.9G` 131 + 4px gap + the grey block. The first draft put the file
- * count on the tile (`DSH session logs 345M · 346 files`), which measured 160px
- * in English — 295 needed against 286 available — and pushed BOTH the figure
- * (127 of 131) and that line (155 of 160) into an ellipsis. The count is
- * therefore on the hover (`card.sys-disk.hintLog`) and the tile keeps only the
- * two facts that are bounded by the machine: the size and the hourly growth.
- * Budget after the split: English worst line 133px (the degraded CPU line), i.e.
- * 18px of daylight — re-measure before adding a token to either grey line.
+ * WIDTH BUDGET — the legend is the only string on the tile that can run long, and
+ * CardBody ellipsizes it (`whiteSpace: nowrap` + `text-overflow: ellipsis` on the
+ * caption builder), so it must fit by MEASUREMENT, not by hope. MEASURED in the
+ * gallery (card type, 286px of row width): zh `DSH 会话日志 345M · 近 1 小时 +25
+ * 个文件` 199.6, en `DSH session logs 345M · +25 files this hour` 207.3, degraded
+ * zh `dsh web 进程内存 525M · CPU 2.1% · 已运行 3h54m` 242.3 — the worst case,
+ * and still 43.7px inside the row. The file TOTAL stays on the hover
+ * (`card.sys-disk.hintLog`): it is the one log reading that grows without bound
+ * (five digits will happen) while `345M` and `+25` are bounded by the machine.
  *
  * PREVIEW-ONLY STATE: `meta.sim.noHome` forces the `home` slice to null so the
  * degraded card can be eyeballed (and screenshotted) without breaking the
@@ -96,13 +105,18 @@ const FREE_WARN = 0.2
 
 /**
  * How many drive rows the tile holds — the cap that keeps the card inside its
- * grid row (the measurement is in the header comment: three rows 74px, four
- * 100px, 79px available).
+ * grid row. MEASURED (revision 3, gallery probe): a quota row is 21.3px and the
+ * rows stand 5px apart, so three rows are 73.9px and four would be 100.2 — over
+ * the 89.5px the card body has left once the title and the legend are paid for.
+ * Four rows would not be clipped, they would GROW the card and burst the rail's
+ * grid row (the rail only sets `min-height`; CardBody's tile-fits guard turns
+ * that into a red outline rather than a silent defect).
  *
  * WHICH three: the ROWS ARE SORTED TIGHTEST-FIRST, and the cap only ever drops
- * the roomiest drives, so the drive the big figure names can never be the one
- * that is missing. That is the whole reason the sort is by urgency rather than
- * by drive letter: a letter-ordered cap would silently hide a full E:.
+ * the roomiest drives. That is the whole reason the sort is by urgency rather
+ * than by drive letter — a letter-ordered cap would silently hide a full E:.
+ * (`shown[0]` is therefore the tightest drive, which is also the one the reader
+ * came for; the deleted figure used to make that pick explicit.)
  */
 const MAX_ROWS = 3
 
@@ -211,14 +225,11 @@ function sysDiskRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRende
   // from "answered with nothing"; see the contract's `skeleton` note).
   if (disks.length === 0) return null
 
-  // The tightest drive drives the big figure and the value tone. Ties keep the
-  // first (the host reports drives in drive-letter order).
-  let tight = disks[0]!
-  for (const d of disks) if (d.freeShare < tight.freeShare) tight = d
-
-  // Rows, tightest first (see MAX_ROWS: the cap must never drop the headline's
-  // drive). `sort` is stable, so equal drives keep the host's drive-letter order
-  // instead of shuffling between two 10s polls.
+  // Rows, tightest first (see MAX_ROWS: the cap must never drop the tightest
+  // drive — it is the one the reader is here for). `sort` is stable, so equal
+  // drives keep the host's drive-letter order instead of shuffling between two
+  // 10s polls. There is no separate "which drive is the headline" pick any more:
+  // the deleted figure was its only consumer, and `shown[0]` IS the tightest row.
   const ordered = [...disks].sort((a, b) => a.freeShare - b.freeShare)
   const shown = ordered.slice(0, MAX_ROWS)
   const hidden = ordered.slice(MAX_ROWS)
@@ -238,24 +249,25 @@ function sysDiskRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRende
   const cpu = proc && proc.cpuPercent !== null && Number.isFinite(proc.cpuPercent) ? `${proc.cpuPercent}%` : '—'
   const procFacts = proc ? { rss: fmtBytes(proc.rss), cpu, uptime: fmtUptime(proc.uptimeSec) } : null
 
-  // The grey block, two lines, both SELF-EXPLAINING (the owner could not decode
-  // the old `+13/h`): what the directory is, then what the growth number counts.
+  // THE ONE GREY LINE under the title (the owner's second point): the card's
+  // second subject, compressed into the single `legend` slot.
+  //
   // `home === null` means the session directory could not be read, which is NOT
-  // "0 files": the block then describes the host process instead of printing a
+  // "0 files": the line then describes the host process instead of printing a
   // fabricated count (the spec's rule, and the reason `home` is nullable at all).
   // The preview can force this branch with `meta.sim.noHome`.
+  //
+  // Both branches answer the same two questions in the same order — WHAT is being
+  // measured, then WHAT CHANGED — because a reader who has learnt the line must
+  // not have to re-learn it when the session directory is unreadable. The
+  // degraded branch has no growth reading to offer, so it carries the process's
+  // CPU and uptime instead of leaving a hole.
   const home = meta?.sim?.noHome === true ? null : machine.home
-  const smallLines = home
-    ? [
-        t('card.sys-disk.homeLog', { size: fmtBytes(home.sessionsBytes) }),
-        t('card.sys-disk.homeGrowth', { recent: home.recentFiles }),
-      ]
+  const legend = home
+    ? t('card.sys-disk.logLine', { size: fmtBytes(home.sessionsBytes), recent: home.recentFiles })
     : procFacts
-      ? [
-          t('card.sys-disk.procMem', { rss: procFacts.rss }),
-          t('card.sys-disk.procUp', { cpu: procFacts.cpu, uptime: procFacts.uptime }),
-        ]
-      : ['—']
+      ? t('card.sys-disk.procLine', { rss: procFacts.rss, cpu: procFacts.cpu, uptime: procFacts.uptime })
+      : '—'
 
   // Drives the row cap left out are named on the HOVER, not dropped in silence:
   // there is no pixel for a fourth row (see MAX_ROWS) and inventing a `+2` row
@@ -268,9 +280,9 @@ function sysDiskRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRende
       })
     : ''
   // The session-log FILE COUNT also lives on the hover: it is the one log fact
-  // that grows without bound (345M and +13/h are bounded by the machine, "346
-  // files" is not — a five-digit count in the grey block would start squeezing
-  // the 20px figure; see HEAD WIDTH in the header comment).
+  // that grows without bound (345M and +25 are bounded by the machine, a total
+  // file count is not — five digits will happen, and the legend is a single
+  // nowrap line; see WIDTH BUDGET in the header comment).
   const logNote = home ? t('card.sys-disk.hintLog', { files: home.sessionsFiles }) : ''
   const hint = [
     procFacts && proc ? t('card.sys-disk.hint', { pid: proc.pid, ...procFacts }) : '',
@@ -280,26 +292,27 @@ function sysDiskRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRende
 
   return {
     title: t('card.sys-disk.title'),
-    headAfter: {
-      // The MOUNT rides the figure: "62.9G" alone would leave the reader to work
-      // out which drive the red number belongs to, and "剩余" is the unit word —
-      // without it a bare `D: 62.9G` is a number that needs an explanation, which
-      // is exactly what the owner rejected.
-      big: t('card.sys-disk.big', { mount: tight.mount, size: fmtBytes(tight.free) }),
-      smallLines,
-    },
-    // The figure turns red only in the danger band, the same band that paints the
-    // bar: one threshold, two places, so the tile cannot contradict itself.
-    valueTone: tight.freeShare < FREE_DANGER ? 'danger' : undefined,
-    // The body sits on the card's FLOOR — the posture every neighbouring 2×4
-    // already uses (sys-board's rings, 仓库脉搏's figures, 任务's breakdown rows
-    // all hang on the floor line), so the rail's cards share one bottom edge. A
-    // 2-drive machine leaves the slack between the head and the rows; the
-    // alternative (`bodyAnchor: 'top'`, measured at 32px of slack) put the rows
-    // straight under the head but broke that shared baseline, and with 3 drives
-    // it makes no visible difference at all (6px of slack either way).
-    bodyAnchor: 'bottom',
-    chart: { kind: 'quotas', quotas },
+    // The head is now TWO lines: the title and this caption. No `headAfter` (its
+    // 25px figure row is what the owner deleted), no `value` (that would print the
+    // same reading in the body instead — the field is not merely empty, it is
+    // absent, so there is no figure slot left for a duplicate to reappear in).
+    legend,
+    // The body needs no `bodyAnchor`: with no `headAfter` the foot is already
+    // `marginTop: auto` (CardBody's own rule), i.e. the chart hangs on the card's
+    // FLOOR — the posture every neighbouring 2×4 uses (sys-board's rings,
+    // 仓库脉搏's figures, 任务's breakdown rows all share that bottom edge).
+    // `density` (integration edit, 2026-09-29): with the figure gone this card has
+    // dead space between its one caption line and the chart, and the chart's row
+    // metrics are a height BUDGET authored for a 150px card that still has a title
+    // AND a 25px figure — `scale` cannot express "give this chart more room" (it is
+    // `unit / BASE_SIDE`, and `unit` is 150 for 2×2 and 2×4 alike).
+    //
+    // It adapts to the ROW COUNT instead of being one constant: the budget is set by
+    // the worst case (three disks ≈ 89.5px available), and spending it on a two-disk
+    // machine would leave the owner's "大部分空间留给柱状图" only half honoured. So a
+    // two-row card runs at 1.5 (rows ≈ 71.5px) and three rows at 1.25 (≈ 83.8px) —
+    // both inside the budget, and each card fills its own room.
+    chart: { kind: 'quotas', quotas, density: quotas.length >= 3 ? 1.25 : 1.5 },
     cardHint: hint === '' ? undefined : hint,
   }
 }
@@ -309,15 +322,16 @@ function sysDiskRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRende
  * output (`fs.statfs` byte counts, the DSH home's session walk, the web process's
  * own memory) so the market preview is the card the owner will actually see:
  *
- *   disks  C: 322.1e9 total / 72.0e9 free   — 22.4% free, 78% used, primary
- *          D: 700.6e9 total / 67.5e9 free   — 9.6% free, 90% used, ON the red line
+ *   disks  C: 322.1e9 total / 72.0e9 free   — 22.35% free, 77.65% used → prints 78%
+ *          D: 700.6e9 total / 67.5e9 free   — 9.635% free, 90.365% used → prints 91%
  *   home   346 session files, 361_736_551 bytes, 13 written in the last hour
  *   proc   pid 28536, 550 MB RSS, 2.1% CPU, 14059 s (3h54m) up
  *
  * The second drive is in the danger band on purpose: that band is the state this
  * card exists for, and a preview that only ever showed a healthy drive could not
- * demonstrate it. It is also the boundary case the printed percent is rounded up
- * for (90% used, not 89% or 91% — see `usedPct`).
+ * demonstrate it. It is also the case that shows WHY the printed percent is
+ * rounded UP: 90.365% is 0.365 of a point inside the red band, and `Math.ceil`
+ * prints `91` — the band and the number can never disagree (see `usedPct`).
  *
  * Byte counts are kept as the raw numbers the host reports (not pre-divided): the
  * display units are `fmtBytes`' business, and a rounded literal here would hide

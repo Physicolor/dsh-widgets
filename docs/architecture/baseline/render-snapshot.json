@@ -6222,9 +6222,9 @@
    "size": "2x4",
    "sim": null,
    "out": {
-    "bodyAnchor": "bottom",
     "cardHint": "dsh web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m · 会话日志共 346 个文件",
     "chart": {
+     "density": 1.5,
      "kind": "quotas",
      "quotas": [
       {
@@ -6239,15 +6239,8 @@
       }
      ]
     },
-    "headAfter": {
-     "big": "D: 剩余 62.9G",
-     "smallLines": [
-      "DSH 会话日志 345M",
-      "近 1 小时新增 13 个文件"
-     ]
-    },
-    "title": "磁盘与自检",
-    "valueTone": "danger"
+    "legend": "DSH 会话日志 345M · 近 1 小时 +13 个文件",
+    "title": "磁盘与自检"
    }
   },
   {
@@ -6257,9 +6250,9 @@
     "noHome": false
    },
    "out": {
-    "bodyAnchor": "bottom",
     "cardHint": "dsh web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m · 会话日志共 346 个文件",
     "chart": {
+     "density": 1.5,
      "kind": "quotas",
      "quotas": [
       {
@@ -6274,15 +6267,8 @@
       }
      ]
     },
-    "headAfter": {
-     "big": "D: 剩余 62.9G",
-     "smallLines": [
-      "DSH 会话日志 345M",
-      "近 1 小时新增 13 个文件"
-     ]
-    },
-    "title": "磁盘与自检",
-    "valueTone": "danger"
+    "legend": "DSH 会话日志 345M · 近 1 小时 +13 个文件",
+    "title": "磁盘与自检"
    }
   },
   {
@@ -6292,9 +6278,9 @@
     "noHome": true
    },
    "out": {
-    "bodyAnchor": "bottom",
     "cardHint": "dsh web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m",
     "chart": {
+     "density": 1.5,
      "kind": "quotas",
      "quotas": [
       {
@@ -6309,15 +6295,8 @@
       }
      ]
     },
-    "headAfter": {
-     "big": "D: 剩余 62.9G",
-     "smallLines": [
-      "dsh web 进程内存 525M",
-      "CPU 2.1% · 已运行 3h54m"
-     ]
-    },
-    "title": "磁盘与自检",
-    "valueTone": "danger"
+    "legend": "dsh web 进程内存 525M · CPU 2.1% · 已运行 3h54m",
+    "title": "磁盘与自检"
    }
   },
   {
@@ -13626,9 +13605,9 @@
    "size": "2x4",
    "sim": null,
    "out": {
-    "bodyAnchor": "bottom",
     "cardHint": "dsh web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up · 346 session files in total",
     "chart": {
+     "density": 1.5,
      "kind": "quotas",
      "quotas": [
       {
@@ -13643,15 +13622,8 @@
       }
      ]
     },
-    "headAfter": {
-     "big": "D: 62.9G free",
-     "smallLines": [
-      "DSH session logs 345M",
-      "13 added in the last hour"
-     ]
-    },
-    "title": "Disk & Self-check",
-    "valueTone": "danger"
+    "legend": "DSH session logs 345M · +13 files this hour",
+    "title": "Disk & Self-check"
    }
   },
   {
@@ -13661,9 +13633,9 @@
     "noHome": false
    },
    "out": {
-    "bodyAnchor": "bottom",
     "cardHint": "dsh web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up · 346 session files in total",
     "chart": {
+     "density": 1.5,
      "kind": "quotas",
      "quotas": [
       {
@@ -13678,15 +13650,8 @@
       }
      ]
     },
-    "headAfter": {
-     "big": "D: 62.9G free",
-     "smallLines": [
-      "DSH session logs 345M",
-      "13 added in the last hour"
-     ]
-    },
-    "title": "Disk & Self-check",
-    "valueTone": "danger"
+    "legend": "DSH session logs 345M · +13 files this hour",
+    "title": "Disk & Self-check"
    }
   },
   {
@@ -13696,9 +13661,9 @@
     "noHome": true
    },
    "out": {
-    "bodyAnchor": "bottom",
     "cardHint": "dsh web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up",
     "chart": {
+     "density": 1.5,
      "kind": "quotas",
      "quotas": [
       {
@@ -13713,15 +13678,8 @@
       }
      ]
     },
-    "headAfter": {
-     "big": "D: 62.9G free",
-     "smallLines": [
-      "dsh web proc mem 525M",
-      "CPU 2.1% · up 3h54m"
-     ]
-    },
-    "title": "Disk & Self-check",
-    "valueTone": "danger"
+    "legend": "dsh web memory 525M · CPU 2.1% · up 3h54m",
+    "title": "Disk & Self-check"
    }
   },
   {
