@@ -82,7 +82,10 @@ eq('counts name (en)', t('widget.counts.name'), 'Turns · Steps')
 eq('context water title (en)', t('card.contextWater.title'), 'Context Used')
 eq('peak title (en)', t('card.peak.title'), 'Peak Pricing')
 eq('total key (en)', t('usage.totalKey'), 'All Keys')
-eq('task sub (en)', t('card.task.sub', { doing: 1, pending: 2 }), '1 in progress · 2 pending')
+// The task card's caption is `card.task.small` ({pending}); the old
+// `card.task.sub` key is gone from the dictionary (and from the card), so asserting
+// it only ever proved that a DELETED key still reports MISSING.
+eq('task sub (en)', t('card.task.small', { pending: 2 }), 'active · 2 pending')
 eq('settings columns option (en)', t('settings.columns.option', { n: 4 }), 'Up to 4')
 eq('disabled 2x4 note (en)', t('market.sizeBlockedTitle'), '2×4 is not shown in a 1-column layout')
 

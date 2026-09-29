@@ -208,6 +208,13 @@ function judge(id, exp, card) {
     const id = key ? key.split('@')[0] : '?'
     const exp = EXPECT[id]
     const fails = exp ? judge(id, exp, c) : ['no expectation']
+    // THE PLACEHOLDER IS THE TILE. A real card is pinned to `unit` x `unit` (and a
+    // 2x4 is two units wide, one tall), so a skeleton that only set `minHeight` stood
+    // ~13% taller than the card it stands in for — the owner read that as "the cards
+    // are not square" (2026-09-29) and the deck jumped when the data landed.
+    const wide = key ? key.includes('@2x4') : false
+    if (Math.abs(c.cardH - c.cardW) > 1 && !wide) fails.push(`not square: ${c.cardW}x${c.cardH}`)
+    if (wide && c.cardH > c.cardW) fails.push(`2x4 is taller than wide: ${c.cardW}x${c.cardH}`)
     if (fails.length) failed++
     console.log(`${fails.length ? 'FAIL' : 'ok  '} ${String(id).padEnd(20)} title="${c.title}" sk=${c.skeleton} ${c.cardW}x${c.cardH} ovf=${c.overflow} blocks=${c.blocks.length} ${c.blocks.map((b) => `${b.w}x${b.h}@(${b.x},${b.y})r${b.br}`).join(' ')}`)
     for (const f of fails) console.log(`       ! ${f}`)

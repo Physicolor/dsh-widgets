@@ -54,7 +54,7 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "title": "首 token 平均",
+    "title": "首 token 延迟",
     "value": "0s"
    }
   },
@@ -63,7 +63,7 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "title": "速率",
+    "title": "解码速率",
     "value": "120 tok/s"
    }
   },
@@ -2332,11 +2332,17 @@
      "kind": "figures"
     },
     "headAfter": {
-     "big": "55%",
-     "small": "账期 10-20",
-     "smallAlign": "bottom"
+     "big": "55%"
     },
-    "title": "额度管理"
+    "headRing": {
+     "icon": "gauge",
+     "label": "55%",
+     "overshoot": true,
+     "ratio": 0.5459871589085072,
+     "tone": "primary"
+    },
+    "legend": "账期 10-20",
+    "title": "额度预测"
    }
   },
   {
@@ -2361,11 +2367,54 @@
      "kind": "figures"
     },
     "headAfter": {
-     "big": "55%",
-     "small": "账期 10-20",
-     "smallAlign": "bottom"
+     "big": "55%"
     },
-    "title": "额度管理"
+    "headRing": {
+     "icon": "gauge",
+     "label": "55%",
+     "overshoot": true,
+     "ratio": 0.5459871589085072,
+     "tone": "primary"
+    },
+    "legend": "账期 10-20",
+    "title": "额度预测"
+   }
+  },
+  {
+   "id": "quota-manage",
+   "size": "2x2",
+   "sim": {
+    "over": true
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "figures": [
+      {
+       "label": "今日用量",
+       "value": "90M"
+      },
+      {
+       "label": "今日推荐",
+       "value": "220M"
+      }
+     ],
+     "kind": "figures"
+    },
+    "headAfter": {
+     "big": "135%"
+    },
+    "headRing": {
+     "icon": "gauge",
+     "label": "135%",
+     "overshoot": true,
+     "ratio": 1.35,
+     "tone": "danger"
+    },
+    "legend": "账期 10-20",
+    "title": "额度预测",
+    "valuePulse": true,
+    "valueTone": "danger"
    }
   },
   {
@@ -2470,7 +2519,7 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "legend": "账户",
+    "legend": "账户身份",
     "sub": "demo@example.com",
     "title": "Command Code",
     "value": "Physicolor"
@@ -2658,17 +2707,17 @@
      "kind": "quotas",
      "quotas": [
       {
-       "label": "5 小时",
+       "label": "5 小时限额",
        "pct": 5.9762309714285715,
        "tone": "success"
       },
       {
-       "label": "周",
+       "label": "周限额",
        "pct": 2.3904923885714284,
        "tone": "success"
       },
       {
-       "label": "月",
+       "label": "月限额",
        "pct": 1.1952461942857235,
        "tone": "success"
       }
@@ -2703,7 +2752,7 @@
       }
      ]
     },
-    "title": "CPU·GPU 环图"
+    "title": "CPU·GPU 环形图"
    }
   },
   {
@@ -2717,7 +2766,7 @@
       {
        "decimals": 1,
        "label": "",
-       "name": "5h 窗口",
+       "name": "5 小时窗口",
        "ratio": 0.059762309714285713,
        "tone": "success",
        "value": 6
@@ -2740,7 +2789,7 @@
       }
      ]
     },
-    "legend": "窗口",
+    "legend": "用量环形图",
     "title": "Command Code"
    }
   },
@@ -2779,7 +2828,7 @@
      ]
     },
     "headRight": "58°C · RTX 5070 Ti Laptop GPU",
-    "title": "系统监控"
+    "title": "系统看板"
    }
   },
   {
@@ -2925,7 +2974,7 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "legend": "5h 窗口",
+    "legend": "5 小时窗口",
     "sub": "重置 09-10",
     "title": "Command Code",
     "value": "6.0%"
@@ -5341,7 +5390,7 @@
    "out": {
     "legend": "dsh-widgets",
     "sub": "0 回复",
-    "title": "问题",
+    "title": "未关闭 Issue",
     "value": "1"
    }
   },
@@ -5352,7 +5401,7 @@
    "out": {
     "legend": "dsh-widgets",
     "sub": "Release v1.7.0",
-    "title": "提交",
+    "title": "最近提交",
     "value": "3h"
    }
   },
@@ -5369,7 +5418,7 @@
        "value": "5"
       },
       {
-       "label": "问题",
+       "label": "未关闭 Issue",
        "value": "1"
       },
       {
@@ -5377,7 +5426,7 @@
        "value": "0"
       },
       {
-       "label": "提交",
+       "label": "最近提交",
        "value": "3h"
       }
      ],
@@ -5414,8 +5463,7 @@
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "92M",
-     "small": "5h 重置 3h0m"
+     "big": "92M"
     },
     "headRing": {
      "icon": "database",
@@ -5423,6 +5471,7 @@
      "ratio": 0.9142857142857143,
      "tone": "warn"
     },
+    "legend": "5h  · 3h0m",
     "title": "套餐总览"
    }
   },
@@ -5465,9 +5514,9 @@
      "store": "bigLane"
     },
     "headAfter": {
-     "big": "29%"
+     "big": "29%",
+     "small": "模型"
     },
-    "legend": "模型 · 时长占比",
     "title": "轨迹占比"
    }
   },
@@ -5512,9 +5561,9 @@
      "store": "bigLane"
     },
     "headAfter": {
-     "big": "29%"
+     "big": "29%",
+     "small": "模型"
     },
-    "legend": "模型 · 时长占比",
     "title": "轨迹占比"
    }
   },
@@ -5559,9 +5608,9 @@
      "store": "bigLane"
     },
     "headAfter": {
-     "big": "29%"
+     "big": "29%",
+     "small": "模型"
     },
-    "legend": "模型 · 时长占比",
     "title": "轨迹占比"
    }
   },
@@ -6317,7 +6366,7 @@
        "value": "63% 预计"
       },
       {
-       "label": "剩余重置",
+       "label": "额度重置",
        "value": "2h0m"
       }
      ],
@@ -6326,7 +6375,7 @@
     "headAfter": {
      "big": "118%"
     },
-    "legend": "5h · 预计 1h14m 后打满",
+    "legend": "5h · 1h14m 后触及限额",
     "title": "限流预测",
     "valueTone": "danger"
    }
@@ -6349,7 +6398,7 @@
        "value": "63% 预计"
       },
       {
-       "label": "剩余重置",
+       "label": "额度重置",
        "value": "2h0m"
       }
      ],
@@ -6358,7 +6407,7 @@
     "headAfter": {
      "big": "118%"
     },
-    "legend": "5h · 预计 1h14m 后打满",
+    "legend": "5h · 1h14m 后触及限额",
     "title": "限流预测",
     "valueTone": "danger"
    }
@@ -6383,7 +6432,7 @@
        "value": "63% 预计"
       },
       {
-       "label": "剩余重置",
+       "label": "额度重置",
        "value": "1h15m"
       }
      ],
@@ -6392,7 +6441,7 @@
     "headAfter": {
      "big": "94%"
     },
-    "legend": "5h · 不会打满 · 1h15m",
+    "legend": "5h · 不会触及限额 · 1h15m",
     "title": "限流预测",
     "valueTone": "warn"
    }
@@ -6416,7 +6465,7 @@
        "value": "62% 预计"
       },
       {
-       "label": "剩余重置",
+       "label": "额度重置",
        "value": "1h0m"
       }
      ],
@@ -6425,7 +6474,7 @@
     "headAfter": {
      "big": "89%"
     },
-    "legend": "5h · 不会打满 · 1h0m",
+    "legend": "5h · 不会触及限额 · 1h0m",
     "title": "限流预测"
    }
   },
@@ -7438,7 +7487,7 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "title": "Avg TTFT",
+    "title": "First-token Latency",
     "value": "0s"
    }
   },
@@ -7447,7 +7496,7 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "title": "Rate",
+    "title": "Decode Rate",
     "value": "120 tok/s"
    }
   },
@@ -9716,11 +9765,17 @@
      "kind": "figures"
     },
     "headAfter": {
-     "big": "55%",
-     "small": "Ends 10-20",
-     "smallAlign": "bottom"
+     "big": "55%"
     },
-    "title": "Quota Manager"
+    "headRing": {
+     "icon": "gauge",
+     "label": "55%",
+     "overshoot": true,
+     "ratio": 0.5459871589085072,
+     "tone": "primary"
+    },
+    "legend": "Ends 10-20",
+    "title": "Quota Forecast"
    }
   },
   {
@@ -9745,11 +9800,54 @@
      "kind": "figures"
     },
     "headAfter": {
-     "big": "55%",
-     "small": "Ends 10-20",
-     "smallAlign": "bottom"
+     "big": "55%"
     },
-    "title": "Quota Manager"
+    "headRing": {
+     "icon": "gauge",
+     "label": "55%",
+     "overshoot": true,
+     "ratio": 0.5459871589085072,
+     "tone": "primary"
+    },
+    "legend": "Ends 10-20",
+    "title": "Quota Forecast"
+   }
+  },
+  {
+   "id": "quota-manage",
+   "size": "2x2",
+   "sim": {
+    "over": true
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "figures": [
+      {
+       "label": "Today",
+       "value": "90M"
+      },
+      {
+       "label": "Budget",
+       "value": "220M"
+      }
+     ],
+     "kind": "figures"
+    },
+    "headAfter": {
+     "big": "135%"
+    },
+    "headRing": {
+     "icon": "gauge",
+     "label": "135%",
+     "overshoot": true,
+     "ratio": 1.35,
+     "tone": "danger"
+    },
+    "legend": "Ends 10-20",
+    "title": "Quota Forecast",
+    "valuePulse": true,
+    "valueTone": "danger"
    }
   },
   {
@@ -9854,7 +9952,7 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "legend": "Account",
+    "legend": "Account identity",
     "sub": "demo@example.com",
     "title": "Command Code",
     "value": "Physicolor"
@@ -10042,17 +10140,17 @@
      "kind": "quotas",
      "quotas": [
       {
-       "label": "5-hour",
+       "label": "5-hour limit",
        "pct": 5.9762309714285715,
        "tone": "success"
       },
       {
-       "label": "Week",
+       "label": "Weekly limit",
        "pct": 2.3904923885714284,
        "tone": "success"
       },
       {
-       "label": "Month",
+       "label": "Monthly limit",
        "pct": 1.1952461942857235,
        "tone": "success"
       }
@@ -10101,7 +10199,7 @@
       {
        "decimals": 1,
        "label": "",
-       "name": "5h window",
+       "name": "5h Window",
        "ratio": 0.059762309714285713,
        "tone": "success",
        "value": 6
@@ -10124,7 +10222,7 @@
       }
      ]
     },
-    "legend": "Windows",
+    "legend": "Usage rings",
     "title": "Command Code"
    }
   },
@@ -10163,7 +10261,7 @@
      ]
     },
     "headRight": "58°C · RTX 5070 Ti Laptop GPU",
-    "title": "System Monitor"
+    "title": "System Board"
    }
   },
   {
@@ -10309,7 +10407,7 @@
    "size": "2x2",
    "sim": null,
    "out": {
-    "legend": "5h window",
+    "legend": "5h Window",
     "sub": "Resets 09-10",
     "title": "Command Code",
     "value": "6.0%"
@@ -12725,7 +12823,7 @@
    "out": {
     "legend": "dsh-widgets",
     "sub": "0 Replies",
-    "title": "Issues",
+    "title": "Open Issues",
     "value": "1"
    }
   },
@@ -12736,7 +12834,7 @@
    "out": {
     "legend": "dsh-widgets",
     "sub": "Release v1.7.0",
-    "title": "Pushes",
+    "title": "Latest Push",
     "value": "3h"
    }
   },
@@ -12753,7 +12851,7 @@
        "value": "5"
       },
       {
-       "label": "Issues",
+       "label": "Open Issues",
        "value": "1"
       },
       {
@@ -12761,7 +12859,7 @@
        "value": "0"
       },
       {
-       "label": "Pushes",
+       "label": "Latest Push",
        "value": "3h"
       }
      ],
@@ -12798,8 +12896,7 @@
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "92M",
-     "small": "5h resets 3h0m"
+     "big": "92M"
     },
     "headRing": {
      "icon": "database",
@@ -12807,6 +12904,7 @@
      "ratio": 0.9142857142857143,
      "tone": "warn"
     },
+    "legend": "5h · 3h0m",
     "title": "Plan Overview"
    }
   },
@@ -12849,9 +12947,9 @@
      "store": "bigLane"
     },
     "headAfter": {
-     "big": "29%"
+     "big": "29%",
+     "small": "Model"
     },
-    "legend": "Model · of window time",
     "title": "Trajectory Share"
    }
   },
@@ -12896,9 +12994,9 @@
      "store": "bigLane"
     },
     "headAfter": {
-     "big": "29%"
+     "big": "29%",
+     "small": "Model"
     },
-    "legend": "Model · of window time",
     "title": "Trajectory Share"
    }
   },
@@ -12943,9 +13041,9 @@
      "store": "bigLane"
     },
     "headAfter": {
-     "big": "29%"
+     "big": "29%",
+     "small": "Model"
     },
-    "legend": "Model · of window time",
     "title": "Trajectory Share"
    }
   },
@@ -13700,7 +13798,7 @@
        "value": "63% est."
       },
       {
-       "label": "Until reset",
+       "label": "Quota reset",
        "value": "2h0m"
       }
      ],
@@ -13709,7 +13807,7 @@
     "headAfter": {
      "big": "118%"
     },
-    "legend": "5h · full in 1h14m",
+    "legend": "5h · cap in 1h14m",
     "title": "Throttle Forecast",
     "valueTone": "danger"
    }
@@ -13732,7 +13830,7 @@
        "value": "63% est."
       },
       {
-       "label": "Until reset",
+       "label": "Quota reset",
        "value": "2h0m"
       }
      ],
@@ -13741,7 +13839,7 @@
     "headAfter": {
      "big": "118%"
     },
-    "legend": "5h · full in 1h14m",
+    "legend": "5h · cap in 1h14m",
     "title": "Throttle Forecast",
     "valueTone": "danger"
    }
@@ -13766,7 +13864,7 @@
        "value": "63% est."
       },
       {
-       "label": "Until reset",
+       "label": "Quota reset",
        "value": "1h15m"
       }
      ],
@@ -13775,7 +13873,7 @@
     "headAfter": {
      "big": "94%"
     },
-    "legend": "5h · no fill · 1h15m",
+    "legend": "5h · no cap · 1h15m",
     "title": "Throttle Forecast",
     "valueTone": "warn"
    }
@@ -13799,7 +13897,7 @@
        "value": "62% est."
       },
       {
-       "label": "Until reset",
+       "label": "Quota reset",
        "value": "1h0m"
       }
      ],
@@ -13808,7 +13906,7 @@
     "headAfter": {
      "big": "89%"
     },
-    "legend": "5h · no fill · 1h0m",
+    "legend": "5h · no cap · 1h0m",
     "title": "Throttle Forecast"
    }
   },

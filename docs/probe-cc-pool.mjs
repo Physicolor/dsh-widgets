@@ -16,7 +16,9 @@
  *       - AllUser 的 5h/周 = sum(used)/sum(cap), 月 = 各成员自身月度之和
  *         (每个成员按自己的套餐额度计量);
  *       - 切到某账户 = 该成员自己的数据 (数值与 keys[i].data 一致);
- *       - 单池 (剥掉 keys) 完全回到旧行为: 无 cycle, 图例行只剩角色词。
+ *       - 单池 (剥掉 keys) 完全回到旧行为: 无 cycle, 图例行只剩角色词;
+ *       - 额度预测 (quota-manage) 在完整载荷下给出真实百分比 + 账期 + 今日推荐
+ *         (2026-09-30: 上游三个慢端点被 8s 超时砍掉时, 这张卡只剩 `-%` 和 `—`)。
  *  4. 池载荷缺片的稳定性 (2026-09-20): 上游一路失败时 host 路由写 `null`, 池
  *     绝不能"就地降级成一个口径不同的和" —— 丢 subscription 曾让额度管理卡显示
  *     20.2% / 账期 10-20 / 今日推荐 59.9M (真值 16.6% / 10-10 / 645M), 丢 credits
@@ -59,7 +61,14 @@ function resolveRef(ref) {
   return undefined
 }
 
-/** Load the REAL host bundle with a fake ctx and read a route's JSON answer. */
+/** Load the REAL host bundle with a fake ctx and read a route's JSON answer.
+ *
+ *  The route answers a COLD call with the fast `credits` slice and only the slices it
+ *  already holds (the other three take 14–21 s upstream and are refreshed out of band
+ *  — see `createSliceStore`), so the probe asks again after the route memo
+ *  (ROUTE_CACHE_MS, 20 s) has expired, exactly like the browser's degraded-payload
+ *  retry does. It stops as soon as the payload is complete, and reports how long that
+ *  took. */
 async function hostPayload() {
   const mod = await import(new URL('../lib/index.js', import.meta.url).href)
   const routes = new Map()
@@ -72,20 +81,47 @@ async function hostPayload() {
   mod.apply(ctx)
   const route = routes.get('/api/commandcode-usage')
   if (!route) throw new Error('route /api/commandcode-usage was not registered')
-  const res = {
-    status: 0,
-    body: '',
-    writeHead(status) { this.status = status; return this },
-    end(body) { this.body = body === undefined ? '' : String(body); return this },
+  const call = async () => {
+    const res = {
+      status: 0,
+      body: '',
+      writeHead(status) { this.status = status; return this },
+      end(body) { this.body = body === undefined ? '' : String(body); return this },
+    }
+    await route.handler({ method: 'GET', url: '/api/commandcode-usage' }, res)
+    return { status: res.status, payload: res.body ? JSON.parse(res.body) : null }
   }
-  await route.handler({ method: 'GET', url: '/api/commandcode-usage' }, res)
-  return { status: res.status, payload: res.body ? JSON.parse(res.body) : null }
+  const complete = (payload) => {
+    if (payload === null || !Array.isArray(payload.keys) || payload.keys.length === 0) return false
+    return payload.keys.every((k) => k.data !== null && k.data !== undefined
+      && k.data.whoami != null && k.data.usage != null && k.data.credits != null && k.data.subscription != null)
+  }
+  const started = Date.now()
+  let answer = await call()
+  // Up to a minute: a cold slice can miss its first attempt (the upstream answered
+  // one whoami with a 500 after 16 s during this round), and an EMPTY slice is
+  // re-attempted every 15 s, so the pool fills in well inside this window.
+  for (let i = 0; i < 12 && !complete(answer.payload); i++) {
+    await new Promise((resolve) => setTimeout(resolve, 5000))
+    answer = await call()
+  }
+  console.log(`host /api/commandcode-usage -> HTTP ${answer.status} after ${Date.now() - started}ms (complete=${complete(answer.payload)})`)
+  return { ...answer, waitedMs: Date.now() - started, complete: complete(answer.payload) }
 }
 
-/** Compile just the render layer (+ its pure deps) into a throwaway dir. */
+/** Compile just the render layer (+ its pure deps) into a throwaway dir.
+ *
+ *  The layer moved in the Phase-2 refactor (`cc-view.ts` → `families/cc/data.ts`
+ *  + `families/cc/renders.ts`); the two modules are required as one bag so every
+ *  call site below reads exactly as it did before the split. */
 function compileRenderLayer(tmp) {
-  execFileSync('npx', ['tsc', 'src/client/lib/cc-view.ts', '--outDir', tmp, '--module', 'commonjs', '--target', 'es2022', '--moduleResolution', 'node', '--skipLibCheck', '--rootDir', 'src'], { cwd: REPO, stdio: 'inherit', shell: true })
-  return path.join(tmp, 'client', 'lib', 'cc-view.js')
+  execFileSync('npx', ['tsc', 'src/client/families/cc/data.ts', 'src/client/families/cc/renders.ts', 'src/widgets/quota-manage/index.ts', '--outDir', tmp, '--module', 'commonjs', '--target', 'es2022', '--moduleResolution', 'node', '--skipLibCheck', '--rootDir', 'src'], { cwd: REPO, stdio: 'inherit', shell: true })
+  return {
+    data: path.join(tmp, 'client', 'families', 'cc', 'data.js'),
+    renders: path.join(tmp, 'client', 'families', 'cc', 'renders.js'),
+    quota: path.join(tmp, 'widgets', 'quota-manage', 'index.js'),
+    i18n: path.join(tmp, 'client', 'i18n.js'),
+  }
 }
 
 /** Assemble the dictionary exactly like scripts/gen-registry.mjs does. */
@@ -109,23 +145,25 @@ const near = (a, b, eps = 0.051) => Math.abs(a - b) <= eps
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-pool-'))
   let view
   let i18n
+  let quotaWidget
   try {
     const entry = compileRenderLayer(tmp)
     // ESM (unlike the .cjs probes) exposes navigator/localStorage as getter-only
     // globals, so define them over the top instead of assigning.
     Object.defineProperty(globalThis, 'localStorage', { value: { getItem: () => null }, configurable: true })
     Object.defineProperty(globalThis, 'navigator', { value: { language: 'zh-CN' }, configurable: true })
-    view = require(entry)
-    i18n = require(path.join(tmp, 'client', 'i18n.js'))
+    view = { ...require(entry.data), ...require(entry.renders) }
+    quotaWidget = require(entry.quota).default
+    i18n = require(entry.i18n)
   } finally {
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch { /* best effort */ }
   }
   installLocales(i18n)
 
   // ---- 1) real host payload -------------------------------------------------
-  const { status, payload } = await hostPayload()
-  console.log(`host /api/commandcode-usage -> HTTP ${status}`)
-  check('host route answers 200', status === 200, `status ${status}`)
+  const { status, payload, waitedMs, complete } = await hostPayload()
+  check('host route answers 200 with a COMPLETE pool (all four slices per member)', status === 200 && complete,
+    `status ${status}, complete=${complete}, waited ${waitedMs}ms (the slow slices land out of band)`)
   const keys = Array.isArray(payload?.keys) ? payload.keys : []
   console.log(`keys: ${keys.map((k) => `${k.ref}=${k.label}(…${k.tail})`).join(', ')}`)
   check('payload carries one entry per configured pool key', keys.length >= 2, `keys=${keys.length}`)
@@ -167,15 +205,22 @@ const near = (a, b, eps = 0.051) => Math.abs(a - b) <= eps
       o.cycle && o.cycle.current === view.CC_ALL && o.cycle.modes[0] === view.CC_ALL && o.cycle.modes.slice(1).join('|') === pool.join('|'),
       o.cycle ? o.cycle.modes.join(' → ') : '-')
     check(`AllUser ${id} persists into the ccView field (never the OpenCode poolView)`, o.cycle && o.cycle.store === 'ccView', o.cycle && String(o.cycle.store))
-    check(`AllUser ${id} puts the view on the legend line`, o.cycle && String(o.legend).includes(view.CC_ALL), o.legend)
+    // The view must be readable off the card's own grey line. A card that
+    // deliberately carries no legend (cc-credits, after the 2026-09-29 redesign)
+    // is exempt — but then the assertion records that fact instead of failing.
+    check(`AllUser ${id} puts the view on the legend line`, o.legend === undefined || String(o.legend).includes(view.CC_ALL), String(o.legend))
   }
-  check('AllUser default legend = 账户 · AllUser', all['cc-whoami'].legend === `账户 · ${view.CC_ALL}`, all['cc-whoami'].legend)
+  check('AllUser default legend = 账户身份 · AllUser', all['cc-whoami'].legend === `账户身份 · ${view.CC_ALL}`, all['cc-whoami'].legend)
   // 套餐 (cc-subscription) redesign: the grey line is the PERIOD, the big figure
   // is the TIER badge, and the raw plan id never reaches the tile.
-  check('套餐: the grey line is the billing period', /^账期 \d{1,2}-\d{1,2}( · |$)/.test(all['cc-subscription'].legend), String(all['cc-subscription'].legend))
+  check('套餐: the grey line is the billing period', /^账期 \d{1,2}-\d{1,2}( · |$)/.test(String(all['cc-subscription'].legend)), String(all['cc-subscription'].legend))
+  // Every read below tolerates an unanswered slice: describing the degraded payload
+  // IS this probe's job (2026-09-30), so a missing slice must FAIL an assertion, not
+  // crash the run.
+  const planId0 = keys[0]?.data?.subscription?.data?.planId
   check('套餐: the big figure is the TIER badge, not the raw plan id',
-    all['cc-subscription'].value === view.planTier(keys[0].data.subscription.data.planId),
-    `${all['cc-subscription'].value} (planId ${keys[0].data.subscription.data.planId})`)
+    planId0 !== undefined && all['cc-subscription'].value === view.planTier(planId0),
+    `${all['cc-subscription'].value} (planId ${planId0})`)
   check('套餐: the raw plan id is nowhere on the card',
     !JSON.stringify(all['cc-subscription']).includes('individual-'), JSON.stringify(all['cc-subscription']))
   check('套餐: no headAfter row — the badge belongs to the card floor', all['cc-subscription'].headAfter === undefined, JSON.stringify(all['cc-subscription'].headAfter))
@@ -233,8 +278,8 @@ const near = (a, b, eps = 0.051) => Math.abs(a - b) <= eps
   // cc-credits redesign: the official site's quota ROWS (name+percent over a
   // segmented bar), three windows, nothing else.
   const quotas = (all['cc-credits'].chart && all['cc-credits'].chart.kind === 'quotas') ? all['cc-credits'].chart.quotas : []
-  check('cc-credits: the body is the official quota-row trio (5 小时 / 周 / 月)',
-    quotas.length === 3 && quotas[0].label === '5 小时' && quotas[1].label === '周' && quotas[2].label === '月',
+  check('cc-credits: the body is the official quota-row trio (5 小时限额 / 周限额 / 月限额)',
+    quotas.length === 3 && quotas[0].label === '5 小时限额' && quotas[1].label === '周限额' && String(quotas[2].label).startsWith('月限额'),
     quotas.map((q) => `${q.label} ${q.pct.toFixed(1)}%`).join(' | '))
   check('cc-credits: the rows keep the card floor and drop the role word + reset line',
     all['cc-credits'].bodyAnchor === 'bottom' && all['cc-credits'].sub === undefined, String(all['cc-credits'].sub))
@@ -284,7 +329,7 @@ const near = (a, b, eps = 0.051) => Math.abs(a - b) <= eps
     const mine = view.monthlyWindow(k.data)
     const expect = mine ? mine.pct.toFixed(1) + '%' : '-'
     check(`view ${k.label}: monthly card = this account's own month`, one['cc-window-monthly'].value === expect,
-      `rendered ${one['cc-window-monthly'].value}, expected ${expect} (member ${memberMonth[keys.indexOf(k)].toFixed(2)}%)`)
+      `rendered ${one['cc-window-monthly'].value}, expected ${expect} (member ${memberMonth[keys.indexOf(k)] === null ? '-' : memberMonth[keys.indexOf(k)].toFixed(2) + '%'})`)
     check(`view ${k.label}: account card shows the account name`, one['cc-whoami'].value === k.label, one['cc-whoami'].value)
     const spend = k.data?.usage?.totalCost
     if (typeof spend === 'number') {
@@ -310,7 +355,7 @@ const near = (a, b, eps = 0.051) => Math.abs(a - b) <= eps
   }
   check('single pool: no card is tappable', Object.values(solo).every((o) => o.cycle === undefined))
   check('single pool: legends keep the bare role words (用量/额度 carry their unit instead)',
-    solo['cc-whoami'].legend === '账户' && solo['cc-usage'].legend === undefined && solo['cc-credits'].legend === undefined && solo['cc-windows'].legend === '窗口' && /^账期 \d{1,2}-\d{1,2}$/.test(solo['cc-subscription'].legend),
+    solo['cc-whoami'].legend === '账户身份' && solo['cc-usage'].legend === undefined && solo['cc-credits'].legend === undefined && solo['cc-windows'].legend === '用量环形图' && /^账期 \d{1,2}-\d{1,2}$/.test(String(solo['cc-subscription'].legend)),
     [solo['cc-whoami'].legend, solo['cc-usage'].legend, solo['cc-credits'].legend, solo['cc-windows'].legend, solo['cc-subscription'].legend].map(String).join(' / '))
   check('single pool: 用量 / 额度 still say what they are through their unit caption',
     solo['cc-usage'].headAfter?.small === 'tokens' && solo['cc-credits'].headAfter?.small === 'credits',
@@ -321,6 +366,31 @@ const near = (a, b, eps = 0.051) => Math.abs(a - b) <= eps
     solo['cc-window-monthly'].value)
   check('single pool: all three window rings still render',
     Array.isArray(solo['cc-windows'].chart?.rings) && solo['cc-windows'].chart.rings.length === 3)
+
+  // ---- 5b) 额度预测 (quota-manage) against the SAME payload -----------------
+  // The card the defect hit hardest: its percent, its 账期 line and its 今日推荐 all
+  // come from the slices the upstream is slow to answer (the month needs the
+  // subscription's plan + period), and the 2026-09-30 report was exactly this card
+  // reading `-%` with 今日推荐 `—`.
+  const localDayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  // 40 days: the log must reach back PAST the billing period's start (the live
+  // account's period opened 2026-09-10), or `logCoversSince` fails and the credit→
+  // token rate — hence 今日推荐 — is refused on purpose.
+  const daily = {}
+  for (let i = 0; i < 40; i++) { const d = new Date(); d.setDate(d.getDate() - i); daily[localDayKey(d)] = 60_000_000 }
+  const quotaCard = quotaWidget.render({ commandCode: payload, commandCodeError: null, commandCodeDaily: daily }, undefined)
+  console.log('\n--- 额度预测 (quota-manage) ---')
+  console.log(`  headAfter=${JSON.stringify(quotaCard?.headAfter)} legend=${JSON.stringify(quotaCard?.legend)} ring=${JSON.stringify(quotaCard?.headRing?.label)} figures=${JSON.stringify(quotaCard?.chart?.figures ?? null)}`)
+  check('额度预测: the head figure is a real percent (never `-%`)',
+    /^\d+(\.\d+)?%$/.test(String(quotaCard?.headAfter?.big)), String(quotaCard?.headAfter?.big))
+  check('额度预测: the grey line is the billing period',
+    /^账期 \d{1,2}-\d{1,2}$/.test(String(quotaCard?.legend)), String(quotaCard?.legend))
+  check('额度预测: 今日推荐 is a token figure (never `—`)',
+    quotaCard?.chart?.kind === 'figures' && quotaCard.chart.figures[1]?.value !== '—',
+    JSON.stringify(quotaCard?.chart?.figures ?? null))
+  check('额度预测: the head ring meters the same reading as the figure',
+    quotaCard?.headRing !== undefined && quotaCard.headRing.label === quotaCard.headAfter?.big,
+    `${quotaCard?.headRing?.label} vs ${quotaCard?.headAfter?.big}`)
 
   // ---- 6) a hole in the pool payload must DEGRADE, never rescale -----------
   // The host route answers a failed upstream call with a `null` slice (one dead
@@ -357,15 +427,19 @@ const near = (a, b, eps = 0.051) => Math.abs(a - b) <= eps
   const endMs = Date.parse(aggEnd)
   const liveEnds = pairs.map(([, e]) => Date.parse(e)).filter((ms) => Number.isFinite(ms) && ms > Date.now())
   check('the pool calendar is the next renewal still ahead (never a rolled member\'s past date)',
-    Number.isFinite(endMs) && endMs > Date.now() && endMs === Math.min(...liveEnds), `${aggEnd} (live ends ${liveEnds.map((ms) => new Date(ms).toISOString()).join(', ')})`)
+    Number.isFinite(endMs) && endMs > Date.now() && liveEnds.length > 0 && endMs === Math.min(...liveEnds),
+    `${aggEnd} (live ends ${liveEnds.map((ms) => new Date(ms).toISOString()).join(', ') || 'none in the payload'})`)
   const localDay = (iso) => { const d = new Date(Date.parse(iso)); return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
   check('the 账期 line prints the LOCAL day of that instant (never the UTC fields of the string)',
-    all['cc-subscription'].legend.startsWith(`账期 ${localDay(aggEnd)}`), `${all['cc-subscription'].legend} vs ${localDay(aggEnd)}`)
+    typeof all['cc-subscription'].legend === 'string' && aggEnd !== undefined && all['cc-subscription'].legend.startsWith(`账期 ${localDay(aggEnd)}`),
+    `${all['cc-subscription'].legend} vs ${aggEnd === undefined ? 'no period in the payload' : localDay(aggEnd)}`)
   // A member whose period already rolled: the anchor moves to the live member,
   // so the card keeps a real month instead of degrading to `-%` / `—`.
   const rolled = clone(payload)
-  rolled.keys[0].data.subscription.data.currentPeriodStart = new Date(Date.now() - 40 * 86_400_000).toISOString()
-  rolled.keys[0].data.subscription.data.currentPeriodEnd = new Date(Date.now() - 10 * 86_400_000).toISOString()
+  if (rolled.keys[0].data.subscription !== null && rolled.keys[0].data.subscription !== undefined) {
+    rolled.keys[0].data.subscription.data.currentPeriodStart = new Date(Date.now() - 40 * 86_400_000).toISOString()
+    rolled.keys[0].data.subscription.data.currentPeriodEnd = new Date(Date.now() - 10 * 86_400_000).toISOString()
+  }
   const rolledAgg = view.ccView({ commandCode: rolled, commandCodeError: null }).data
   const rolledEndMs = Date.parse(rolledAgg?.subscription?.data?.currentPeriodEnd)
   // The expectation is read off the TAMPERED payload: rolling member 0 leaves

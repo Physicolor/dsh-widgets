@@ -16,7 +16,10 @@
  * chromium resolution (`scripts/lib/chrome.cjs`).
  *
  * The page stays on disk afterwards: `file://…/.tmp-gallery/index.html` is the
- * interactive demo, and `docs/preview/cards/` holds the PNGs.
+ * interactive demo, and `docs/preview/cards/` holds the PNGs. The same run also
+ * writes `.tmp-gallery/head-fixture.html` — `CardBody` mounted with hand-written
+ * render outputs, i.e. the head-ladder states no widget preview reaches (a ring head
+ * with no caption); `docs/probe-head-ladder.cjs` measures it.
  */
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -131,6 +134,71 @@ ${CARD_CSS}
 `
 writeFileSync(join(OUT_DIR, 'index.html'), html, 'utf8')
 console.log(`[gallery] page → ${join(OUT_DIR, 'index.html')}`)
+
+// 4b) The HEAD-LADDER FIXTURE page: the same CSS, React and bundle, but the cards
+//     are hand-written `WidgetRenderOut`s instead of widget previews. It exists for
+//     the states a widget's own preview data cannot reach — a ring head with no
+//     caption is the one that shipped the defect this page now guards (title and
+//     figure drifted 2.7px down, the ring 4.3px up; see docs/probe-head-ladder.cjs).
+//     Same variants at every size, so a scale-dependent slip is caught too.
+const FIXTURE_HTML = `<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>dsh-widgets head-ladder fixture</title>
+<link rel="stylesheet" href="theme-tokens.css" />
+<style>
+  html, body { margin: 0; }
+  body {
+    background: var(--dsw-alias-bg-base);
+    color: var(--dsw-alias-label-primary);
+    font: var(--dsw-font-base-16, 16px/24px) var(--dsw-font-family);
+    padding: 24px;
+  }
+${CARD_CSS}
+  .h-wrap { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  .h-cell { display: flex; flex-direction: column; gap: 6px; }
+  .h-head { color: var(--dsw-alias-label-tertiary); font-size: 12px; }
+  .h-head code { color: var(--dsw-alias-label-secondary); font-family: var(--ds-font-family-code); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="react.js"></script>
+<script src="react-dom.js"></script>
+<script src="gallery.js"></script>
+<script>
+  var FIGURES = { kind: 'figures', figures: [{ label: '今日用量', value: '853M' }, { label: '今日推荐', value: '861M' }] }
+  function out(over) {
+    var base = { title: '额度预测', headAfter: { big: '96%' }, legend: '账期 10-10', bodyAnchor: 'bottom', chart: FIGURES }
+    for (var k in over) base[k] = over[k]
+    return base
+  }
+  var RING = { ratio: 0.96, overshoot: true, icon: 'gauge', tone: 'primary', label: '96%' }
+  var VARIANTS = [
+    { name: 'ring-caption', out: out({ headRing: RING }) },
+    { name: 'ring-nocaption', out: out({ headRing: RING, legend: undefined }) },
+    { name: 'ring-only-dial', out: out({ headRing: RING, headAfter: undefined, legend: undefined }) },
+    { name: 'plain-ladder', out: out({}) },
+    { name: 'plain-nocaption', out: out({ legend: undefined }) },
+    { name: 'head-mark', out: out({ headIcon: { name: 'github' } }) }
+  ]
+  var SIZES = [150, 190]
+  var cells = []
+  VARIANTS.forEach(function (v) {
+    SIZES.forEach(function (unit) {
+      cells.push(React.createElement('section', { className: 'h-cell', 'data-variant': v.name, 'data-unit': String(unit), key: v.name + unit },
+        React.createElement('header', { className: 'h-head' }, React.createElement('code', null, v.name + ' @' + unit)),
+        React.createElement(DSHGallery.CardBody, { out: v.out, unit: unit, squircle: true, cornerPercent: 16, pinBox: true })))
+    })
+  })
+  ReactDOM.createRoot(document.getElementById('app')).render(React.createElement('div', { className: 'h-wrap' }, cells))
+</script>
+</body>
+</html>
+`
+writeFileSync(join(OUT_DIR, 'head-fixture.html'), FIXTURE_HTML, 'utf8')
+console.log(`[gallery] head fixture → ${join(OUT_DIR, 'head-fixture.html')}`)
 if (NO_SHOT) process.exit(0)
 
 // 5) Shoot every cell.

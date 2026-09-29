@@ -132,7 +132,7 @@ const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_
     // remove the added heatmap 2x4 row (first row with trash that is heatmap@2x4)
     const removed = await page.evaluate(() => {
       const rows = Array.from(document.querySelectorAll('.dsx-stats-addpanel .dsx-order-row'))
-      const target = rows.find((r) => r.textContent.includes('用量热度图') && r.textContent.includes('2×4'))
+      const target = rows.find((r) => r.textContent.includes('Token 热度图') && r.textContent.includes('2×4'))
       if (!target) return false
       const trash = target.querySelector('.dsx-trash')
       if (!trash) return false

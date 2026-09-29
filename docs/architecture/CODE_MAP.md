@@ -724,7 +724,6 @@ styles/primitives.module.css   按钮 / 开关 / 下拉 / 分隔线等基础件
 | G8 | `node scripts/verify-published-types.mjs` | 一个真实消费方能解析两个入口的 `.d.ts` | ✅（第一次跑就抓到 reference 路径错） |
 | — | `node docs/verify-sysinfo.mjs` | sysinfo 深度契约（也在 CI 里跑） | — |
 | — | `node --experimental-strip-types docs/verify-i18n.mjs` | 字典完整性 | — |
-
 一条命令跑完常用的：`pnpm check`（G1 + G3）；发布前 `pnpm run build`（含 G8 需要用的类型产物）。
 
 live 探针（需要 `dsh web` 在 3080 上跑着；重建后**等几秒**再跑，否则会撞上客户端 HMR 重打包）：
@@ -733,6 +732,12 @@ live 探针（需要 `dsh web` 在 3080 上跑着；重建后**等几秒**再跑
 node scripts/diag-rail-hover-release.cjs        右栏状态机 11 项
 HEADFUL=1 node scripts/diag-morph-frames.cjs    逐帧弹簧证据
 node scripts/diag-rail-scroll-perf.cjs          滚动性能
+node scripts/diag-cc-credits-tile.cjs           额度卡：装得下（不越格、不裁切）+ **方格**（格数由宽度推出）+ 文案 31 项
+node scripts/diag-cc-credits-paint.cjs          额度卡：边界格**画出来**的宽度 = 它的渐变 stop（33 项，含像素解码）
+node scripts/diag-widgets-crash.cjs             数据「先缺后到」时卡片/抽屉不能崩（故意让 /api/commandcode-usage 先 503）9 项
+node scripts/diag-card-fit.cjs                  **每张卡都装得进格子**：live 右栏 + 离线 gallery 全 55 单元 × 尺寸 × 预览态（398 项）
+node scripts/diag-text-fit.cjs                  卡上文案不许被省略号截断（标题/图例/读数/组件列表行）
+node scripts/diag-quota-ring.cjs                额度预测的头环：环内有 glyph、账期在读数下方、>100% 的套圈（离线 gallery）17 项
 node docs/verify-skeleton-shapes.cjs            19 张骨架卡片
 node docs/verify-nav-glyph.cjs                  设置导航图标 shim
 node scripts/diag-config-tab-crash.cjs          设置页/预览不崩
@@ -752,6 +757,13 @@ headful 用 scripts/lib/chrome.cjs 解析浏览器（不再硬编码修订号）
 7. **`ctx.effect` 只由入口调用**：渠道模块导出 `registerX(ctx): () => void`，不自己管生命周期。
 8. **`client/index.ts` 只做装配**（308 行）：新的右栏行为放 `rail/`，新的页面放 `surfaces/`。
 9. **包在变、地址不变**：改文件位置时同时更新本文（`scripts/print-tree.mjs --inject` 会重生成树）。
+10. **带图表的卡片高度 = 格子高度**（`CardBody` 的 `pinnedByChart`）：右栏的 slot 本来就只有 `unit` 高，让内容撑高的卡片会越出格子（实测 2026-09-29：Command Code 额度卡在 160px 的格子里长到 172.8px），`data-dsx-overflow` 于是画红框。要放更多内容就给图表 `flex: 1`（见 `ELASTIC_CHARTS`），**不要**靠去掉 pin 让它长——那正是红框的成因。
+11. **固定的卡片盒里，HEAD 不许被压缩**（`CardBody` 的 head wrapper 是 `flex: none`）：卡的盒高是固定的，flex 求解「内容太高」时若允许压 head，压掉的正是 head 的最后一行（实测 2026-09-29：额度卡的 `AllUser` 从 15px 被压成 6.3px 并裁掉，而其下的图表仍然溢出 10px 盖住它）。**只有 body 吸收少掉的像素**——它自己量自己的盒子（`quota-fit.ts`）。
+12. **图表渲染器是组件，不是函数**：`renderChart` 必须 `createElement(render, props)`。写成 `render(props)` 会把渲染器自己的 hook 记到 `CardBody` 的 fibre 上，于是「先没有图表、后长出图表」这种再正常不过的状态切换就变成 hook 数变化 → React #310 → DSH 的 slot 边界把整个抽屉清空（实测 2026-09-29，`/api/commandcode-usage` 先 503 后成功）。新图表要用 hook（测量、resize）时，这条是前提。
+13. **骨架卡就是格子本身**（`SkeletonBody`：`border-box` + `height: unit`，由 `docs/verify-skeleton-shapes.cjs` 的「必须正方形」断言守着）：骨架只写 `minHeight: unit` 时，内容一高就撑出去——实测 2026-09-29 用户看到的就是 190×214（约 +13%，与 `docs/verify-skeleton-shapes/rail-skeleton.png` 里量到的 297/263 一致），而且数据落地的那一刻卡片会跳一下。
+14. **配额图的格子是正方形，格数由宽度推出**（`charts/quota-fit.ts` 的 `quotaGeometry`）：官方那行格子是 28×26 的矩形，所以「横向 24 格」这条不能写死——在 132px 宽的行上它变成 3.6×12 的长条（用户两次指出）。现在的做法是：先取「竖着塞得下的最大方格」，再由宽度除出格数，剩下的高度自然成为大数字与第一行之间的留白。要改观感（格子大小、间距、留白）都改 `quota-fit.ts` 的常量，不要在渲染器里写死像素。
+15. **改名要连带看两处显示**（`scripts/diag-text-fit.cjs` + `diag-card-fit.cjs` 两个探针）：① 组件的显示名往往**就是卡片标题**（tps / cache / quota-manage / sys-* / github.* 都是），所以名字必须能在卡片里印全——5 个汉字的「缓存命中率」在带 52px 环的头上就变成「缓存命...」（实测 2026-09-29，用户：**这不对！不能省略号**）；② 每张卡都必须装进 `unit × unit`——`segments` 这类有固定高度预算的图表（见 `charts/segments.tsx` 的 76px 预算）一旦多出一行 `legend` 就会溢出（轨迹占比：161px in 150px）。**改名字/加一行文案之前先跑这两个探针**。
+16. **会超额的圆环用 `headRing.overshoot`**（`Donut`）：>100% 时第一圈闭合、超出部分画成第二段 dash（同样的起点）。「套了一圈」的正确读法是**同色 + 尾部圆角自身的阴影**：阴影是一枚**模糊的圆盘**，画在带子**下面**、并沿切线方向往前推一点——被带子盖住的部分看不见，剩下的就是贴在圆角前缘的一道月牙（`scripts/diag-quota-ring.cjs` 断言它的圆心正好落在圆角 + 前推处、且绘制顺序在带子之前）。三个被否掉的版本都留在注释里：同色无阴影＝完全看不出；整条带子加 `drop-shadow`＝两侧各糊一层；把阴影画成**沿轨道的短弧**＝一坨深红、把圆角本身糊掉（用户原话「看不出来这个圆角的样子，只看到一坨深红」）。`ratio ≤ 1` 的其它环一律夹紧，不受影响。
 
 ---
 
