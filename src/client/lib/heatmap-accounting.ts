@@ -29,13 +29,32 @@ function saveHeatmap(m: Record<string, number>): void {
 /** Default heatmap accounting timezone: Beijing (UTC+8). Configurable per
  *  heatmap card (cardConfigs.heatmap.timeZone); 'local' = browser clock. */
 export const DEFAULT_TZ = 'Asia/Shanghai'
+
+/** One formatter per timezone, built on first use.
+ *
+ *  WHY: `new Intl.DateTimeFormat(...)` is expensive (locale data + ICU setup), and
+ *  `dateKey` is called once per heatmap CELL — `buildHeatmapGrid` alone asks for 91
+ *  of them — and the widget rail re-renders continuously while a turn streams
+ *  (measured 2026-09-29: 13 grid builds/s = 1196 `dateKey` calls/s). Constructing
+ *  the formatter inline made `dateKey` the second hottest function of the idle page
+ *  (10.8% of samples, ~75 ms/s of one core); formatting through a cached one keeps
+ *  the same output with a fraction of the work. */
+const dayFormatters = new Map<string, Intl.DateTimeFormat>()
+
 export function dateKey(d: Date, tz?: string): string {
   const tzName = tz || DEFAULT_TZ
   if (tzName !== 'local') {
     try {
-      // en-CA formats as YYYY-MM-DD in the requested timezone — the calendar
-      // day boundary follows the timezone, not the browser clock.
-      return new Intl.DateTimeFormat('en-CA', { timeZone: tzName }).format(d)
+      let fmt = dayFormatters.get(tzName)
+      if (fmt === undefined) {
+        // en-CA formats as YYYY-MM-DD in the requested timezone — the calendar
+        // day boundary follows the timezone, not the browser clock. Built once;
+        // an unknown tz throws HERE (before the cache write) and falls through to
+        // the local calendar day below, exactly as it did when it was inline.
+        fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tzName })
+        dayFormatters.set(tzName, fmt)
+      }
+      return fmt.format(d)
     } catch { /* unknown tz → fall through to local calendar day */ }
   }
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`

@@ -10,31 +10,41 @@
   "locale": {
     "zh": {
       "widget.goal-progress.name": "目标进度",
-      "widget.goal-progress.desc": "当前目标的轮次进度与阶段（自主长跑时唯一可信的进度真相）",
+      "widget.goal-progress.desc": "目标的生命周期阶段（进行中 / 已暂停 / 受阻 / 已完成 / 无目标），下面三行是目标原文、轮次 / 上限（还没跑过轮次时印「尚未开始」，绝不印 0 / 256）、最近变更；没有目标时保持安静空态，不会从组件栏消失",
+      "widget.goal-progress.simToggle": "切换 无目标 / 进行中 / 刚创建 / 受阻 / 已完成 预览",
       "card.goal-progress.title": "目标进度",
-      "card.goal-progress.rounds": "{done} / {max}",
-      "card.goal-progress.legend": "{phase} · {ago} 前",
-      "card.goal-progress.blockedLegend": "{phase}：{reason}",
-      "card.goal-progress.objective": "目标",
-      "card.goal-progress.phase": "阶段",
       "card.goal-progress.phase.active": "进行中",
       "card.goal-progress.phase.paused": "已暂停",
       "card.goal-progress.phase.blocked": "受阻",
-      "card.goal-progress.phase.complete": "已完成"
+      "card.goal-progress.phase.complete": "已完成",
+      "card.goal-progress.phase.none": "无目标",
+      "card.goal-progress.noGoal": "当前会话没有目标",
+      "card.goal-progress.objective": "目标",
+      "card.goal-progress.roundsLabel": "轮次/上限",
+      "card.goal-progress.rounds": "{done} / {max}",
+      "card.goal-progress.roundsNotStarted": "尚未开始",
+      "card.goal-progress.changed": "最近变更",
+      "card.goal-progress.ago": "{ago} 前",
+      "card.goal-progress.blockedLegend": "原因：{reason}"
     },
     "en": {
       "widget.goal-progress.name": "Goal Progress",
-      "widget.goal-progress.desc": "The active goal's round progress and lifecycle phase — the only progress truth an autonomous run has",
+      "widget.goal-progress.desc": "The goal's lifecycle phase (active / paused / blocked / complete / no goal), then three rows: the objective, rounds / max (a goal that has not run a round says \"Not started\" — never 0 / 256) and the last change; with no goal the card stays as a quiet empty state instead of disappearing",
+      "widget.goal-progress.simToggle": "Cycle no-goal / active / just-created / blocked / complete",
       "card.goal-progress.title": "Goal Progress",
-      "card.goal-progress.rounds": "{done} / {max}",
-      "card.goal-progress.legend": "{phase} · {ago} ago",
-      "card.goal-progress.blockedLegend": "{phase}: {reason}",
-      "card.goal-progress.objective": "Goal",
-      "card.goal-progress.phase": "Phase",
       "card.goal-progress.phase.active": "Active",
       "card.goal-progress.phase.paused": "Paused",
       "card.goal-progress.phase.blocked": "Blocked",
-      "card.goal-progress.phase.complete": "Complete"
+      "card.goal-progress.phase.complete": "Complete",
+      "card.goal-progress.phase.none": "No goal",
+      "card.goal-progress.noGoal": "No goal in this session",
+      "card.goal-progress.objective": "Goal",
+      "card.goal-progress.roundsLabel": "Rounds/max",
+      "card.goal-progress.rounds": "{done} / {max}",
+      "card.goal-progress.roundsNotStarted": "Not started",
+      "card.goal-progress.changed": "Updated",
+      "card.goal-progress.ago": "{ago} ago",
+      "card.goal-progress.blockedLegend": "Reason: {reason}"
     }
   }
 }

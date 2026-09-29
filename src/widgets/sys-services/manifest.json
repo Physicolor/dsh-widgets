@@ -6,35 +6,43 @@
   "sizes": ["2x2"],
   "defaultInstalled": false,
   "source": "sys",
-  "skeleton": { "shape": "quotas" },
+  "skeleton": { "shape": "quotas", "count": 1 },
   "locale": {
     "zh": {
-      "widget.sys-services.name": "本地服务",
-      "widget.sys-services.desc": "本机关键端口的存活与延迟，以及代理出口是否真的能出网（不是「端口在听」就算通）",
-      "card.sys-services.title": "本地服务",
+      "widget.sys-services.name": "本地依赖",
+      "widget.sys-services.desc": "本机关键端口（DSH web；本地模型运行时按需开启）的存活与延迟，以及代理出口能否真的出网——端口在听不等于能出网。不跑本地模型时那两行根本不出现，所以不会有「未运行」的假警报",
+      "card.sys-services.title": "本地依赖",
       "card.sys-services.up": "通",
       "card.sys-services.down": "未运行",
+      "card.sys-services.verdictOk": "出口正常",
+      "card.sys-services.verdictFail": "出口不通",
+      "card.sys-services.verdictWait": "检测中",
       "card.sys-services.egressOk": "出口 {ms}",
-      "card.sys-services.egressPending": "检测中",
-      "card.sys-services.egressFail": "出口不通",
-      "card.sys-services.egressFailWhy": "出口不通（{error}）",
+      "card.sys-services.egressPort": "代理 {ms}",
       "card.sys-services.egressDetail": "出口探针失败：{error}",
       "card.sys-services.noRule": "TCP 在听不等于能出网",
-      "card.sys-services.simToggle": "切换代理出口状态"
+      "card.sys-services.cfg.ollama": "显示 Ollama（本地大模型）",
+      "card.sys-services.cfg.lmstudio": "显示 LM Studio",
+      "card.sys-services.cfg.hint": "不跑本地模型就别开：关掉的端口不显示那一行，也就不会有「未运行」的假警报",
+      "card.sys-services.simToggle": "切换预览状态"
     },
     "en": {
-      "widget.sys-services.name": "Local Services",
-      "widget.sys-services.desc": "Liveness and latency of the machine's key local endpoints, plus whether the proxy egress actually works — a listening port is not proof",
-      "card.sys-services.title": "Local Services",
+      "widget.sys-services.name": "Local Dependencies",
+      "widget.sys-services.desc": "Liveness and latency of this machine's key local endpoints (DSH web; the local model runtimes are opt-in) plus whether the proxy egress really works — a listening port is not proof. A runtime you do not run gets no row at all, so it cannot raise a false \"down\" alarm",
+      "card.sys-services.title": "Local Dependencies",
       "card.sys-services.up": "up",
       "card.sys-services.down": "down",
+      "card.sys-services.verdictOk": "egress ok",
+      "card.sys-services.verdictFail": "no egress",
+      "card.sys-services.verdictWait": "checking",
       "card.sys-services.egressOk": "egress {ms}",
-      "card.sys-services.egressPending": "checking",
-      "card.sys-services.egressFail": "no egress",
-      "card.sys-services.egressFailWhy": "no egress ({error})",
+      "card.sys-services.egressPort": "proxy {ms}",
       "card.sys-services.egressDetail": "egress probe failed: {error}",
       "card.sys-services.noRule": "a listening port is not an egress verdict",
-      "card.sys-services.simToggle": "Cycle the proxy egress state"
+      "card.sys-services.cfg.ollama": "Show Ollama (local LLM)",
+      "card.sys-services.cfg.lmstudio": "Show LM Studio",
+      "card.sys-services.cfg.hint": "Leave off unless you run a local model: a switched-off port gets no row, so an uninstalled runtime is not a permanent \"down\"",
+      "card.sys-services.simToggle": "Cycle the preview state"
     }
   }
 }

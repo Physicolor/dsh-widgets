@@ -3,32 +3,34 @@
   "order": 84,
   "group": "system",
   "builtin": true,
-  "sizes": ["2x2"],
+  "sizes": [
+    "2x2"
+  ],
   "defaultInstalled": false,
   "locale": {
     "zh": {
       "widget.subagent.name": "子代理",
-      "widget.subagent.desc": "本会话派生的子代理数量、各自活跃时长与身份标签",
+      "widget.subagent.desc": "本会话派出的子代理是什么：几个、几个可持续、分别是谁",
       "card.subagent.title": "子代理",
-      "card.subagent.legendActive": "活跃时长 {dur}",
+      "card.subagent.legendActive": "最久活跃 {dur}",
       "card.subagent.legendEarliest": "最早 {ago} 前创建",
-      "card.subagent.longest": "最久",
       "card.subagent.continuable": "持续型",
       "card.subagent.recent": "最近",
       "card.subagent.ago": "{ago} 前",
-      "widget.subagent.simToggle": "切换 活跃时长 / 创建时间 预览"
+      "widget.subagent.simToggle": "切换 最久活跃 / 最早创建 预览",
+      "card.subagent.none": "暂无子代理"
     },
     "en": {
       "widget.subagent.name": "Subagents",
-      "widget.subagent.desc": "How many subagents this session spawned, how long each has been active, and their labels",
+      "widget.subagent.desc": "What this session dispatched: how many subagents, how many are resumable, and who they are",
       "card.subagent.title": "Subagents",
-      "card.subagent.legendActive": "active time {dur}",
+      "card.subagent.legendActive": "longest active {dur}",
       "card.subagent.legendEarliest": "earliest created {ago} ago",
-      "card.subagent.longest": "Longest",
       "card.subagent.continuable": "Continuable",
       "card.subagent.recent": "Latest",
       "card.subagent.ago": "{ago} ago",
-      "widget.subagent.simToggle": "Toggle active-time / created-at preview"
+      "widget.subagent.simToggle": "Toggle longest-active / earliest-created preview",
+      "card.subagent.none": "No subagents"
     }
   }
 }

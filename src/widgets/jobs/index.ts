@@ -4,7 +4,7 @@ import { t } from '../../client/i18n'
 import { fmtDuration } from '../../client/lib/format'
 
 /**
- * 后台作业 — this session's background jobs: how many are still running, how long
+ * 后台任务 — this session's background jobs: how many are still running, how long
  * the longest one has been running, and which job is the newest.
  *
  * WHY IT EXISTS: a long-running job is the number-one cause of a session that
@@ -12,6 +12,19 @@ import { fmtDuration } from '../../client/lib/format'
  * reads the `jobsBySession` list mirror), but the popover has to be opened and
  * only exists while a job does; on a rail of cards nothing says "a Bash job has
  * been holding a slot for 12 minutes". This card is that sentence.
+ *
+ * THE NAME IS THE OFFICIAL ONE (this is the only thing the rename round
+ * touched). 后台任务 is the word the official header popover's own zh dictionary
+ * uses — `@deepseek-ai/dsh-client-ui-jobs/lib/types/client/locales.d.ts`:
+ * `count.live.one/other` = 「{count} 个后台任务运行中」, `count.idle.*` =
+ * 「{count} 个后台任务」, `list.aria` = 「后台任务」 — so the card now says
+ * 后台任务 instead of the earlier 后台作业. The EN side is a DELIBERATE departure
+ * from the official dictionary (which still reads "background job(s)"): the
+ * owner asked for "Background Tasks" so the two locales name the same thing.
+ * The IDENTIFIERS do not move: the widget id stays `jobs`, the contract field
+ * stays `stats.jobs`, the wire statuses stay `SessionJob.status`, and every
+ * "job" in this file is that internal name — renaming code to "task" would
+ * silently drift from the producer. See README §0 / §10.
  *
  * THE DATA IS NOT A PROJECTION. `jobsBySession` is a field of the client sessions
  * service's list mirror (the same one the official popover reads) — no RPC, no
@@ -41,7 +54,7 @@ import { fmtDuration } from '../../client/lib/format'
  *     nothing to report, `render` returns null. Claiming "0 jobs" would be a
  *     fabricated reading.
  *   - `[]` (the mirror exists and is empty) — the card STILL RENDERS: 0 with the
- *     grey 「已结束 0 个」 caption and three dash rows. 「后台作业全清了」 is itself
+ *     grey 「已结束 0 个」 caption and three dash rows. 「后台任务全清了」 is itself
  *     useful confirmation, and it is the answer to the question the card was
  *     installed to ask. This is deliberately the OPPOSITE call from the 子代理
  *     card (which hides on an empty catalog): a subagent catalog is normally

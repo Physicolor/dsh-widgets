@@ -236,15 +236,38 @@ let extraLocales: WidgetLocales = {}
  *  the official-service registration and the built-in fallback see them. */
 export function setExtraLocales(extra: WidgetLocales): void {
   extraLocales = extra ?? {}
+  // The merged map is cached (see dictFor): the extras just changed, so the next
+  // reader must rebuild instead of serving the previous shell-only map.
+  dictCache = null
 }
+
+/** The merged dictionaries, built ONCE per locale and reused.
+ *
+ *  WHY THIS IS NOT A MICRO-OPTIMISATION. `t()` sits on every label of every card,
+ *  and the widget rail re-renders continuously while a turn streams (measured
+ *  2026-09-29 with `Profiler.takePreciseCoverage`: 26 LanesChart renders/s, 3977
+ *  `t()` calls/s). Rebuilding the merged map per call — the spread plus the
+ *  Object.entries loop — showed up as the SINGLE hottest function in a CPU profile
+ *  of the idle page (21.7% of samples, ~160 ms/s of one core) and it multiplied the
+ *  rail's per-render cost, which is what the dropped frames scale with. The map is
+ *  shared, not copied: callers only read keys out of it (`t` and the locale
+ *  registration), and `setExtraLocales` drops the cache instead of mutating it. */
+let dictCache: { zh: Record<string, string>; en: Record<string, string> } | null = null
 
 /** The effective dictionary for a locale: shell + per-widget extras. */
 function dictFor(locale: 'zh' | 'en'): Record<string, string> {
-  const base = locale === 'zh' ? ZH : EN
-  const extra = locale === 'zh' ? (extraLocales.zh ?? {}) : (extraLocales.en ?? {})
-  const merged: Record<string, string> = { ...base }
-  for (const [k, v] of Object.entries(extra)) merged[k] = v
-  return merged
+  if (dictCache === null) {
+    const merge = (base: Record<string, string>, extra: Record<string, string>): Record<string, string> => {
+      const merged: Record<string, string> = { ...base }
+      for (const [k, v] of Object.entries(extra)) merged[k] = v
+      return merged
+    }
+    dictCache = {
+      zh: merge(ZH, extraLocales.zh ?? {}),
+      en: merge(EN, extraLocales.en ?? {}),
+    }
+  }
+  return dictCache[locale]
 }
 
 /** Feed the official locale service (called from apply). Registers the merged

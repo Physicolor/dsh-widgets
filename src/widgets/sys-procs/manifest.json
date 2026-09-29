@@ -9,16 +9,16 @@
   "skeleton": { "shape": "bars" },
   "locale": {
     "zh": {
-      "widget.sys-procs.name": "内存大户",
-      "widget.sys-procs.desc": "按工作集内存排序的前几名进程；多 agent / 多模型并行时回答「谁把内存吃满了」",
+      "widget.sys-procs.name": "进程内存占用",
+      "widget.sys-procs.desc": "按工作集内存（Working Set / RSS）排序的前几名进程，以及占用最高的那个进程的工作集字节数；多 agent / 多模型并行时回答「哪个进程占着最多内存」",
       "widget.sys-procs.simToggle": "切换 多进程 / 单进程 预览",
-      "card.sys-procs.title": "内存大户"
+      "card.sys-procs.title": "进程内存占用"
     },
     "en": {
-      "widget.sys-procs.name": "Top Processes",
-      "widget.sys-procs.desc": "The top processes by working-set memory — who is eating the RAM while several agents or models run at once",
+      "widget.sys-procs.name": "Process Memory",
+      "widget.sys-procs.desc": "The top processes by working set (RSS), with the leading process's working-set bytes as the figure — which process is holding this machine's RAM while several agents or models run at once",
       "widget.sys-procs.simToggle": "Toggle many- / one-process preview",
-      "card.sys-procs.title": "Top Processes"
+      "card.sys-procs.title": "Process Memory"
     }
   }
 }

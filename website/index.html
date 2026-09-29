@@ -83,7 +83,7 @@
     "@id": "https://physicolor.github.io/dsh-widgets/#widgets",
     "name": "dsh-widgets widget library",
     "description": "Every widget unit shipped by dsh-widgets, generated from the src/widgets unit manifests.",
-    "numberOfItems": 56,
+    "numberOfItems": 55,
     "itemListOrder": "https://schema.org/ItemListOrderAscending",
     "itemListElement": [
             {
@@ -383,98 +383,91 @@
             {
               "@type": "ListItem",
               "position": 43,
-              "name": "会话配置 / Session Config",
-              "description": "本会话正在用的模型 / 推理档 / Agent 预设；下一轮请求换了路线时会显示出来 The model route, reasoning effort and agent preset this session runs; flags a route change queued for the next request",
-              "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/model-config"
-            },
-            {
-              "@type": "ListItem",
-              "position": 44,
               "name": "峰谷时段表 / Peak Hours Board",
               "description": "2×4 宽版峰谷定价：今天接下来的计费时刻表——高峰 09:00–12:00 / 14:00–18:00、其余低谷，正在计费的那一行高亮，并给出距离下一段切换还有多久；周末与中国法定节假日写明「全天低谷」的原因（与 2×2 峰谷定价同一套规则；可自定时段 / 时区 / 额外低谷日） The 2×4 peak-pricing timetable: how the rest of today bills — peak 09:00–12:00 / 14:00–18:00, off-peak otherwise, the row billing right now highlighted, plus how long until the rate flips; weekends and Chinese public holidays say why they are off-peak all day (same rule as the 2×2 Peak Pricing card; windows, zone and extra off-peak days configurable)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/peak-pricing-board"
             },
             {
               "@type": "ListItem",
-              "position": 45,
+              "position": 44,
               "name": "目标进度 / Goal Progress",
-              "description": "当前目标的轮次进度与阶段（自主长跑时唯一可信的进度真相） The active goal's round progress and lifecycle phase — the only progress truth an autonomous run has",
+              "description": "目标的生命周期阶段（进行中 / 已暂停 / 受阻 / 已完成 / 无目标），下面三行是目标原文、轮次 / 上限（还没跑过轮次时印「尚未开始」，绝不印 0 / 256）、最近变更；没有目标时保持安静空态，不会从组件栏消失 The goal's lifecycle phase (active / paused / blocked / complete / no goal), then three rows: the objective, rounds / max (a goal that has not run a round says \"Not started\" — never 0 / 256) and the last change; with no goal the card stays as a quiet empty state instead of disappearing",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/goal-progress"
             },
             {
               "@type": "ListItem",
-              "position": 46,
+              "position": 45,
               "name": "子代理 / Subagents",
-              "description": "本会话派生的子代理数量、各自活跃时长与身份标签 How many subagents this session spawned, how long each has been active, and their labels",
+              "description": "本会话派出的子代理是什么：几个、几个可持续、分别是谁 What this session dispatched: how many subagents, how many are resumable, and who they are",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/subagent"
             },
             {
               "@type": "ListItem",
-              "position": 47,
+              "position": 46,
               "name": "权限档位 / Permissions",
-              "description": "本会话生效的权限档位与它允许做什么（投影已把 preset / 沙箱 / 审批三个旋钮折成一个值） The effective permission preset and what it allows — the projection already folds preset, sandbox mode and approval policy into this one value",
+              "description": "本会话生效的权限档位：官方权限选择器的那枚盾牌 + 档位名（投影已把 preset / 沙箱 / 审批三个旋钮折成一个值） The effective permission preset — the official selector's shield plus its name (the projection already folds preset, sandbox mode and approval policy into this one value)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/guard"
             },
             {
               "@type": "ListItem",
-              "position": 48,
-              "name": "后台作业 / Background Jobs",
-              "description": "本会话的后台作业：几个在跑、最久跑了多久、最近一个是什么 This session's background jobs: how many are running, the longest one, and what the newest is",
+              "position": 47,
+              "name": "后台任务 / Background Jobs",
+              "description": "本会话的后台任务：几个在跑、最久跑了多久、最近一个是什么 This session’s background jobs: how many are running, the longest one, and what the newest is",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/jobs"
             },
             {
               "@type": "ListItem",
-              "position": 49,
+              "position": 48,
               "name": "磁盘与自检 / Disk & Self-check",
-              "description": "各盘剩余空间、DSH 会话日志的体积与增速、web 进程自身的占用——长跑 harness 最真实的运维风险 Free space per drive, the DSH session-log footprint and its growth, and the web process's own usage — the operational risks a long-running harness actually hits",
+              "description": "各盘剩余空间（条=已用、文字=剩余）、DSH 会话日志的体积与最近一小时增速、web 进程自身的占用——长跑 harness 最真实的运维风险 Free space per drive (bar = used, text = free), the DSH session-log footprint and how much of it was written in the last hour, and the web process's own usage — the operational risks a long-running harness actually hits",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-disk"
             },
             {
               "@type": "ListItem",
-              "position": 50,
-              "name": "窗口预测 / Window Forecast",
+              "position": 49,
+              "name": "限流预测 / Throttle Forecast",
               "description": "按当前速率，5 小时 / 周额度窗口会不会在重置前打满（额度管理只管月窗口） At the current pace, will the 5h / weekly quota window hit its cap before it resets? (Quota Manager only covers the monthly window)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/window-forecast"
             },
             {
               "@type": "ListItem",
-              "position": 51,
+              "position": 50,
               "name": "网络吞吐 / Network Throughput",
               "description": "本机网卡的实时收发速率（两次计数采样差分），以及当前最忙的那张网卡 Live per-adapter receive / transmit rate (a counter delta) for this machine, plus the busiest adapter",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-net"
             },
             {
               "@type": "ListItem",
-              "position": 52,
+              "position": 51,
               "name": "供电 / Power",
               "description": "是否在用电池、剩余电量与预计续航，以及当前 Windows 电源方案 Whether this machine runs on battery, its charge and remaining runtime, and the active Windows power scheme",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-power"
             },
             {
               "@type": "ListItem",
-              "position": 53,
-              "name": "内存大户 / Top Processes",
-              "description": "按工作集内存排序的前几名进程；多 agent / 多模型并行时回答「谁把内存吃满了」 The top processes by working-set memory — who is eating the RAM while several agents or models run at once",
+              "position": 52,
+              "name": "进程内存占用 / Process Memory",
+              "description": "按工作集内存（Working Set / RSS）排序的前几名进程，以及占用最高的那个进程的工作集字节数；多 agent / 多模型并行时回答「哪个进程占着最多内存」 The top processes by working set (RSS), with the leading process's working-set bytes as the figure — which process is holding this machine's RAM while several agents or models run at once",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-procs"
             },
             {
               "@type": "ListItem",
-              "position": 54,
-              "name": "本地服务 / Local Services",
-              "description": "本机关键端口的存活与延迟，以及代理出口是否真的能出网（不是「端口在听」就算通） Liveness and latency of the machine's key local endpoints, plus whether the proxy egress actually works — a listening port is not proof",
+              "position": 53,
+              "name": "本地依赖 / Local Dependencies",
+              "description": "本机关键端口（DSH web；本地模型运行时按需开启）的存活与延迟，以及代理出口能否真的出网——端口在听不等于能出网。不跑本地模型时那两行根本不出现，所以不会有「未运行」的假警报 Liveness and latency of this machine's key local endpoints (DSH web; the local model runtimes are opt-in) plus whether the proxy egress really works — a listening port is not proof. A runtime you do not run gets no row at all, so it cannot raise a false \"down\" alarm",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/sys-services"
             },
             {
               "@type": "ListItem",
-              "position": 55,
-              "name": "会话成本 / Session Cost",
+              "position": 54,
+              "name": "本会话成本 / Session Cost",
               "description": "把本会话的四桶 token 按价格表折成钱，并标出这个金额的来源（官方价 / 中转价 / 免费路由 / 估算价） Folds this session's four token buckets into money using the price table, and says which table it used (official / reseller / free route / estimated)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/session-cost"
             },
             {
               "@type": "ListItem",
-              "position": 56,
-              "name": "待我处理 / To Review",
+              "position": 55,
+              "name": "GitHub 待我处理 / GitHub · To Review",
               "description": "GitHub 上等我的未读线程：review 请求 / @提及 / 指派，以及最新的一条；需要 token 或 gh 登录（未登录时该卡不出现） Unread GitHub threads waiting on you: review requests, mentions and assignments, plus the newest one — needs a token or a gh login (no card at all when signed out)",
               "url": "https://github.com/Physicolor/dsh-widgets/tree/main/src/widgets/github-notify"
             }
@@ -1562,25 +1555,6 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
               </div>
             </div>
           </article>
-          <article class="widget-card" data-group="system" data-widget="model-config" role="listitem">
-            <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="model-config" data-size="2x2"></div></div>
-            <div class="widget-body">
-              <div class="widget-name-row">
-                <span class="widget-name">会话配置<span class="widget-name-en">Session Config</span></span>
-                <span class="widget-id">model-config</span>
-              </div>
-              <p class="widget-desc">本会话正在用的模型 / 推理档 / Agent 预设；下一轮请求换了路线时会显示出来<span class="widget-desc-en"> The model route, reasoning effort and agent preset this session runs; flags a route change queued for the next request</span></p>
-              <div class="widget-meta">
-                <span class="badge" data-i18n="group.system">系统</span>
-                <span class="badge badge-size">2×2</span>
-                <span class="badge badge-pattern" data-i18n="pattern.value"></span>
-                <span class="badge" data-i18n="ia.readonly"></span>
-                <span class="badge badge-blue" data-i18n="badgeBuiltin">内置</span>
-                
-                <button type="button" class="widget-open" data-widget="model-config" data-i18n="openDetail">解剖 / 审计</button>
-              </div>
-            </div>
-          </article>
           <article class="widget-card" data-group="pricing" data-widget="peak-pricing-board" role="listitem">
             <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="peak-pricing-board" data-size="2x2"></div></div>
             <div class="widget-body">
@@ -1607,7 +1581,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="widget-name">目标进度<span class="widget-name-en">Goal Progress</span></span>
                 <span class="widget-id">goal-progress</span>
               </div>
-              <p class="widget-desc">当前目标的轮次进度与阶段（自主长跑时唯一可信的进度真相）<span class="widget-desc-en"> The active goal's round progress and lifecycle phase — the only progress truth an autonomous run has</span></p>
+              <p class="widget-desc">目标的生命周期阶段（进行中 / 已暂停 / 受阻 / 已完成 / 无目标），下面三行是目标原文、轮次 / 上限（还没跑过轮次时印「尚未开始」，绝不印 0 / 256）、最近变更；没有目标时保持安静空态，不会从组件栏消失<span class="widget-desc-en"> The goal's lifecycle phase (active / paused / blocked / complete / no goal), then three rows: the objective, rounds / max (a goal that has not run a round says &quot;Not started&quot; — never 0 / 256) and the last change; with no goal the card stays as a quiet empty state instead of disappearing</span></p>
               <div class="widget-meta">
                 <span class="badge" data-i18n="group.system">系统</span>
                 <span class="badge badge-size">2×2</span>
@@ -1626,7 +1600,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="widget-name">子代理<span class="widget-name-en">Subagents</span></span>
                 <span class="widget-id">subagent</span>
               </div>
-              <p class="widget-desc">本会话派生的子代理数量、各自活跃时长与身份标签<span class="widget-desc-en"> How many subagents this session spawned, how long each has been active, and their labels</span></p>
+              <p class="widget-desc">本会话派出的子代理是什么：几个、几个可持续、分别是谁<span class="widget-desc-en"> What this session dispatched: how many subagents, how many are resumable, and who they are</span></p>
               <div class="widget-meta">
                 <span class="badge" data-i18n="group.system">系统</span>
                 <span class="badge badge-size">2×2</span>
@@ -1645,7 +1619,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="widget-name">权限档位<span class="widget-name-en">Permissions</span></span>
                 <span class="widget-id">guard</span>
               </div>
-              <p class="widget-desc">本会话生效的权限档位与它允许做什么（投影已把 preset / 沙箱 / 审批三个旋钮折成一个值）<span class="widget-desc-en"> The effective permission preset and what it allows — the projection already folds preset, sandbox mode and approval policy into this one value</span></p>
+              <p class="widget-desc">本会话生效的权限档位：官方权限选择器的那枚盾牌 + 档位名（投影已把 preset / 沙箱 / 审批三个旋钮折成一个值）<span class="widget-desc-en"> The effective permission preset — the official selector's shield plus its name (the projection already folds preset, sandbox mode and approval policy into this one value)</span></p>
               <div class="widget-meta">
                 <span class="badge" data-i18n="group.system">系统</span>
                 <span class="badge badge-size">2×2</span>
@@ -1661,10 +1635,10 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
             <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="jobs" data-size="2x2"></div></div>
             <div class="widget-body">
               <div class="widget-name-row">
-                <span class="widget-name">后台作业<span class="widget-name-en">Background Jobs</span></span>
+                <span class="widget-name">后台任务<span class="widget-name-en">Background Jobs</span></span>
                 <span class="widget-id">jobs</span>
               </div>
-              <p class="widget-desc">本会话的后台作业：几个在跑、最久跑了多久、最近一个是什么<span class="widget-desc-en"> This session's background jobs: how many are running, the longest one, and what the newest is</span></p>
+              <p class="widget-desc">本会话的后台任务：几个在跑、最久跑了多久、最近一个是什么<span class="widget-desc-en"> This session’s background jobs: how many are running, the longest one, and what the newest is</span></p>
               <div class="widget-meta">
                 <span class="badge" data-i18n="group.system">系统</span>
                 <span class="badge badge-size">2×2</span>
@@ -1683,7 +1657,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
                 <span class="widget-name">磁盘与自检<span class="widget-name-en">Disk &amp; Self-check</span></span>
                 <span class="widget-id">sys-disk</span>
               </div>
-              <p class="widget-desc">各盘剩余空间、DSH 会话日志的体积与增速、web 进程自身的占用——长跑 harness 最真实的运维风险<span class="widget-desc-en"> Free space per drive, the DSH session-log footprint and its growth, and the web process's own usage — the operational risks a long-running harness actually hits</span></p>
+              <p class="widget-desc">各盘剩余空间（条=已用、文字=剩余）、DSH 会话日志的体积与最近一小时增速、web 进程自身的占用——长跑 harness 最真实的运维风险<span class="widget-desc-en"> Free space per drive (bar = used, text = free), the DSH session-log footprint and how much of it was written in the last hour, and the web process's own usage — the operational risks a long-running harness actually hits</span></p>
               <div class="widget-meta">
                 <span class="badge" data-i18n="group.device">设备状态</span>
                 <span class="badge badge-size">2×4</span>
@@ -1699,7 +1673,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
             <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="window-forecast" data-size="2x2"></div></div>
             <div class="widget-body">
               <div class="widget-name-row">
-                <span class="widget-name">窗口预测<span class="widget-name-en">Window Forecast</span></span>
+                <span class="widget-name">限流预测<span class="widget-name-en">Throttle Forecast</span></span>
                 <span class="widget-id">window-forecast</span>
               </div>
               <p class="widget-desc">按当前速率，5 小时 / 周额度窗口会不会在重置前打满（额度管理只管月窗口）<span class="widget-desc-en"> At the current pace, will the 5h / weekly quota window hit its cap before it resets? (Quota Manager only covers the monthly window)</span></p>
@@ -1756,10 +1730,10 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
             <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="sys-procs" data-size="2x2"></div></div>
             <div class="widget-body">
               <div class="widget-name-row">
-                <span class="widget-name">内存大户<span class="widget-name-en">Top Processes</span></span>
+                <span class="widget-name">进程内存占用<span class="widget-name-en">Process Memory</span></span>
                 <span class="widget-id">sys-procs</span>
               </div>
-              <p class="widget-desc">按工作集内存排序的前几名进程；多 agent / 多模型并行时回答「谁把内存吃满了」<span class="widget-desc-en"> The top processes by working-set memory — who is eating the RAM while several agents or models run at once</span></p>
+              <p class="widget-desc">按工作集内存（Working Set / RSS）排序的前几名进程，以及占用最高的那个进程的工作集字节数；多 agent / 多模型并行时回答「哪个进程占着最多内存」<span class="widget-desc-en"> The top processes by working set (RSS), with the leading process's working-set bytes as the figure — which process is holding this machine's RAM while several agents or models run at once</span></p>
               <div class="widget-meta">
                 <span class="badge" data-i18n="group.device">设备状态</span>
                 <span class="badge badge-size">2×2</span>
@@ -1775,10 +1749,10 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
             <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="sys-services" data-size="2x2"></div></div>
             <div class="widget-body">
               <div class="widget-name-row">
-                <span class="widget-name">本地服务<span class="widget-name-en">Local Services</span></span>
+                <span class="widget-name">本地依赖<span class="widget-name-en">Local Dependencies</span></span>
                 <span class="widget-id">sys-services</span>
               </div>
-              <p class="widget-desc">本机关键端口的存活与延迟，以及代理出口是否真的能出网（不是「端口在听」就算通）<span class="widget-desc-en"> Liveness and latency of the machine's key local endpoints, plus whether the proxy egress actually works — a listening port is not proof</span></p>
+              <p class="widget-desc">本机关键端口（DSH web；本地模型运行时按需开启）的存活与延迟，以及代理出口能否真的出网——端口在听不等于能出网。不跑本地模型时那两行根本不出现，所以不会有「未运行」的假警报<span class="widget-desc-en"> Liveness and latency of this machine's key local endpoints (DSH web; the local model runtimes are opt-in) plus whether the proxy egress really works — a listening port is not proof. A runtime you do not run gets no row at all, so it cannot raise a false &quot;down&quot; alarm</span></p>
               <div class="widget-meta">
                 <span class="badge" data-i18n="group.device">设备状态</span>
                 <span class="badge badge-size">2×2</span>
@@ -1794,7 +1768,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
             <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="session-cost" data-size="2x2"></div></div>
             <div class="widget-body">
               <div class="widget-name-row">
-                <span class="widget-name">会话成本<span class="widget-name-en">Session Cost</span></span>
+                <span class="widget-name">本会话成本<span class="widget-name-en">Session Cost</span></span>
                 <span class="widget-id">session-cost</span>
               </div>
               <p class="widget-desc">把本会话的四桶 token 按价格表折成钱，并标出这个金额的来源（官方价 / 中转价 / 免费路由 / 估算价）<span class="widget-desc-en"> Folds this session's four token buckets into money using the price table, and says which table it used (official / reseller / free route / estimated)</span></p>
@@ -1813,7 +1787,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
             <div class="widget-preview"><div class="wg-slot widget-stage-lg" data-preview="github-notify" data-size="2x2"></div></div>
             <div class="widget-body">
               <div class="widget-name-row">
-                <span class="widget-name">待我处理<span class="widget-name-en">To Review</span></span>
+                <span class="widget-name">GitHub 待我处理<span class="widget-name-en">GitHub · To Review</span></span>
                 <span class="widget-id">github-notify</span>
               </div>
               <p class="widget-desc">GitHub 上等我的未读线程：review 请求 / @提及 / 指派，以及最新的一条；需要 token 或 gh 登录（未登录时该卡不出现）<span class="widget-desc-en"> Unread GitHub threads waiting on you: review requests, mentions and assignments, plus the newest one — needs a token or a gh login (no card at all when signed out)</span></p>

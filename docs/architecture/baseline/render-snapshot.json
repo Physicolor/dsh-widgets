@@ -5758,20 +5758,165 @@
      "breakdown": [
       {
        "label": "目标",
-       "value": "把 dsh-widgets…"
+       "value": "把 dsh-wid…"
       },
       {
-       "label": "阶段",
-       "tone": "danger",
-       "value": "受阻"
+       "label": "轮次/上限",
+       "value": "12 / 40"
+      },
+      {
+       "label": "最近变更",
+       "value": "3m 前"
       }
      ],
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "12 / 40"
+     "big": "受阻"
     },
-    "legend": "受阻：等待你确认是否…",
+    "legend": "原因：等待你确认是否…",
+    "title": "目标进度",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": {
+    "state": "none"
+   },
+   "out": {
+    "headAfter": {
+     "big": "无目标"
+    },
+    "legend": "当前会话没有目标",
+    "title": "目标进度"
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": {
+    "state": "active"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "目标",
+       "value": "把 dsh-wid…"
+      },
+      {
+       "label": "轮次/上限",
+       "value": "12 / 40"
+      },
+      {
+       "label": "最近变更",
+       "value": "42s 前"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "进行中"
+    },
+    "title": "目标进度"
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": {
+    "state": "fresh"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "目标",
+       "value": "盯住发布流…"
+      },
+      {
+       "label": "轮次/上限",
+       "value": "尚未开始"
+      },
+      {
+       "label": "最近变更",
+       "value": "5s 前"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "进行中"
+    },
+    "title": "目标进度"
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": {
+    "state": "blocked"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "目标",
+       "value": "把 dsh-wid…"
+      },
+      {
+       "label": "轮次/上限",
+       "value": "12 / 40"
+      },
+      {
+       "label": "最近变更",
+       "value": "3m 前"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "受阻"
+    },
+    "legend": "原因：等待你确认是否…",
+    "title": "目标进度",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": {
+    "state": "complete"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "目标",
+       "value": "把 goal-pr…"
+      },
+      {
+       "label": "轮次/上限",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "最近变更",
+       "value": "6m 前"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "已完成"
+    },
     "title": "目标进度"
    }
   },
@@ -5797,9 +5942,8 @@
     "headAfter": {
      "big": "4"
     },
-    "legend": "活跃时长 36m12s",
-    "title": "子代理",
-    "valueTone": "warn"
+    "legend": "最久活跃 36m12s",
+    "title": "子代理"
    }
   },
   {
@@ -5826,9 +5970,8 @@
     "headAfter": {
      "big": "4"
     },
-    "legend": "活跃时长 36m12s",
-    "title": "子代理",
-    "valueTone": "warn"
+    "legend": "最久活跃 36m12s",
+    "title": "子代理"
    }
   },
   {
@@ -5865,26 +6008,12 @@
    "sim": null,
    "out": {
     "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "当前",
-       "tone": "danger",
-       "value": "完全权限"
-      },
-      {
-       "label": "说明",
-       "value": "文件与命令均不询…"
-      }
-     ],
-     "kind": "breakdown"
+    "headIcon": {
+     "name": "permission-full-access",
+     "tone": "danger"
     },
-    "headAfter": {
-     "big": "完全权限"
-    },
-    "legend": "4 个可选档位",
-    "title": "权限档位",
-    "valueTone": "danger"
+    "sub": "完全权限",
+    "title": "权限档位"
    }
   },
   {
@@ -5895,26 +6024,12 @@
    },
    "out": {
     "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "当前",
-       "tone": "danger",
-       "value": "完全权限"
-      },
-      {
-       "label": "说明",
-       "value": "文件与命令均不询…"
-      }
-     ],
-     "kind": "breakdown"
+    "headIcon": {
+     "name": "permission-full-access",
+     "tone": "danger"
     },
-    "headAfter": {
-     "big": "完全权限"
-    },
-    "legend": "4 个可选档位",
-    "title": "权限档位",
-    "valueTone": "danger"
+    "sub": "完全权限",
+    "title": "权限档位"
    }
   },
   {
@@ -5925,23 +6040,25 @@
    },
    "out": {
     "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "当前",
-       "value": "仅可查看"
-      },
-      {
-       "label": "说明",
-       "value": "只能读取文件…"
-      }
-     ],
-     "kind": "breakdown"
+    "headIcon": {
+     "name": "permission-read-only"
     },
-    "headAfter": {
-     "big": "仅可查看"
+    "sub": "仅可查看",
+    "title": "权限档位"
+   }
+  },
+  {
+   "id": "guard",
+   "size": "2x2",
+   "sim": {
+    "currentValue": "workspace-write"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "headIcon": {
+     "name": "permission-workspace-write"
     },
-    "legend": "4 个可选档位",
+    "sub": "工作区内修改",
     "title": "权限档位"
    }
   },
@@ -5953,24 +6070,7 @@
    },
    "out": {
     "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "当前",
-       "value": "Sandbox Off"
-      },
-      {
-       "label": "说明",
-       "tone": "muted",
-       "value": "—"
-      }
-     ],
-     "kind": "breakdown"
-    },
-    "headAfter": {
-     "big": "Sandbox Off"
-    },
-    "legend": "4 个可选档位",
+    "sub": "Sandbox Off",
     "title": "权限档位"
    }
   },
@@ -6002,7 +6102,7 @@
      "big": "2"
     },
     "legend": "最久 12m4s · 共 4 个",
-    "title": "后台作业"
+    "title": "后台任务"
    }
   },
   {
@@ -6036,7 +6136,7 @@
      "big": "2"
     },
     "legend": "最久 12m4s · 共 4 个",
-    "title": "后台作业"
+    "title": "后台任务"
    }
   },
   {
@@ -6071,7 +6171,7 @@
      "big": "0"
     },
     "legend": "已结束 4 个",
-    "title": "后台作业"
+    "title": "后台任务"
    }
   },
   {
@@ -6107,7 +6207,7 @@
      "big": "0"
     },
     "legend": "已结束 0 个",
-    "title": "后台作业"
+    "title": "后台任务"
    }
   },
   {
@@ -6115,29 +6215,28 @@
    "size": "2x4",
    "sim": null,
    "out": {
-    "cardHint": "web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m",
+    "bodyAnchor": "bottom",
+    "cardHint": "dsh web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m · 会话日志共 346 个文件",
     "chart": {
-     "bars": [
+     "kind": "quotas",
+     "quotas": [
       {
-       "label": "C: 67.1G / 300G",
-       "ratio": 0.22353306426575598,
-       "tone": "primary",
-       "value": 22
+       "label": "D: 剩余 62.9G / 652G",
+       "pct": 91,
+       "tone": "danger"
       },
       {
-       "label": "D: 62.9G / 652G",
-       "ratio": 0.0963459891521553,
-       "tone": "danger",
-       "value": 9
+       "label": "C: 剩余 67.1G / 300G",
+       "pct": 78,
+       "tone": "primary"
       }
-     ],
-     "kind": "bars"
+     ]
     },
     "headAfter": {
-     "big": "D: 62.9G",
+     "big": "D: 剩余 62.9G",
      "smallLines": [
-      "剩余 · C: 22% · D: 9%",
-      "会话日志 346 文件 · 345M · +13/h"
+      "DSH 会话日志 345M",
+      "近 1 小时新增 13 个文件"
      ]
     },
     "title": "磁盘与自检",
@@ -6151,29 +6250,28 @@
     "noHome": false
    },
    "out": {
-    "cardHint": "web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m",
+    "bodyAnchor": "bottom",
+    "cardHint": "dsh web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m · 会话日志共 346 个文件",
     "chart": {
-     "bars": [
+     "kind": "quotas",
+     "quotas": [
       {
-       "label": "C: 67.1G / 300G",
-       "ratio": 0.22353306426575598,
-       "tone": "primary",
-       "value": 22
+       "label": "D: 剩余 62.9G / 652G",
+       "pct": 91,
+       "tone": "danger"
       },
       {
-       "label": "D: 62.9G / 652G",
-       "ratio": 0.0963459891521553,
-       "tone": "danger",
-       "value": 9
+       "label": "C: 剩余 67.1G / 300G",
+       "pct": 78,
+       "tone": "primary"
       }
-     ],
-     "kind": "bars"
+     ]
     },
     "headAfter": {
-     "big": "D: 62.9G",
+     "big": "D: 剩余 62.9G",
      "smallLines": [
-      "剩余 · C: 22% · D: 9%",
-      "会话日志 346 文件 · 345M · +13/h"
+      "DSH 会话日志 345M",
+      "近 1 小时新增 13 个文件"
      ]
     },
     "title": "磁盘与自检",
@@ -6187,29 +6285,28 @@
     "noHome": true
    },
    "out": {
-    "cardHint": "web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m",
+    "bodyAnchor": "bottom",
+    "cardHint": "dsh web 进程 PID 28536 · 525M RSS · 2.1% CPU · 已跑 3h54m",
     "chart": {
-     "bars": [
+     "kind": "quotas",
+     "quotas": [
       {
-       "label": "C: 67.1G / 300G",
-       "ratio": 0.22353306426575598,
-       "tone": "primary",
-       "value": 22
+       "label": "D: 剩余 62.9G / 652G",
+       "pct": 91,
+       "tone": "danger"
       },
       {
-       "label": "D: 62.9G / 652G",
-       "ratio": 0.0963459891521553,
-       "tone": "danger",
-       "value": 9
+       "label": "C: 剩余 67.1G / 300G",
+       "pct": 78,
+       "tone": "primary"
       }
-     ],
-     "kind": "bars"
+     ]
     },
     "headAfter": {
-     "big": "D: 62.9G",
+     "big": "D: 剩余 62.9G",
      "smallLines": [
-      "剩余 · C: 22% · D: 9%",
-      "web 进程 525M · CPU 2.1% · 3h54m"
+      "dsh web 进程内存 525M",
+      "CPU 2.1% · 已运行 3h54m"
      ]
     },
     "title": "磁盘与自检",
@@ -6446,18 +6543,8 @@
    "sim": null,
    "out": {
     "bodyAnchor": "bottom",
-    "cardHint": "插电时系统不报告剩余续航，所以「剩余」一行为空，这不是读取失败",
     "chart": {
      "breakdown": [
-      {
-       "label": "供电",
-       "value": "交流电"
-      },
-      {
-       "label": "剩余",
-       "tone": "muted",
-       "value": "—"
-      },
       {
        "label": "电源方案",
        "value": "平衡"
@@ -6468,7 +6555,12 @@
     "headAfter": {
      "big": "100%"
     },
-    "legend": "插电 · 平衡",
+    "headRing": {
+     "icon": "battery",
+     "label": "100%",
+     "ratio": 1
+    },
+    "legend": "插电",
     "title": "供电"
    }
   },
@@ -6480,18 +6572,8 @@
    },
    "out": {
     "bodyAnchor": "bottom",
-    "cardHint": "插电时系统不报告剩余续航，所以「剩余」一行为空，这不是读取失败",
     "chart": {
      "breakdown": [
-      {
-       "label": "供电",
-       "value": "交流电"
-      },
-      {
-       "label": "剩余",
-       "tone": "muted",
-       "value": "—"
-      },
       {
        "label": "电源方案",
        "value": "平衡"
@@ -6502,7 +6584,12 @@
     "headAfter": {
      "big": "100%"
     },
-    "legend": "插电 · 平衡",
+    "headRing": {
+     "icon": "battery",
+     "label": "100%",
+     "ratio": 1
+    },
+    "legend": "插电",
     "title": "供电"
    }
   },
@@ -6517,12 +6604,8 @@
     "chart": {
      "breakdown": [
       {
-       "label": "供电",
-       "value": "电池"
-      },
-      {
        "label": "剩余",
-       "value": "134m0s"
+       "value": "2h14m"
       },
       {
        "label": "电源方案",
@@ -6534,7 +6617,12 @@
     "headAfter": {
      "big": "42%"
     },
-    "legend": "电池 · 平衡",
+    "headRing": {
+     "icon": "battery",
+     "label": "42%",
+     "ratio": 0.42
+    },
+    "legend": "电池",
     "title": "供电"
    }
   },
@@ -6549,12 +6637,8 @@
     "chart": {
      "breakdown": [
       {
-       "label": "供电",
-       "value": "电池"
-      },
-      {
        "label": "剩余",
-       "value": "41m0s"
+       "value": "41m"
       },
       {
        "label": "电源方案",
@@ -6566,7 +6650,13 @@
     "headAfter": {
      "big": "14%"
     },
-    "legend": "电池 · 平衡",
+    "headRing": {
+     "icon": "battery",
+     "label": "14%",
+     "ratio": 0.14,
+     "tone": "warn"
+    },
+    "legend": "电池",
     "title": "供电",
     "valueTone": "warn"
    }
@@ -6582,12 +6672,8 @@
     "chart": {
      "breakdown": [
       {
-       "label": "供电",
-       "value": "电池"
-      },
-      {
        "label": "剩余",
-       "value": "17m0s"
+       "value": "17m"
       },
       {
        "label": "电源方案",
@@ -6599,7 +6685,13 @@
     "headAfter": {
      "big": "6%"
     },
-    "legend": "电池 · 平衡",
+    "headRing": {
+     "icon": "battery",
+     "label": "6%",
+     "ratio": 0.06,
+     "tone": "danger"
+    },
+    "legend": "电池",
     "title": "供电",
     "valueTone": "danger"
    }
@@ -6612,18 +6704,8 @@
    },
    "out": {
     "bodyAnchor": "bottom",
-    "cardHint": "这台机器没有电池，只有电源方案是真实读数",
     "chart": {
      "breakdown": [
-      {
-       "label": "供电",
-       "value": "交流电"
-      },
-      {
-       "label": "剩余",
-       "tone": "muted",
-       "value": "—"
-      },
       {
        "label": "电源方案",
        "value": "平衡"
@@ -6631,12 +6713,8 @@
      ],
      "kind": "breakdown"
     },
-    "headAfter": {
-     "big": "—"
-    },
     "legend": "台式机（无电池）",
-    "title": "供电",
-    "valueTone": "muted"
+    "title": "供电"
    }
   },
   {
@@ -6666,7 +6744,7 @@
      "big": "1.7 GB"
     },
     "legend": "Memory Compression",
-    "title": "内存大户"
+    "title": "进程内存占用"
    }
   },
   {
@@ -6698,7 +6776,7 @@
      "big": "1.7 GB"
     },
     "legend": "Memory Compression",
-    "title": "内存大户"
+    "title": "进程内存占用"
    }
   },
   {
@@ -6713,7 +6791,7 @@
      "big": "1.7 GB"
     },
     "legend": "Memory Compression",
-    "title": "内存大户"
+    "title": "进程内存占用"
    }
   },
   {
@@ -6728,25 +6806,15 @@
       {
        "label": "DSH web",
        "value": "通 · 1ms"
-      },
-      {
-       "label": "Ollama",
-       "value": "通 · 2ms"
-      },
-      {
-       "label": "LM Studio",
-       "tone": "danger",
-       "value": "未运行"
       }
      ],
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "3 / 4"
+     "big": "出口正常"
     },
     "legend": "出口 1.3s",
-    "title": "本地服务",
-    "valueTone": "danger"
+    "title": "本地依赖"
    }
   },
   {
@@ -6770,25 +6838,15 @@
       {
        "label": "DSH web",
        "value": "通 · 1ms"
-      },
-      {
-       "label": "Ollama",
-       "value": "通 · 2ms"
-      },
-      {
-       "label": "LM Studio",
-       "tone": "danger",
-       "value": "未运行"
       }
      ],
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "3 / 4"
+     "big": "出口正常"
     },
     "legend": "出口 1.3s",
-    "title": "本地服务",
-    "valueTone": "danger"
+    "title": "本地依赖"
    }
   },
   {
@@ -6798,15 +6856,54 @@
     "proxy": {
      "host": "127.0.0.1",
      "port": 10808,
-     "tcpMs": 0.3,
-     "egressMs": null,
-     "ok": false,
-     "error": "ECONNREFUSED 127.0.0.1:10808"
-    }
+     "tcpMs": 0.2,
+     "egressMs": 1311,
+     "ok": true,
+     "error": null
+    },
+    "showOllama": true
    },
    "out": {
     "bodyAnchor": "bottom",
-    "cardHint": "出口探针失败：ECONNREFUSED 127.0.0.1:10808 · TCP 在听不等于能出网",
+    "cardHint": "TCP 在听不等于能出网",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "通 · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "通 · 2ms"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "出口正常"
+    },
+    "legend": "出口 1.3s",
+    "title": "本地依赖"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.2,
+     "egressMs": 1311,
+     "ok": true,
+     "error": null
+    },
+    "showOllama": true,
+    "showLmStudio": true
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "TCP 在听不等于能出网",
     "chart": {
      "breakdown": [
       {
@@ -6826,10 +6923,80 @@
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "3 / 4"
+     "big": "出口正常"
     },
-    "legend": "出口不通",
-    "title": "本地服务",
+    "legend": "出口 1.3s",
+    "title": "本地依赖"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.3,
+     "egressMs": null,
+     "ok": false,
+     "error": "ECONNREFUSED 127.0.0.1:10808"
+    },
+    "showOllama": true
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "出口探针失败：ECONNREFUSED 127.0.0.1:10808 · TCP 在听不等于能出网",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "通 · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "通 · 2ms"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "出口不通"
+    },
+    "legend": "ECONNREFUSED",
+    "title": "本地依赖",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.3,
+     "egressMs": null,
+     "ok": false,
+     "error": "CONNECTION_RESET 127.0.0.1:10808"
+    }
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "出口探针失败：CONNECTION_RESET 127.0.0.1:10808 · TCP 在听不等于能出网",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "通 · 1ms"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "出口不通"
+    },
+    "legend": "CONNECTION_RESET",
+    "title": "本地依赖",
     "valueTone": "danger"
    }
   },
@@ -6854,25 +7021,16 @@
       {
        "label": "DSH web",
        "value": "通 · 1ms"
-      },
-      {
-       "label": "Ollama",
-       "value": "通 · 2ms"
-      },
-      {
-       "label": "LM Studio",
-       "tone": "danger",
-       "value": "未运行"
       }
      ],
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "3 / 4"
+     "big": "检测中"
     },
-    "legend": "检测中 · 10808 0.2ms",
-    "title": "本地服务",
-    "valueTone": "danger"
+    "legend": "代理 0.2ms",
+    "title": "本地依赖",
+    "valueTone": "muted"
    }
   },
   {
@@ -7042,6 +7200,9 @@
     "headAfter": {
      "big": "3"
     },
+    "headIcon": {
+     "name": "github"
+    },
     "legend": "dsh-widgets · Review 请求",
     "title": "待我处理"
    }
@@ -7075,6 +7236,9 @@
     "headAfter": {
      "big": "3"
     },
+    "headIcon": {
+     "name": "github"
+    },
     "legend": "dsh-widgets · Review 请求",
     "title": "待我处理"
    }
@@ -7106,6 +7270,9 @@
     },
     "headAfter": {
      "big": "0"
+    },
+    "headIcon": {
+     "name": "github"
     },
     "legend": "暂无待处理",
     "title": "待我处理"
@@ -7140,6 +7307,9 @@
     "headAfter": {
      "big": "30+"
     },
+    "headIcon": {
+     "name": "github"
+    },
     "legend": "dsh-widgets · Review 请求",
     "title": "待我处理"
    }
@@ -7172,6 +7342,9 @@
     },
     "headAfter": {
      "big": "2"
+    },
+    "headIcon": {
+     "name": "github"
     },
     "legend": "dsh-widgets · CI 活动",
     "title": "待我处理"
@@ -7207,6 +7380,9 @@
     },
     "headAfter": {
      "big": "1"
+    },
+    "headIcon": {
+     "name": "github"
     },
     "legend": "dsh-widgets · 提及",
     "title": "待我处理"
@@ -12980,20 +13156,165 @@
      "breakdown": [
       {
        "label": "Goal",
-       "value": "把 dsh-widgets…"
+       "value": "把 dsh-w…"
       },
       {
-       "label": "Phase",
-       "tone": "danger",
-       "value": "Blocked"
+       "label": "Rounds/max",
+       "value": "12 / 40"
+      },
+      {
+       "label": "Updated",
+       "value": "3m ago"
       }
      ],
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "12 / 40"
+     "big": "Blocked"
     },
-    "legend": "Blocked: 等待你确认…",
+    "legend": "Reason: 等待你确认是…",
+    "title": "Goal Progress",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": {
+    "state": "none"
+   },
+   "out": {
+    "headAfter": {
+     "big": "No goal"
+    },
+    "legend": "No goal in this session",
+    "title": "Goal Progress"
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": {
+    "state": "active"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Goal",
+       "value": "把 dsh-w…"
+      },
+      {
+       "label": "Rounds/max",
+       "value": "12 / 40"
+      },
+      {
+       "label": "Updated",
+       "value": "42s ago"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "Active"
+    },
+    "title": "Goal Progress"
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": {
+    "state": "fresh"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Goal",
+       "value": "盯住发布…"
+      },
+      {
+       "label": "Rounds/max",
+       "value": "Not started"
+      },
+      {
+       "label": "Updated",
+       "value": "5s ago"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "Active"
+    },
+    "title": "Goal Progress"
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": {
+    "state": "blocked"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Goal",
+       "value": "把 dsh-w…"
+      },
+      {
+       "label": "Rounds/max",
+       "value": "12 / 40"
+      },
+      {
+       "label": "Updated",
+       "value": "3m ago"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "Blocked"
+    },
+    "legend": "Reason: 等待你确认是…",
+    "title": "Goal Progress",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "goal-progress",
+   "size": "2x2",
+   "sim": {
+    "state": "complete"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Goal",
+       "value": "把 goal-…"
+      },
+      {
+       "label": "Rounds/max",
+       "tone": "muted",
+       "value": "—"
+      },
+      {
+       "label": "Updated",
+       "value": "6m ago"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "Complete"
+    },
     "title": "Goal Progress"
    }
   },
@@ -13019,9 +13340,8 @@
     "headAfter": {
      "big": "4"
     },
-    "legend": "active time 36m12s",
-    "title": "Subagents",
-    "valueTone": "warn"
+    "legend": "longest active 36m12s",
+    "title": "Subagents"
    }
   },
   {
@@ -13048,9 +13368,8 @@
     "headAfter": {
      "big": "4"
     },
-    "legend": "active time 36m12s",
-    "title": "Subagents",
-    "valueTone": "warn"
+    "legend": "longest active 36m12s",
+    "title": "Subagents"
    }
   },
   {
@@ -13087,26 +13406,12 @@
    "sim": null,
    "out": {
     "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "Now",
-       "tone": "danger",
-       "value": "完全权限"
-      },
-      {
-       "label": "Allows",
-       "value": "文件与命令均…"
-      }
-     ],
-     "kind": "breakdown"
+    "headIcon": {
+     "name": "permission-full-access",
+     "tone": "danger"
     },
-    "headAfter": {
-     "big": "完全权限"
-    },
-    "legend": "4 options",
-    "title": "Permissions",
-    "valueTone": "danger"
+    "sub": "完全权限",
+    "title": "Permissions"
    }
   },
   {
@@ -13117,26 +13422,12 @@
    },
    "out": {
     "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "Now",
-       "tone": "danger",
-       "value": "完全权限"
-      },
-      {
-       "label": "Allows",
-       "value": "文件与命令均…"
-      }
-     ],
-     "kind": "breakdown"
+    "headIcon": {
+     "name": "permission-full-access",
+     "tone": "danger"
     },
-    "headAfter": {
-     "big": "完全权限"
-    },
-    "legend": "4 options",
-    "title": "Permissions",
-    "valueTone": "danger"
+    "sub": "完全权限",
+    "title": "Permissions"
    }
   },
   {
@@ -13147,23 +13438,25 @@
    },
    "out": {
     "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "Now",
-       "value": "仅可查看"
-      },
-      {
-       "label": "Allows",
-       "value": "只能读取文件…"
-      }
-     ],
-     "kind": "breakdown"
+    "headIcon": {
+     "name": "permission-read-only"
     },
-    "headAfter": {
-     "big": "仅可查看"
+    "sub": "仅可查看",
+    "title": "Permissions"
+   }
+  },
+  {
+   "id": "guard",
+   "size": "2x2",
+   "sim": {
+    "currentValue": "workspace-write"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "headIcon": {
+     "name": "permission-workspace-write"
     },
-    "legend": "4 options",
+    "sub": "工作区内修改",
     "title": "Permissions"
    }
   },
@@ -13175,24 +13468,7 @@
    },
    "out": {
     "bodyAnchor": "bottom",
-    "chart": {
-     "breakdown": [
-      {
-       "label": "Now",
-       "value": "Sandbox Off"
-      },
-      {
-       "label": "Allows",
-       "tone": "muted",
-       "value": "—"
-      }
-     ],
-     "kind": "breakdown"
-    },
-    "headAfter": {
-     "big": "Sandbox Off"
-    },
-    "legend": "4 options",
+    "sub": "Sandbox Off",
     "title": "Permissions"
    }
   },
@@ -13337,29 +13613,28 @@
    "size": "2x4",
    "sim": null,
    "out": {
-    "cardHint": "web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up",
+    "bodyAnchor": "bottom",
+    "cardHint": "dsh web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up · 346 session files in total",
     "chart": {
-     "bars": [
+     "kind": "quotas",
+     "quotas": [
       {
-       "label": "C: 67.1G / 300G",
-       "ratio": 0.22353306426575598,
-       "tone": "primary",
-       "value": 22
+       "label": "D: 62.9G free / 652G",
+       "pct": 91,
+       "tone": "danger"
       },
       {
-       "label": "D: 62.9G / 652G",
-       "ratio": 0.0963459891521553,
-       "tone": "danger",
-       "value": 9
+       "label": "C: 67.1G free / 300G",
+       "pct": 78,
+       "tone": "primary"
       }
-     ],
-     "kind": "bars"
+     ]
     },
     "headAfter": {
-     "big": "D: 62.9G",
+     "big": "D: 62.9G free",
      "smallLines": [
-      "free · C: 22% · D: 9%",
-      "Session logs 346 · 345M · +13/h"
+      "DSH session logs 345M",
+      "13 added in the last hour"
      ]
     },
     "title": "Disk & Self-check",
@@ -13373,29 +13648,28 @@
     "noHome": false
    },
    "out": {
-    "cardHint": "web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up",
+    "bodyAnchor": "bottom",
+    "cardHint": "dsh web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up · 346 session files in total",
     "chart": {
-     "bars": [
+     "kind": "quotas",
+     "quotas": [
       {
-       "label": "C: 67.1G / 300G",
-       "ratio": 0.22353306426575598,
-       "tone": "primary",
-       "value": 22
+       "label": "D: 62.9G free / 652G",
+       "pct": 91,
+       "tone": "danger"
       },
       {
-       "label": "D: 62.9G / 652G",
-       "ratio": 0.0963459891521553,
-       "tone": "danger",
-       "value": 9
+       "label": "C: 67.1G free / 300G",
+       "pct": 78,
+       "tone": "primary"
       }
-     ],
-     "kind": "bars"
+     ]
     },
     "headAfter": {
-     "big": "D: 62.9G",
+     "big": "D: 62.9G free",
      "smallLines": [
-      "free · C: 22% · D: 9%",
-      "Session logs 346 · 345M · +13/h"
+      "DSH session logs 345M",
+      "13 added in the last hour"
      ]
     },
     "title": "Disk & Self-check",
@@ -13409,29 +13683,28 @@
     "noHome": true
    },
    "out": {
-    "cardHint": "web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up",
+    "bodyAnchor": "bottom",
+    "cardHint": "dsh web process PID 28536 · 525M RSS · 2.1% CPU · 3h54m up",
     "chart": {
-     "bars": [
+     "kind": "quotas",
+     "quotas": [
       {
-       "label": "C: 67.1G / 300G",
-       "ratio": 0.22353306426575598,
-       "tone": "primary",
-       "value": 22
+       "label": "D: 62.9G free / 652G",
+       "pct": 91,
+       "tone": "danger"
       },
       {
-       "label": "D: 62.9G / 652G",
-       "ratio": 0.0963459891521553,
-       "tone": "danger",
-       "value": 9
+       "label": "C: 67.1G free / 300G",
+       "pct": 78,
+       "tone": "primary"
       }
-     ],
-     "kind": "bars"
+     ]
     },
     "headAfter": {
-     "big": "D: 62.9G",
+     "big": "D: 62.9G free",
      "smallLines": [
-      "free · C: 22% · D: 9%",
-      "web proc 525M · 2.1% CPU · 3h54m"
+      "dsh web proc mem 525M",
+      "CPU 2.1% · up 3h54m"
      ]
     },
     "title": "Disk & Self-check",
@@ -13668,18 +13941,8 @@
    "sim": null,
    "out": {
     "bodyAnchor": "bottom",
-    "cardHint": "Windows reports no runtime estimate while on mains power, so the Left row stays empty — that is not a read failure",
     "chart": {
      "breakdown": [
-      {
-       "label": "Source",
-       "value": "AC"
-      },
-      {
-       "label": "Left",
-       "tone": "muted",
-       "value": "—"
-      },
       {
        "label": "Power plan",
        "value": "平衡"
@@ -13690,7 +13953,12 @@
     "headAfter": {
      "big": "100%"
     },
-    "legend": "Plugged in · 平衡",
+    "headRing": {
+     "icon": "battery",
+     "label": "100%",
+     "ratio": 1
+    },
+    "legend": "Plugged in",
     "title": "Power"
    }
   },
@@ -13702,18 +13970,8 @@
    },
    "out": {
     "bodyAnchor": "bottom",
-    "cardHint": "Windows reports no runtime estimate while on mains power, so the Left row stays empty — that is not a read failure",
     "chart": {
      "breakdown": [
-      {
-       "label": "Source",
-       "value": "AC"
-      },
-      {
-       "label": "Left",
-       "tone": "muted",
-       "value": "—"
-      },
       {
        "label": "Power plan",
        "value": "平衡"
@@ -13724,7 +13982,12 @@
     "headAfter": {
      "big": "100%"
     },
-    "legend": "Plugged in · 平衡",
+    "headRing": {
+     "icon": "battery",
+     "label": "100%",
+     "ratio": 1
+    },
+    "legend": "Plugged in",
     "title": "Power"
    }
   },
@@ -13739,12 +14002,8 @@
     "chart": {
      "breakdown": [
       {
-       "label": "Source",
-       "value": "Battery"
-      },
-      {
        "label": "Left",
-       "value": "134m0s"
+       "value": "2h14m"
       },
       {
        "label": "Power plan",
@@ -13756,7 +14015,12 @@
     "headAfter": {
      "big": "42%"
     },
-    "legend": "Battery · 平衡",
+    "headRing": {
+     "icon": "battery",
+     "label": "42%",
+     "ratio": 0.42
+    },
+    "legend": "Battery",
     "title": "Power"
    }
   },
@@ -13771,12 +14035,8 @@
     "chart": {
      "breakdown": [
       {
-       "label": "Source",
-       "value": "Battery"
-      },
-      {
        "label": "Left",
-       "value": "41m0s"
+       "value": "41m"
       },
       {
        "label": "Power plan",
@@ -13788,7 +14048,13 @@
     "headAfter": {
      "big": "14%"
     },
-    "legend": "Battery · 平衡",
+    "headRing": {
+     "icon": "battery",
+     "label": "14%",
+     "ratio": 0.14,
+     "tone": "warn"
+    },
+    "legend": "Battery",
     "title": "Power",
     "valueTone": "warn"
    }
@@ -13804,12 +14070,8 @@
     "chart": {
      "breakdown": [
       {
-       "label": "Source",
-       "value": "Battery"
-      },
-      {
        "label": "Left",
-       "value": "17m0s"
+       "value": "17m"
       },
       {
        "label": "Power plan",
@@ -13821,7 +14083,13 @@
     "headAfter": {
      "big": "6%"
     },
-    "legend": "Battery · 平衡",
+    "headRing": {
+     "icon": "battery",
+     "label": "6%",
+     "ratio": 0.06,
+     "tone": "danger"
+    },
+    "legend": "Battery",
     "title": "Power",
     "valueTone": "danger"
    }
@@ -13834,18 +14102,8 @@
    },
    "out": {
     "bodyAnchor": "bottom",
-    "cardHint": "This machine has no battery; only the power scheme is a real reading",
     "chart": {
      "breakdown": [
-      {
-       "label": "Source",
-       "value": "AC"
-      },
-      {
-       "label": "Left",
-       "tone": "muted",
-       "value": "—"
-      },
       {
        "label": "Power plan",
        "value": "平衡"
@@ -13853,12 +14111,8 @@
      ],
      "kind": "breakdown"
     },
-    "headAfter": {
-     "big": "—"
-    },
     "legend": "Desktop (no battery)",
-    "title": "Power",
-    "valueTone": "muted"
+    "title": "Power"
    }
   },
   {
@@ -13888,7 +14142,7 @@
      "big": "1.7 GB"
     },
     "legend": "Memory Compression",
-    "title": "Top Processes"
+    "title": "Process Memory"
    }
   },
   {
@@ -13920,7 +14174,7 @@
      "big": "1.7 GB"
     },
     "legend": "Memory Compression",
-    "title": "Top Processes"
+    "title": "Process Memory"
    }
   },
   {
@@ -13935,7 +14189,7 @@
      "big": "1.7 GB"
     },
     "legend": "Memory Compression",
-    "title": "Top Processes"
+    "title": "Process Memory"
    }
   },
   {
@@ -13950,25 +14204,15 @@
       {
        "label": "DSH web",
        "value": "up · 1ms"
-      },
-      {
-       "label": "Ollama",
-       "value": "up · 2ms"
-      },
-      {
-       "label": "LM Studio",
-       "tone": "danger",
-       "value": "down"
       }
      ],
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "3 / 4"
+     "big": "egress ok"
     },
     "legend": "egress 1.3s",
-    "title": "Local Services",
-    "valueTone": "danger"
+    "title": "Local Dependencies"
    }
   },
   {
@@ -13992,25 +14236,15 @@
       {
        "label": "DSH web",
        "value": "up · 1ms"
-      },
-      {
-       "label": "Ollama",
-       "value": "up · 2ms"
-      },
-      {
-       "label": "LM Studio",
-       "tone": "danger",
-       "value": "down"
       }
      ],
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "3 / 4"
+     "big": "egress ok"
     },
     "legend": "egress 1.3s",
-    "title": "Local Services",
-    "valueTone": "danger"
+    "title": "Local Dependencies"
    }
   },
   {
@@ -14020,15 +14254,54 @@
     "proxy": {
      "host": "127.0.0.1",
      "port": 10808,
-     "tcpMs": 0.3,
-     "egressMs": null,
-     "ok": false,
-     "error": "ECONNREFUSED 127.0.0.1:10808"
-    }
+     "tcpMs": 0.2,
+     "egressMs": 1311,
+     "ok": true,
+     "error": null
+    },
+    "showOllama": true
    },
    "out": {
     "bodyAnchor": "bottom",
-    "cardHint": "egress probe failed: ECONNREFUSED 127.0.0.1:10808 · a listening port is not an egress verdict",
+    "cardHint": "a listening port is not an egress verdict",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "up · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "up · 2ms"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "egress ok"
+    },
+    "legend": "egress 1.3s",
+    "title": "Local Dependencies"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.2,
+     "egressMs": 1311,
+     "ok": true,
+     "error": null
+    },
+    "showOllama": true,
+    "showLmStudio": true
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "a listening port is not an egress verdict",
     "chart": {
      "breakdown": [
       {
@@ -14048,10 +14321,80 @@
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "3 / 4"
+     "big": "egress ok"
     },
-    "legend": "no egress",
-    "title": "Local Services",
+    "legend": "egress 1.3s",
+    "title": "Local Dependencies"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.3,
+     "egressMs": null,
+     "ok": false,
+     "error": "ECONNREFUSED 127.0.0.1:10808"
+    },
+    "showOllama": true
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "egress probe failed: ECONNREFUSED 127.0.0.1:10808 · a listening port is not an egress verdict",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "up · 1ms"
+      },
+      {
+       "label": "Ollama",
+       "value": "up · 2ms"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "no egress"
+    },
+    "legend": "ECONNREFUSED",
+    "title": "Local Dependencies",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "sys-services",
+   "size": "2x2",
+   "sim": {
+    "proxy": {
+     "host": "127.0.0.1",
+     "port": 10808,
+     "tcpMs": 0.3,
+     "egressMs": null,
+     "ok": false,
+     "error": "CONNECTION_RESET 127.0.0.1:10808"
+    }
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "egress probe failed: CONNECTION_RESET 127.0.0.1:10808 · a listening port is not an egress verdict",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "DSH web",
+       "value": "up · 1ms"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "no egress"
+    },
+    "legend": "CONNECTION_RESET",
+    "title": "Local Dependencies",
     "valueTone": "danger"
    }
   },
@@ -14076,25 +14419,16 @@
       {
        "label": "DSH web",
        "value": "up · 1ms"
-      },
-      {
-       "label": "Ollama",
-       "value": "up · 2ms"
-      },
-      {
-       "label": "LM Studio",
-       "tone": "danger",
-       "value": "down"
       }
      ],
      "kind": "breakdown"
     },
     "headAfter": {
-     "big": "3 / 4"
+     "big": "checking"
     },
-    "legend": "checking · 10808 0.2ms",
-    "title": "Local Services",
-    "valueTone": "danger"
+    "legend": "proxy 0.2ms",
+    "title": "Local Dependencies",
+    "valueTone": "muted"
    }
   },
   {
@@ -14264,6 +14598,9 @@
     "headAfter": {
      "big": "3"
     },
+    "headIcon": {
+     "name": "github"
+    },
     "legend": "dsh-widgets · Review requested",
     "title": "To Review"
    }
@@ -14297,6 +14634,9 @@
     "headAfter": {
      "big": "3"
     },
+    "headIcon": {
+     "name": "github"
+    },
     "legend": "dsh-widgets · Review requested",
     "title": "To Review"
    }
@@ -14328,6 +14668,9 @@
     },
     "headAfter": {
      "big": "0"
+    },
+    "headIcon": {
+     "name": "github"
     },
     "legend": "Nothing waiting",
     "title": "To Review"
@@ -14362,6 +14705,9 @@
     "headAfter": {
      "big": "30+"
     },
+    "headIcon": {
+     "name": "github"
+    },
     "legend": "dsh-widgets · Review requested",
     "title": "To Review"
    }
@@ -14394,6 +14740,9 @@
     },
     "headAfter": {
      "big": "2"
+    },
+    "headIcon": {
+     "name": "github"
     },
     "legend": "dsh-widgets · CI activity",
     "title": "To Review"
@@ -14429,6 +14778,9 @@
     },
     "headAfter": {
      "big": "1"
+    },
+    "headIcon": {
+     "name": "github"
     },
     "legend": "dsh-widgets · Mention",
     "title": "To Review"

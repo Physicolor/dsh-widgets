@@ -3,12 +3,16 @@
   "order": 94,
   "group": "github",
   "builtin": false,
-  "sizes": ["2x2"],
+  "sizes": [
+    "2x2"
+  ],
   "source": "github",
-  "skeleton": { "shape": "text" },
+  "skeleton": {
+    "shape": "text"
+  },
   "locale": {
     "zh": {
-      "widget.github-notify.name": "待我处理",
+      "widget.github-notify.name": "GitHub 待我处理",
       "widget.github-notify.desc": "GitHub 上等我的未读线程：review 请求 / @提及 / 指派，以及最新的一条；需要 token 或 gh 登录（未登录时该卡不出现）",
       "card.github-notify.title": "待我处理",
       "card.github-notify.review": "Review 请求",
@@ -33,7 +37,7 @@
       "sim.notify": "未读 / 清空 / 仅 CI / 缺读数 / 未登录"
     },
     "en": {
-      "widget.github-notify.name": "To Review",
+      "widget.github-notify.name": "GitHub · To Review",
       "widget.github-notify.desc": "Unread GitHub threads waiting on you: review requests, mentions and assignments, plus the newest one — needs a token or a gh login (no card at all when signed out)",
       "card.github-notify.title": "To Review",
       "card.github-notify.review": "Review requests",

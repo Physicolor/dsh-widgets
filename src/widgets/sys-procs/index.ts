@@ -3,7 +3,12 @@ import { t } from '../../client/i18n'
 import type { HostProcess, WidgetRenderMeta, WidgetRenderOut, WidgetStats } from '../../client/lib/contract/types'
 
 /**
- * 内存大户 — the TOP PROCESSES card (BATCH-3 Wave 2, unit `sys-procs`).
+ * PROCESS MEMORY (进程内存占用) — the working-set leaderboard card (BATCH-3 Wave 2,
+ * unit `sys-procs`). Renamed from the colloquial 内存大户 in the revision round: the
+ * card title, the market name and this comment all carry the technical term now. The
+ * metric is the Windows WORKING SET (Task Manager's 「内存」 column, RSS on other
+ * systems) — see README §0 for why the professional name is 进程内存占用 and not
+ * 工作集 (which is the METRIC's name, not a readable card title).
  *
  * THE QUESTION: with several agents, models and browsers alive at once, "why is
  * this machine crawling" is a MEMORY question long before it is a CPU one — and

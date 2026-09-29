@@ -1,6 +1,5 @@
 import { defineWidget } from '../../client/lib/contract/helpers'
 import { t } from '../../client/i18n'
-import { fmtDuration } from '../../client/lib/format'
 import type { BarDatum, HostPower, WidgetRenderMeta, WidgetRenderOut, WidgetStats } from '../../client/lib/contract/types'
 
 /**
@@ -24,39 +23,76 @@ import type { BarDatum, HostPower, WidgetRenderMeta, WidgetRenderOut, WidgetStat
  *     VERBATIM — never mapped to an English/Chinese table of our own, because
  *     mapping would silently disagree with the machine's own Settings page.
  *
- * WHY THE ELEMENTS SIT WHERE THEY DO (the house head ladder, AGENT-BRIEF §2):
- * the blue 13px title, then the charge as the 20px figure in `headAfter.big`
- * (`value` would be pushed into the body and printed twice), then one grey
- * `legend` line carrying the two facts that have no row budget — the source and
- * the power scheme. The three-row breakdown sits on the card's FLOOR
- * (`bodyAnchor: 'bottom'`): a `headAfter` head alone would leave the slack
- * underneath the rows instead of above them.
+ * WHY THE ELEMENTS SIT WHERE THEY DO (the house head ladder, WORKER-BRIEF §2):
+ * the blue 13px title, then the charge — as the 20px figure in `headAfter.big`
+ * AND as the arc of the head ring the owner asked for (the ring's middle is the
+ * battery glyph; its hover text carries the same percent). `value` is
+ * deliberately not set: with a ring the head's figure comes from `headAfter.big`
+ * only, and `value` would have no owner (or, headless, would push the number
+ * into the body to be printed twice). One grey `legend` line under the figure
+ * names the SOURCE, and the card's floor (`bodyAnchor: 'bottom'`) carries the
+ * breakdown rows.
  *
- * NO HEAD RING on purpose. A ring is the design language for a SHARE of a whole
- * (the cache hit rate, the context water level). A battery percent is not a
- * share of anything the card can name, and the circle would eat the 20px figure's
- * width for nothing.
+ * ONE READING, ONE PLACE (owner's dedupe rule): the source used to be printed
+ * twice — as `插电` in the legend and as `供电 交流电` in a row — and the scheme
+ * twice as well (`插电 · 平衡` in the legend and `电源方案 平衡` in a row). The
+ * legend now carries ONLY the source; the scheme lives ONLY in its row; the
+ * source row is gone.
+ *
+ * THE 「剩余」 ROW IS NOT A PLACEHOLDER (owner's call): on mains power Windows
+ * reports no runtime at all, and a `—` sitting where a duration belongs reads as
+ * "this reading failed" rather than "this reading does not exist here". So the
+ * row is OMITTED when `minutesLeft === null` — the same posture the owner asked
+ * for, and the only row in this card allowed to change the row count. The
+ * scheme row still prints `—` + `muted` when `powercfg` was silent, because
+ * there a real reading is missing (a failure worth showing, not a non-existent
+ * reading worth hiding).
+ *
+ * THE RING APPEARS ONLY WHEN THERE IS A CHARGE TO DRAW: `percent === null` means
+ * no battery reading at all (a desktop), so the card draws no ring, no figure
+ * and no tone — it keeps the title, the quiet 「台式机（无电池）」 legend and the
+ * scheme row. A lone `—` at 20px in the primary colour reads as a redaction bar
+ * (the defect `valueTone: 'muted'` was added for), and tinting a reading that
+ * does not exist would be a claim the payload does not support, so the honest
+ * quiet form is simply NO figure.
  *
  * TONE DIRECTION — this card is the INVERSE of every busy-machine card next to
  * it, and that is the widget's own call (see the thresholds below): a LOW charge
- * is what is wrong, so the figure goes amber under 20% and red under 10%. Nothing
- * is tinted while charging. A high number here is the good state, which is why
- * the rule lives in this file and not in the renderer.
+ * is what is wrong, so the figure AND the ring go amber under 20% and red under
+ * 10%. Nothing is tinted while charging or when the charge is unknown. A high
+ * number here is the good state, which is why the rule lives in this file and
+ * not in the renderer.
  */
 
-/** Below this charge, on battery only, the figure turns AMBER. 20% is the level
- *  at which Windows itself starts its own low-battery warning, so the card agrees
- *  with the OS instead of inventing a second opinion. */
+/** Below this charge, on battery only, the figure and the ring turn AMBER. 20% is
+ *  the level at which Windows itself starts its own low-battery warning, so the
+ *  card agrees with the OS instead of inventing a second opinion. */
 const WARN_PERCENT = 20
 
-/** Below this charge the figure turns RED — the point where the battery is about
- *  to become the reason a long run dies. */
+/** Below this charge the figure and the ring turn RED — the point where the
+ *  battery is about to become the reason a long run dies. */
 const DANGER_PERCENT = 10
 
 /** The em dash a reading with no value shows — the same placeholder 任务/工具调用
  *  use, never a fabricated 0. `—` and `0` are different statements: an unknown
  *  charge is not an empty battery. */
 const DASH = '—'
+
+/**
+ * Battery runtime → `2h14m` (or `41m` under the hour).
+ *
+ * NOT `fmtDuration`: that formatter is the session STOPWATCH vocabulary
+ * (`45.2s` / `2m42s`), and it prints the host's 134 minutes as `134m0s` — the
+ * reader would have to do the division the OS already did. A runtime estimate is
+ * read in hours, exactly like the process uptime next door (`sys-disk`'s
+ * `fmtUptime`, whose comment makes the same call), so this card carries the same
+ * two-rung shape for the same reason.
+ */
+function fmtRuntime(min: number): string {
+  const m = Math.max(0, Math.round(min))
+  if (m < 60) return `${m}m`
+  return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}m`
+}
 
 /**
  * The readings the offline preview steps through (`example.simSteps`), keyed by
@@ -81,7 +117,8 @@ const SIM_POWER: Record<string, HostPower> = {
 }
 
 /**
- * The tone the figure wears, from the ONE rule this card owns.
+ * The tone the charge wears — on the figure AND on the ring, so the colour is
+ * said once per head accessory rather than once per field.
  *
  * `onAc !== false` deliberately includes `onAc === null` ("the host could not
  * tell"): an unknown source is not evidence of discharging, and tinting it amber
@@ -100,9 +137,10 @@ function simPower(meta?: WidgetRenderMeta): HostPower | null {
   return typeof name === 'string' ? SIM_POWER[name] ?? null : null
 }
 
-/** The word for where the power comes from (the legend and the 供电 row). */
-function sourceWord(onAc: boolean | null, short: boolean): string {
-  if (onAc === true) return short ? t('card.sys-power.source.ac') : t('card.sys-power.ac')
+/** The word for where the power comes from — the legend, and the ONLY place the
+ *  source is printed (the 供电 row that repeated it is gone). */
+function sourceWord(onAc: boolean | null): string {
+  if (onAc === true) return t('card.sys-power.source.ac')
   if (onAc === false) return t('card.sys-power.source.battery')
   return t('card.sys-power.source.unknown')
 }
@@ -120,47 +158,56 @@ function sysPowerRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRend
   // machine with no battery (its `toPower` fills `onAc: true, percent: null`).
   const noBattery = onAc === true && percent === null
   const tone = powerTone(onAc, percent)
+  // The legend is the SOURCE rung and nothing else (see the dedupe note above).
+  // A charge-less machine says so here instead of on the row it does not have:
+  // `onAc === null` already says "unknown", so it must not also say 电量未知.
   const legend = noBattery
     ? t('card.sys-power.desktop')
-    : scheme === null ? sourceWord(onAc, true) : `${sourceWord(onAc, true)} · ${scheme}`
+    : onAc === null
+      ? t('card.sys-power.source.unknown')
+      : percent === null
+        ? `${sourceWord(onAc)} · ${t('card.sys-power.chargeUnknown')}`
+        : sourceWord(onAc)
   // The empty 「剩余」 row explained one hover away. On mains power there IS no
-  // runtime to print — a correct empty state, not a failure — and the tile has no
-  // height left for a sentence, so it rides the card's tooltip (`cardHint`).
-  //
-  // The wording of the last two hints is deliberately about the SYSTEM, not the
-  // battery: `onAc === null` means "the source cannot be told" (see HostPower), so
-  // a sentence that blames the battery would assert a source this reading never
-  // established. "No runtime estimate was reported" is true in both branches.
-  const hint = minutesLeft !== null
-    ? undefined
-    : noBattery
-      ? t('card.sys-power.hintDesktop')
-      : onAc === true
-        ? t('card.sys-power.hintAc')
-        : t('card.sys-power.hintUnknown')
-  const rows: Array<{ label: string; value: string; tone?: BarDatum['tone'] }> = [
-    // A picked row ALWAYS renders: `—` + muted instead of vanishing, so the card
-    // never changes its line count under the reader (the house rule).
-    onAc === null
-      ? { label: t('card.sys-power.row.source'), value: DASH, tone: 'muted' }
-      : { label: t('card.sys-power.row.source'), value: sourceWord(onAc, false) },
-    minutesLeft === null
-      ? { label: t('card.sys-power.row.left'), value: DASH, tone: 'muted' }
-      : { label: t('card.sys-power.row.left'), value: fmtDuration(minutesLeft * 60_000) },
-    scheme === null
-      ? { label: t('card.sys-power.row.scheme'), value: DASH, tone: 'muted' }
-      : { label: t('card.sys-power.row.scheme'), value: scheme },
-  ]
+  // runtime to print — a correct absence, not a failure — and the row is not
+  // drawn at all (the owner's call), so only the ambiguous case keeps a hint: a
+  // DISCHARGING battery whose charge is known but whose runtime estimate never
+  // arrived. Blaming the battery in the other branches would assert a source the
+  // reading never established.
+  const hint = minutesLeft === null && onAc !== true && percent !== null
+    ? t('card.sys-power.hintUnknown')
+    : undefined
+  const rows: Array<{ label: string; value: string; tone?: BarDatum['tone'] }> = []
+  // Printed ONLY when a runtime estimate exists: `minutesLeft === null` on mains
+  // power is "this reading does not exist here", and a placeholder would report
+  // it as a failure. This is the one row allowed to come and go.
+  if (minutesLeft !== null) {
+    rows.push({ label: t('card.sys-power.row.left'), value: fmtRuntime(minutesLeft) })
+  }
+  // A picked row ALWAYS renders, even when it is the card's only row: a silent
+  // `powercfg` is a FAILED reading (worth a `—`), unlike the runtime above.
+  rows.push(scheme === null
+    ? { label: t('card.sys-power.row.scheme'), value: DASH, tone: 'muted' }
+    : { label: t('card.sys-power.row.scheme'), value: scheme })
   return {
     title: t('card.sys-power.title'),
-    headAfter: { big: percent === null ? DASH : `${percent}%` },
+    // No charge reading → no figure at all (see the header note): the quiet
+    // desktop posture, not a `—` that reads as a redaction.
+    ...(percent === null ? {} : { headAfter: { big: `${percent}%` } }),
     legend,
     bodyAnchor: 'bottom',
-    // A lone `—` at 20px in the primary label colour reads as a redaction bar, not
-    // as "no reading" (measured on this card's desktop state). `muted` is the rung
-    // the render contract gained for exactly this case (integration edit,
-    // 2026-09-29) — a machine with no battery has nothing to escalate.
-    ...(percent === null ? { valueTone: 'muted' as const } : tone === undefined ? {} : { valueTone: tone }),
+    // The ring is the charge as an arc, the figure beside it is the charge as a
+    // number — the same reading in the two languages the design system has for
+    // it. `icon: 'battery'` names WHAT is being measured, and `label` carries
+    // the exact percent on hover (the ring draws no figure of its own).
+    ...(percent === null
+      ? {}
+      : {
+          // Only an ESCALATION is ever stated: a healthy charge leaves the figure
+          // in the default label colour (no `valueTone` key at all).
+          ...(tone === undefined ? {} : { valueTone: tone }),
+          headRing: { ratio: percent / 100, tone, icon: 'battery' as const, label: `${percent}%` },
+        }),
     ...(hint === undefined ? {} : { cardHint: hint }),
     chart: { kind: 'breakdown', breakdown: rows },
   }
@@ -176,7 +223,7 @@ export default defineWidget({
   sizes: ['2x2'],
   render: sysPowerRender,
   // A click on either preview steps 插电 → 电池 → 低电量 → 危险 → 台式机, so the
-  // amber/red figure and the desktop posture can be judged by eye with no live
+  // amber/red ring and the desktop posture can be judged by eye with no live
   // battery condition to wait for. `sim` is the FIRST step — a `sim` absent from
   // `simSteps` makes the first click a silent no-op (see WidgetExample).
   simToggle: () => t('card.sys-power.simToggle'),

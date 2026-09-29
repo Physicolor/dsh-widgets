@@ -1,46 +1,57 @@
 import { defineWidget } from '../../client/lib/contract/helpers'
-import type { BarDatum, WidgetRenderMeta, WidgetRenderOut, WidgetStats } from '../../client/lib/contract/types'
+import type { HeadIconName, WidgetRenderMeta, WidgetRenderOut, WidgetStats } from '../../client/lib/contract/types'
 import { t } from '../../client/i18n'
 
 /**
  * 权限档位 (guard) — what this session is ALLOWED to do, as one folded value.
  *
- * WHY IT EXISTS: a long-running autonomous agent's most important safety fact is
- * invisible in the rail. The 44 shipped cards all answer "how much was spent";
- * none answers "may it write outside the workspace, and will it ask first". The
- * official shell folds THREE knobs (preset + sandbox mode + approval policy) into
- * the one `permissions` projection, and this card prints that fold verbatim —
- * it deliberately does NOT re-derive a sandbox mode or an approval policy from
- * the preset key, because the fold IS the authority and a second derivation is a
- * second answer that can disagree with the one the runtime enforces.
+ * WHY IT STILL EXISTS although the composer already has a permission selector:
+ * the selector is only on screen while the user is looking at the composer of
+ * THIS session, and it disappears the moment the rail is what they are watching —
+ * which is exactly the situation this card is for (a long autonomous run, several
+ * sessions, the rail as the dashboard). The selector is an INPUT (it changes the
+ * value and needs a click); this card is the READ-OUT (what is in force right
+ * now, in the rail, next to the cost of the run it authorises). It also survives
+ * the one case the selector cannot show at all: an old session whose recorded
+ * preset is no longer in the table (the derived `custom` fold).
  *
- * HEAD LADDER (WORKER-BRIEF §2): the blue 13px title, the 20px figure = the
- * current preset's DISPLAY NAME (`headAfter.big` — never `value`, which the
- * renderer pushes into the body a second time), the grey caption = how many
- * switchable options exist (`legend`), and the three detail rows on the card's
- * floor (`bodyAnchor: 'bottom'`). No `headRing`: a ring is the design language
- * for a SHARE, and this head's figure is a NAME, not a fraction of anything.
+ * LAYOUT (WORKER-BRIEF-V3 §1.2, the owner's revision 2026-09-29): the card was
+ * three lines of text and is now ONE word plus an identity mark —
+ *   - top-left  : the blue 13px title (the only word left besides the value);
+ *   - top-right : the OFFICIAL permission shield (`headIcon`), the same glyph the
+ *                 composer's selector draws beside each preset, so the rail tile
+ *                 and the product's own control say the same thing in the same
+ *                 drawing (16px paths copied into the renderer, never re-drawn);
+ *   - bottom-left: the preset's display name, on the card's floor.
+ * The legend (「N 个可选档位」) and the whole 3-row breakdown are GONE: they were
+ * text the owner had to read, and the count is not a session fact anyone acts on.
  *
- * `name` vs `value`: the projection carries both a machine key (`danger-full-access`)
- * and a display name. The card prints the NAME because that is what the user saw
- * in the permission selector; the key would read as a config file. When the key is
- * NOT in the option table (the projection derived `custom`, or the deployment's
- * table changed under a running session) the card prints the raw key: it is still
- * a true statement about the session, and a `—` there would hide a real value.
+ * WHY THE NAME RIDES `sub` AND NOT `value` (measured, see README §4): `CardBody`
+ * draws `value` only when the head has NO accessory (`!accessoryHead`), so the
+ * 20px figure the brief nominates is silently dropped the moment the shield is
+ * present — the first shot of this revision showed a title and a shield and no
+ * name at all. `sub` is the one body text that renders in BOTH states, and at
+ * 10px it is also the only size that holds every official label: "Workspace
+ * Write" measures 163px and "My Custom Preset" 175px against the tile's 124px
+ * content width, while everything fits under 87px at 10px.
+ *
+ * `name` vs `value`: the projection carries both a machine key
+ * (`danger-full-access`) and a display name. The card prints the NAME because
+ * that is the word the user saw in the permission selector; a raw key reads as a
+ * config file. When the key is NOT in the option table (the projection derived
+ * `custom`, or the deployment's table changed under a running session) the card
+ * prints the key through the same display transform the official row uses
+ * (`my-custom-preset` → `My Custom Preset`) — it is still a true statement about
+ * the session, and a `—` there would hide a real value.
  *
  * TONE DIRECTION — the widget's own call, and the only card in this batch that
  * colours by danger. The rule is 「权限越大越需要被看见」: a preset whose machine
- * value names a whole-machine / no-questions family paints the figure red. The
- * vocabulary is deliberately NOT green-for-safe: the render contract's
- * `valueTone` is a single-member union ('danger' = the escalation red), so a
- * "safe" preset has no colour to take — it keeps the default label colour, which
- * is exactly what "nothing to escalate" should look like (see DANGER_MARKERS).
+ * value names a whole-machine / no-questions family paints ITS OWN SHIELD red.
+ * The vocabulary is deliberately NOT green-for-safe: the render contract has no
+ * "safe" colour, so a safe preset keeps the neutral label colour, which is
+ * exactly what "nothing to escalate" should look like (see DANGER_MARKERS).
  * `valuePulse` is NOT used: a card that blinks forever stops being read.
  */
-
-/** The em dash a row shows while it has no reading — the same placeholder
- *  工具调用 / 任务 use, never a fabricated value. */
-const DASH = '—'
 
 /**
  * HEURISTIC, NOT AUTHORITY. Substrings of the machine preset key that mark a
@@ -54,9 +65,10 @@ const DASH = '—'
  *
  * The counterpart families — `read-only`, `plan`, `safe` — deliberately have NO
  * constant here: they take no colour, and the default IS "no colour", so a table
- * of safe markers would be a list no branch reads. Two blind spots are accepted
+ * of safe markers would be a list no branch reads. Three blind spots are accepted
  * and documented in README §5: the derived `custom` fold hides which knobs it
- * holds, and a deployment may rename a dangerous preset to anything it likes.
+ * holds, a deployment may rename a dangerous preset to anything it likes, and a
+ * renamed preset loses its official glyph (the product's own rule).
  */
 const DANGER_MARKERS: readonly string[] = ['danger', 'full', 'yolo', 'bypass']
 
@@ -65,6 +77,25 @@ const DANGER_MARKERS: readonly string[] = ['danger', 'full', 'yolo', 'bypass']
 function isDangerPreset(value: string): boolean {
   const v = value.toLowerCase()
   return DANGER_MARKERS.some((marker) => v.includes(marker))
+}
+
+/**
+ * The OFFICIAL glyph table, mirrored key for key from the composer's permission
+ * selector (`permissionGlyphs` in `@deepseek-ai/dsh-client-ui-conversation`).
+ *
+ * Three entries and no fallback, because that is literally what the product
+ * does: its own comment reads "Glyph for a permission option value;
+ * host-configured names outside the design set get none". The shipped table is
+ * `workspace-write`, `danger-full-access` (+ the derived, unselectable `custom`),
+ * and `read-only` is the third design-set shield. A deployment that renames a
+ * preset therefore gets a card with NO shield rather than a shield that claims
+ * the wrong family — the glyph is an identity, and the wrong identity is worse
+ * than none (README §3).
+ */
+const PRESET_ICONS: Record<string, HeadIconName> = {
+  'read-only': 'permission-read-only',
+  'workspace-write': 'permission-workspace-write',
+  'danger-full-access': 'permission-full-access',
 }
 
 /**
@@ -106,121 +137,13 @@ function presetLabel(value: string, name: string): string {
   return titleCasePreset(name)
 }
 
-/** The 2×2 card's inner content width at the base side: 150 − 2 × 12px pad
- *  (`cardInnerPad`). This unit declares `['2x2']` only, and a magnified card
- *  scales its font and its width together, so one base-side number is enough. */
-const CONTENT_WIDTH_PX = 126
-
-/** The breakdown grid's own `columnGap` (`render/charts/breakdown.tsx`). */
-const BREAKDOWN_GAP_PX = 8
-
-/** The breakdown row font size at the base side (10px, scaled by the renderer). */
-const BREAKDOWN_FONT_PX = 10
-
-/** Slack kept so a slightly wider fallback face still leaves the label whole. */
-const CLIP_SLACK_PX = 6
-
-/** Rough advance width of one glyph, in px at `fontPx`.
- *
- *  The card stores TEXT, not pixels, and the offline renderer has no font
- *  metrics, so the clip has to estimate. A CJK / fullwidth glyph takes one full
- *  em; Latin, digits and punctuation about 0.55. Deliberately generous: cutting a
- *  glyph early is invisible, cutting late makes the breakdown's shared value
- *  column steal the label's width (the label is the cell that fades). */
-function textWidthPx(text: string, fontPx: number): number {
-  let em = 0
-  for (const ch of text) {
-    const cp = ch.codePointAt(0) ?? 0
-    em += isWideGlyph(cp) ? 1 : 0.55
-  }
-  return em * fontPx
-}
-
-/** CJK, Hangul, kana and the fullwidth forms — the ranges that occupy a full em
- *  (the same ranges a terminal calls "wide"). */
-function isWideGlyph(cp: number): boolean {
-  return (cp >= 0x1100 && cp <= 0x115f)
-    || (cp >= 0x2e80 && cp <= 0xa4cf)
-    || (cp >= 0xac00 && cp <= 0xd7a3)
-    || (cp >= 0xf900 && cp <= 0xfaff)
-    || (cp >= 0xfe30 && cp <= 0xfe6f)
-    || (cp >= 0xff00 && cp <= 0xff60)
-    || (cp >= 0xffe0 && cp <= 0xffe6)
-}
-
-/** Punctuation a truncated sentence may end on: the ellipsis replaces what
- *  follows, and stopping at a clause boundary keeps the visible half a sentence
- *  instead of a severed word. */
-const CLAUSE_ENDS = '。！？；，、,.!?;: '
-
-/** Where the value column may end, given the row labels of ONE breakdown block.
- *
- *  `breakdown` is a single grid (`1fr auto`), so the value column is shared by
- *  every row and sized by the WIDEST value — here always the clipped sentence on
- *  the 说明 row. The label column gets whatever is left, and it is the label that
- *  fades when the value asks for too much (the breakdown gives the label cell
- *  `overflow: hidden` + a right-edge mask). So the budget is measured against the
- *  widest label, not against the label of the row being clipped. */
-function clipBudgetPx(labels: readonly string[]): number {
-  let widest = 0
-  for (const label of labels) widest = Math.max(widest, textWidthPx(label, BREAKDOWN_FONT_PX))
-  return CONTENT_WIDTH_PX - widest - BREAKDOWN_GAP_PX - CLIP_SLACK_PX
-}
-
-/**
- * Clip the current preset's one-sentence description to the 说明 row.
- *
- * The sentence is the LONGEST text on the card and the row has one line, so it is
- * cut here rather than left to the renderer: the value cell is `nowrap` with no
- * overflow handling, so an unclipped sentence does not ellipsize — it pushes the
- * grid and clips the LABEL instead (see clipBudgetPx).
- *
- * Policy (README §4): keep the FIRST clause, then `…`. A clause boundary inside
- * the budget is used only when it preserves at least half of it (otherwise the
- * row would show a two-word stub); the ellipsis itself is charged to the budget.
- */
-function clipSentence(text: string, maxPx: number): string {
-  const s = text.trim().replace(/\s+/g, ' ')
-  if (s === '') return ''
-  if (textWidthPx(s, BREAKDOWN_FONT_PX) <= maxPx) return s
-  // One em is reserved for the ellipsis, and a hard cut needs at least one glyph.
-  const budget = Math.max(BREAKDOWN_FONT_PX, maxPx - BREAKDOWN_FONT_PX)
-  let cut = 0
-  let width = 0
-  for (const ch of s) {
-    const w = textWidthPx(ch, BREAKDOWN_FONT_PX)
-    if (width + w > budget) break
-    width += w
-    cut += ch.length
-  }
-  const head = s.slice(0, cut)
-  const boundary = lastClauseEnd(head)
-  const kept = boundary >= Math.floor(head.length / 2)
-    ? head.slice(0, boundary + 1).replace(/[，,、;；:：\s]+$/, '')
-    : head.trimEnd()
-  return `${kept}…`
-}
-
-/** Index of the last clause boundary in `head`, or -1 when it has none. */
-function lastClauseEnd(head: string): number {
-  for (let i = head.length - 1; i >= 0; i -= 1) {
-    if (CLAUSE_ENDS.includes(head[i])) return i
-  }
-  return -1
-}
-
-/** One detail row of the breakdown block. */
-interface Row {
-  label: string
-  value: string
-  tone?: BarDatum['tone']
-}
-
 function guardRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRenderOut | null {
   const p = stats.permissions
   // No permission service composed → the projection key is absent and there is no
   // session fact to print. An EMPTY `currentValue` is the same statement (a preset
   // table that produced a keyless fold): returning null beats an empty figure.
+  // The card is a new, optional unit, so "hide when the deployment has no
+  // permission service" is the posture the owner asked for (BRIEF-V3 §1.2).
   if (p === null || p === undefined || p.currentValue === '') return null
   const options = Array.isArray(p.options) ? p.options : []
   // PREVIEW-ONLY OVERRIDE: `example.simSteps` walks the states a live session
@@ -235,32 +158,29 @@ function guardRender(stats: WidgetStats, meta?: WidgetRenderMeta): WidgetRenderO
   // key to the product's own word (measured need, see PRESET_LABEL_KEYS).
   const name = current !== null ? presetLabel(currentValue, current.name) : presetLabel(currentValue, currentValue)
   const dangerous = isDangerPreset(currentValue)
-  const count = options.length
-  const labelNow = t('card.guard.current')
-  const labelAllows = t('card.guard.allows')
-  const description = current?.description
-  const rows: Row[] = [
-    // The 当前 row repeats the figure's NAME as a row, and it is the second place
-    // the danger is painted: the card's grey caption has no tone channel in the
-    // render contract (the `legend` is always `label-tertiary`), so the escalation
-    // has to ride the only other cell this card owns — see README §5. Same value as
-    // the figure, painted the same red: a deliberate echo, not a second reading.
-    { label: labelNow, value: name, ...(dangerous ? { tone: 'danger' as const } : {}) },
-    // The spec's middle row (可选 → `N 个`) was removed at integration (2026-09-29):
-    // it printed the same count as the caption above it. One reading, one place.
-    description !== undefined && description.trim() !== ''
-      ? { label: labelAllows, value: clipSentence(description, clipBudgetPx([labelNow, labelAllows])) }
-      // A preset the deployment never described prints the dash rather than a
-      // blank cell, so a described preset and an undescribed one are told apart.
-      : { label: labelAllows, value: DASH, tone: 'muted' as const },
-  ]
+  const icon = PRESET_ICONS[currentValue]
   return {
     title: t('card.guard.title'),
-    headAfter: { big: name },
-    legend: t('card.guard.legend', { n: count }),
+    // The name rides `sub`, NOT `value` — measured, 2026-09-29 (see README §4):
+    // `CardBody` drops `value` for ANY head accessory (`!accessoryHead`), so with
+    // the shield present the 20px body figure is not drawn at all (the first shot
+    // of this revision was a title and a shield with no name). `sub` is the one
+    // body text that renders in BOTH states, so the icon-less state (a
+    // host-renamed preset) keeps the same layout as the icon states instead of
+    // jumping to a 20px figure. It is also the only shape that holds every label:
+    // the DOM measures 124px of content width, while "Workspace Write" needs 163px
+    // and "My Custom Preset" 175px at 20px; at 10px the widest is 87px.
+    sub: name,
+    // The name sits on the card's FLOOR (measured: 13px from the left edge, 13px
+    // from the bottom). With no `headAfter` the renderer bottoms the body anyway;
+    // the field is kept because it is the declared posture, and it keeps the name
+    // on the floor if a future edit ever puts a row back in the head.
     bodyAnchor: 'bottom',
-    ...(dangerous ? { valueTone: 'danger' as const } : {}),
-    chart: { kind: 'breakdown' as const, breakdown: rows },
+    // The DANGER escalation rides the SHIELD, because it is the only colourable
+    // element this layout keeps: the renderer has no tone channel for `sub`, and
+    // `valueTone` on an undrawn `value` is dead. Full access turning its own
+    // shield red is a statement about the level, not a decoration.
+    ...(icon === undefined ? {} : { headIcon: { name: icon, ...(dangerous ? { tone: 'danger' as const } : {}) } }),
   }
 }
 
@@ -276,21 +196,16 @@ export default defineWidget({
   simToggle: () => t('widget.guard.simToggle'),
   // Widget-owned preview data. The projection is a synchronous read, so a live
   // session overrides this the moment it exists — the market / 组件配置 previews
-  // are what this is for. The three steps cover: a dangerous preset (red figure +
-  // red 当前 row), a read-only one (no colour), and a key the table does not hold
-  // (the raw-value fallback + the muted 说明 dash). `sim` MUST be the first step —
-  // the stepper finds the current one by deep equality.
-  //
-  // The derived `custom` fold cannot be stepped here: it is truthful only when the
-  // option table also carries the appended `custom` entry, and `sim` overrides the
-  // CURRENT VALUE only. It takes the same fallback path the third step shows (the
-  // `custom` name is resolved from the table when the table has it, which is the
-  // single line this card would need — see README §7).
+  // are what this is for. The four steps walk the ladder the product ships plus
+  // the two edges: full access (red shield) → read-only (check shield) →
+  // workspace-write (the middle rung AND the widest label in both locales) → a key
+  // the table does not hold (no shield, raw-key fallback). `sim` MUST be the first
+  // step — the stepper finds the current one by deep equality.
   //
   // The option table is MOCK data: the real one is composed by the deployment (the
-  // shipped core table has two entries). The four keys here come from the domain's
-  // own vocabulary — the three sandbox modes plus `plan` — so the preview exercises
-  // the marker families (danger / safe / unknown) rather than one happy path.
+  // shipped core table is `workspace-write` + `danger-full-access`). The four keys
+  // here are the design set plus `plan`, so the preview exercises the three
+  // shields and the no-glyph path rather than one happy path.
   example: {
     stats: {
       permissions: {
@@ -323,6 +238,7 @@ export default defineWidget({
     simSteps: [
       { currentValue: 'danger-full-access' },
       { currentValue: 'read-only' },
+      { currentValue: 'workspace-write' },
       { currentValue: 'sandbox-off' },
     ],
   },

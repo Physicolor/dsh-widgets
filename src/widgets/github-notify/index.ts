@@ -41,6 +41,24 @@ import type { GitHubNotifications, WidgetRenderMeta, WidgetRenderOut, WidgetStat
  * bucket AT ALL (not measured) — a different statement from a measured 0, and the
  * only case in which a row is not a number.
  *
+ * PLATFORM IDENTITY (revision, owner's report 2026-09-30): read alone, 「待我处理」
+ * said WHAT is waiting but not WHERE. That is a real ambiguity the moment a second
+ * platform grows its own queue card (a GitLab / Gitea / Jira 「待我处理」 would be
+ * indistinguishable in the rail), and the family's other five cards do not carry
+ * the ambiguity because their titles name a repository fact («问题», «提交») while
+ * this one names an inbox. So the card marks its source TWICE, deliberately:
+ *   1. `headIcon: { name: 'github' }` — Octicons' `mark-github`, the same drawing
+ *      the user sees on github.com, occupying the head's right slot. It is an
+ *      IDENTITY, not a reading, which is exactly what `headIcon` is for (a ring
+ *      there would claim a fraction nobody measured). No `tone`: the mark is not
+ *      good or bad news, and a coloured brand mark is the "why is this yellow?"
+ *      defect `headIcon` documents.
+ *   2. the title / market name carry the platform as text, because an icon alone
+ *      is unreadable to a screen reader and invisible in a text-only surface.
+ * `HeadIconName` is a CLOSED shared vocabulary — a second platform's mark is added
+ * by the main Agent to `render/icons.tsx` + the union, never drawn here. README §0
+ * (audit question 3) and §10 (extension) hold that contract.
+ *
  * HOVER: `cardHint` carries what must never be printed on a 150px tile — the
  * newest thread's full title, its full `owner/name`, how long ago it moved, and
  * `newest.url`. The card itself stays un-clickable (no `cycle`, no `corner`), so a
@@ -50,6 +68,19 @@ import type { GitHubNotifications, WidgetRenderMeta, WidgetRenderOut, WidgetStat
 /** The em dash a bucket shows when the payload did not report it — the same
  *  placeholder 工具调用 / 额度管理 use, never a fabricated 0. */
 const DASH = '—'
+
+/**
+ * The head's right-slot mark: GitHub's own Octicons glyph from the SHARED layer
+ * (`src/client/render/icons.tsx` maps this name to the drawing). Declared as a
+ * named constant, and passed on EVERY render including the preview's synthetic
+ * states, so the card cannot forget it in one branch — an identity that shows up
+ * only sometimes is worse than none.
+ *
+ * Typed by inference from the literal name: the union lives in the shared
+ * contract and a name it does not hold is a type error here, not a silently
+ * blank slot (`HEAD_RING_ICONS[name] ?? null` would render nothing).
+ */
+const HEAD_ICON = { name: 'github' } as const
 
 /**
  * The three buckets that get a row, in card order, with their label thunks.
@@ -238,7 +269,20 @@ function githubNotifyRender(stats: WidgetStats, meta?: WidgetRenderMeta): Widget
 
   const hint = hoverHint(notif, outside)
   return {
+    // `GitHub待我处理` — NO space between the platform and the Chinese, and it is
+    // not a typo. The head row gives the title column ~92px at side 150 once the
+    // 34px mark owns its slot; measured at 2x in the real renderer, the spaced
+    // form (94.25px) and the `GitHub · …` form (107px) both ellipsize, and a
+    // platform name that is itself cut off («GitHub 待我处…») is worse than no
+    // platform at all. The unspaced form (91px) fits whole: the Latin/CJK script
+    // change is the visual break a space would have provided. The MARKET name
+    // (`widget.github-notify.name`) is not width-bound and keeps the readable
+    // spacing / `·` form — see manifest.json and README §0 q3.
     title: t('card.github-notify.title'),
+    // The source mark rides the head's right slot (see the header). It shares that
+    // slot with `headRing`, which this card never sets: the unread total has no
+    // denominator, so a ring would be a fraction nobody measured.
+    headIcon: HEAD_ICON,
     // The one dominant figure, on the head's own ladder: `headAfter.big`, never
     // `value` (with a second head row `value` would be pushed into the body and
     // print the total twice). A CAPPED page prints `30+`: the host asked for one
