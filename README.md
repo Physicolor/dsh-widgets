@@ -7,9 +7,27 @@
 <h1 align="center">DeepSeek-Harness Widgets</h1>
 
 <p align="center">
-  <strong>A beautiful, extensible right-side widget system for DeepSeek Harness.</strong><br>
-  Multi-column grids · 2×4 tiles · continuous magnification · built-in component marketplace
+  <strong>55 live cards on the right side of your DeepSeek Harness — session, machine, quota and cost at a glance.</strong><br>
+  Multi-column grids · 2×4 tiles · a continuous magnification wave · per-instance configuration
 </p>
+
+## Install in one command
+
+```sh
+dsh plugin --profile <your-profile> add dsh-widgets
+# then restart dsh web and hard-refresh the browser (Ctrl+Shift+R)
+```
+
+Works on DeepSeek Harness `0.1.0-rc.6+` (0.1.x) and `0.2.0-rc.1+` (0.2.x). The rail lives
+behind the **Widgets** capsule in the session header; Settings → **Widgets** installs,
+reorders and resizes the cards.
+
+## What you get
+
+- **The session, live** — turns · steps, context level and compaction, tokens and cache hit rate, LLM time, first-token latency, tool calls, background jobs and subagents;
+- **Money and quota** — OpenCode Go's rolling / weekly / monthly windows; Command Code's 5-hour / weekly / monthly limits with one tap to cycle the whole key pool, its credit balances, a month-end projection and today's budget;
+- **The machine** — CPU / GPU / memory / disk / network / power, with sparklines, rings and a local-service plus proxy-egress board;
+- **Your own view** — every card is an independent unit: install it, size it 2×2 or 2×4, tune its thresholds, or switch it off. The rail packs the rest.
 
 <p align="center">
   <img src="https://img.shields.io/npm/v/dsh-widgets?style=flat&label=latest%20release&color=4D6BFE" alt="Latest release">
@@ -23,11 +41,16 @@
   <img src="docs/screenshots/cover.png" alt="DeepSeek-Harness Widgets preview" width="100%">
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/dock-magnify.png" alt="the magnification wave following the pointer" width="49%">
+  <img src="docs/screenshots/rail-drawer-open-mid.png" alt="the sliding drawer" width="49%">
+</p>
+
 DeepSeek-Harness Widgets is a **persistent DSH bundle plugin** built on the Cordis composition model. It provides a customizable multi-column widget rail on the right side of the conversation page — real-time session insights, usage monitoring, and quick actions — with an extensible declarative registry.
 
 ## Website / Showcase
 
-A self-contained showcase site lives in [`website/`](website/) and is live at **https://physicolor.github.io/dsh-widgets/** — what dsh-widgets is, why it exists, all 39 real widgets, the **DSH Widget Design Grammar** (the real unit/spacing/magnification formulas from `src/client/index.ts`, with an interactive rail running the actual magnification + right-anchored reflow), **Widget Anatomy** (a real card at ×2 with every padding, gap and inset measured from the DOM), the **DSH Visual Audit** (13 declared rules scored over all 33 widgets from live `getBoundingClientRect` measurements — rule-based, not a model), the widget-unit architecture, the production workflow, and a requirement-form → widget-spec generator. Plain HTML/CSS/JS, no build step, all paths relative for the project Pages base path. `node website/verify.mjs` self-verifies (static + SEO + Edge-headless browser checks, 80 checks); the widget table, the static gallery markup and the JSON-LD `ItemList` are generated from the manifests by `node website/gen-site.mjs` (`--check` fails on drift); `node website/gen-og.mjs` regenerates the social card. Deploy: see `website/README.md`.
+A self-contained showcase site lives in [`website/`](website/) and is live at **https://physicolor.github.io/dsh-widgets/** — what dsh-widgets is, why it exists, all 55 real widgets, the **DSH Widget Design Grammar** (the real unit/spacing/magnification formulas from `src/client/index.ts`, with an interactive rail running the actual magnification + right-anchored reflow), **Widget Anatomy** (a real card at ×2 with every padding, gap and inset measured from the DOM), the **DSH Visual Audit** (13 declared rules scored over all 55 widgets from live `getBoundingClientRect` measurements — rule-based, not a model), the widget-unit architecture, the production workflow, and a requirement-form → widget-spec generator. Plain HTML/CSS/JS, no build step, all paths relative for the project Pages base path. `node website/verify.mjs` self-verifies (static + SEO + Edge-headless browser checks, 88 checks); the widget table, the static gallery markup and the JSON-LD `ItemList` are generated from the manifests by `node website/gen-site.mjs` (`--check` fails on drift); `node website/gen-og.mjs` regenerates the social card. Deploy: see `website/README.md`.
 
 ---
 
@@ -246,6 +269,13 @@ The widget system is now built for scale: each widget is an independent, contrac
 - **Widget marketplace**: open a third-party widget registration mechanism so community widgets can join like plugins — the unit + discovery architecture (v1.3.0) is the carrier; a future `widgets-market` bundle can drop units into `src/widgets/` the same way;
 - **More locales**: the dictionary layer now has zh/en for every key — adding `ja`/`ko` etc. is a pure dictionary extension;
 - **Cross-device sync** (optional): today each DSH service keeps its own `dsh-widgets-state.json` — a cloud/account sync layer could share one configuration across machines, but local-first independence is the deliberate default.
+
+## If this is useful
+
+The plugin has no distribution channel beyond being found: if it saves you a glance or two,
+a star on [Physicolor/dsh-widgets](https://github.com/Physicolor/dsh-widgets) is what moves
+it up the DSH plugin directories where other people are looking. Bug reports and card ideas
+are just as welcome — [`issues`](https://github.com/Physicolor/dsh-widgets/issues) is open.
 
 ## License
 

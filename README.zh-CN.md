@@ -7,9 +7,26 @@
 <h1 align="center">DeepSeek-Harness Widgets</h1>
 
 <p align="center">
-  <strong>为 DeepSeek Harness 打造的美观、可扩展的右侧组件系统。</strong><br>
-  多列网格布局 · 2×4 长方形组件 · 连续波峰悬浮放大 · 组件市场与实例管理
+  <strong>把 55 张实时看板放到 DeepSeek Harness 右侧——会话、机器、额度与成本，一眼看完。</strong><br>
+  多列网格布局 · 2×4 长方形组件 · 连续波峰悬浮放大 · 每个实例独立配置
 </p>
+
+## 一条命令安装
+
+```sh
+dsh plugin --profile <你的 profile 名> add dsh-widgets
+# 然后重启 dsh web，并硬刷新浏览器（Ctrl+Shift+R）
+```
+
+支持 DeepSeek Harness `0.1.0-rc.6+`（0.1.x）与 `0.2.0-rc.1+`（0.2.x）。组件栏挂在会话头部的
+**组件** 胶囊按钮后面；在 设置 → **组件** 里安装、排序与调整尺寸。
+
+## 你能得到什么
+
+- **实时会话**——轮次·步数、上下文水位与压缩、token 与缓存命中率、LLM 时长、首 token 延迟、工具调用、后台任务与子代理；
+- **钱与额度**——OpenCode Go 的滚动 / 周 / 月窗口；Command Code 的 5 小时 / 周 / 月限额，点一下即在整个 Key 池之间切换，外加余额、月末外推与今日推荐；
+- **这台机器**——CPU / GPU / 内存 / 磁盘 / 网络 / 供电，含迷你折线、环形图，以及本地服务与代理出口看板；
+- **你自己的视图**——每个组件都是独立单元：装它、选 2×2 或 2×4、改它的阈值，或者干脆关掉；其余由组件栏自行排布。
 
 <p align="center">
   <img src="https://img.shields.io/npm/v/dsh-widgets?style=flat&label=latest%20release&color=4D6BFE" alt="Latest release">
@@ -23,11 +40,16 @@
   <img src="docs/screenshots/cover.png" alt="DeepSeek-Harness Widgets 预览" width="100%">
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/dock-magnify.png" alt="跟随指针的波峰放大" width="49%">
+  <img src="docs/screenshots/rail-drawer-open-mid.png" alt="滑出式抽屉" width="49%">
+</p>
+
 DeepSeek-Harness Widgets 是一个基于 Cordis 组合模型的 DeepSeek Harness **持久 bundle 插件**。它在会话页右侧提供一套可定制的多列组件栏——实时会话洞察、用量监控与快捷操作——并配有一套可扩展的声明式注册表。
 
 ## 官网 / Showcase
 
-项目官网位于 [`website/`](website/)，线上地址 **https://physicolor.github.io/dsh-widgets/**，是一座**设计系统站点**：讲 dsh-widgets 是什么、为什么存在、全部 39 个真实组件，以及 **DSH Widget Design Grammar**（直接取自 `src/client/index.ts` 的真实单位/间距/放大公式，并带一条交互式组件栏跑插件自己的放大曲线与右对齐回流）、**Widget Anatomy**（一张真实卡片放大 ×2，每一处内边距、间距与内缩都从 DOM 实测标注）、**DSH Visual Audit**（13 条明示规则对全部 33 个组件按真实 `getBoundingClientRect` 测量打分——规则驱动，不是模型打分）、部件单元化架构、生产 Workflow，以及「需求表 → Widget Specification」生成器。站点为纯 HTML/CSS/JS，无构建步骤，所有路径都是相对路径（适配项目 Pages 的 base path）。`node website/verify.mjs` 自校验（静态 + SEO + Edge 无头浏览器检查，共 80 项）；组件表、静态画廊 markup 与 JSON-LD `ItemList` 由 `node website/gen-site.mjs` 从各 manifest 生成（`--check` 在漂移时报错）；`node website/gen-og.mjs` 重新生成社交分享图。部署方式见 `website/README.md`。
+项目官网位于 [`website/`](website/)，线上地址 **https://physicolor.github.io/dsh-widgets/**，是一座**设计系统站点**：讲 dsh-widgets 是什么、为什么存在、全部 55 个真实组件，以及 **DSH Widget Design Grammar**（直接取自 `src/client/index.ts` 的真实单位/间距/放大公式，并带一条交互式组件栏跑插件自己的放大曲线与右对齐回流）、**Widget Anatomy**（一张真实卡片放大 ×2，每一处内边距、间距与内缩都从 DOM 实测标注）、**DSH Visual Audit**（13 条明示规则对全部 55 个组件按真实 `getBoundingClientRect` 测量打分——规则驱动，不是模型打分）、部件单元化架构、生产 Workflow，以及「需求表 → Widget Specification」生成器。站点为纯 HTML/CSS/JS，无构建步骤，所有路径都是相对路径（适配项目 Pages 的 base path）。`node website/verify.mjs` 自校验（静态 + SEO + Edge 无头浏览器检查，共 88 项）；组件表、静态画廊 markup 与 JSON-LD `ItemList` 由 `node website/gen-site.mjs` 从各 manifest 生成（`--check` 在漂移时报错）；`node website/gen-og.mjs` 重新生成社交分享图。部署方式见 `website/README.md`。
 
 ---
 
@@ -236,6 +258,13 @@ node scripts/validate-widget-unit.mjs [dir]   # 部件单元契约校验器（Wo
 - **部件市场**：开放第三方部件注册机制，让社区部件像插件一样入驻——单元 + 发现架构（v1.3.0）就是载体；未来的 `widgets-market` bundle 可以同样地把单元放进 `src/widgets/`；
 - **更多语言**：字典层每个 key 都已有 zh/en——加 `ja`/`ko` 等纯属字典扩展；
 - **跨设备同步**（可选）：今天每台 DSH 服务各存一份 `dsh-widgets-state.json`——云/账号同步层可以让多台机器共享一份配置，但「本地优先、设备独立」是刻意保留的默认行为。
+
+## 如果它有用
+
+这个插件除了「被搜到」之外没有任何分发渠道：如果它帮你省下了几次翻找，那么在
+[Physicolor/dsh-widgets](https://github.com/Physicolor/dsh-widgets) 点一个 star，就是把它
+推到 DSH 各插件目录前列、让更多人看到的那一下。Bug 与组件想法同样欢迎——
+[`issues`](https://github.com/Physicolor/dsh-widgets/issues) 一直开着。
 
 ## License
 

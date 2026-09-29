@@ -133,7 +133,7 @@ npx serve website        # or: python -m http.server 8123 -d website
 ## Verify
 
 ```sh
-node website/verify.mjs        # 80 checks: static + SEO + Edge-headless browser
+node website/verify.mjs        # 88 checks: static + SEO + Edge-headless browser
 node website/gen-site.mjs --check
 node website/gen-og.mjs        # only when the social card must change
 ```
