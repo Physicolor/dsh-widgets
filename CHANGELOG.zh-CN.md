@@ -11,6 +11,17 @@
 | GitHub Releases | 同一条目作为 release notes，锚定到发布它的那次提交（tag） | 仓库 → Releases |
 | `docs/` | 原始证据：CDP 探针脚本、截图、JSON 凭证、逐次事故的修复记录 | [`docs/`](docs/) |
 
+## v1.8.2 — 插件在 DSH 0.2 上重新装得上
+
+> 一次兼容性发布。DSH 0.1.7 起在**安装与启动**两道关口加了 peer 校验：插件声明的 `@deepseek-ai/dsh-*` peer 范围若不接受当前运行时，就直接被拒绝。本插件此前声明的是 `@deepseek-ai/dsh-client-ui-slots: ^0.1.0-rc.6`，而该范围在 semver 上无法接受 `0.2.0-rc.x`（0.x 的 minor 就是破坏边界），于是 `next` 线的所有用户——以及新桌面端（内置 `0.2.0-rc.x`）的所有用户——只会看到「不兼容」，插件根本不会被加载。现在范围同时覆盖两条线，而且这个结论是**在真实运行时上装一次、启一次**验出来的，不是读发布说明得来的。
+
+### 修复 — 把插件锁在 DSH 0.2 门外的 peer 范围
+
+- **先复现，且是在干净 profile 上。** 在 **0.2.0-rc.2** 上执行 `dsh plugin --profile web install`，插件被原样拒收：`Plugin dsh-widgets@1.8.1 is incompatible with dsh 0.2.0-rc.2: peerDependencies {"@deepseek-ai/dsh-client-ui-slots":"^0.1.0-rc.6"} …`，随后它回滚了 profile，并提示用户手工授予 exact-version 豁免；同一次启动里 bundle 也被跳过（`cannot resolve profile bundle` / `incompatible`）。
+- **`peerDependencies` 放宽为 `^0.1.0-rc.6 || ^0.2.0-rc.1`。** 是并集，不是无限开放的 `>=`：每一条线都是这个插件真正跑过的边界，下一个 minor 要各自过一遍验证，而不是默认兼容。`@deepseek-ai/cordis: ^4.0.1` 无需改动（0.2.0-rc.2 自带 cordis 4.0.4）。
+- **两条运行时都实测过**，用的是一次性 `DSH_HOME`（真实 home 从未用 0.2 启动过，因此不可能触发 Session V4 迁移）：**0.1.7-rc.2** 与 **0.2.0-rc.2** 都能装上、启动时没有被跳过的 bundle、能服务客户端 bundle（`__DSH_BOOT__.entries` 里有 `dsh-widgets`，载荷里含 `dsx-stats-card`）、四个槽位全部注册成功（`conversation.session.header.utilities`、`conversation.composer.dock`、`conversation.input.overlay`、`settings.section`，每个 `inject` 回调都触发）、host 半区应答正常（`/api/widgets-state` 200、`/api/sysinfo` 200 且是真实机器数据）、并且渲染出 **组件 / Widgets** 设置页，**无 console 报错、无失败请求**。唯一无法在无模型的临时 home 里验证的是「会话内的组件栏本身」——`scope: 'session'` 的槽位在配置模型之前不会挂载，这一步留给有模型的本机。
+- **支持范围的文案同步跟进**：两份 README 的徽章与兼容性条目、官网的 kicker、终端标题与 JSON-LD 的 `operatingSystem` 都改为 `0.1.x / 0.2.x`——而 `website/verify.mjs`（88 项检查）依旧把手写的版本串逐条对 `package.json` 校验，正是它在版本号一变成 1.8.2 时就把这份文案抓了出来。
+
 ## v1.8.1 — 两批卡片、统一的头部阶梯，以及回来的限额
 
 > 以修复为主线的一版，同时把 v1.8.0 之后已提交却从未发布的两批卡片一起发出。注册表从 **40 个部件单元长到 55 个**（新增 17、退役 2），分三批落地——会话与机器、设备家族、成本与待审队列——每一批都由新的 host 通道供数；另有一轮收口按车主评审重做了九张已发布的卡。在此之上是两个只有在真实组件栏上才会显形的问题：**Command Code 的月限额从所有卡上消失**（三个上游端点实测 14–21 秒，而 host 四个切片共用 8 秒预算），以及**两张相邻的环卡头部肉眼可见地不一致**（一行会随数据来去的阶梯把整个头部推移了）。本版的每一处改动，都先在闸门 diff 或探针上被证明，然后才重写基线。

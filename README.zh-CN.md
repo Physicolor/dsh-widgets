@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/npm/dt/dsh-widgets?style=flat&label=total%20downloads&color=4D6BFE" alt="Total downloads">
   <a href="https://github.com/Physicolor/dsh-widgets/stargazers"><img src="https://img.shields.io/github/stars/Physicolor/dsh-widgets?style=flat&label=%E2%98%85&color=08C" alt="GitHub stars"></a>
   <img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License">
-  <img src="https://img.shields.io/badge/DSH%200.1.x-4493F8?style=flat-square" alt="Supported: DeepSeek Harness 0.1.x">
+  <img src="https://img.shields.io/badge/DSH%200.1.x%20%2F%200.2.x-4493F8?style=flat-square" alt="Supported: DeepSeek Harness 0.1.x and 0.2.x">
 </p>
 
 <p align="center">
@@ -199,7 +199,7 @@ node scripts/validate-widget-unit.mjs [dir]   # 部件单元契约校验器（Wo
 
 ## 兼容性
 
-- DeepSeek Harness `0.1.0-rc.6` 及兼容的后续 `0.1.x`；
+- DeepSeek Harness `0.1.0-rc.6` 起的 `0.1.x`，以及 `0.2.0-rc.1` 起的 `0.2.x`（实测：**0.1.7-rc.2** 与 **0.2.0-rc.2** 上安装、启动、`settings.section` 渲染均通过；0.2 之前旧的 peer 声明会被运行时兼容检查直接拒装）；
 - 通过 `conversation.input.overlay` / `conversation.session.header.utilities` / `conversation.composer.dock` / `settings.section` 接入；
 - 与 `dsh-better-sidebar` 的右栏显式协调：组件栏读取官方右栏列（旧版 better-sidebar 的 `--dsh-sidebar-width` 保留为回退），页头胶囊注册在 `order: 5`，因此 bundle 重载不会让两个开关互换位置；卸载后无残留。
 

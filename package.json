@@ -1,6 +1,6 @@
 {
   "name": "dsh-widgets",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "description": "Right-hand widget rail for DeepSeek Harness Web UI: live session stats, task/context/heatmap/quote widgets, OpenCode Go quota, multi-column grid layouts (1/2/4 columns) with 2x4 long tiles, a continuous magnification wave, and per-instance sizing. Widgets are installable, reorderable and resizable from Settings > Components.",
   "type": "module",
   "main": "lib/index.js",
@@ -71,7 +71,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6 || ^0.2.0-rc.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",

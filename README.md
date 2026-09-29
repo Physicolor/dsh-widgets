@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/npm/dt/dsh-widgets?style=flat&label=total%20downloads&color=4D6BFE" alt="Total downloads">
   <a href="https://github.com/Physicolor/dsh-widgets/stargazers"><img src="https://img.shields.io/github/stars/Physicolor/dsh-widgets?style=flat&label=%E2%98%85&color=08C" alt="GitHub stars"></a>
   <img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License">
-  <img src="https://img.shields.io/badge/DSH%200.1.x-4493F8?style=flat-square" alt="Supported: DeepSeek Harness 0.1.x">
+  <img src="https://img.shields.io/badge/DSH%200.1.x%20%2F%200.2.x-4493F8?style=flat-square" alt="Supported: DeepSeek Harness 0.1.x and 0.2.x">
 </p>
 
 <p align="center">
@@ -208,7 +208,7 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ## Compatibility
 
-- DeepSeek Harness `0.1.0-rc.6` and compatible later `0.1.x`;
+- DeepSeek Harness `0.1.0-rc.6` and later `0.1.x`, plus `0.2.0-rc.1` and later `0.2.x` — verified by installing and booting the plugin on **0.1.7-rc.2** and **0.2.0-rc.2** (host routes answering, the client bundle loaded, all four slot registrations firing, `settings.section` rendering); the pre-0.2 peer declaration was refused outright by that runtime's compatibility check;
 - Integrates via `conversation.input.overlay` / `conversation.session.header.utilities` / `conversation.composer.dock` / `settings.section`;
 - Coordinates explicitly with `dsh-better-sidebar`'s right rail: the rail reads the official right-bar column (keeping `--dsh-sidebar-width` as a fallback for older better-sidebar builds) and its header capsule registers at `order: 5` so the two toggles cannot swap places on a bundle reload; no residue after uninstall.
 

@@ -48,7 +48,7 @@ window.DASH_I18N = (function () {
     githubAria: 'GitHub 仓库',
 
     /* hero */
-    kicker: 'dsh-widgets · v1.8.1 · MIT · DeepSeek Harness 0.1.x',
+    kicker: 'dsh-widgets · v1.8.2 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: '将对话区域中的留白空间，转化为高信息密度、可随时隐藏的辅助界面。',
@@ -63,10 +63,10 @@ window.DASH_I18N = (function () {
     /* install */
     installTitle: '一条命令安装',
     installSub: '从插件市场添加即可——无需改任何配置文件。',
-    termTitle: 'dsh-widgets@1.8.1 · DeepSeek Harness 插件',
+    termTitle: 'dsh-widgets@1.8.2 · DeepSeek Harness 插件',
     termComment: '# 然后硬刷新浏览器（Ctrl+Shift+R），并点击会话顶部的「组件」胶囊展开组件栏。',
     copy: '复制', copied: '已复制',
-    installNote: '以 npm 包 dsh-widgets 分发 · DeepSeek Harness 0.1.0-rc.6+ · 本地开发使用 link 安装。',
+    installNote: '以 npm 包 dsh-widgets 分发 · DeepSeek Harness 0.1.0-rc.6+ / 0.2.x · 本地开发使用 link 安装。',
 
     /* why */
     whyTitle: '为什么需要 dsh-widgets',
@@ -360,7 +360,7 @@ window.DASH_I18N = (function () {
     menuToggleAria: 'Toggle navigation menu',
     githubAria: 'GitHub repository',
 
-    kicker: 'dsh-widgets · v1.8.1 · MIT · DeepSeek Harness 0.1.x',
+    kicker: 'dsh-widgets · v1.8.2 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: 'Turn the idle whitespace of the conversation area into a high-information-density, hideable companion surface.',
@@ -374,10 +374,10 @@ window.DASH_I18N = (function () {
 
     installTitle: 'Install in one command',
     installSub: 'Add it from the plugin market, no config files to touch.',
-    termTitle: 'dsh-widgets@1.8.1 · DeepSeek Harness plugin',
+    termTitle: 'dsh-widgets@1.8.2 · DeepSeek Harness plugin',
     termComment: '# then hard-refresh the browser (Ctrl+Shift+R) and click the “Components” capsule in the session header.',
     copy: 'Copy', copied: 'Copied',
-    installNote: 'Distributed as the npm package dsh-widgets · works on DeepSeek Harness 0.1.0-rc.6+ · local development uses a link install.',
+    installNote: 'Distributed as the npm package dsh-widgets · works on DeepSeek Harness 0.1.0-rc.6+ and 0.2.x · local development uses a link install.',
 
     whyTitle: 'Why dsh-widgets',
     whySub: 'The conversation area already has idle space. dsh-widgets turns it into a useful, quiet, hideable information layer.',
