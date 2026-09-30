@@ -1,3 +1,7 @@
+---
+description: "A live widget rail on the right: session, machine, quota and cost at a glance."
+---
+
 <p align="right"><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
 
 <p align="center">
@@ -19,7 +23,7 @@ dsh plugin --profile <your-profile> add dsh-widgets
 ```
 
 Works on DeepSeek Harness `0.1.0-rc.6+` (0.1.x) and `0.2.0-rc.1+` (0.2.x). The rail lives
-behind the **Widgets** capsule in the session header; Settings → **Widgets** installs,
+behind the **Widgets** icon in the session header; Settings → **Widgets** installs,
 reorders and resizes the cards.
 
 ## What you get
@@ -211,7 +215,7 @@ dsh plugin --profile web add dsh-widgets
 dsh plugin --profile web add link:D:/dsh-home/plugins/dsh-widgets
 ```
 
-After installing, **hard-refresh the browser** (Ctrl+Shift+R) and click the "Components" (widgets) capsule in the session header to expand the rail. The OpenCode Go widget needs `OPENCODE_GO_API_KEY` configured in the Models settings.
+After installing, **hard-refresh the browser** (Ctrl+Shift+R) and click the "Components" (widgets) icon in the session header to expand the rail. The OpenCode Go widget needs `OPENCODE_GO_API_KEY` configured in the Models settings.
 
 ## Development
 

@@ -1,3 +1,7 @@
+---
+description: "右侧实时组件栏：会话、机器、额度与成本，一眼看完。"
+---
+
 <p align="right"><a href="README.md">English</a> · <b>简体中文</b></p>
 
 <p align="center">
@@ -19,7 +23,7 @@ dsh plugin --profile <你的 profile 名> add dsh-widgets
 ```
 
 支持 DeepSeek Harness `0.1.0-rc.6+`（0.1.x）与 `0.2.0-rc.1+`（0.2.x）。组件栏挂在会话头部的
-**组件** 胶囊按钮后面；在 设置 → **组件** 里安装、排序与调整尺寸。
+**组件** 图标后面；在 设置 → **组件** 里安装、排序与调整尺寸。
 
 ## 你能得到什么
 
@@ -201,7 +205,7 @@ dsh plugin --profile web add dsh-widgets
 dsh plugin --profile web add link:D:/dsh-home/plugins/dsh-widgets
 ```
 
-安装后**硬刷新浏览器**（Ctrl+Shift+R），在会话页头部点击「组件」胶囊即可展开组件栏。OpenCode Go 部件需先在 Models 设置中配置 `OPENCODE_GO_API_KEY`。
+安装后**硬刷新浏览器**（Ctrl+Shift+R），在会话页头部点击「组件」图标即可展开组件栏。OpenCode Go 部件需先在 Models 设置中配置 `OPENCODE_GO_API_KEY`。
 
 ## 开发
 

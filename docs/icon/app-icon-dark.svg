@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="dsh-widgets">
+  <title>dsh-widgets — dark</title>
+  <defs>
+    <linearGradient id="main" x1="438" y1="74" x2="235" y2="277" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8FC2FF"/>
+      <stop offset="1" stop-color="#145AF3"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="#0B0C0E"/>
+  <rect x="74" y="140" width="137" height="137" rx="40" fill="#45D9E7"/>
+  <rect x="84" y="301" width="127" height="127" rx="38" fill="#F2AF63"/>
+  <rect x="235" y="74" width="203" height="203" rx="58" fill="url(#main)"/>
+  <rect x="235" y="301" width="137" height="137" rx="40" fill="#7CB7FF"/>
+</svg>

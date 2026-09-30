@@ -1,10 +1,13 @@
 {
   "name": "dsh-widgets",
-  "version": "1.8.2",
-  "description": "Right-hand widget rail for DeepSeek Harness Web UI: live session stats, task/context/heatmap/quote widgets, OpenCode Go quota, multi-column grid layouts (1/2/4 columns) with 2x4 long tiles, a continuous magnification wave, and per-instance sizing. Widgets are installable, reorderable and resizable from Settings > Components.",
+  "version": "1.8.3",
+  "description": "组件系统：右侧实时组件栏，会话、机器、额度与成本一眼看完。",
+  "title": "组件系统",
+  "displayName": "组件系统",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
+  "icon": "./icon.svg",
   "exports": {
     ".": {
       "types": "./lib/types/index.d.ts",
@@ -15,7 +18,8 @@
       "default": "./lib/client.js"
     },
     "./cordis.patch.yml": "./cordis.patch.yml",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
     "lib/index.js",
@@ -23,7 +27,12 @@
     "lib/client.js.map",
     "cordis.patch.yml",
     "lib/types/**/*.d.ts",
+    "icon.svg",
+    "locale/*.json",
+    "README.md",
+    "README.zh-CN.md",
     "CHANGELOG.md",
+    "docs/icon/**",
     "docs/screenshots/**/*.png",
     "docs/screenshots/**/*.jpeg",
     "docs/screenshots/README.md"
