@@ -22,5 +22,16 @@
 }
 
 :root {
-  --dsx-rail-right: anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)));
+  /* Fallback FIRST, enhancement second: every consumer of this variable uses it
+     inside `calc(...)` for a `right` value (the rail, the magnify overlay, the
+     settings drawer), and an `anchor()` a browser cannot parse invalidates the
+     whole declaration instead of degrading — the drawer would fall back to its
+     static position on the LEFT of the viewport. Without anchor support the JS
+     fallback variable is the correct value anyway (see applyRailRight). */
+  --dsx-rail-right: var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px));
+}
+@supports (anchor-name: --dsx-center) {
+  :root {
+    --dsx-rail-right: anchor(--dsx-center right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)));
+  }
 }

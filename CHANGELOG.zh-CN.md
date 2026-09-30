@@ -11,6 +11,31 @@
 | GitHub Releases | 同一条目作为 release notes，锚定到发布它的那次提交（tag） | 仓库 → Releases |
 | `docs/` | 原始证据：CDP 探针脚本、截图、JSON 凭证、逐次事故的修复记录 | [`docs/`](docs/) |
 
+## v1.8.3 — 右侧边栏在 DSH 0.2 上重新吞掉组件栏，插件列表也终于认得出我们
+
+> 一次以修复为主的补丁版，同时把仓库里一直未发布的 DSH 0.2 适配一并送出：组件栏按 0.2 的层叠与轨道语义重新对齐，OpenCode 数据链路改为按需拉取，插件在 DSH 自己的插件列表里终于有了图标、名称与简短的中文说明。
+
+### 修复 — 右侧边栏吞掉组件区域的效果在 DSH 0.2 上消失
+
+- **根因是轨道语法**。DSH 0.2 把 AppFrame 的 inline 轨道从 `280px minmax(0px, 1fr) 720px` 改成 `… minmax(0px, 864px)`，而组件栏「轨道正朝哪个宽度去」的读取只认最后一段纯 px token，于是 `readTargetColumnWidth` 与 `readTargetRightbarWidth` 双双返回 `null`，`predictRailBudget` 随之失效，让位退化成 240ms + 520ms 的防抖：组件栏先跳进让出来的对话列，约 500ms 后才跳回右缘被面板盖住。实测（1920×1080，点一次「打开右侧边栏」）：修复前 grid 一帧从 1640px 到 776px、frame 上没有任何 transitionrun/start/end；修复后 11–13 个中间宽度逐帧插值、事件齐全，组件栏右缘全程钉在 1920（`scripts/verify-swallow-20.cjs`，9 项断言）。
+- **设置抽屉（组件区域）跟着一起被吞**。它的 `right` 声明被后加载的 `panel.module.css` 用原始 `--dsx-rightbar-w` 覆盖（同特异性、导入在后），于是不再跟随组件栏；又因为它 portal 到 `<body>`（z-index 30），会浮在官方 0.2 右栏（自身没有 z-index）之上。现在它骑同一个变量，并把「被吞」表达成运动 —— 与侧边栏同一条 0.3s 曲线滑出右缘。
+
+### 变更 — OpenCode 链路改为按需拉取
+
+- **没有组件就不请求**。collector 此前无条件拉取全部数据源：一台没装 OpenCode 组件、key 也已删除的机器上，`/api/opencode-usage` 每轮都回 503，浏览器控制台因此常驻一行红字，而那是用户从未设置过的功能。现在 `hasConsumer(source)` 先看已安装组件声明的 `source`（usage / cc / sys / github），只有真的有组件渲染它才发请求；单 key 路由也不再单独请求（多 key 路由恒 200，且已经带着主键的数据）。
+- **host 不再用 5xx 表达「未配置」**：`503 { error }` 改为 `200 { configured: false }` —— 可选 key 缺席是可预期状态，不该让每个客户端都记一条错误。
+
+### 新增 — 插件列表里的图标、名称与中文说明
+
+- `icon.svg`：36×36 viewBox、蓝→靛线性渐变、纯填充几何，留白按官方规范（内容占格子 50–60%，与内置实验性包一致），配色取自「智能体团队」（青 `#45D9E7`、橙 `#F2AF63`、主蓝渐变、浅蓝 `#7CB7FF`）。
+- `locale/zh.json` + `locale/en.json`（`meta.title = 组件系统`）与 `exports["./locale/*.json"]`，README front-matter 作为第二条渠道；`package.json.description` 同时改成一句简短中文 —— 它是 `link:` 安装下唯一能解析到的文案渠道。
+- 浅色 / 深色两版 App Icon（`docs/icon/app-icon-{light,dark}.svg`）。
+
+### 变更 — 随本版一并发布的 DSH 0.2 适配（此前未发布）
+
+- 放大浮层改为垂直裁剪，滚动时不再把卡片画到会话头与顶部菜单栏之上；turn navigator 归还产品自身的 z-index 7（不再 9 越级）；composer dock 的信息条不再被隐藏。
+- 更早一轮的卡片与设置/配置页重做随本版首次发布。
+
 ## v1.8.2 — 插件在 DSH 0.2 上重新装得上
 
 > 一次兼容性发布。DSH 0.1.7 起在**安装与启动**两道关口加了 peer 校验：插件声明的 `@deepseek-ai/dsh-*` peer 范围若不接受当前运行时，就直接被拒绝。本插件此前声明的是 `@deepseek-ai/dsh-client-ui-slots: ^0.1.0-rc.6`，而该范围在 semver 上无法接受 `0.2.0-rc.x`（0.x 的 minor 就是破坏边界），于是 `next` 线的所有用户——以及新桌面端（内置 `0.2.0-rc.x`）的所有用户——只会看到「不兼容」，插件根本不会被加载。现在范围同时覆盖两条线，而且这个结论是**在真实运行时上装一次、启一次**验出来的，不是读发布说明得来的。

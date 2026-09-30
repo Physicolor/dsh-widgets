@@ -58,7 +58,31 @@
   background: var(--dsw-alias-state-business-primary);
 }
 
-/* ── Switch (official settings-row checkbox-switch, adapted to --dsw-* tokens). ── */
+/* ── Switch — the product's OWN Switch, declaration for declaration.
+ *
+ * Source: `@deepseek-ai/dsh-client-ui-primitives`' `Switch.module.css`, read out
+ * of the live CSSOM with scripts/diag-header-toggle.cjs' sibling probe (the
+ * product's core CSS carries no data-plugin tag, so it cannot be grepped out of
+ * the bundle). The official control is a 36×20 pill: `padding: 2px`,
+ * `border-radius: 999px`, `corner-shape: round` — the one place the product
+ * explicitly opts OUT of squircle — track `--dsw-alias-border-l3` off /
+ * `--dsw-alias-brand-primary` on, and a 16×16 thumb that only SLIDES
+ * (`transition: transform .12s`; the track itself has NO transition) by exactly
+ * `translate(16px)` = 36 − 2·2 − 16. The thumb's fill is state-dependent:
+ * `--dsw-alias-label-primary-foreground` when on, `--dsw-alias-switch-thumb`
+ * when off (both #fff in light; in dark the brand track turns near-white and the
+ * on-thumb turns near-black, which is the intended inversion). No box-shadow
+ * anywhere on the control, and focus is the shared ring token pair.
+ *
+ * Markup stays a real `<input type="checkbox" role="switch">` inside its label —
+ * keyboard operation and label-click come free — so the visual states are keyed
+ * on `:checked` where the official one keys on `[aria-checked]`.
+ *
+ * REPLACED 2026-09-30. The previous recipe was a hand-rolled look-alike:
+ * 34×20 / radius 11, `state-success-primary` GREEN when on, 14px slide on a
+ * 0.16s BACKGROUND+transform ease, and a `--dsw-shadow-lv1` drop shadow under
+ * the thumb. Next to the product's own rows it read as a different control —
+ * the owner's report ("我们的这个开关按钮和官方指定的样式不同"). */
 .dsx-switch-row {
   position: relative;
   display: inline-flex;
@@ -75,41 +99,41 @@
   cursor: pointer;
 }
 .dsx-switch-track {
-  display: inline-flex;
-  align-items: center;
-  width: 34px;
+  display: block;
+  box-sizing: border-box;
+  position: relative;
+  flex: none;
+  width: 36px;
   height: 20px;
-  padding: 0;
-  border-radius: 11px;
-  background: var(--dsw-alias-interactive-bg-hover);
-  transition: background 0.16s ease;
+  padding: 2px;
+  border: 0;
+  border-radius: 999px;
+  corner-shape: round;
+  background: var(--dsw-alias-border-l3);
 }
 .dsx-switch-thumb {
+  display: block;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  margin-left: 2px;
-  background: #fff;
-  box-shadow: var(--dsw-shadow-lv1);
-  transition: transform 0.16s ease;
+  corner-shape: round;
+  background: var(--dsw-alias-switch-thumb);
+  transition: transform 0.12s;
 }
 .dsx-switch-input:checked + .dsx-switch-track {
-  background: var(--dsw-alias-state-success-primary);
+  background: var(--dsw-alias-brand-primary);
 }
 .dsx-switch-input:checked + .dsx-switch-track .dsx-switch-thumb {
-  transform: translateX(14px);
+  background: var(--dsw-alias-label-primary-foreground);
+  transform: translate(16px);
 }
 .dsx-switch-input:focus-visible + .dsx-switch-track {
-  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: 2px;
 }
 .dsx-switch-input:disabled + .dsx-switch-track {
-  background: var(--dsw-alias-interactive-bg-hover);
+  cursor: default;
   opacity: 0.5;
-  cursor: not-allowed;
-}
-.dsx-switch-input:disabled + .dsx-switch-track .dsx-switch-thumb {
-  box-shadow: none;
 }
 
 /* ── Metrics picker (ConfigField type 'metrics'): pick which numbers a card

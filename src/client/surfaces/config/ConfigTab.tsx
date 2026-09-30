@@ -122,7 +122,7 @@ function ConfigFieldControl({ field, value, onChange }: { field: ConfigField; va
   if (field.type === 'toggle') {
     const on = typeof value === 'boolean' ? value : (field.default === true)
     return React.createElement('label', { className: 'dsx-switch-row', title: fieldLabel(field) },
-      React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: on, onChange: (e) => onChange(e.target.checked) }),
+      React.createElement('input', { type: 'checkbox', role: 'switch', 'aria-label': fieldLabel(field), className: 'dsx-switch-input', checked: on, onChange: (e) => onChange(e.target.checked) }),
       React.createElement('span', { className: 'dsx-switch-track', 'aria-hidden': true }, React.createElement('span', { className: 'dsx-switch-thumb' })),
     )
   }
@@ -401,7 +401,7 @@ function MetricsFieldControl({ field, value, onChange }: { field: ConfigField; v
           onMouseDown: () => { onSwitch.current = true },
           onMouseUp: () => { onSwitch.current = false },
         },
-          React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: on, onChange: () => toggle(key) }),
+          React.createElement('input', { type: 'checkbox', role: 'switch', 'aria-label': optionLabel([key, label]), className: 'dsx-switch-input', checked: on, onChange: () => toggle(key) }),
           React.createElement('span', { className: 'dsx-switch-track', 'aria-hidden': true }, React.createElement('span', { className: 'dsx-switch-thumb' })),
         ),
       )

@@ -29,12 +29,13 @@
   body:not(:has([data-phase='active'])) [class$='_centerCol'] {
     anchor-name: --dsx-center;
   }
-  /* The settings drawer is a sibling fixed layer anchored to the rail's edge:
-     it rides the same variable as the rail, so while a panel swallows the rail
-     it is swallowed with it instead of staying parked over the panel. */
-  .dsx-stats-addpanel {
-    right: calc(var(--dsx-rail-right) + var(--dsx-rail-pad, 14px));
-  }
+  /* The settings drawer's `right` USED to live here, because it is a rail-owned
+     sibling layer riding the same variable. It moved to panel.module.css: this
+     sheet is imported BEFORE that one and both selectors have the same
+     specificity, so the copy here lost the cascade to panel.module.css's raw
+     `--dsx-rightbar-w` read — the drawer stayed parked in the conversation
+     column while a panel swallowed the rail. One declaration, in the sheet that
+     owns the drawer's box. */
 }
 
 /* The rail tracks `--dsh-sidebar-width` (set by dsh-better-sidebar when its
@@ -134,30 +135,44 @@ body.dsx-stats-active
   transition: right var(--ds-transition-duration-slow) var(--ds-ease-in-out);
 }
 
-body.dsx-stats-active [data-slot='conversation.composer.dock'] {
-  visibility: hidden !important;
-}
+/* The composer dock's info bar is NOT ours to hide.
+ *
+ * v1.x carried `body.dsx-stats-active [data-slot='conversation.composer.dock']
+ * { visibility: hidden !important }` on the reasoning that "whatever the bar
+ * says is already on the right rail". That is wrong: the bar carries the
+ * product's own per-turn figures (context %, tokens, TPS) and its own
+ * affordances, and a user who opens the rail never asked to lose it. The bar's
+ * box also anchors `--dsx-input-bottom` in measure.ts, which read it through
+ * `visibility: hidden` all along —so nothing about the rail's geometry depended
+ * on the bar being invisible.
+ *
+ * Hiding the LABELS is a user preference and stays where it belongs: the
+ * opt-in `body.dsx-hide-statsline` switch (see primitives.module.css), default
+ * OFF. No rule here may hide the dock again. */
 
-/* Turn navigator vs the transcript's column-width drag band.
+
+/* Turn navigator vs the transcript's column-width drag band — NO OVERRIDE.
  *
- * The product paints the invisible 40px col-resize band at z-index 8 and the
- * navigator's sticky slot at z-index 7, so wherever the two overlap the band
- * wins the hit test: hovering the navigator shows the resize grip and a drag
- * starts instead of a turn jump (reported with a screenshot). The overlap itself
- * is the product's own geometry — its CONTENT_EDGE_BUDGET (176px per side,
- * 24 + 40 + 24) reserves that gutter for the band and not for the navigator, so
- * it also reproduces with this plugin's rail closed; and a rail that yields part
- * of the gutter only changes how often it happens.
+ * v1.x raised the navigator's slot to `z-index: 9` here (the band painted at 8
+ * in that shell, so wherever the two overlapped the band won the hit test:
+ * hovering the navigator showed the resize grip and a drag started instead of a
+ * turn jump). DSH 0.2.0 rebuilt both sides of that contest:
  *
- * Fix the ORDER, not the geometry: the navigator is the visible control, so it
- * takes the hover, and the band keeps the rest of its width for dragging. The
- * slot is addressed by what it contains (a `nav` carrying the navigator's
- * aria-label) instead of its hashed class, so a product rebuild cannot silently
- * drop the rule.
- */
-[data-conversation-scroll] :has(> nav[aria-label]) {
-  z-index: 9;
-}
+ *   - the band is `.…_widthHandle` at `z-index: 0`
+ *     (ConversationRoot.module.css), well under the navigator's own 7;
+ *   - the navigator's slot ships `z-index: 7` itself
+ *     (TurnNavigator.module.css `.…_slot`), i.e. the SAME index as the composer
+ *     seat (`Dc7zOa_composerSeat`, the rail's stacking ancestor), where tree
+ *     order decides — and the seat is the later sibling, so the rail paints
+ *     above the navigator exactly as it should.
+ *
+ * Keeping the old 9 would break that: 9 > the seat's 7, so the navigator slot
+ * paints over the ENTIRE seat subtree, including the magnified card that grows
+ * left into the navigator's gutter — the reported "the floating card is cut off
+ * by the turn navigator". The overlap itself is deliberate (the magnify overlay
+ * widens leftwards to cover the gap between the rail and the conversation), so
+ * the ordering, not the geometry, is what has to stay quiet here. */
+
 
 /* No active session: the whole rail group leaves the screen in the beat the
    session signal drops. Every rail surface is `position: fixed`, so an entry

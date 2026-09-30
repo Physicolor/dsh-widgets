@@ -27,6 +27,7 @@ import { STORE_API, flushPendingState, putState, saveState } from './runtime/hos
 import { WidgetsPage } from './surfaces/Settings'
 import { t, installLocale, onLocaleChange } from './i18n'
 import { installSettingsNavGlyph } from './surfaces/settings-nav-glyph'
+import { widgetsToggleIcon } from './render/icons'
 import { readMaxCardSide, readMinCardSide, resolveRailLayout } from './rail/geometry'
 import { createRailMeasure } from './rail/measure'
 import { createRailView } from './rail/rail-view'
@@ -193,11 +194,20 @@ export function apply(ctx: ClientContext): void {
   })
   ctx.effect(() => measure.install())
 
-  // ---- Header capsule toggle. ----
+  // ---- Header toggle (icon button). ----
+  // ICON-ONLY since 2026-09-30 (the owner's ask): the rail's header control used
+  // to be a 52x28 pill reading 组件, and a filled blue pill in a row of quiet
+  // 28px icon buttons pulled more attention than a panel toggle deserves. It is
+  // now the product's OWN toggle recipe, copied from
+  // `@deepseek-ai/dsh-client-ui-sidebar-files/FilesBody.module.css`'s `.tool`:
+  // 28x28, radius var(--dsw-radius-sm), no border, transparent background,
+  // label-secondary glyph, and `:hover, [aria-pressed=true]` → label-primary
+  // glyph + interactive-bg-hover fill. Same size, radius, stroke and idle tone as
+  // the 打开右侧边栏 button in the corner seat, so the row reads as one set.
   // Placement in this list slot is decided by `order` alone: the slot core sorts
   // a list slot by (priority, order) and falls back to registration sequence
   // only on a tie. dsh-better-sidebar registers its bottom-panel toggle at
-  // order 10, so sharing 10 tied the two entries and the capsule's place
+  // order 10, so sharing 10 tied the two entries and the toggle's place
   // followed whichever fiber re-registered last —a reload of this bundle
   // (tsdown/HMR, market toggle) pushed 组件 past the toggle to the row's right
   // end. 5 keeps it right of the official export control (order 0) and
@@ -217,14 +227,20 @@ export function apply(ctx: ClientContext): void {
         setState({ open: next })
         setPrefs({ railOpen: next })
       }
+      // An icon-only button owes the user its name twice: `aria-label` for the
+      // accessibility tree, `title` for the pointer (the shell turns raw titles
+      // into its own tooltip bubble where dsh-ui-harmonizer is installed, and a
+      // native one otherwise — the same call the add button makes).
       return React.createElement('button', {
         type: 'button',
         className: 'dsx-stats-capsule',
         'aria-pressed': unavailable ? false : snap.open,
         'aria-disabled': unavailable || undefined,
         'data-space': unavailable ? 'tight' : undefined,
+        'aria-label': t('ui.capsule'),
+        title: t('ui.capsule'),
         onClick: toggle,
-      }, React.createElement('span', null, t('ui.capsule')))
+      }, widgetsToggleIcon)
     },
   ))
 

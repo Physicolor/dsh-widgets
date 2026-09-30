@@ -13,25 +13,49 @@
   line-height: normal;
 }
 
+/* The session header's widgets toggle. ICON-ONLY since 2026-09-30: the pill this
+ * replaced (52x28, 13px label, bg-layer-1 fill, brand-blue when pressed) made the
+ * rail's switch the loudest thing in a row of quiet 28px icon buttons.
+ *
+ * The recipe below is the product's OWN toggle, copied rule-for-rule from
+ * `@deepseek-ai/dsh-client-ui-sidebar-files/FilesBody.module.css` `.tool`
+ * (28x28, radius --dsw-radius-sm, no border, transparent background,
+ * label-secondary glyph, `:hover, [aria-pressed=true]` → label-primary glyph +
+ * interactive-bg-hover fill) — i.e. the same box, radius, idle tone and pressed
+ * fill as the 打开右侧边栏 corner button two seats to the right, and the same
+ * 15px stroke-1 glyph size (the official `.tool svg` rule). Both hover and
+ * pressed share one rule there, so a pressed toggle keeps the fill it shows on
+ * hover; colour comes from tokens, so dark mode needs no second rule.
+ *
+ * The class name stays `dsx-stats-capsule` on purpose: rail-view.tsx's
+ * outside-click guard and dsh-ui-harmonizer's coordination notes both key on it,
+ * and it is a stable handle for the probes (verify-sidebar-anim, verify-release-smoke). */
 .dsx-stats-capsule {
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: 0 0;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 14px;
-  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin, transparent);
-  background: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-secondary);
-  font-size: 13px;
+  justify-content: center;
   line-height: 1;
-  cursor: pointer;
 }
 
+.dsx-stats-capsule svg {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+.dsx-stats-capsule:hover:not([aria-disabled='true']),
 .dsx-stats-capsule[aria-pressed='true'] {
-  background: var(--dsw-alias-state-business-primary);
-  color: #fff;
-  border-color: transparent;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
 }
 
 /* No margin for the rail at this width (the transcript measure owns it):
@@ -269,9 +293,15 @@ html.dsx-live-width [data-conversation-scroll] {
 
 /* Yielded (the panel owns the space): the drawer is faded out but stays
  * mounted so its retreat is part of the panel's motion. An invisible cover must
- * not keep capturing clicks over the transcript it just gave back. */
+ * not keep capturing clicks over the transcript it just gave back — including
+ * over the right panel itself, which is what covers the swallowed rail.
+ *
+ * The rail lives INSIDE the drawer, but the settings drawer is portal'ed to
+ * <body> (see rail-view.tsx's note), so the plain descendant selector
+ * `[data-yielded] .dsx-stats-addpanel` never matched anything. Address the
+ * portal from the body. */
 [data-yielded] .dsx-stats-rail,
-[data-yielded] .dsx-stats-addpanel {
+body:has(.dsx-stats-drawer[data-yielded]) .dsx-stats-addpanel {
   pointer-events: none !important;
 }
 

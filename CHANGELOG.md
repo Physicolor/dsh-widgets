@@ -13,6 +13,31 @@ Where each kind of detail lives:
 
 Every entry is written in the language of the file it lives in: English here, Chinese in `CHANGELOG.zh-CN.md`. A term that names a piece of the UI is quoted the way the UI itself says it in that language.
 
+## v1.8.3 — the sidebar swallows the rail again on DSH 0.2, and the plugin list can finally see us
+
+> A fix-led patch that also ships the DSH 0.2 adaptations this repository had been carrying unpublished: the rail is re-aligned against 0.2's stacking and track semantics, the OpenCode feed is fetched only when something renders it, and the plugin finally has its own icon, locale and a short description in DSH's own plugin list.
+
+### Fixed — the right sidebar stopped swallowing the rail on DSH 0.2
+
+- **The root cause was the track syntax.** DSH 0.2 rewrote the AppFrame's inline tracks from `280px minmax(0px, 1fr) 720px` to `… minmax(0px, 864px)`, while the rail's "width the track is heading for" read accepted only a plain `px` last token. Both `readTargetColumnWidth` and `readTargetRightbarWidth` therefore returned `null`, `predictRailBudget` went with them, and the yield degraded to the 240 ms + 520 ms settle debounce: the rail hopped into the freed conversation column, then snapped back under the panel ~500 ms later. Measured at 1920×1080, one press of 打开右侧边栏: before, the grid went 1640px → 776px in a single frame and the frame fired no `transitionrun/start/end` at all; after, 11–13 intermediate widths interpolate frame by frame, the events are all there, and the rail's right edge stays pinned at 1920 the whole way (`scripts/verify-swallow-20.cjs`, 9 assertions).
+- **The settings drawer (the 组件 area) is swallowed with it.** Its `right` declaration was overridden by `panel.module.css` (same specificity, imported later) with the raw `--dsx-rightbar-w`, so the drawer stopped following the rail; and because it is portal'ed to `<body>` (z-index 30) it floated *above* the official 0.2 right column, which carries no z-index at all. It now rides the same variable and expresses the swallow as MOTION — sliding out the right edge on the same 0.3 s curve as the sidebar.
+
+### Changed — the OpenCode feed is fetched on demand
+
+- **No widget, no request.** The collector used to pull every data source unconditionally: on a machine with no OpenCode widget installed and the key deleted, `/api/opencode-usage` answered 503 on every refetch, so the browser kept a red line in the console for a feature the user never set up. `hasConsumer(source)` now checks the installed widgets' declared `source` (usage / cc / sys / github) and only asks for what something actually renders; the single-key route is no longer requested on its own (the pool route is always 200 and already carries the primary key's payload).
+- **The host no longer says "not configured" with a 5xx**: `503 { error }` became `200 { configured: false }` — an absent optional key is an expected state, not an error for every client to log.
+
+### Added — an icon, a name and a Chinese description in the plugin list
+
+- `icon.svg`: a 36×36 viewBox with a blue→indigo linear gradient and flat filled geometry, at the official padding (content covers 50–60% of the tile, matching the built-in experimental bundles), in the colour family of 智能体团队 (cyan `#45D9E7`, amber `#F2AF63`, the main blue gradient, light blue `#7CB7FF`).
+- `locale/zh.json` + `locale/en.json` (`meta.title = 组件系统`) with `exports["./locale/*.json"]`, plus README front-matter as the second channel; `package.json.description` is a short Chinese sentence now — it is the one text channel that also resolves for a `link:`-installed plugin.
+- Light and dark App Icons (`docs/icon/app-icon-{light,dark}.svg`).
+
+### Changed — the DSH 0.2 adaptations that ship with this version (previously unpublished)
+
+- The magnify overlay is clipped vertically, so scrolling no longer paints cards over the session header and the top bar; the turn navigator keeps the product's own z-index 7 (the 9 override is gone); the composer dock's info bar is no longer hidden.
+- The earlier card and settings/config-page rework ships here for the first time.
+
 ## v1.8.2 — the plugin loads on DSH 0.2 again
 
 > A compatibility release. DSH 0.1.7 added a **peer check at install and boot**: a plugin whose declared `@deepseek-ai/dsh-*` peer range does not accept the running runtime is refused outright. This plugin declared `@deepseek-ai/dsh-client-ui-slots: ^0.1.0-rc.6`, which cannot accept `0.2.0-rc.x` (a 0.x minor is a breaking boundary in semver), so every user on the `next` line — and every user of the new desktop build, which ships `0.2.0-rc.x` — was told the plugin is incompatible and never got it loaded. The range now covers both lines, and the support was verified by installing and booting the plugin against real runtimes rather than by reading release notes.

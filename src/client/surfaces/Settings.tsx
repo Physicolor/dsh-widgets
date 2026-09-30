@@ -17,11 +17,17 @@ import { t } from '../i18n'
 
 export function WidgetsPage({ controller, hideHeader }: { controller: WidgetsController; hideHeader?: boolean }): React.ReactElement {
   const [tab, setTab] = React.useState('config')
+  // The page header is the OFFICIAL skeleton — a bare `h2` + `p` with `_title` /
+  // `_intro`-suffixed classes — not a hand-styled div pair. Two reasons: the
+  // semantics are the product's (a page title is a heading), and the suffix
+  // convention is what the settings-header normalizer keys on, so this page takes
+  // part in the same header geometry as 通用设置 / 模型 / Agent 预设 instead of
+  // drifting (its own inline 18/600 + 13/20 block could never be matched by a
+  // stylesheet rule or a normalizer). The distance to the description is left to
+  // the container / normalizer; see .dsx-page-title in styles/panel.module.css.
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, height: '100%', minHeight: 0 } },
-    hideHeader ? null : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 0 12px', borderBottom: '1px solid var(--dsw-alias-border-l2)' } },
-      React.createElement('div', { style: { fontSize: 18, fontWeight: 600, lineHeight: '26px', color: 'var(--dsw-alias-label-primary)' } }, t('page.title')),
-      React.createElement('div', { style: { fontSize: 13, lineHeight: '20px', color: 'var(--dsw-alias-label-tertiary)' } }, t('page.desc')),
-    ),
+    hideHeader ? null : React.createElement('h2', { className: 'dsx-page-title' }, t('page.title')),
+    hideHeader ? null : React.createElement('p', { className: 'dsx-page-intro' }, t('page.desc')),
     React.createElement('div', { className: 'dsx-tabbar', style: { flex: 'none' } },
       React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'config', onClick: () => setTab('config') }, t('tab.config')),
       React.createElement('button', { type: 'button', className: 'dsx-tab', 'data-active': tab === 'market', onClick: () => setTab('market') }, t('tab.market')),
@@ -77,7 +83,7 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
     React.createElement(Row, {
       title: t('settings.realtime.title'), desc: t('settings.realtime.desc'),
       children: React.createElement('label', { className: 'dsx-switch-row' },
-        React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: prefs.realTime, onChange: (e) => setPrefs({ realTime: e.target.checked }) }),
+        React.createElement('input', { type: 'checkbox', role: 'switch', 'aria-label': t('settings.realtime.title'), className: 'dsx-switch-input', checked: prefs.realTime, onChange: (e) => setPrefs({ realTime: e.target.checked }) }),
         React.createElement('span', { className: 'dsx-switch-track' }, React.createElement('span', { className: 'dsx-switch-thumb' })),
       ),
     }),
@@ -87,7 +93,7 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
     React.createElement(Row, {
       title: t('settings.squircle.title'), desc: t('settings.squircle.desc'),
       children: React.createElement('label', { className: 'dsx-switch-row' },
-        React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: prefs.squircle, onChange: (e) => setPrefs({ squircle: e.target.checked }) }),
+        React.createElement('input', { type: 'checkbox', role: 'switch', 'aria-label': t('settings.squircle.title'), className: 'dsx-switch-input', checked: prefs.squircle, onChange: (e) => setPrefs({ squircle: e.target.checked }) }),
         React.createElement('span', { className: 'dsx-switch-track' }, React.createElement('span', { className: 'dsx-switch-thumb' })),
       ),
     }),
@@ -105,7 +111,7 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
     React.createElement(Row, {
       title: t('settings.hideStatsLine.title'), desc: t('settings.hideStatsLine.desc'),
       children: React.createElement('label', { className: 'dsx-switch-row' },
-        React.createElement('input', { type: 'checkbox', className: 'dsx-switch-input', checked: prefs.hideStatsLine, onChange: (e) => setPrefs({ hideStatsLine: e.target.checked }) }),
+        React.createElement('input', { type: 'checkbox', role: 'switch', 'aria-label': t('settings.hideStatsLine.title'), className: 'dsx-switch-input', checked: prefs.hideStatsLine, onChange: (e) => setPrefs({ hideStatsLine: e.target.checked }) }),
         React.createElement('span', { className: 'dsx-switch-track' }, React.createElement('span', { className: 'dsx-switch-thumb' })),
       ),
     }),

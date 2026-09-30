@@ -48,7 +48,7 @@ window.DASH_I18N = (function () {
     githubAria: 'GitHub 仓库',
 
     /* hero */
-    kicker: 'dsh-widgets · v1.8.2 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
+    kicker: 'dsh-widgets · v1.8.3 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: '将对话区域中的留白空间，转化为高信息密度、可随时隐藏的辅助界面。',
@@ -63,8 +63,8 @@ window.DASH_I18N = (function () {
     /* install */
     installTitle: '一条命令安装',
     installSub: '从插件市场添加即可——无需改任何配置文件。',
-    termTitle: 'dsh-widgets@1.8.2 · DeepSeek Harness 插件',
-    termComment: '# 然后硬刷新浏览器（Ctrl+Shift+R），并点击会话顶部的「组件」胶囊展开组件栏。',
+    termTitle: 'dsh-widgets@1.8.3 · DeepSeek Harness 插件',
+    termComment: '# 然后硬刷新浏览器（Ctrl+Shift+R），并点击会话顶部的组件图标展开组件栏。',
     copy: '复制', copied: '已复制',
     installNote: '以 npm 包 dsh-widgets 分发 · DeepSeek Harness 0.1.0-rc.6+ / 0.2.x · 本地开发使用 link 安装。',
 
@@ -73,7 +73,7 @@ window.DASH_I18N = (function () {
     whySub: '对话区域本就存在留白。dsh-widgets 把它变成一层有用、安静、随时可隐藏的信息层。',
     why1Title: '有用 Useful', why1Body: '组件不是装饰。每一张卡片都在极小的空间里呈现真正有价值的信息——Token、延迟、上下文构成、配额，一眼可读。',
     why2Title: '紧凑 Compact', why2Body: '对话界面的闲置留白变成高信息密度的表面：1 / 2 / 4 列，紧密排布的卡片，2×4 长条瓦片。',
-    why3Title: '可选 Optional', why3Body: '组件是一层辅助信息，绝不阻碍对话——会话顶部的「组件」胶囊可以随时隐藏整条组件栏。',
+    why3Title: '可选 Optional', why3Body: '组件是一层辅助信息，绝不阻碍对话——会话顶部的组件图标可以随时隐藏整条组件栏。',
 
     /* gallery */
     gTitle: '组件画廊',
@@ -360,7 +360,7 @@ window.DASH_I18N = (function () {
     menuToggleAria: 'Toggle navigation menu',
     githubAria: 'GitHub repository',
 
-    kicker: 'dsh-widgets · v1.8.2 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
+    kicker: 'dsh-widgets · v1.8.3 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: 'Turn the idle whitespace of the conversation area into a high-information-density, hideable companion surface.',
@@ -374,8 +374,8 @@ window.DASH_I18N = (function () {
 
     installTitle: 'Install in one command',
     installSub: 'Add it from the plugin market, no config files to touch.',
-    termTitle: 'dsh-widgets@1.8.2 · DeepSeek Harness plugin',
-    termComment: '# then hard-refresh the browser (Ctrl+Shift+R) and click the “Components” capsule in the session header.',
+    termTitle: 'dsh-widgets@1.8.3 · DeepSeek Harness plugin',
+    termComment: '# then hard-refresh the browser (Ctrl+Shift+R) and click the Components icon in the session header.',
     copy: 'Copy', copied: 'Copied',
     installNote: 'Distributed as the npm package dsh-widgets · works on DeepSeek Harness 0.1.0-rc.6+ and 0.2.x · local development uses a link install.',
 
@@ -383,7 +383,7 @@ window.DASH_I18N = (function () {
     whySub: 'The conversation area already has idle space. dsh-widgets turns it into a useful, quiet, hideable information layer.',
     why1Title: 'Useful', why1Body: 'Widgets are not decoration. Every card carries genuinely valuable information — tokens, latency, context composition, quota — readable at a glance.',
     why2Title: 'Compact', why2Body: 'The idle whitespace of the conversation becomes a high-information-density surface: 1 / 2 / 4 columns of tightly packed cards, plus 2×4 wide tiles.',
-    why3Title: 'Optional', why3Body: 'An auxiliary layer that never blocks a conversation — the “Components” capsule in the session header hides the whole rail at any time.',
+    why3Title: 'Optional', why3Body: 'An auxiliary layer that never blocks a conversation — the Components icon in the session header hides the whole rail at any time.',
 
     gTitle: 'Widget Gallery',
     gSub: 'All 40 current widgets — each one an independent, contract-driven unit under src/widgets/<id>/.',

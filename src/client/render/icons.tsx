@@ -191,3 +191,35 @@ export const gaugeIcon = React.createElement('svg', { width: 16, height: 16, vie
   React.createElement('path', { d: 'M8 8.75L11.4 5.35', stroke: 'currentColor', strokeWidth: 2.4, strokeLinecap: 'round' }),
   React.createElement('circle', { cx: 8, cy: 8.75, r: 1.55, fill: 'currentColor' }),
 )
+
+/**
+ * The header toggle's glyph: the app icon's four-tile motif, drawn on the
+ * HEADER's grid rather than the settings-nav one.
+ *
+ * This is the same artwork as `--dsx-nav-glyph` (styles/tokens.module.css, the
+ * settings-nav mask), re-gridded for the surface it now sits in, because the two
+ * surfaces speak different weights of the same official set
+ * (`@deepseek-ai/dsh-client-ui-primitives`):
+ *
+ *  - the session header is REGULAR — `ICON_REGULAR_STROKE = 1`, 16-unit artwork
+ *    rendered at 15px. Measured on the 打开右侧边栏 button next door: viewBox 16,
+ *    box 15x15, stroke 1 (effective 0.94px), ink spanning 1.5..14.5;
+ *  - the settings nav is MEDIUM — `ICON_MEDIUM_STROKE = 1.3`, rendered at 16px
+ *    (both measured live, scripts/diag-icon-language.cjs).
+ *
+ * The nav mask's tiles span 1.1..14.9 at stroke 1.25; reused unchanged in the
+ * header that reads ~16% larger and ~33% heavier than the 打开右侧边栏 icon, which
+ * is exactly the mismatch this glyph fixes: outer stroke CENTRES on 1.5..14.5
+ * (the official grid), stroke 1, so the ink is 1.0..15.0 and the effective
+ * stroke lands at 0.94px — the same as its neighbour's.
+ *
+ * The ~3-unit gaps are carried over from the nav version (scaled with the
+ * tiles), so the four cards still separate at 1x: ≈1.9px between strokes at the
+ * 15px render, above the ~1.7px the nav version was tuned to.
+ */
+export const widgetsToggleIcon = React.createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1, strokeMiterlimit: 10, 'aria-hidden': true },
+  React.createElement('rect', { x: 1.5, y: 1.5, width: 4.33, height: 5.18, rx: 1.32 }),
+  React.createElement('rect', { x: 1.5, y: 9.32, width: 4.33, height: 5.18, rx: 1.32 }),
+  React.createElement('rect', { x: 8.85, y: 1.5, width: 5.65, height: 6.69, rx: 1.7 }),
+  React.createElement('rect', { x: 8.85, y: 10.73, width: 4.15, height: 3.77, rx: 1.22 }),
+)

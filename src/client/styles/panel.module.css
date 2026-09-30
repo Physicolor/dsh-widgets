@@ -12,7 +12,18 @@
      interactive child must opt back in explicitly. Without this the whole
      add panel was unhit-testable — clicks fell through to the rail's cards. */
   pointer-events: auto;
-  right: calc(var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px)) + var(--dsx-rail-pad, 14px));
+  /* ONE anchor for every rail-owned layer: the SAME variable the rail and the
+     magnify overlay read (--dsx-rail-right), not the raw right-bar width.
+     v1.6.0 wrote this rule inside rail.module.css's `@supports (anchor-name)`
+     block, which panel.module.css (imported LATER, same specificity, see the
+     note above) silently overrode — so while a panel swallowed the rail this
+     drawer alone stayed parked in the conversation column instead of being
+     swallowed with it. Riding the variable also means the drawer follows the
+     rail's normal edge (the conversation column's right edge) with no second
+     geometry read.
+     --dsx-rail-right always holds a legal `right` value: tokens.module.css
+     defines the no-anchor value first and upgrades it inside @supports. */
+  right: calc(var(--dsx-rail-right, var(--dsx-rightbar-w, var(--dsh-sidebar-width, 0px))) + var(--dsx-rail-pad, 14px));
   width: auto;
   /* Bottom = input-box breathing gap (--dsx-input-bottom) -- NEVER track
      --dsh-sidebar-width here: that variable is dsh-better-sidebar's right
@@ -48,6 +59,24 @@
   transform: translateX(0);
   transition-delay: 0s;
   visibility: visible;
+}
+/* Swallowed: a panel is on screen and the rail has yielded its space to it.
+ *
+ * The drawer rides the rail's own right inset (above), but it is portal'ed to
+ * <body> with z-index 30, so — unlike the rail, which the shell's right column
+ * paints over — it would float ON TOP of the panel that just ate the rail,
+ * covering the very surface the user opened. DSH 0.1.x never showed this
+ * because the right panel there (dsh-better-sidebar, z-index 40) sat above the
+ * drawer and covered it; the official 0.2 right column carries no z-index.
+ *
+ * So the swallow is expressed as MOTION instead of stacking: the drawer leaves
+ * the stage exactly the way it closes (out to the right), while the panel
+ * sweeps in from that same edge — the 组件 area is eaten, not overlaid. It
+ * comes straight back when the panel retreats (the attribute is dropped), so
+ * nothing about the drawer's state changes; `[data-yielded]` only decides
+ * whether it is on stage. */
+body:has(.dsx-stats-drawer[data-yielded]) .dsx-stats-addpanel.open {
+  transform: translateX(calc(100% + 40px));
 }
 .dsx-stats-addpanel-resize {
   position: absolute;
@@ -194,6 +223,31 @@
   display: flex;
   gap: 8px;
   border-bottom: 1px solid var(--dsw-alias-border-l2);
+}
+
+/* Settings-page header (surfaces/Settings.tsx): the official skeleton is a bare
+ * `h2` + `p`, and the class suffixes `_title` / `_intro` are the convention the
+ * settings-header normalizer (dsh-ui-harmonizer) keys on — which is why this
+ * page now reads like 通用设置 / 模型 / Agent 预设 instead of carrying its own
+ * inline type scale. Numbers are the official ones (title 18/26 600
+ * label-primary, description 13/20 tertiary). The distance between the two is
+ * deliberately NOT set here: the page's own column gap (10px) governs when the
+ * normalizer is absent, and the normalizer writes the official 12px when it is
+ * installed — exactly like every other settings page. */
+.dsx-page-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.dsx-page-intro {
+  margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-tertiary);
 }
 
 /* The 组件配置 drawer's close button (title row, right of the size picker). */
