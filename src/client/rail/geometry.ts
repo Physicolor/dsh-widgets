@@ -130,6 +130,65 @@ export function readRailBudget(): number {
 }
 
 /**
+ * The inline `grid-template-columns` split into its TOP-LEVEL tracks.
+ *
+ * Whitespace inside a function (`minmax(0px, 1fr)`) is not a track separator, so
+ * this scans paren depth instead of calling `split(/\s+/)`. Split naively, DSH
+ * 0.2.0's track list `280px minmax(0px, 1fr) minmax(0px, 864px)` yields five
+ * tokens — two of them fragments like `864px)` — and every `px` read below then
+ * fails.
+ */
+function splitTracks(inline: string): string[] {
+  const tracks: string[] = []
+  let depth = 0
+  let current = ''
+  for (const ch of inline) {
+    if (ch === '(') depth += 1
+    else if (ch === ')') depth -= 1
+    if (depth === 0 && (ch === ' ' || ch === '\t' || ch === '\n')) {
+      if (current !== '') { tracks.push(current); current = '' }
+      continue
+    }
+    current += ch
+  }
+  if (current !== '') tracks.push(current)
+  return tracks
+}
+
+/**
+ * Pixel width the shell is animating ONE track toward, or null when the track
+ * carries no pixel bound at all.
+ *
+ * DSH 0.2.0 rewrote the frame's inline tracks from plain pixels to minmax()
+ * pairs (the right column is now `minmax(0px, <target>px)`, it used to be
+ * `<target>px`), so the old last-token `/^([\d.]+)px$/` read returned null on
+ * every measurement. That single null is the 0.2 regression this file's callers
+ * were built around:
+ *
+ *   - `readTargetColumnWidth` could not predict the column the track is heading
+ *     for, so `predictRailBudget` returned null and the yield fell back to the
+ *     240ms + 520ms settle debounce — the rail hopped into the freed
+ *     conversation column and snapped back under the panel ~500ms later instead
+ *     of being pinned for the whole gesture;
+ *   - `readTargetRightbarWidth` could not see the panel's target either, so "is
+ *     a panel there" was only answered once the track had already advanced.
+ *
+ * `minmax(a, b)` resolves to `b` when that is a pixel value (the width the track
+ * reaches when open) and to `a` otherwise: `minmax(0px, 1fr)` is the collapsed
+ * middle track and must read 0, never "no answer".
+ */
+function trackTargetPx(track: string): number | null {
+  const plain = /^([\d.]+)px$/.exec(track)
+  if (plain !== null) return Number(plain[1])
+  const minmax = /^minmax\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)$/.exec(track)
+  if (minmax === null) return null
+  const max = /^([\d.]+)px$/.exec(minmax[2])
+  if (max !== null) return Number(max[1])
+  const min = /^([\d.]+)px$/.exec(minmax[1])
+  return min === null ? null : Number(min[1])
+}
+
+/**
  * The column width the shell is ANIMATING TOWARD.
  *
  * The AppFrame animates `grid-template-columns`, so its INLINE value is the
@@ -141,17 +200,10 @@ export function readRailBudget(): number {
  */
 function readTargetColumnWidth(): number | null {
   const frame = document.querySelector('[class$="_frame"]') as HTMLElement | null
-  const inline = frame?.style.gridTemplateColumns ?? ''
-  // First and last track only: the middle one is `minmax(0px, 1fr)`, whose space
-  // makes a naive whitespace split produce four tokens instead of three.
-  const parts = inline.split(/\s+/).filter(Boolean)
-  if (parts.length < 3) return null
-  const px = (token: string): number | null => {
-    const match = /^([\d.]+)px$/.exec(token)
-    return match === null ? null : Number(match[1])
-  }
-  const left = px(parts[0])
-  const right = px(parts[parts.length - 1])
+  const tracks = splitTracks(frame?.style.gridTemplateColumns ?? '')
+  if (tracks.length < 3) return null
+  const left = trackTargetPx(tracks[0])
+  const right = trackTargetPx(tracks[tracks.length - 1])
   if (left === null || right === null) return null
   const width = window.innerWidth - left - right
   return width > 0 ? width : null
@@ -165,11 +217,10 @@ function readTargetColumnWidth(): number | null {
  */
 function readTargetRightbarWidth(): number {
   const frame = document.querySelector('[class$="_frame"]') as HTMLElement | null
-  const inline = frame?.style.gridTemplateColumns ?? ''
-  const parts = inline.split(/\s+/).filter(Boolean)
-  if (parts.length >= 3) {
-    const match = /^([\d.]+)px$/.exec(parts[parts.length - 1])
-    if (match !== null) return Number(match[1])
+  const tracks = splitTracks(frame?.style.gridTemplateColumns ?? '')
+  if (tracks.length >= 3) {
+    const target = trackTargetPx(tracks[tracks.length - 1])
+    if (target !== null) return target
   }
   const column = document.querySelector('[class$="_rightbarCol"]')
   return column === null ? 0 : Math.round(column.getBoundingClientRect().width)

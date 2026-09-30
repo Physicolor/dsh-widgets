@@ -663,16 +663,30 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     // too, and both decks must stay pixel-identical while the wave is live.
     React.createElement('div', { key: '__tail', 'aria-hidden': true, style: { height: `${tailH}px`, pointerEvents: 'none' } }),
   )
-  // Magnify overlay: a FIXED layer rendered OUTSIDE the rail's scroll-clip box (a
-  // sibling of the rail, so no ancestor overflow clips it) that paints the live
-  // reflow while a card is magnified —its leftward growth shows over the
-  // conversation edge instead of being cut at the rail's left boundary, and the
-  // rail width (hence the conversation column) never changes.
-  // --dsx-rail-scroll pins it to the scrolled deck. Its right offset MUST be the
-  // same variable the rail uses (--dsx-rightbar-w): DSH 0.1.5's right sidebar
-  // never publishes --dsh-sidebar-width, so the old fallback left the overlay
-  // parked at the viewport edge —720px to the right of the rail, painting over
-  // the panel (measured 2026-09-13).
+  // Magnify overlay: a FIXED layer that paints the live reflow while a card is
+  // magnified —its leftward growth shows over the conversation edge instead of
+  // being cut at the rail's left boundary, and the rail width (hence the
+  // conversation column) never changes.
+  //
+  // VERTICAL CLIP (2026-09-30, 0.2.0): the layer is a viewport-fixed box the SIZE
+  // OF THE RAIL's own box —`top: --dsx-rail-top`, `bottom: 0`, plus `overhang`
+  // on the LEFT only— and it now carries `overflow: hidden`, with the scrolled
+  // offset riding the inner deck (`top: ---dsx-rail-scroll`) instead of the
+  // layer's own `top`. Before that the layer's top was `rail-top − rail-scroll`
+  // with `overflow: visible`: scrolling the rail lifted the whole overlay box
+  // past the rail's top edge, and the cards that had scrolled out of the rail
+  // kept painting over the session header and the app's top menu bar (reported,
+  // and reproduced with scripts/diag-rail-stacking-20.cjs: at railScroll 320 the
+  // overlay's top was 88 − 320 = −232px, so card content owned the hit test at
+  // y = 2). The rail itself has always clipped that content —its own
+  // `overflow-y: auto` —so the overlay was the only surface that could escape.
+  // The LEFT overhang still paints, because it lives inside the layer's box
+  // (width `railW + overhang`, padding-left `pad + overhang`), not outside it.
+  // --dsx-rail-scroll pins the deck to the rail's scroll offset. Its right offset
+  // MUST be the same variable the rail uses (--dsx-rightbar-w): DSH 0.1.5's right
+  // sidebar never publishes --dsh-sidebar-width, so the old fallback left the
+  // overlay parked at the viewport edge —720px to the right of the rail, painting
+  // over the panel (measured 2026-09-13).
   //
   // INTERACTION (2026-09-19): while the morph is live the overlay is what the
   // user SEES, so it must also be what the user touches. The layer itself stays
@@ -1006,7 +1020,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
   const overhang = morph && engaged
     ? Math.ceil(Math.max(0, focusLayout.reduce((m, c, i) => Math.max(m, c.right + items[i].baseW * c.s), 0) - (railW - 2 * pad)) / OVERHANG_STEP) * OVERHANG_STEP
     : 0
-  const magnifyLayer = React.createElement('div', { key: '__magnify', ref: magnifyLayerRef, className: 'dsx-magnify-layer', style: { position: 'fixed', top: 'calc(var(--dsx-rail-top,0px) - var(--dsx-rail-scroll,0px))', right: RAIL_RIGHT_VAR, width: `${railW + overhang}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad + overhang}px`, zIndex: 25, overflow: 'visible', background: 'transparent', transform: `translateX(${shiftX}px)`, opacity: morph ? 1 : 0,
+  const magnifyLayer = React.createElement('div', { key: '__magnify', ref: magnifyLayerRef, className: 'dsx-magnify-layer', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: RAIL_RIGHT_VAR, bottom: 0, width: `${railW + overhang}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad + overhang}px`, zIndex: 25, overflow: 'hidden', background: 'transparent', transform: `translateX(${shiftX}px)`, opacity: morph ? 1 : 0,
     // While the wave is live the LAYER ITSELF is hit-capable, not just the cards:
     // that is what covers the gaps between cards (and the strip the overhang
     // opens up) so the pointer never falls through the surface mid-move.
@@ -1019,7 +1033,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     // `will-change: transform` note on `slotStyle` and the post-mortem above
     // `WavePlace`.
     willChange: 'opacity' } },
-    React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${scrollContentH}px` } },
+    React.createElement('div', { key: '__mdeck', style: { position: 'relative', height: `${scrollContentH}px`, top: 'calc(-1 * var(--dsx-rail-scroll, 0px))' } },
       (() => {
         const peak = focusLayout.reduce((m, p) => Math.max(m, p.s), 1)
         return focusLayout.map((c, idx) => {
