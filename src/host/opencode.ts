@@ -23,8 +23,15 @@ export function registerOpenCodeUsage(ctx: HostContext): () => void {
       const resolved = await ctx.credentials.resolve(KEY_ENV)
       const key = resolved?.value
       if (key === undefined || key === '') {
-        res.writeHead(503, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: `${KEY_ENV} is not configured` }))
+        // NOT a 5xx. An unconfigured OPTIONAL key is an expected state, and the
+        // old 503 made every client print "Failed to load resource: the server
+        // responded with a status of 503" on each refetch — a console full of red
+        // for a feature the user never set up (reported 2026-09-30). 200 +
+        // `configured: false` lets the client render its own "not set up" state
+        // with no console line at all. Clients must treat the flag (and, for one
+        // release, a 503 from an older host) as "absent", not as an error.
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ configured: false, error: `${KEY_ENV} is not configured` }))
         return
       }
       try {

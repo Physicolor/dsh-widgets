@@ -42,6 +42,23 @@ export interface CollectorDeps {
 export function createCollector(deps: CollectorDeps): (props: any) => null {
   const { useBridge, setState } = deps
   return ({ useSession, useProjection, useChat, useSessions }: any): null => {
+      /**
+       * Does an INSTALLED widget unit consume this data source?
+       *
+       * Every host route in this file exists to feed widgets that declare the
+       * matching `source` in their manifest (generated.registry.ts
+       * `WIDGET_RUNTIME`). Asking anyway was wrong in two ways (reported
+       * 2026-09-30): the OpenCode route answers 503 while its key is
+       * unconfigured, so a browser printed "Failed to load resource: 503" on
+       * every turn for a feature the user had never placed on the rail — and a
+       * route nobody renders is pure waste. Nothing is requested unless some
+       * installed unit can render it; installing one starts its feed on the next
+       * emit, because `prefs` is read live at the point of use.
+       */
+      const hasConsumer = (source: 'usage' | 'cc' | 'sys' | 'github'): boolean =>
+        deps.getPrefs().installed.some((key) => WIDGET_RUNTIME[parseInstanceKey(key).widgetId]?.source === source)
+      /** True when at least one of these sources has a consumer. */
+      const needsAny = (...sources: Array<'usage' | 'cc' | 'sys' | 'github'>): boolean => sources.some(hasConsumer)
       // DSH 0.1.5 split the session snapshot: chat data (nodes, timeline and
       // running tool calls) moved to the new `useChat` hook while `useSession`
       // now carries lifecycle state only. Read whichever half the running build
@@ -124,6 +141,7 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
       const ccPullRef = React.useRef<() => void>(() => {})
       const ccRetryPending = React.useRef(false)
       const pullCommandCode = React.useCallback((): void => {
+        if (!hasConsumer('cc')) return
         fetch('/api/commandcode-usage')
           .then(async (r) => {
             const data = (await r.json().catch(() => null)) as CommandCodeData | { error?: string } | null
@@ -185,6 +203,10 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
       // feeds the heatmap cards; `refreshNow` is the turn-settle path, which asks
       // the host to fold the logs now instead of waiting for its next ~30 s pass.
       const pullUsageDaily = React.useCallback((refreshNow: boolean): void => {
+        // The machine-wide day map feeds the heatmap cards (no `source` of their
+        // own — they are self-accounted local history) and 额度管理's token side;
+        // with neither installed there is nothing to render it into.
+        if (!needsAny('usage', 'cc')) return
         fetch(`/api/widgets-usage-daily${refreshNow ? '?refresh=1' : ''}`)
           .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
           .then((data: { available?: boolean; daily?: Record<string, number> } | null) => {
@@ -203,6 +225,7 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
       // can only move when THIS machine finishes a turn. So it runs on the
       // turn-settle path and on mount, never in a poll loop.
       const pullCommandCodeDaily = React.useCallback((refreshNow: boolean): void => {
+        if (!hasConsumer('cc')) return
         fetch(`/api/widgets-usage-daily?provider=commandcode${refreshNow ? '&refresh=1' : ''}`)
           .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
           .then((data: { available?: boolean; daily?: Record<string, number> } | null) => {
@@ -217,17 +240,43 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
           .catch(() => { /* keep the last scoped map */ })
       }, [])
       const prevRunningRef = React.useRef(running)
+      /**
+       * OpenCode usage is OPTIONAL, and its single-key route answers 503 while
+       * `OPENCODE_GO_API_KEY` is unconfigured — which makes the browser print
+       * "Failed to load resource: 503 (Service Unavailable)" on every refetch, a
+       * console full of red for a feature the user never set up (reported
+       * 2026-09-30).
+       *
+       * The single-key route is therefore NOT called any more. The pool route is
+       * always 200 and already carries every key it resolved, each with the
+       * upstream payload under `data` — byte-identical to what the single-key
+       * route proxies. So the shared single-key figures are derived from the
+       * pool answer, keyed by `ref === 'OPENCODE_GO_API_KEY'`.
+       *
+       * Note the trap that made a "does any key exist?" check wrong: the pool can
+       * hold ONLY spare keys (`OPENCODE_GO_POOL_2`…), in which case the pool
+       * answer is non-empty while the primary the other route reads is still
+       * absent — and the 503 came right back. Match on the ref, not on length.
+       *
+       * (The host route still exists for external callers; it now answers 200 +
+       * `configured: false` instead of 503.)
+       */
+      const pullOpenCode = (): void => {
+        if (!hasConsumer('usage')) return
+        fetch('/api/opencode-usage-multi')
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data: (UsageMulti & { keys?: Array<{ ref?: string; data?: UsageData | null }> }) | null) => {
+            if (data === null) return
+            setState({ usageMulti: data })
+            const keys = Array.isArray(data.keys) ? data.keys : []
+            const primary = keys.find((k) => k?.ref === 'OPENCODE_GO_API_KEY')
+            if (primary?.data !== undefined && primary.data !== null) setState({ usageData: primary.data })
+          })
+          .catch(() => { /* pool endpoint optional: cards fall back to their own "—" */ })
+      }
       React.useEffect(() => {
         const refresh = (): void => {
-          fetch('/api/opencode-usage')
-          .then((r) => r.json())
-          .then((data: UsageData) => setState({ usageData: data }))
-          .catch(() => { /* keep last known usage */ })
-        // Multi-key pool usage (primary key + pooled backup keys).
-        fetch('/api/opencode-usage-multi')
-          .then((r) => r.json())
-          .then((data: UsageMulti) => setState({ usageMulti: data }))
-          .catch(() => { /* pool endpoint optional: cards fall back to single-key */ })
+          pullOpenCode()
         // Command Code account usage + both authoritative day maps.
         pullCommandCode()
         pullUsageDaily(true)
