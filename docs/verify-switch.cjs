@@ -3,7 +3,7 @@ const { chromePath } = require("../scripts/lib/chrome.cjs")
 // kept), off = text visible again. Also dump the current prefs.hideStatsLine
 // read by the page, to explain a stale hidden state.
 const path = require('path')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../scripts/lib/playwright-core.cjs')
 
 ;(async () => {
   const browser = await chromium.launch({ executablePath: chromePath(), headless: true })

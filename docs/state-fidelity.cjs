@@ -4,7 +4,7 @@ const { chromePath } = require("../scripts/lib/chrome.cjs")
 // reset to defaults, no widgets forcibly re-added, new defaults defaulted.
 // Also verifies the quote widget renders NOTHING without a custom text.
 const path = require('path')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../scripts/lib/playwright-core.cjs')
 
 ;(async () => {
   const browser = await chromium.launch({ executablePath: chromePath(), headless: true })

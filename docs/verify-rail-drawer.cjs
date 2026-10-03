@@ -11,7 +11,7 @@ const { chromePath } = require("../scripts/lib/chrome.cjs")
 //     animation checks (that is exactly the bug being fixed).
 // Run with Node against the live dsh web at http://127.0.0.1:3080.
 const path = require('path')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../scripts/lib/playwright-core.cjs')
 
 const RESULTS = {}
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))

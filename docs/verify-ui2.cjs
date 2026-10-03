@@ -2,7 +2,7 @@ const { chromePath } = require("../scripts/lib/chrome.cjs")
 // Verify batch 2: 2x4 preview scale, config card-size controls, weekly bars
 // option text, task card never vanishes, settings wording.
 const path = require('path')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../scripts/lib/playwright-core.cjs')
 
 ;(async () => {
   const browser = await chromium.launch({ executablePath: chromePath(), headless: true })

@@ -22,13 +22,13 @@
  * with no caption); `docs/probe-head-ladder.cjs` measures it.
  */
 import { spawnSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
-const { chromium } = require('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules/playwright-core')
+const { chromium } = require('../lib/playwright-core.cjs')
 const { chromePath } = require(join(dirname(fileURLToPath(import.meta.url)), '..', 'lib', 'chrome.cjs'))
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -71,7 +71,33 @@ if (!existsSync(join(OUT_DIR, 'gallery.js'))) die('no .tmp-gallery/gallery.js em
 //    this repo's own node_modules; react-dom is resolved from the npx cache the
 //    harness itself uses (it is a peer the plugin never bundles).
 const REACT = join(ROOT, 'node_modules', 'react', 'umd', 'react.development.js')
-const REACT_DOM = 'C:/Users/12404/AppData/Local/npm-cache/_npx/6c7f445d1bf61956/node_modules/react-dom/umd/react-dom.development.js'
+// react-dom is a peer the plugin never bundles, so it is resolved from OUTSIDE
+// this repo. The npx-cache path is a moving target (the cache evicts directory
+// names between runs — seen 2026-10-03), so the pinned path is tried first and a
+// sweep of the npx cache plus `REACT_DOM_UMD` covers its absence.
+const REACT_DOM_PINNED = 'C:/Users/12404/AppData/Local/npm-cache/_npx/6c7f445d1bf61956/node_modules/react-dom/umd/react-dom.development.js'
+function findReactDom() {
+  const candidates = [process.env.REACT_DOM_UMD, REACT_DOM_PINNED].filter(Boolean)
+  const npxCache = 'C:/Users/12404/AppData/Local/npm-cache/_npx'
+  if (existsSync(npxCache)) {
+    for (const dir of readdirSync(npxCache)) candidates.push(join(npxCache, dir, 'node_modules', 'react-dom', 'umd', 'react-dom.development.js'))
+  }
+  // Sibling plugins in this harness home vendor react-dom through pnpm, whose
+  // store path carries a peer suffix (`react-dom@18.3.1_react@18.3.1`): scan
+  // one level of `.pnpm` entries rather than guessing the suffix.
+  const plugins = 'D:/dsh-home/plugins'
+  if (existsSync(plugins)) {
+    for (const plugin of readdirSync(plugins)) {
+      const pnpm = join(plugins, plugin, 'node_modules', '.pnpm')
+      if (!existsSync(pnpm)) continue
+      for (const entry of readdirSync(pnpm)) {
+        if (entry.startsWith('react-dom@')) candidates.push(join(pnpm, entry, 'node_modules', 'react-dom', 'umd', 'react-dom.development.js'))
+      }
+    }
+  }
+  return candidates.find((p) => existsSync(p)) ?? null
+}
+const REACT_DOM = findReactDom()
 for (const [src, name] of [[REACT, 'react.js'], [REACT_DOM, 'react-dom.js']]) {
   if (!existsSync(src)) die(`missing ${src}`)
   copyFileSync(src, join(OUT_DIR, name))

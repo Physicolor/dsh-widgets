@@ -1,5 +1,5 @@
 /**
- * Card HEAD layout probe — 额度管理 / GPU 利用率 (docs/probe-card-head.cjs)
+ * Card HEAD layout probe — 额度管理 / GPU 性能 (docs/probe-card-head.cjs)
  *
  * Drives the REAL GUI (Playwright + a minted browser-session cookie) and reads
  * the two cards the user cares about straight out of the RESTING deck
@@ -13,9 +13,9 @@
  *     identified by WALK POSITION rather than by a label); the title must
  *     not be ellipsized, and an unknown projection must NOT print 数据不足: it
  *     prints `-%` beside the real 账期 line;
- *   - GPU 利用率 (sys-gpu-line): the big utilization sits below the title with
- *     the grey `°C · GB` facts to its right, and the elastic sparkline still
- *     fits the card box exactly.
+ *   - GPU 性能 (sys-gpu-line): the big utilization sits below the title with the
+ *     grey `°C · GB` facts as their OWN line under it, a ring in the top-right
+ *     corner, and the elastic sparkline still fits the card box exactly.
  *
  * The three pool views are reached by TAPPING the card (its own cycle) and every
  * view is read and screenshotted; the room's original widget state is written
@@ -27,7 +27,7 @@
 const { chromePath } = require("../scripts/lib/chrome.cjs")
 const fs = require('node:fs')
 const path = require('node:path')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../scripts/lib/playwright-core.cjs')
 const { mintCookie } = require('../scripts/diag-auth-lib.cjs')
 
 const OUT = path.join(__dirname, 'probe-card-head-result.json')
@@ -229,7 +229,7 @@ const labelOf = (card, pool) => {
   let quota = await readQuota()
   check('额度管理 card is in the rail (resting deck)', quota !== null, quota ? quota.text.slice(0, 70) : 'not found')
   const gpu0 = await readGpu()
-  check('GPU 利用率 card is in the rail (resting deck)', gpu0 !== null, gpu0 ? gpu0.text.slice(0, 70) : 'not found')
+  check('GPU 性能 card is in the rail (resting deck)', gpu0 !== null, gpu0 ? gpu0.text.slice(0, 70) : 'not found')
   // Not `process.exit` here: that would skip the `finally` that restores the
   // room's state and writes the report.
   if (quota === null || gpu0 === null) throw new Error(`card not readable in the resting deck (quota=${quota !== null}, gpu=${gpu0 !== null})`)

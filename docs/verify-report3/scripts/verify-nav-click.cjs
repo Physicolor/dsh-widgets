@@ -3,8 +3,7 @@ const { chromePath } = require("../../../scripts/lib/chrome.cjs")
 // mouse click on a navigator mark must hover/click the navigator (not the band).
 // Setup: a wide transcript preference so the two overlap at 1600.
 const fs = require('fs'); const path = require('path'); const crypto = require('crypto')
-const PW = 'C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules'
-const { chromium } = require(path.join(PW, 'playwright-core'))
+const { chromium } = require('../../../scripts/lib/playwright-core.cjs')
 const CHROME = chromePath()
 function authCookie() {
   const yaml = fs.readFileSync('D:/dsh-home/.credentials.yaml', 'utf8')

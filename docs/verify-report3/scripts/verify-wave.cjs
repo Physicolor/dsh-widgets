@@ -8,8 +8,7 @@ const { chromePath } = require("../../../scripts/lib/chrome.cjs")
 //    add panel open;
 //  - console/page errors.
 const fs = require('fs'); const path = require('path'); const crypto = require('crypto')
-const PW = 'C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules'
-const { chromium } = require(path.join(PW, 'playwright-core'))
+const { chromium } = require('../../../scripts/lib/playwright-core.cjs')
 const CHROME = chromePath()
 const OUT = 'D:/dsh-home/plugins/dsh-widgets/docs/verify-wave'
 function authCookie() {

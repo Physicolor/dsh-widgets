@@ -5,7 +5,7 @@ const { chromePath } = require("../scripts/lib/chrome.cjs")
 // slot 与卡片高度，悬浮前后对比，并打印逐卡 rect，定位高度变化来源。
 const path = require('path')
 const fs = require('fs')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../scripts/lib/playwright-core.cjs')
 
 const OUT = path.join(__dirname, 'gpu-height-evidence.txt')
 const log = (line) => { console.log(line); fs.appendFileSync(OUT, line + '\n') }
@@ -124,8 +124,8 @@ const log = (line) => { console.log(line); fs.appendFileSync(OUT, line + '\n') }
   })
   log('REST_SLOTS: ' + JSON.stringify(snap))
 
-  // 找「GPU 利用率」卡片（sys-gpu-line；优先精确标题，其次任意含 GPU 的标题）
-  let gpuIdx = snap.findIndex((s) => s.title.indexOf('GPU 利用率') !== -1)
+  // 找「GPU 性能」卡片（sys-gpu-line；优先精确标题，其次任意含 GPU 的标题）
+  let gpuIdx = snap.findIndex((s) => s.title.indexOf('GPU 性能') !== -1)
   if (gpuIdx === -1) gpuIdx = snap.findIndex((s) => s.title.indexOf('GPU') !== -1)
   if (gpuIdx === -1) { log('ABORT: no GPU card found'); await restoreState(); await browser.close(); return }
   log('GPU_CARD_INDEX: ' + gpuIdx + ' (title=' + snap[gpuIdx].title + ')')

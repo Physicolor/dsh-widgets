@@ -2,7 +2,7 @@ const { chromePath } = require("../scripts/lib/chrome.cjs")
 // 探针：设置页 → 组件 → 配置预览（CardBody unit=150），验证 sys-gpu-line 卡片高度
 const path = require('path')
 const fs = require('fs')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../scripts/lib/playwright-core.cjs')
 
 const OUT = path.join(__dirname, 'gpu-height-evidence.txt')
 const log = (line) => { console.log(line); fs.appendFileSync(OUT, line + '\n') }
@@ -36,8 +36,8 @@ const log = (line) => { console.log(line); fs.appendFileSync(OUT, line + '\n') }
   log('WIDGET_NAV_COUNT: ' + wn)
   if (wn > 0) { await widgetNav.click({ timeout: 5000 }).catch(() => {}); await page.waitForTimeout(2500) }
 
-  // 组件配置页：找「GPU 利用率」行并点击（ConfigTab 的 OrderList items）
-  const gpuRow = page.getByText('GPU 利用率').first()
+  // 组件配置页：找「GPU 性能」行并点击（ConfigTab 的 OrderList items）
+  const gpuRow = page.getByText('GPU 性能').first()
   const gr = await gpuRow.count()
   log('GPU_ROW_COUNT: ' + gr)
   if (gr > 0) { await gpuRow.click({ timeout: 5000 }).catch(() => {}); await page.waitForTimeout(2500) }

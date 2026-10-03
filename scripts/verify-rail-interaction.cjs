@@ -14,9 +14,12 @@
 const { chromePath } = require("./lib/chrome.cjs")
 const fs = require('node:fs')
 const path = require('node:path')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('./lib/playwright-core.cjs')
 const { mintCookie } = require('./diag-auth-lib.cjs')
 
+const PORT = process.env.DSH_PORT || '3080'
+const AUTHORITY = `127.0.0.1:${PORT}`
+const URL_ = `http://${AUTHORITY}`
 const OUT = process.argv[2] || path.join(__dirname, '..', '.probe-rail')
 const FONT_CSS = `* { font-family: 'HarmonyOS Sans SC', 'HarmonyOS Sans', var(--dsw-font-family, sans-serif) !important; }`
 const fails = []
@@ -32,14 +35,14 @@ const check = (ok, label, detail) => {
     headless: true,
   })
   const ctx = await browser.newContext({ viewport: { width: 1578, height: 1000 }, deviceScaleFactor: 2 })
-  await ctx.addCookies([mintCookie('127.0.0.1:3080')])
+  await ctx.addCookies([mintCookie(AUTHORITY)])
   const page = await ctx.newPage()
-  await page.goto('http://127.0.0.1:3080', { waitUntil: 'networkidle', timeout: 40000 })
+  await page.goto(URL_, { waitUntil: 'networkidle', timeout: 40000 })
   const row = page.locator('[class$="_sessionRow"]').first()
   if (await row.count()) { await row.click().catch(() => {}); await page.waitForTimeout(5000) }
   const cap = page.locator('button.dsx-stats-capsule').first()
   for (let i = 0; i < 4; i++) {
-    if (await page.evaluate(() => !!document.querySelector('.dsx-stats-rail'))) break
+    if (await page.evaluate(() => !!document.querySelector('.dsx-stats-drawer:not([data-retired]) .dsx-stats-rail'))) break
     if (!(await cap.count())) break
     await cap.click(); await page.waitForTimeout(600)
   }

@@ -32,7 +32,7 @@ const { chromePath } = require('../scripts/lib/chrome.cjs')
 const { spawnSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../scripts/lib/playwright-core.cjs')
 
 const ROOT = path.join(__dirname, '..')
 const PAGE = path.join(ROOT, '.tmp-gallery', 'head-fixture.html')

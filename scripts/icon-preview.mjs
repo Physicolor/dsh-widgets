@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const require = createRequire(join(HERE, 'noop.js'))
-const { chromium } = require(join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('./lib/playwright-core.cjs')
 const { chromePath } = require(join(HERE, 'lib/chrome.cjs'))
 
 const arg = (name, dflt) => { const i = process.argv.indexOf(name); return i === -1 ? dflt : process.argv[i + 1] }

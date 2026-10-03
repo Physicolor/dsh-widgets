@@ -9,8 +9,7 @@ const { chromePath } = require("../../../scripts/lib/chrome.cjs")
 //      magnify wave still engages on hover (pointer wiring intact).
 // Usage: node scripts/verify-report3-fixes.cjs
 const fs = require('fs'); const path = require('path'); const crypto = require('crypto')
-const PW = 'C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules'
-const { chromium } = require(path.join(PW, 'playwright-core'))
+const { chromium } = require('../../../scripts/lib/playwright-core.cjs')
 const CHROME = chromePath()
 const OUT = 'docs/verify-report3'
 function authCookie() {

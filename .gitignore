@@ -31,7 +31,9 @@ docs/probe-*.png
 .tmp-*
 
 # Live probe artefacts (screenshots + jsonl) from the rail verification runs.
-.probe-rail/
+# Every verify-*/diag-* script writes its receipts to `.probe-<something>/` next
+# to the JSON it dumps; none of it is source, so the whole family is ignored.
+.probe-*/
 
 # Generated declarations. These are BUILD OUTPUT, not source: `tsc -p tsconfig.json`
 # emits ~106 .d.ts into lib/types/ (see scripts/build-types.mjs) so the package.json
@@ -39,4 +41,3 @@ docs/probe-*.png
 # the DSH plugin loader loads straight from this checkout. Regenerate with
 # `pnpm build` (or `pnpm run build:types`); verify with `pnpm run check:types`.
 lib/types/
-

@@ -23,8 +23,7 @@ const fs = require('node:fs')
 const crypto = require('node:crypto')
 const { chromePath } = require('./lib/chrome.cjs')
 
-const PW = 'C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules'
-const { chromium } = require(path.join(PW, 'playwright-core'))
+const { chromium } = require('./lib/playwright-core.cjs')
 
 const URL_ = process.env.DSH_URL || 'http://127.0.0.1:19387'
 const SESSION = (() => { const i = process.argv.indexOf('--session'); return i === -1 ? 'dsh-widgets 组件生态调研' : process.argv[i + 1] })()
@@ -61,7 +60,13 @@ const MEASURE = () => {
   const owns = (el) => (el && overlay && overlay.contains(el) ? 'MAGNIFY' : 'other')
   // Top strip over the rail's own columns: who owns y < railTop?
   const topStrip = []
-  if (railR) for (const y of [2, 12, 24, 40, 60]) for (const x of [Math.round(railR.right - 30), Math.round(railR.right - 200), Math.round(railR.left + 30)]) topStrip.push([x, y, owns(document.elementFromPoint(x, y))])
+  // Sample only ABOVE the rail's own top. With --dsx-rail-top at ~44px a fixed
+  // y = 60 row lands INSIDE the rail band, where the overlay legitimately owns
+  // the pixels, so the check reported its own sample point as a violation.
+  if (railR) {
+    const stripY = [2, 12, 24, 40, 60].filter((y) => y < Math.round(railR.top))
+    for (const y of stripY) for (const x of [Math.round(railR.right - 30), Math.round(railR.right - 200), Math.round(railR.left + 30)]) topStrip.push([x, y, owns(document.elementFromPoint(x, y))])
+  }
   const inter = navR && ovR ? { x: Math.max(navR.x, ovR.x), x2: Math.min(navR.right, ovR.right), y: Math.max(navR.y, ovR.y), y2: Math.min(navR.bottom, ovR.bottom) } : null
   // PAINTED overlap: which magnified CARD boxes (not the transparent layer) reach
   // into the navigator's strip, and by how many px. This is what the navigator

@@ -94,7 +94,7 @@ function summarize(name, { frames, longTasks }) {
 
   // ---- geometry + compositor functional check (rail OPEN) ----
   await page.locator('.dsx-stats-capsule').click()
-  await page.waitForSelector('.dsx-stats-rail', { timeout: 10000 })
+  await page.waitForSelector('.dsx-stats-drawer:not([data-retired]) .dsx-stats-rail', { timeout: 10000 })
   await page.waitForTimeout(350)
 
   const openBtn = page.locator('.nArs4W_toggleButton[aria-label="展开侧边栏"]').first()

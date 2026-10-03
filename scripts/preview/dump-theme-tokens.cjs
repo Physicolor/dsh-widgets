@@ -15,7 +15,7 @@
  */
 const fs = require('node:fs')
 const path = require('node:path')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../lib/playwright-core.cjs')
 const { chromePath } = require('../lib/chrome.cjs')
 const { mintCookie } = require('../diag-auth-lib.cjs')
 

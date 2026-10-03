@@ -23,7 +23,7 @@
 const { chromePath } = require("../scripts/lib/chrome.cjs")
 const fs = require('node:fs')
 const path = require('node:path')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../scripts/lib/playwright-core.cjs')
 const { mintCookie } = require('../scripts/diag-auth-lib.cjs')
 
 const ORIGIN = 'http://127.0.0.1:3080'

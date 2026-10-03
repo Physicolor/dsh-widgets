@@ -2,7 +2,7 @@
 // state (installed + order) and verify. Written as an explicit repair because a
 // crashed probe run can leave the instance installed.
 const path = require('path')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../scripts/lib/playwright-core.cjs')
 
 ;(async () => {
   const browser = await chromium.connectOverCDP('http://127.0.0.1:9333')

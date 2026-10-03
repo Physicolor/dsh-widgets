@@ -3,7 +3,7 @@ const { chromePath } = require("../scripts/lib/chrome.cjs")
 // hover a card and assert the magnification overlay appears / stays in gaps /
 // stops after leaving the rail.
 const path = require('path')
-const { chromium } = require(path.join('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules', 'playwright-core'))
+const { chromium } = require('../scripts/lib/playwright-core.cjs')
 
 ;(async () => {
   const browser = await chromium.launch({

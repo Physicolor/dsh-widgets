@@ -142,7 +142,7 @@ function locales() {
   const htmlPath = path.join(os.tmpdir(), 'quota-manage-layout.html')
   fs.writeFileSync(htmlPath, page, 'utf8')
 
-  const { chromium } = require('C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules/playwright-core')
+  const { chromium } = require('../scripts/lib/playwright-core.cjs')
   const browser = await chromium.launch({ executablePath: chromePath(), headless: true })
   const pw = await browser.newPage({ viewport: { width: 640, height: 320 }, deviceScaleFactor: 2 })
   await pw.goto(`file:///${htmlPath.replace(/\\/g, '/')}`)

@@ -33,8 +33,7 @@ const fs = require('node:fs')
 const crypto = require('node:crypto')
 const { chromePath } = require('./lib/chrome.cjs')
 
-const PW = 'C:/Users/12404/AppData/Local/npm-cache/_npx/86170c4cd1c5da32/node_modules'
-const { chromium } = require(path.join(PW, 'playwright-core'))
+const { chromium } = require('./lib/playwright-core.cjs')
 
 const arg = (name, dflt) => { const i = process.argv.indexOf(name); return i === -1 ? dflt : process.argv[i + 1] }
 const URL_ = arg('--url', process.env.DSH_URL || 'http://127.0.0.1:19387')
@@ -134,7 +133,17 @@ const print = (label, trace) => {
   const cap = page.locator('.dsx-stats-capsule').first()
   await cap.waitFor({ timeout: 8000 })
   if ((await cap.getAttribute('aria-pressed')) !== 'true') { await cap.click(); await page.waitForTimeout(1500) }
-  await page.locator('.dsx-stats-add').first().click({ timeout: 5000 })
+  // The gear tile is revealed only while the surface is hovered
+  // (rail.module.css: `.dsx-surface-hover .dsx-stats-add { opacity:1; visibility:visible }`),
+  // and the deck keeps a hidden twin inside the drawer, so Playwright's
+  // actionability check times out on `.first()`. Dispatch the click straight at
+  // the revealed tile — the same convention IN_PAGE_TRACE uses for the sidebar
+  // toggle, and it also keeps the drawer's pointerdown "click outside" guard quiet.
+  await page.evaluate(() => {
+    const tiles = [...document.querySelectorAll('.dsx-stats-add')]
+    const shown = tiles.find((el) => { const s = getComputedStyle(el); return s.visibility !== 'hidden' && Number(s.opacity) > 0 })
+    ;(shown ?? tiles[0]).click()
+  })
   await page.waitForTimeout(900)
   if (!(await page.locator('.dsx-stats-addpanel.open').count())) { console.error('FAIL  the 组件 drawer did not open'); await browser.close(); process.exit(1) }
 
