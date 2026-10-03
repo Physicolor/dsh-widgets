@@ -234,40 +234,143 @@
   white-space: nowrap;
 }
 
-/* Dropdown selector matching the DSH "selector" picker look (e.g. model/创建模式:  */
-/* a bordered rounded control with a native chevron and a real popup menu. The
-   chevron is a data-URI SVG — `fill='currentColor'` does NOT render there
-   (SVG-as-background-image resolves in an isolated image context, so currentColor
-   draws nothing), so the arrow uses explicit fills: a mid-grey in light mode
-   and a near-white under `body[data-ds-dark-theme]` (DSH's dark marker). */
+/* Dropdown trigger — the product's OWN settings Select recipe, declaration for
+   declaration. Measured 2026-09-30 on the live settings page (设置 → 通用设置 →
+   权限) by dsh-ui-harmonizer's `probe-official-select.mjs --clean`: 36px tall,
+   radius var(--dsw-radius-md) 12, fill --dsw-alias-bg-module-platform, NO
+   border, padding 0 14, gap 12, 14px/22px, hover
+   --dsw-alias-interactive-bg-hover.
+
+   The element is a BUTTON and the POPUP IS THE PRODUCT'S: `render/select.tsx`
+   renders `primitives.Menu` (surface, material, rows, check, keyboard) and
+   `primitives.IconChevronDownOutlineRegular` for the arrow. The chevron used to
+   be a per-theme data-URI background here; a background image cannot take
+   `currentColor`, and — more to the point — a NATIVE `<select>` could never show
+   the product's surface at all, which is why this is no longer one.
+
+   REPLACED 2026-09-30 (twice): first from 34px / radius 17 / 1px border /
+   layer-1 fill / 13px text, then from a native `<select>` to the real control. */
 .dsx-select {
-  appearance: none;
-  -webkit-appearance: none;
-  min-width: 150px;
-  height: 34px;
-  padding: 0 34px 0 12px;
-  border-radius: 17px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  background-color: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-primary);
-  font-size: 13px;
-  outline: none;
-  cursor: pointer;
   box-sizing: border-box;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'><path d='M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z' fill='%236F6F7A'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-}
-body[data-ds-dark-theme] .dsx-select {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'><path d='M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z' fill='%23ECECF1'/></svg>");
-}
-.dsx-select:focus {
-  border-color: var(--dsw-alias-state-business-primary);
-  box-shadow: 0 0 0 1px var(--dsw-alias-state-business-primary);
-}
-.dsx-select option {
-  background: var(--dsw-alias-bg-layer-1);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  max-width: 100%;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--dsw-radius-md, 12px);
+  background: var(--dsw-alias-bg-module-platform);
   color: var(--dsw-alias-label-primary);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  cursor: pointer;
+}
+.dsx-select:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.dsx-select:disabled {
+  cursor: default;
+}
+.dsx-select:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
+.dsx-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.dsx-select-chevron {
+  flex: none;
+}
+/* Compact variant: the preview header's card-size picker is chrome inside the
+   config drawer, not a settings row — a 28px pill with 11px text, and its menu
+   is the product's compact variant (the component passes `compact`). */
+.dsx-select--compact {
+  gap: 4px;
+  height: 28px;
+  min-width: 0;
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 17px;
+}
+
+/* Numeric stepper — the product's OWN numeric control (Settings → 通用设置 →
+   字号大小), transcribed from the live DOM on 2026-10-01 because the product's UI
+   kit exports no numeric component (`settingsNumberField` is only a
+   format/parse spec, not a control):
+     pill   72x36, radius var(--dsw-radius-md) 12, fill
+            --dsw-alias-bg-module-platform, value 14px/22px tabular figures
+     arrows absolute right 8, column, gap 2, opacity 0 → 1 on hover/focus-within,
+            each 17x12 with radius 4 and
+            color-mix(in srgb, var(--dsw-alias-bg-layer-1) 75%, transparent)
+     unit   separate label at 14px/22px, --dsw-alias-label-secondary
+
+   WHY NOT A SLIDER: the product ships no slider style at all, and a slider says
+   "explore this range" rather than "set this number" — it cannot show a precise
+   value. Every numeric setting in the product is this stepper; discrete choices
+   are the Menu, booleans are the Switch. (See the plugin dev guide §2.5.) */
+.dsx-stepper-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.dsx-stepper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 36px;
+  border-radius: var(--dsw-radius-md, 12px);
+  background: var(--dsw-alias-bg-module-platform);
+}
+.dsx-stepper-value {
+  font-size: 14px;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-primary);
+}
+.dsx-stepper-arrows {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--ds-transition-duration-fast, 0.15s) var(--ds-ease-in-out, ease);
+}
+.dsx-stepper:hover .dsx-stepper-arrows,
+.dsx-stepper:focus-within .dsx-stepper-arrows {
+  opacity: 1;
+}
+.dsx-stepper-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 75%, transparent);
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+}
+.dsx-stepper-arrow:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.dsx-stepper-arrow:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.dsx-stepper-unit {
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--dsw-alias-label-secondary);
 }
 
 .dsx-mlist {

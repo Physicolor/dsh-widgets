@@ -149,14 +149,11 @@ export function createWaveGeometry(input: WaveGeometryInput): WaveGeometry {
       const rowH = side + pad
       const scaleFor = (fx: number, fy: number): number[] => {
         const out = new Array(n).fill(1)
-        if (multi) {
-          for (let i = 0; i < n; i++) {
-            const cxi = (colIndexOf[i] + spanOf(i) / 2) * cellW
-            const cyi = rowIndexOf[i] * rowH + side / 2
-            out[i] = stepScale(Math.hypot(cxi - fx, cyi - fy) / (side + pad))
-          }
-        } else {
-          for (let i = 0; i < n; i++) out[i] = stepScale(Math.abs(fy - restCenter(i)) / (side + pad))
+        for (let i = 0; i < n; i++) {
+          const cxi = multi ? (colIndexOf[i] + spanOf(i) / 2) * cellW : 0
+          const cyi = multi ? rowIndexOf[i] * rowH + side / 2 : restCenter(i)
+          const d = multi ? Math.hypot(cxi - fx, cyi - fy) : Math.abs(fy - cyi)
+          out[i] = stepScale(d / (side + pad))
         }
         return out
       }

@@ -16,7 +16,7 @@
  * `prefs` is a LIVE binding, hence `getPrefs()` at the point of use.
  */
 
-import { ANCHOR_FOLLOW, RAIL_BOX_INSET, RailSpace, applyRailRight, predictRailBudget, readColumnWidth, readRailBudget, resolveRailLayout, resolveRailSpace } from './geometry'
+import { ANCHOR_FOLLOW, RAIL_BOX_INSET, RailSpace, applyRailRight, invalidateRailMetrics, predictRailBudget, readColumnWidth, readRailBudget, resolveRailLayout, resolveRailSpace } from './geometry'
 import { type Prefs } from '../runtime/prefs'
 
 /** What the measurement layer needs from the composition root. */
@@ -386,7 +386,7 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
         if (settleTimer !== 0) window.clearTimeout(settleTimer)
         settleTimer = window.setTimeout(() => {
           settleTimer = 0
-          document.documentElement.style.setProperty('--dsx-rightbar-w', `${lastRightbarW}px`)
+          setVar('--dsx-rightbar-w', `${lastRightbarW}px`)
         }, 200)
         return
       }
@@ -397,7 +397,7 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
       // tick, not only when the rounded width changes: a stalled frame must
       // not expire the freeze while the track is still moving.
       armSyncFreeze()
-      document.documentElement.style.setProperty('--dsx-rightbar-w', `${rightbarW}px`)
+      setVar('--dsx-rightbar-w', `${rightbarW}px`)
       lastRightbarW = rightbarW
       return
     }
@@ -408,14 +408,25 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
         // the track movement so `right` lands on the measured value every
         // frame instead of chasing it.
         armSyncFreeze()
-        document.documentElement.style.setProperty('--dsx-rightbar-w', `${rightbarW}px`)
+        setVar('--dsx-rightbar-w', `${rightbarW}px`)
       }
       // While the track moves, only the width matters; skip the heavier header
       // and composer probes so the transition keeps the main thread.
       return
     }
     lastRightbarW = rightbarW
-    document.documentElement.style.setProperty('--dsx-rightbar-w', `${rightbarW}px`)
+    // ── The one write that has to be GUARDED, because it is on the hot path ──
+    // This line used to `setProperty` unconditionally, and it sits in the path every
+    // non-horizontal measure takes — i.e. once per widget data emit, and therefore several
+    // times a second during any animation that emits at all. Writing a document-level custom
+    // property invalidates every declaration that depends on it, so each of those passes
+    // bought a full-document style recalc: measured 2026-10-03 at the owner's stage
+    // (1707×1067 @ DSF 1.5, `diag-anim-perf.cjs`), the fold spent 530–594ms in
+    // RecalcStyleDuration and 582–624ms in LayoutDuration per four seconds of toggling, with
+    // UpdateLayoutTree events up to 96ms, and rendered at 32–46fps on a 60Hz display.
+    // `setVar` skips identical values, so the write now costs nothing unless the panel really
+    // moved.
+    setVar('--dsx-rightbar-w', `${rightbarW}px`)
     // Throttled vertical probes (see VERTICAL_PROBE_INTERVAL_MS): the rail top
     // and the composer gap cannot move with a horizontal track change, so a
     // burst of composer/scroll resizes must not buy a forced re-layout each.
@@ -435,20 +446,53 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     scheduleBudgetRefresh()
     const el = document.querySelector('[data-conversation-scroll]')
     const top = el ? el.getBoundingClientRect().top : 0
-    // 12px breathing gap below the session header; the rail AND the magnify
-    // overlay share this variable so both stay aligned.
-    document.documentElement.style.setProperty('--dsx-rail-top', `${top + 12}px`)
+    /**
+     * The rail starts as high as the 组件 capsule's own line ALLOWS (owner
+     * request 2026-10-01).
+     *
+     * The old anchor was "12px below the scroll body", which parked the first card
+     * ~68px from the window's top while the capsule — the rail's OWN toggle, and
+     * the control the user reads the rail's position against — sits at 11px. The
+     * capsule is measured live rather than assumed (the title row follows the
+     * window and the app's own chrome), and the answer is clamped by the one hard
+     * wall between the two:
+     *
+     *   the SESSION HEADER is opaque white at `z-index: 21` (measured: chain
+     *   `_titleCluster < _titleRow < _header [bg rgb(255,255,255), z 21]`), while
+     *   the rail lives in the composer seat at 7 — so anything the rail draws
+     *   above the header's bottom edge is PAINTED OVER, not merely hit-tested
+     *   away. At the capsule's 11px that hid the first 33px of the first row.
+     *
+     * The clamp is `scrollTop − RAIL_TOP_EDGE`: `[data-conversation-scroll]`'s top
+     * IS the header's bottom (both are the same column's stack), and
+     * RAIL_TOP_EDGE is the rail's own top padding + the deck's first-row seat, so
+     * the first card lands exactly on that edge — the highest position that still
+     * shows a whole card. Measured at 1578×950: capsule 11, header bottom 50 →
+     * rail top 44 (was 62), first card 50.
+     */
+    const RAIL_TOP_EDGE = 6
+    const capsule = document.querySelector('.dsx-stats-capsule')
+    const capsuleTop = capsule === null ? null : capsule.getBoundingClientRect().top
+    const wanted = capsuleTop === null || !(capsuleTop > 0) ? top + 12 : Math.round(capsuleTop)
+    const railTop = Math.max(Math.round(top) - RAIL_TOP_EDGE, wanted)
+    // Same guard as `--dsx-rightbar-w` above: these two anchors move on a resize, not on
+    // every throttled probe, and an unconditional write costs the whole document a style
+    // recalc each time it runs.
+    setVar('--dsx-rail-top', `${railTop}px`)
     // Composer bottom gap: one "breathing" band under everything in the input
     // column —the composer dock stats bar (`.FJxK*_root` inside
-    // `conversation.composer.dock`) plus its own bottom padding —so a fixed
+    // `composer.dock`) plus its own bottom padding —so a fixed
     // overlay can sit flush below it. Prefer the dock (the lowest visible row);
     // then the composer seat; then the scroll body as a last resort.
     const dock = document.querySelector('[data-slot="conversation.composer.dock"]')
-    const comp = (dock && dock.getBoundingClientRect().height > 0 && dock.getBoundingClientRect().bottom > 0)
+    // ONE rect read, not three: each `getBoundingClientRect` on a dirty tree is a forced
+    // layout, and this line used to ask for the same box three times.
+    const dockBox = dock === null ? null : dock.getBoundingClientRect()
+    const comp = (dockBox !== null && dockBox.height > 0 && dockBox.bottom > 0)
       ? dock
       : (document.querySelector('[data-composer-seat]') || document.querySelector('[data-conversation-composer-overlay]') || el)
     const gap = comp ? Math.max(0, window.innerHeight - comp.getBoundingClientRect().bottom) : 0
-    document.documentElement.style.setProperty('--dsx-input-bottom', `${gap}px`)
+    setVar('--dsx-input-bottom', `${gap}px`)
   }
   /** Pending observer hint: the reported right-bar width and whether the
    *  trigger was the right-bar column alone (horizontal-only, no vertical work). */
@@ -467,9 +511,12 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     })
   }
   /** `resize` listener: passes its event, which must never reach the width hint. */
-  const onViewportResize = (): void => { scheduleMeasure() }
+  const onViewportResize = (): void => { invalidateRailMetrics(); scheduleMeasure() }
   /** Install the observers/listeners; returns the disposer `ctx.effect` wants. */
   function install(): () => void {
+    // Every observed shell change starts by dropping the memoised shell metrics, so the
+    // measure pass that follows reads the document rather than the previous frame's answer.
+    invalidateRailMetrics()
     updateRailBudget()
     measureRailTop()
     lastSeenMeasure = readMeasure()
@@ -483,6 +530,9 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     window.addEventListener('blur', onWindowBlur)
     if (typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver((entries) => {
+        // The SHELL re-laid-out: drop the memoised metrics so this pass reads it (the
+        // per-frame expiry would catch it one frame later; the observer knows NOW).
+        invalidateRailMetrics()
         // Only the right bar's width is needed per frame; the RO entry's
         // content box already has it, so no rect read is required here. When
         // the right-bar column is the ONLY thing that resized (the shell's grid

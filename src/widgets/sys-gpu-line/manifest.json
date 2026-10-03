@@ -8,12 +8,12 @@
   "skeleton": { "shape": "line" },
   "locale": {
     "zh": {
-      "widget.sys-gpu-line.name": "GPU 利用率",
-      "widget.sys-gpu-line.desc": "GPU 利用率折线（最近约 20 分钟）"
+      "widget.sys-gpu-line.name": "GPU 性能",
+      "widget.sys-gpu-line.desc": "GPU 性能折线（最近约 20 分钟）"
     },
     "en": {
-      "widget.sys-gpu-line.name": "GPU Utilization",
-      "widget.sys-gpu-line.desc": "GPU utilization sparkline (last ~20 min)"
+      "widget.sys-gpu-line.name": "Performance",
+      "widget.sys-gpu-line.desc": "GPU performance sparkline (last ~20 min)"
     }
   }
 }

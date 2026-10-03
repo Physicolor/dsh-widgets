@@ -14,8 +14,10 @@ import { nextSim } from '../../render/preview/sim'
 import { CardBody } from '../../render/CardBody'
 import { buildPreviewStats } from '../../render/preview/example-out'
 import { TrashIcon, closeIconSmall } from '../../render/icons'
+import { Select } from '../../render/select'
 import { COL_GAP, LIST_W } from '../layout'
 import type { WidgetsController } from '../../runtime/controller'
+import { effectiveMaxWidgets } from '../../runtime/prefs'
 import { t } from '../../i18n'
 
 /** The instance 组件配置 had open. Module scope on purpose: closing the add
@@ -138,18 +140,17 @@ function ConfigFieldControl({ field, value, onChange }: { field: ConfigField; va
     )
   }
   if (field.type === 'mode') {
-    // Dropdown selector (not segmented buttons): a real, native <select> styled
-    // like the DSH "selector" picker, so the option list opens as a menu.
+    // The product's own dropdown (primitives.Menu), never a native <select>: a
+    // native control opens the BROWSER's popup, which no amount of trigger
+    // styling can make look like the product's.
     const opts = field.options ?? [['a', 'A'], ['b', 'B']]
     const cur = (typeof value === 'string' && opts.some(([v]) => v === value)) ? value : (field.default as string ?? opts[0][0])
-    return React.createElement('select', {
-      className: 'dsx-select',
+    return React.createElement(Select, {
       value: cur,
+      options: opts.map(([o, label]) => ({ value: o, label: optionLabel([o, label]) })),
+      onChange: (next) => onChange(next),
       title: fieldLabel(field),
-      onChange: (e: React.ChangeEvent<HTMLSelectElement>) => onChange(e.target.value),
-    },
-      opts.map(([o, label]) => React.createElement('option', { key: o, value: o }, optionLabel([o, label]))),
-    )
+    })
   }
   if (field.type === 'metrics') {
     // Multi-select + ORDER. Rendered by its own component so the hooks below
@@ -432,6 +433,8 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
   // and the market only ADDS instances. Removing a row deletes it entirely
   // (installed + order + its per-instance config).
   const installed = prefs.order.filter((id) => prefs.installed.indexOf(id) !== -1)
+  // columns × rows — the deck's real seat count (see effectiveMaxWidgets).
+  const maxPlaceable = effectiveMaxWidgets(prefs)
   const remove = (id: string): void => {
     const cfg = { ...prefs.cardConfigs }
     delete cfg[id]
@@ -542,9 +545,9 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
       // height, and the drawer must start at the top of the content area — level
       // with the tab selector — so the preview gets that space.
       React.createElement('div', {
-        title: t('config.addedCount', { added: installed.length, max: prefs.maxWidgets }),
+        title: t('config.addedCount', { added: installed.length, max: maxPlaceable }),
         style: { flex: 'none', fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-      }, hasSel ? `${installed.length}/${prefs.maxWidgets}` : t('config.addedCount', { added: installed.length, max: prefs.maxWidgets })),
+      }, hasSel ? `${installed.length}/${maxPlaceable}` : t('config.addedCount', { added: installed.length, max: maxPlaceable })),
       React.createElement(OrderList, {
         items: installed,
         onMove: (next) => setPrefs({ order: next }),
@@ -589,13 +592,13 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flex: 'none' } },
         React.createElement('div', { style: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, t('config.preview', { name: widgetName(sel.widget) })),
         sizesOf(sel.widget).length > 1
-          ? React.createElement('select', {
-              className: 'dsx-select', style: { fontSize: 11, width: 'auto' },
-              value: selSize, title: t('config.cardSize'),
-              onChange: (e: React.ChangeEvent<HTMLSelectElement>) => setPreviewSize(e.target.value as WidgetSize),
-            },
-              sizesOf(sel.widget).map((s) => React.createElement('option', { key: s, value: s }, s === '2x4' ? '2×4' : '2×2')),
-            )
+          ? React.createElement(Select, {
+              value: selSize,
+              options: sizesOf(sel.widget).map((s) => ({ value: s, label: s === '2x4' ? '2×4' : '2×2' })),
+              onChange: (next) => setPreviewSize(next as WidgetSize),
+              title: t('config.cardSize'),
+              compact: true,
+            })
           : null,
         // An explicit way out of the preview (the user asked for a close button;
         // tapping the selected row again works too — see OrderList.onSelect).

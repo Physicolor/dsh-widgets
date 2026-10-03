@@ -594,8 +594,11 @@ window.DASH_PREVIEWS = (function () {
         var fmtT = function (ms) { var d = new Date(ms); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
         return {
           title: t('widget.sys-gpu-line.name'),
-          value: Math.round(s.sysinfo.gpu.util) + '%',
-          sub: s.sysinfo.gpu.temp + '°C · ' + fmtGb(s.sysinfo.gpu.memUsed),
+          // Same head shape as the shipped card: big percent on its own row, the
+          // grey facts under it (the ring the real card draws on the right is not
+          // ported here — no other ring card's preview draws one either).
+          headAfter: { big: Math.round(s.sysinfo.gpu.util) + '%' },
+          legend: s.sysinfo.gpu.temp + '°C · ' + fmtGb(s.sysinfo.gpu.memUsed),
           chart: { kind: 'line', line: { values: lv, max: 100, labels: [fmtT(lt[0]), fmtT(lt[lt.length - 1])] } }
         };
       }

@@ -213,9 +213,9 @@ window.DASH_WIDGETS = {
       group: 'commandcode', builtin: false, defaultInstalled: false, sizes: ['2x2'], order: 64
     },
     {
-      id: 'sys-gpu-line', name: 'GPU Utilization', nameZh: 'GPU 利用率',
-      desc: 'GPU utilization sparkline (last ~20 min)',
-      descZh: 'GPU 利用率折线（最近约 20 分钟）',
+      id: 'sys-gpu-line', name: 'Performance', nameZh: 'GPU 性能',
+      desc: 'GPU performance sparkline (last ~20 min)',
+      descZh: 'GPU 性能折线（最近约 20 分钟）',
       group: 'device', builtin: false, defaultInstalled: false, sizes: ['2x2'], order: 64
     },
     {

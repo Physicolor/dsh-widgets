@@ -97,15 +97,18 @@ export function sysBoardRender(stats: WidgetStats): WidgetRenderOut | null {
   }
 }
 
-/** sys-gpu-line: GPU utilization sparkline (Windows-task-manager style) with the
- *  current utilization as the big figure. The head follows the 上下文水位 shape the
- *  user asked for: the blue title on top, the big percent on the NEXT row, and
- *  the grey `°C · GB` facts to its RIGHT on that same row. The card body carries
- *  the sparkline, which is ELASTIC (CardBody gives the line chart the remaining
- *  vertical space, ChartBlock renders it at flex:1/100%) — so the card's
- *  intrinsic height stays inside the 2×2 box at ANY side size or magnification
- *  factor (the old fixed 68px sparkline totalled ≈178px and burst the 150px box
- *  on hover). */
+/** sys-gpu-line: GPU performance sparkline (Windows-task-manager style) with the
+ *  current utilization as the big figure. The head is the SAME three rungs every
+ *  ring card uses — blue title on top, big percent on the next row, grey `°C · GB`
+ *  facts on their OWN row under it — which is also the shape the owner asked for
+ *  (2026-10-03): the facts used to RIDE the figure's row (`headAfter.small`) and
+ *  the grey reading never got a line of its own. The ring on the right shows the
+ *  same utilization the figure prints, so the arc and the number never disagree.
+ *  The card body carries the sparkline, which is ELASTIC (CardBody gives the line
+ *  chart the remaining vertical space, ChartBlock renders it at flex:1/100%) — so
+ *  the card's intrinsic height stays inside the 2×2 box at ANY side size or
+ *  magnification factor (the old fixed 68px sparkline totalled ≈178px and burst
+ *  the 150px box on hover). */
 export function sysGpuLineRender(stats: WidgetStats): WidgetRenderOut | null {
   const s = sysInfo(stats)
   if (s === null) return sysUnavailable('widget.sys-gpu-line.name')
@@ -113,6 +116,11 @@ export function sysGpuLineRender(stats: WidgetStats): WidgetRenderOut | null {
   const g = s.gpu
   // The facts line is the same on every branch, so it is built once.
   const facts = `${Math.round(g.temp)}°C · ${fmtGb(g.memUsed)}`
+  const util = Math.round(g.util)
+  // The ring, the figure and the tone all read the same number; `label` is the
+  // exact reading the ring's hover text prints (`headRing` carries no figure of
+  // its own — see the contract).
+  const headRing: WidgetRenderOut['headRing'] = { ratio: util / 100, tone: loadTone(util), icon: 'performance', label: `${util}%` }
   const hist = historyOf(s)
   // Misses are carried forward instead of breaking the line (see plotSamples).
   const allVals = hist ? plotSamples(hist.gpu) : []
@@ -121,7 +129,7 @@ export function sysGpuLineRender(stats: WidgetStats): WidgetRenderOut | null {
     // Not enough history to DRAW a line yet: the current utilization and the
     // card's facts are both known, so the card shows them (text fill) instead of
     // a waiting notice — the sparkline appears in place on the next samples.
-    return { title: t('widget.sys-gpu-line.name'), headAfter: { big: `${Math.round(g.util)}%`, small: facts } }
+    return { title: t('widget.sys-gpu-line.name'), headAfter: { big: `${util}%` }, legend: facts, headRing }
   }
   // Sample window (10..30, default 20): draw only the most recent N points so
   // the line keeps its shape no matter how long the host has been sampling.
@@ -134,7 +142,9 @@ export function sysGpuLineRender(stats: WidgetStats): WidgetRenderOut | null {
   }
   return {
     title: t('widget.sys-gpu-line.name'),
-    headAfter: { big: `${Math.round(g.util)}%`, small: facts },
+    headAfter: { big: `${util}%` },
+    legend: facts,
+    headRing,
     chart: { kind: 'line', line: { values: vals, max: 100, labels: [fmtT(ts[0]), fmtT(ts[ts.length - 1])] } },
   }
 }

@@ -300,4 +300,221 @@ body.dsx-hide-statsline [data-slot='conversation.composer.dock'] > div * {
   }
 }
 
+/* ── Hover note (`Tip` in surfaces/Settings.tsx) ──
+ * A warning MARK plus a note that appears on hover. The product's tooltip lives
+ * inside its own components and cannot be borrowed, so this is one pseudo-element
+ * reading the `data-tip` attribute — no portal, no positioning script, and it
+ * inherits the semantic tokens like every other control here. Placed ABOVE the
+ * control because these rows live in a scroll container, which clips the
+ * block-end direction. */
+.dsx-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dsx-tip-mark {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--dsw-alias-state-warn-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 16%, transparent);
+}
+.dsx-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  width: max-content;
+  max-width: 260px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: var(--dsw-shadow-lv3);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease, visibility 0s linear 0.12s;
+  z-index: 40;
+}
+.dsx-tip:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+/* ── Settings page GROUPS (surfaces/Settings.tsx) ──
+ * The general tab is grouped by the surface each block configures (网格与尺寸 /
+ * 卡片外观 / 悬浮放大 / 打开与收起动画 / 组件设置面板 / 对话区); the heading and the
+ * one-line description above every block are the whole pattern. The curve field
+ * is a plain SVG the user drags (render/curve.tsx). Everything paints in semantic
+ * tokens only, so it follows the theme like every other control here. */
+
+.dsx-set-group {
+  display: flex;
+  flex-direction: column;
+  padding-top: 6px;
+}
+
+/* The first group sits at the top of the scroll area, where the page header is
+ * already close — so only the LATER groups carry the separating space. */
+.dsx-set-group + .dsx-set-group .dsx-set-group-head {
+  padding-top: 22px;
+}
+
+.dsx-set-group-head {
+  padding: 10px 0 2px;
+}
+
+/* One heading style for both the page groups and the curve row (they are the
+ * same rank of title; the curve is simply a row whose control is a drawing). */
+.dsx-set-head-title {
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.dsx-set-head-desc {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* Title/description/presets on the left, the drawing on the right. */
+.dsx-set-curve {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+}
+
+.dsx-set-curve-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dsx-set-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.dsx-pill {
+  padding: 5px 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+.dsx-pill:hover {
+  border-color: var(--dsw-alias-state-business-primary);
+  color: var(--dsw-alias-state-business-primary);
+}
+.dsx-pill[data-active='true'] {
+  border-color: var(--dsw-alias-state-business-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent);
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.dsx-curve-svg {
+  flex: none;
+  display: block;
+  /* The handles are dragged: without `none` a touch drag would scroll the page
+     out from under the pointer, and the browser would start a text selection on
+     the way. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.dsx-curve-field {
+  fill: var(--dsw-alias-bg-layer-2);
+  stroke: var(--dsw-alias-border-l2);
+  stroke-width: 1;
+}
+
+.dsx-curve-diag {
+  fill: none;
+  stroke: var(--dsw-alias-border-l2);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.dsx-curve-arm {
+  fill: none;
+  stroke: var(--dsw-alias-label-caption);
+  stroke-width: 1;
+  opacity: 0.55;
+}
+
+.dsx-curve-line {
+  fill: none;
+  stroke: var(--dsw-alias-state-business-primary);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.dsx-curve-handle {
+  fill: var(--dsw-alias-bg-layer-1);
+  stroke: var(--dsw-alias-state-business-primary);
+  stroke-width: 2;
+  cursor: grab;
+  outline: none;
+}
+.dsx-curve-handle:hover,
+.dsx-curve-handle:focus-visible {
+  fill: var(--dsw-alias-state-business-primary);
+}
+
+.dsx-curve-dot {
+  fill: var(--dsw-alias-state-business-primary);
+  opacity: 0.85;
+}
+
+/* The replay dot: X advances at a constant rate (time), Y follows the user's
+ * curve (progress). CURVE_SPAN in render/curve.tsx is 128 — keep them in step. */
+@keyframes dsx-curve-run-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(128px); }
+}
+@keyframes dsx-curve-run-y {
+  from { transform: translateY(0); }
+  to { transform: translateY(-128px); }
+}
+.dsx-curve-dot-x {
+  animation: dsx-curve-run-x 1.8s linear infinite;
+}
+.dsx-curve-dot-y {
+  /* The timing function itself is written inline (it IS the setting). */
+  animation: dsx-curve-run-y 1.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dsx-curve-dot-x,
+  .dsx-curve-dot-y {
+    animation: none;
+  }
+}
+
 

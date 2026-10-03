@@ -873,8 +873,12 @@ export type WidgetSize = '2x2' | '2x4'
  *  - `power` — a lightning bolt: a power source. (The owner rejected the battery
  *    shape, 2026-09-29 — the ring's arc already IS the charge level, so a battery
  *    glyph said the same thing twice.)
+ *  - `performance` — a heartbeat line: the OS's own 性能 glyph (owner's
+ *    reference, 2026-10-03) for the GPU 性能 card, drawn WITHOUT its frame (the
+ *    square read as a second circle inside the ring). It names the READING the
+ *    arc shows rather than the hardware, which the figure already implies.
  */
-export type HeadRingIcon = 'database' | 'hard-drive' | 'power' | 'gauge'
+export type HeadRingIcon = 'database' | 'hard-drive' | 'power' | 'gauge' | 'performance'
 
 /**
  * A bare glyph in the head's right-hand slot — the same LAYOUT neighbourhood

@@ -188,6 +188,20 @@ body.dsx-stats-no-session .dsx-stats-drawer {
   pointer-events: none !important;
 }
 
+/* ── RETIRED (owner decision 2026-10-03): closed, but still mounted ──
+   Opening the rail used to mount 13 widget cards from scratch: ~285ms of main-thread
+   React work per toggle on the owner's stage (1707×1067 @ DSF 1.5), which starved the
+   open/close fold down to 32–46fps. After the first open the drawer therefore stays in
+   the DOM and is only retired here — out of paint, out of hit testing — and rail-view
+   hands React the very same element object every render, so nothing in the deck runs
+   while it is closed. `visibility` (not `display: none`) is what keeps the deck's DOM
+   and React state intact for the next open; `!important` because the rail carries
+   `pointer-events: auto` inline and the magnify layer re-enables it on its own slots. */
+.dsx-stats-drawer[data-retired] {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* No room to draw and nothing covering it: the drawer is faded to opacity 0 but
    stays in the layout, so its fixed box must stop being a hit target — an
    invisible rail over the conversation's right edge would otherwise swallow
@@ -197,11 +211,55 @@ body.dsx-stats-no-session .dsx-stats-drawer {
   pointer-events: none !important;
 }
 
+/* ── THE MAGNIFY LAYER IS NOT INSIDE THE DRAWER (owner report 2026-10-03) ──
+   It is portaled to <body> (so it can out-stack the shell's overlay outlet), which
+   means every rule above — written as a drawer descendant — cannot reach it. Two
+   consequences, both of which were live bugs:
+
+   1. `[data-yielded]`/`[data-no-room]`/`[data-retired]` switched the drawer's own
+      pointer-events off while the layer kept `pointer-events: auto` on its slots,
+      so an invisible or covered wave still swallowed clicks.
+   2. The layer carries z-index 26, above the official right column (which has no
+      z-index at all), so a wave engaged while the panel opened painted its
+      magnified cards straight OVER the panel.
+
+   RailWave now applies `covered` to the layer inline, and mirrors it onto a
+   `data-yielded` attribute of the layer's own (fed by `RailSpace.swallowed`, so it
+   is true exactly while the panel owns the space — the drawer's attribute of the
+   same name comes from `space.yielded` and flips sooner). This rule is the second
+   line of defence, so the layer cannot outlive the yield through any other path. */
+.dsx-magnify-layer[data-yielded] {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
 /* Header occlusion is NOT this plugin's job: the session header's opaque
    background + stacking priority (so it masks the rail's top edge) belongs to
    harness-ui-enhancer, which also draws the rounded center-column card. We
    only make sure OUR top padding clears the enhancer card's top shadow (see
    the rail's `2px 4px ...` padding). No header rules live here. */
+
+/* ── Open/close fold (prefs.openShape='stagger', the default) ──
+ * The fold is NOT a CSS animation: rail/wave/deck-cascade.ts drives every card's
+ * `transform` from one shared clock, because a CSS transition cannot resume a
+ * card from its CURRENT progress when the direction flips mid-fold (the per-card
+ * `transition-delay` re-applies, so the cards furthest into the fold freeze for
+ * their new delay — see that module's header). What stays here is the one thing
+ * CSS must own: the ORIGIN the per-card map is expressed against.
+ *
+ * `transform-origin: top right` is load-bearing for BOTH shapes. The 'zoom' shape
+ * scales the whole group about the wrapper's top-right corner — the viewport's own
+ * top-right, off the right edge of the screen; the 'stagger' fold reproduces that
+ * identical map on each card, expressed with the CARD's own top-right corner as the
+ * origin plus the translation that carries that corner to the shared anchor. Move
+ * this origin and the fold stops landing where the zoom shape lands.
+ *
+ * The compositing hint the fold needs is NOT here: it is scoped to the open drawer by the
+ * `:not([data-retired])` rule below, together with the measurement that justifies it. */
+.dsx-wave-deck .dsx-stats-card-slot {
+  transform-origin: top right;
+}
 
 /* ── Mac-Dock style card magnify + brand-blue edge line. ──
    Cards keep their square shape (uniform scale, no distortion) and are laid out
@@ -217,17 +275,48 @@ body.dsx-stats-no-session .dsx-stats-drawer {
      A SPRING curve (slight overshoot, ~4%) on purpose: card size moves in
      CARD_SIZE_STEP tiers and the column count in discrete steps, and this is
      what makes each hop read as the iOS/iPadOS window-resize rebound the user
-     asked for — the card overshoots its new cell by a few px, then settles. */
+     asked for — the card overshoots its new cell by a few px, then settles.
+     The last two entries are the whole-card rule's fade (see .dsx-slot-cut):
+     `opacity` carries the visible half, `visibility` the discrete one that keeps
+     a hidden card out of paint and out of hit-testing, with a 0 delay here so
+     UN-cutting reveals at once and the opacity then fades in. */
   transition:
     top 0.26s cubic-bezier(0.34, 1.36, 0.52, 1),
     right 0.26s cubic-bezier(0.34, 1.36, 0.52, 1),
     width 0.26s cubic-bezier(0.34, 1.36, 0.52, 1),
-    height 0.26s cubic-bezier(0.34, 1.36, 0.52, 1);
-  /* No persistent will-change: every card slot used to hold a permanent
-     compositing layer (two decks × N cards), inflating GPU memory and the
-     per-frame composite cost while the right sidebar animates. Browsers
-     promote a layer automatically while the short tween runs and release it
-     afterwards — the persistent promotion had no benefit. */
+    height 0.26s cubic-bezier(0.34, 1.36, 0.52, 1),
+    opacity 0.18s var(--ds-ease-in-out),
+    visibility 0s linear 0s;
+  /* NO base `will-change` here: two decks × N cards would hold a permanent compositing
+     layer each. The hint IS given while the drawer is on screen — see the gated rule just
+     below, which is where the frame rate is actually won. */
+}
+/**
+ * ── ONE COMPOSITED LAYER PER CARD, ONLY WHILE THE DRAWER IS ON SCREEN ──
+ *
+ * Measured 2026-10-03 on the owner's stage (1707×1067 CSS @ DSF 1.5, 60Hz), on the harsh
+ * harness — 12 toggles per cycle, 320ms apart, 4 cycles
+ * (`docs`-local: `scripts/diag-fold-gbcr.cjs --reps=6 --gap=320 --cycles=4`, headful):
+ *
+ *   no hint            23.9–31.3fps · p95 53–105ms · 66–73 frames over 26ms per cycle
+ *   this hint          50.7–55.8fps · p95 18.5–36ms ·  2–20 frames over 26ms
+ *
+ * The fold writes `transform` on every card each frame; without the hint Chromium promotes
+ * and releases a layer per card on the way in and again on the way out, and that churn was
+ * costing about half the frames. The hint must be in place BEFORE the fold starts, which is
+ * exactly what `:not([data-retired])` gives: a closed drawer is retired (see rail-view.tsx)
+ * and holds no layers at all, while an opening/leaving one is not retired yet and is already
+ * promoted.
+ *
+ * `contain: layout style` on its own changed nothing (22.6–32.5fps — same as no hint) and on
+ * top of this hint the difference (2–9 vs 7–20 frames over 26ms) did not survive a re-measure,
+ * while it makes each slot a containing block and a stacking context — a semantic change to
+ * the deck's layout for a frame-count difference inside the noise. Left OUT deliberately:
+ * `will-change` alone is the whole win (50.8–55.8fps over 4 cycles).
+ */
+.dsx-stats-drawer:not([data-retired]) .dsx-wave-deck .dsx-stats-card-slot,
+.dsx-stats-drawer:not([data-retired]) .dsx-wave-deck .dsx-stats-add {
+  will-change: transform;
 }
 .dsx-stats-card-slot .dsx-stats-card {
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
@@ -255,6 +344,37 @@ body.dsx-stats-no-session .dsx-stats-drawer {
 .dsx-wave-deck.dsx-wave-on .dsx-stats-card-slot,
 .dsx-wave-deck.dsx-wave-on .dsx-stats-add {
   visibility: hidden;
+}
+
+/* prefs.wholeCards (设置 → 高级设置) — a card the rail's viewport would cut in
+   half is NOT painted at all, so the rail only ever shows whole cards. The deck's
+   own row-snap scrolling already guarantees the TOP row tops out exactly, so the
+   bottom edge is the only place a card can be cut.
+   A CLASS, not an inline style: the same slots are hidden by the wave rule above,
+   and an inline `visibility` would outrank it (the resting deck would paint
+   through the magnify overlay).
+   Deliberately NOT a clip or mask of the visible band: the band's bottom edge
+   falls only `pad` (24px default) below the last whole card, while that card's
+   drop shadow reaches ~28px past its own box — a clip there would shave the
+   shadow of the last card you can see. Hiding the card leaves the band intact.
+   FADED, not popped (2026-10-01): while the wheel steps through detents the
+   card crossing the edge used to blink out of existence. `visibility` cannot be
+   interpolated, so the fade rides `opacity` and the discrete flip is DELAYED by
+   exactly the fade's duration — and the delay lives on THIS rule, because a
+   transition reads the after-change style: cutting delays the flip (a real
+   fade-out), un-cutting uses the base rule's 0s and fades straight in.
+   Ordered AFTER the rule above on purpose: same specificity (0,2,0), so file
+   order is what makes `hidden` win over `visible`. */
+.dsx-stats-card-slot.dsx-slot-cut {
+  opacity: 0;
+  visibility: hidden;
+  transition-delay: 0s, 0s, 0s, 0s, 0s, 0.18s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dsx-stats-card-slot.dsx-slot-cut {
+    transition-delay: 0s;
+  }
 }
 
 /* ── Deck rearrangement wave ──
@@ -315,7 +435,7 @@ body.dsx-stats-no-session .dsx-stats-drawer {
   transition: opacity 0.12s ease;
 }
 
-/* ── Bottom add button: same rounded-rect geometry as a card. ── */
+/* ── Bottom settings tile: same rounded-rect geometry as a card. ── */
 .dsx-stats-add {
   box-sizing: border-box;
   flex: none;
@@ -348,6 +468,51 @@ body.dsx-stats-no-session .dsx-stats-drawer {
   font-size: 13px;
   line-height: 1;
   font-weight: 500;
+}
+
+/* ── The settings tile is a HOVER affordance, not a resident cell ──
+ * It is the deck's last element: at rest it claimed a whole visible cell of the
+ * rail (its own dashed square) whether or not the user wanted the panel. It is
+ * now invisible until the pointer is on the widget surface, and the decorated
+ * class comes from RailWave's own enter/leave (`dsx-surface-hover`).
+ *
+ * The SLOT is still reserved in the deck geometry (deck height, scroll cap and
+ * the row layout all count it): revealing something that changed the layout
+ * would shove the deck — and the scroll position — on every hover. Only paint is
+ * gated, so hovering costs no reflow.
+ *
+ * Specificity note: the two-rule selector below is (0,2,0) on purpose, to
+ * outrank `.dsx-wave-deck .dsx-stats-add { visibility: visible }` above — a bare
+ * `.dsx-stats-add` (0,1,0) would lose to it and the tile would never hide.
+ * BOTH hosts are listed because the magnify overlay is PORTALED to <body> (so it
+ * can out-stack the shell's overlay outlet): the overlay's own tile no longer
+ * descends from `.dsx-stats-drawer`, and without its half of the selector it
+ * would be painted at rest again. The reveal rule reaches it through the class
+ * RailWave puts on the LAYER for the same reason.
+ * The three rules are ordered by the state that must win: hidden → hovered →
+ * cut (a half tile stays hidden even under the pointer). */
+.dsx-stats-drawer .dsx-stats-add,
+.dsx-magnify-layer .dsx-stats-add {
+  opacity: 0;
+  visibility: hidden;
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease, transform 0.18s var(--ds-ease-in-out), opacity 0.18s var(--ds-ease-in-out), visibility 0s linear 0.18s;
+}
+.dsx-surface-hover .dsx-stats-add {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+.dsx-stats-add.dsx-slot-cut {
+  opacity: 0;
+  visibility: hidden;
+  transition-delay: 0s, 0s, 0s, 0s, 0s, 0.18s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dsx-stats-drawer .dsx-stats-add,
+  .dsx-stats-add.dsx-slot-cut {
+    transition-delay: 0s;
+  }
 }
 
 /* ── Temporary right-side add panel (fixed overlay, never affects layout).

@@ -14,7 +14,7 @@ import { BASE_SIDE, HEAD_GAP_PX, cardInnerPad, cardRadius } from './card-geometr
 import { CHART_FILLS_BODY, renderChart } from './charts/registry'
 import { Donut } from './charts/donut'
 import { CHART_TONES } from './charts/theme'
-import { databaseIcon, gaugeIcon, githubMarkIcon, hardDriveIcon, permissionFullAccessIcon, permissionReadOnlyIcon, permissionWorkspaceWriteIcon, powerIcon } from './icons'
+import { databaseIcon, gaugeIcon, githubMarkIcon, hardDriveIcon, performanceIcon, permissionFullAccessIcon, permissionReadOnlyIcon, permissionWorkspaceWriteIcon, powerIcon } from './icons'
 import { DEFAULT_CORNER_PERCENT } from '../runtime/prefs'
 import { t } from '../i18n'
 import type { WidgetAction, WidgetRenderOut, WidgetRich } from '../lib/contract/types'
@@ -52,6 +52,7 @@ const HEAD_RING_ICONS: Record<string, React.ReactElement | null> = {
   database: databaseIcon,
   'hard-drive': hardDriveIcon,
   gauge: gaugeIcon,
+  performance: performanceIcon,
   'permission-read-only': permissionReadOnlyIcon,
   'permission-workspace-write': permissionWorkspaceWriteIcon,
   'permission-full-access': permissionFullAccessIcon,

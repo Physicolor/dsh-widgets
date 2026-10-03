@@ -23,7 +23,7 @@
 | --- | --- | --- | --- | --- | --- |
 | `sys-board` | 实时 | CPU / 内存 / GPU / 显存 | % | 瞬时 | 硬件半边；本卡读的是 `machine` 半边（盘 / 会话目录 / 宿主进程），单位是字节与文件数 |
 | `sys-cpu` / `sys-gpu` / `sys-rings` | 实时 | CPU / 内存 / GPU / VRAM | % | 瞬时 | 同上；且它们的 tone 极性**相反**（利用率越高越坏 vs 剩余越少越坏） |
-| `sys-gpu-line` | 最近 N 点 | GPU 利用率 | % | 时间序列 | 折线 sparkline；本卡是分级横条 |
+| `sys-gpu-line` | 最近 N 点 | GPU 性能 | % | 时间序列 | 折线 sparkline；本卡是分级横条 |
 | `usage-bars` | 5h / 周 / 月 | OpenCode Go token 用量 | % / token | 计费窗口 | 模型额度，不是本机文件系统 |
 | `cc-credits` / `window-forecast` / `额度管理` | 5h / 周 / 月 | Command Code 额度 | % | 计费窗口 | 同上；但本卡的横条**借用了同一个 `quotas` 原语**（§4.3） |
 

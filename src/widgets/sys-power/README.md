@@ -16,7 +16,7 @@ Windows 自己的任务栏托盘图标就在常显电量与"剩余 xx"，所以�
 | `sys-rings` | 同上 · CPU + GPU 两环 | `%` | 瞬时 | 同上的性能族；本卡的环只画电量这一个"越低越坏"的量 |
 | `sys-board` | sysinfo 汇总面板（CPU/内存/GPU/VRAM） | `%` / GB | 瞬时 | `SysInfo` 里**没有** power 字段，供电不在其中 |
 | `sys-disk` | 各盘容量 | GB / `%` | 瞬时 | 磁盘剩余与供电无交集；但它是本仓 **`fmtUptime` 先例**的出处（见 §4） |
-| `sys-gpu` / `sys-gpu-line` | GPU 利用率 / 显存 / 温度 | `%` / GB / `°C` | 瞬时 | 性能族 |
+| `sys-gpu` / `sys-gpu-line` | GPU 性能 / 显存 / 温度 | `%` / GB / `°C` | 瞬时 | 性能族 |
 | `usage-mix` / `quota-manage` / 会话类 | token 与套餐额度 | token / `%` | 滚动窗口 | 与硬件无关 |
 | `cache` / `tool` / `tokens` | 会话内投影 | token / 次 | 会话累计 | **版式基准**，不是功能重合 |
 

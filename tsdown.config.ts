@@ -19,13 +19,19 @@ import { transform } from 'lightningcss'
 
 /** Module specifiers resolved from the loader module table (never bundled).
  *  `@deepseek-ai/dsh-client-runtime/client` was retired in DSH 0.1.5 (the client
- *  runtime folded into the shell), and the client half no longer imports it. */
+ *  runtime folded into the shell), and the client half no longer imports it.
+ *  `@deepseek-ai/dsh-client-ui-primitives` is the product's OWN UI kit and is in
+ *  the same frozen table: `Menu` / `IconChevronDownOutlineRegular` (and every
+ *  other control this plugin draws) must come from there, never be rebuilt from
+ *  measured CSS — a hand-styled control still opens the BROWSER's popup the
+ *  moment it is a native `<select>`. */
 const PLATFORM_MODULES = [
   'react',
   'react/jsx-runtime',
   'react-dom',
   'react-dom/client',
   '@deepseek-ai/cordis',
+  '@deepseek-ai/dsh-client-ui-primitives',
   '@deepseek-ai/dsh-client-ui-slots',
   '@deepseek-ai/dsh-client-web-react',
 ] as const

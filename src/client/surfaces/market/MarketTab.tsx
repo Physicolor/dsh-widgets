@@ -16,6 +16,7 @@ import { CardBody } from '../../render/CardBody'
 import { buildPreviewStats, exampleOut } from '../../render/preview/example-out'
 import { ChevronLeftIcon, ChevronRightIcon, gridViewIcon, listViewIcon, searchIcon } from '../../render/icons'
 import type { WidgetsController } from '../../runtime/controller'
+import { effectiveMaxWidgets } from '../../runtime/prefs'
 import { t } from '../../i18n'
 
 /** 组件市场's hero (FLIP) transition toggle.
@@ -115,6 +116,10 @@ export function MarketTab({ controller, usageData }: { controller: WidgetsContro
   // reload, a session change — and ship as a user preference to plugin users.
   const view = prefs.marketView === 'grid' ? 'grid' : 'list'
   const setView = (v: 'list' | 'grid'): void => setPrefs({ marketView: v })
+  // How many widgets the deck can actually seat (columns × rows) — see the note
+  // on effectiveMaxWidgets. Every "can I add another" test reads THIS, never the
+  // raw preference.
+  const maxPlaceable = effectiveMaxWidgets(prefs)
   const [previewGroup, setPreviewGroup] = React.useState<string | null>(null)
   const [previewIdx, setPreviewIdx] = React.useState(0)
   const galleryRef = React.useRef<HTMLDivElement | null>(null)
@@ -371,7 +376,7 @@ export function MarketTab({ controller, usageData }: { controller: WidgetsContro
     // Everything ships bundled: the market only ADDS the selected instance
     // (widget@size) to the rail. Already-added instances show as disabled.
     const add = (): void => {
-      if (!w || installed || prefs.installed.length >= prefs.maxWidgets) return
+      if (!w || installed || prefs.installed.length >= maxPlaceable) return
       setPrefs({
         installed: prefs.installed.concat(curKey),
         order: prefs.order.indexOf(curKey) === -1 ? prefs.order.concat(curKey) : prefs.order,
@@ -391,10 +396,10 @@ export function MarketTab({ controller, usageData }: { controller: WidgetsContro
           React.createElement('span', { style: { fontSize: 14, fontWeight: 600, color: 'var(--dsw-alias-label-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: sizeBlocked ? 'line-through' : undefined, opacity: sizeBlocked ? 0.75 : undefined } }, w ? `${widgetName(w)}${curSize === '2x4' ? ' 2×4' : ' 2×2'}` : ''),
           sizeBlocked ? React.createElement('span', { className: 'dsx-size-warn' }, t('market.sizeBlocked')) : null,
         ),
-        React.createElement('button', { type: 'button', disabled: installed || sizeBlocked || prefs.installed.length >= prefs.maxWidgets, className: installed || sizeBlocked ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: add, title: sizeBlocked ? t('market.sizeBlockedTitle') : undefined }, installed ? t('market.added') : t('market.add')),
+        React.createElement('button', { type: 'button', disabled: installed || sizeBlocked || prefs.installed.length >= maxPlaceable, className: installed || sizeBlocked ? 'dsx-btn' : 'dsx-btn dsx-btn-primary', onClick: add, title: sizeBlocked ? t('market.sizeBlockedTitle') : undefined }, installed ? t('market.added') : t('market.add')),
       ),
-      !installed && prefs.installed.length >= prefs.maxWidgets
-        ? React.createElement('div', { className: 'dsx-limit-tip' }, t('market.limit', { max: prefs.maxWidgets }))
+      !installed && prefs.installed.length >= maxPlaceable
+        ? React.createElement('div', { className: 'dsx-limit-tip' }, t('market.limit', { max: maxPlaceable }))
         : null,
       React.createElement('div', { ref: stageRef, style: { flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '0 4px' } },
         React.createElement('button', { type: 'button', className: 'dsx-navbtn', 'aria-label': t('market.prevAria'), onClick: prev }, React.createElement(ChevronLeftIcon)),

@@ -13,6 +13,19 @@
 
 import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS } from '../generated.registry'
 import { instanceKey, parseInstanceKey, sizesOf } from '../lib/contract/helpers'
+import type { AnimCurve } from '../lib/anim-curve'
+import { DEFAULT_ANIM_BOUNCE, DEFAULT_ANIM_CURVE, MAX_ANIM_BOUNCE, normalizeCurve } from '../lib/anim-curve'
+
+/**
+ * The curve math lives next door (`../lib/anim-curve.ts`, moved out 2026-10-02) and is
+ * RE-EXPORTED here so every surface keeps the import path it already had. It cannot stay
+ * in this file: the schema below needs the widget registry, and that registry is imported
+ * extensionless (bundler-style), which plain Node cannot resolve — so the unit test that
+ * pins the curve solver could never load this module. The schema and the easing are
+ * separate concerns anyway.
+ */
+export type { AnimCurve } from '../lib/anim-curve'
+export { DEFAULT_ANIM_BOUNCE, DEFAULT_ANIM_CURVE, MAX_ANIM_BOUNCE, curveToEasing, curveToProgress, normalizeCurve, overshootCurve } from '../lib/anim-curve'
 
 /** Persisted preferences shared by every surface. */
 export interface Prefs {
@@ -48,6 +61,90 @@ export interface Prefs {
    *  the rest of the prefs — switching views must survive a reload and ship as a
    *  user preference to everyone who installs the plugin from npm. */
   marketView: 'list' | 'grid'
+  /** Open animation: the scale the rail group STARTS from while it grows out of
+   *  the top-right corner (1 = slide only, no zoom). The 'stagger' shape starts
+   *  EVERY CARD from this same scale, about the same corner — see
+   *  rail/wave/deck-cascade.ts. */
+  animScale: number
+  /** Open animation: the easing of that slide+zoom (see {@link AnimCurve}). */
+  animCurve: AnimCurve
+  /**
+   * Open animation: the easing of the SLIDE half alone.
+   *
+   * The slide and the zoom are two elements with one easing each (a single
+   * `transform` cannot carry two timing functions), so the owner can tune them
+   * apart: the position curve moves the whole rail in from the right, or — in the
+   * default 'stagger' shape — carries each CARD's own copy of that same move (see
+   * rail/wave/deck-cascade.ts, which evaluates this same curve in JS), while the
+   * zoom curve grows the group out of its top-right corner. Default √x, like
+   * `animCurve`.
+   */
+  animShiftCurve: AnimCurve
+  /**
+   * Open/close SPRING settle: how far the POSITION overshoots its target, as a
+   * fraction of the travel (0 = a plain eased move, 0.04 = the cards slide 4% of
+   * the travel PAST their seat and spring back).
+   *
+   * Why the position and not the scale: `normalizeCurve` clamps every curve's `y`
+   * to [0,1] precisely so the SCALE never overshoots past its resting size (the
+   * rail would visibly grow past its column). The position has room — the travel
+   * is ~`railW + 24`, and the last `pad` of it is the rail's own padding — so the
+   * overshoot lives here instead, and the overshoot amount is therefore exact in
+   * PIXELS: `animBounce × travel`, the same for every card (they share one travel)
+   * and for the whole group in the 'zoom' shape.
+   *
+   * It is folded into {@link animShiftCurve} — see {@link overshootCurve} — not
+   * into a second animation, so the two shapes stay ONE map: the CSS transition
+   * the group rides and the per-card curves the cascade evaluates are the same
+   * cubic-bezier, bit for bit.
+   */
+  animBounce: number
+  /**
+   * How the rail EXPANDS and COLLAPSES (owner request 2026-10-02).
+   *
+   *  - `'stagger'` (default): the rail itself does NOT move or scale — it is
+   *    already in its final place, and its CARDS travel along the zoom shape's OWN
+   *    path, each on its own beat. Same anchor (the wrapper's top-right corner,
+   *    which is off the right edge of the screen), same `animScale`, same travel,
+   *    same two curves as 'zoom'; only the per-card progress differs, offset by
+   *    rank. The cascade starts at the deck's BOTTOM-LEFT cell and ends at the
+   *    top-right one — the two corners act as the anchors of the fold, like an
+   *    accordion opening — and collapsing plays the same fold backwards, so the
+   *    top-right card leaves first. The 设置 tile is part of the deck's grid and
+   *    folds with it.
+   *  - `'zoom'`: the whole group slides in from the right and scales out of its
+   *    top-right corner (`animScale`) on the zoom curve, as it shipped before this
+   *    option existed.
+   */
+  openShape: 'zoom' | 'stagger'
+  /** Hide cards the rail's viewport would cut in half (the rail shows WHOLE
+   *  cards only). Default ON: the deck's own row-snap scrolling guarantees the
+   *  TOP row is never cut, so the bottom cut is the only one left to remove. */
+  wholeCards: boolean
+  /** 可显示的最多行数 — the deck's row budget. Together with `columns` it defines
+   *  how many widgets can be PLACED (see {@link effectiveMaxWidgets}), which is
+   *  why `maxWidgets` can no longer exceed `columns × maxRows`. */
+  maxRows: number
+}
+
+/** Rows the deck may budget for: the setting's own range. */
+export const MAX_ROWS_RANGE: readonly [number, number] = [1, 12]
+
+/**
+ * How many widgets may be PLACED right now — the ONE cap every surface reads.
+ *
+ * The rail can only ever show `columns × maxRows` tiles at once, so a larger
+ * "最多组件数" is a promise the layout cannot keep: the market would keep adding
+ * widgets the deck never seats. The stored preference is therefore read through
+ * this clamp rather than rewritten (a render must not write prefs, and lowering
+ * the row budget must not destroy the number the user typed — raising it again
+ * brings the old value straight back). Surfaces that display it say that it was
+ * clamped; see the settings row.
+ */
+export function effectiveMaxWidgets(p: Pick<Prefs, 'maxWidgets' | 'columns' | 'maxRows'>): number {
+  const rows = Number.isFinite(p.maxRows) ? p.maxRows : 5
+  const cols = [1, 2, 3, 4].indexOf(p.columns) !== -1 ? p.columns : 2
+  return Math.max(1, Math.min(p.maxWidgets, cols * rows))
 }
 
 /** Default corner gear (%). The card renderer uses the same number as its own
@@ -82,6 +179,16 @@ const DEFAULTS: Prefs = {
   cornerPercent: DEFAULT_CORNER_PERCENT,
   // 组件市场 opens as a list; the choice is persisted from then on.
   marketView: 'list',
+  // The rail grows out of its top-right corner (see the drawer in rail-view.tsx).
+  animScale: 0.88,
+  animCurve: { ...DEFAULT_ANIM_CURVE },
+  animShiftCurve: { ...DEFAULT_ANIM_CURVE },
+  animBounce: DEFAULT_ANIM_BOUNCE,
+  openShape: 'stagger',
+  wholeCards: true,
+  // 2 columns × 5 rows = the default 10 widgets, so the shipped defaults agree
+  // with each other instead of clamping on first run.
+  maxRows: 5,
 }
 
 /** Normalize an arbitrary persisted/remote prefs object into a valid Prefs.
@@ -124,8 +231,20 @@ export function normalizePrefs(p: Partial<Prefs>): Prefs {
   // same persisted prefs as everything else, so a reload — or the plugin being
   // installed from npm into someone else's profile — keeps it.
   if (s.marketView !== 'grid' && s.marketView !== 'list') s.marketView = DEFAULTS.marketView
+  if (!Number.isFinite(s.animScale) || s.animScale < 0.5 || s.animScale > 1) s.animScale = DEFAULTS.animScale
+  s.animCurve = normalizeCurve(s.animCurve)
+  s.animShiftCurve = normalizeCurve(s.animShiftCurve)
+  s.animBounce = Number.isFinite(s.animBounce) ? Math.min(MAX_ANIM_BOUNCE, Math.max(0, s.animBounce)) : DEFAULTS.animBounce
+  if (s.openShape !== 'zoom' && s.openShape !== 'stagger') s.openShape = DEFAULTS.openShape
+  if (typeof s.wholeCards !== 'boolean') s.wholeCards = DEFAULTS.wholeCards
+  if (!Number.isFinite(s.maxRows) || s.maxRows < MAX_ROWS_RANGE[0] || s.maxRows > MAX_ROWS_RANGE[1]) s.maxRows = DEFAULTS.maxRows
   return s
 }
+
+/**
+ * `loadState` / `loadSavedAt` — the READ path (see the module note). The curve
+ * helpers themselves live in `../lib/anim-curve.ts`.
+ */
 
 export function loadState(): Prefs {
   try {

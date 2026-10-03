@@ -2963,10 +2963,16 @@
      }
     },
     "headAfter": {
-     "big": "8%",
-     "small": "58°C · 4.7 GB"
+     "big": "8%"
     },
-    "title": "GPU 利用率"
+    "headRing": {
+     "icon": "performance",
+     "label": "8%",
+     "ratio": 0.08,
+     "tone": "success"
+    },
+    "legend": "58°C · 4.7 GB",
+    "title": "GPU 性能"
    }
   },
   {
@@ -10396,10 +10402,16 @@
      }
     },
     "headAfter": {
-     "big": "8%",
-     "small": "58°C · 4.7 GB"
+     "big": "8%"
     },
-    "title": "GPU Utilization"
+    "headRing": {
+     "icon": "performance",
+     "label": "8%",
+     "ratio": 0.08,
+     "tone": "success"
+    },
+    "legend": "58°C · 4.7 GB",
+    "title": "Performance"
    }
   },
   {

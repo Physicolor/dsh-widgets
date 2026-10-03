@@ -12,9 +12,11 @@
  */
 
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import { WAVE_SPRING, springSettleMs, springValue } from '../../lib/morph-spring'
 import type { WidgetRenderOut, WidgetSize } from '../../lib/contract/types'
 import { ANCHOR_FOLLOW, RAIL_ROW_SEAT, type WavePlace } from '../geometry'
+import { settingsGearIcon } from '../../render/icons'
 import { t } from '../../i18n'
 
 /* ── Enter-stall post-mortem (2026-09-20) ──
@@ -57,6 +59,49 @@ import { t } from '../../i18n'
  */
 /** Every rail-owned fixed layer reads this one variable (default set in the CSS). */
 const RAIL_RIGHT_VAR = 'var(--dsx-rail-right)'
+
+/**
+ * The class that hides a card the rail's viewport would cut in half
+ * (prefs.wholeCards — see `syncWholeCards` in the component). Declared here
+ * because BOTH decks use it: the resting one through a DOM write, the magnify
+ * overlay through its render.
+ */
+const SLOT_CUT_CLASS = 'dsx-slot-cut'
+
+/**
+ * The surfaces this plugin PAINTS the rail with, for the paint-ownership test in
+ * `onCard`.
+ *
+ * The hover oracle is arithmetic (it maps the pointer into the rail's content box
+ * and tests the tile boxes), so it answers "would a tile be here" and not "is a
+ * tile the thing under the pointer". Anything painted over the rail by someone
+ * else — a shell overlay, a modal, the official right panel on its way in — is
+ * invisible to it, which is how a covered rail stayed hoverable (see the owner's
+ * report in the `onScreen` note). `document.elementFromPoint` is the DOM's own
+ * answer to that second question, and it already excludes what the user cannot
+ * touch (`pointer-events: none`, `visibility: hidden`), so a yielded or retired
+ * rail simply drops out of the chain.
+ *
+ * Deliberately NOT in the list: `.dsx-stats-addpanel`. The settings drawer is
+ * portaled to <body> at z-index 30 and overlaps the rail's column while it is
+ * open, so pointing at the drawer must release the wave instead of keeping it
+ * armed behind the panel.
+ */
+const OWN_PAINT = '.dsx-stats-rail, .dsx-magnify-layer'
+
+/**
+ * How far the hover glow paints past the card it belongs to (px).
+ *
+ * This is the blur RADIUS of the hover `box-shadow` in rail.module.css
+ * (`.dsx-slot-focused .dsx-stats-card` / `.dsx-stats-card-slot:hover
+ * .dsx-stats-card` — both are `0 0 0 1px <blue>, 0 10px 28px <blue 26%>`), and it
+ * has to be counted in `overhang` below: the overlay's `overflow: hidden` clips
+ * at its own left edge, and without this term the leftmost 28px − `pad` of the
+ * glow was sliced off with a hard vertical edge — measured 2026-10-02 at
+ * 1578×1000, focused card left 1072.4 vs layer left 1060 (a 15.6px cut, the line
+ * the user reported as "悬浮光效被截断"). Keep it equal to the blur in the CSS.
+ */
+const GLOW_SPREAD = 28
 
 /* ── The wave's morph is a SPRING, computed per frame (see RailWave) ──
  *
@@ -220,6 +265,38 @@ interface RailWaveProps {
   restAdd: { top: number; right: number }
   /** The rail is mounted on a live session (state is dropped when it is not). */
   live: boolean
+  /**
+   * ── IS ANY OF THE RAIL ACTUALLY ON SCREEN? ──
+   *
+   * False while the drawer is RETIRED (closed but kept mounted — see rail-view.tsx), has no
+   * room to draw, or is COVERED by the official right panel. It MUST gate the hover path,
+   * because this file's "is the pointer on a tile" oracle is ARITHMETIC, not hit-testing: it
+   * reads the tile boxes, and a retired drawer still has them (`visibility: hidden` keeps
+   * layout). Without this gate, moving the pointer over the collapsed rail's band resolves a
+   * tile nobody can see and lights the rail up over an empty patch of the conversation — the
+   * owner's report on 2026-10-03: 「收起组件区域后，鼠标指针悬浮到右侧区域会异常激活组件区域悬浮状态」.
+   *
+   * A prop, not a DOM read: the window-level `mousemove` listener below is mounted ONCE and
+   * reads refs, and the drawer's own attributes belong to the parent's state.
+   */
+  onScreen: boolean
+  /**
+   * Is the official right panel sitting ON TOP of the rail? (rail/geometry.ts `RailSpace.swallowed`.)
+   *
+   * Kept SEPARATE from `onScreen` because the two are different facts. `onScreen` is about the
+   * drawer itself (closed / no room); `covered` means the drawer is open and laid out, but the
+   * shell's right column owns the space — geometry.ts resolves exactly that: the rail is pinned
+   * `right: 0px` and shifted by `shiftX` so the panel covers it COMPLETELY. The rail is then not
+   * the surface under the pointer anywhere, so no pointer position may arm or keep armed the
+   * wave. This is what the arithmetic oracle cannot see on its own: the tile boxes are all still
+   * there, under the panel — the owner's report on 2026-10-03: 「右侧打开右侧边栏时也会激活悬浮显示」.
+   *
+   * The magnify layer is PORTALED to <body> (so the drawer's own `[data-yielded]` pointer-events
+   * rule cannot reach it) and carries z-index 26, which out-stacks the panel's un-z-indexed
+   * column: once armed, its cards paint OVER the sidebar. Gating on this prop is therefore what
+   * stops the overlay from being drawn on top of the panel in the first place.
+   */
+  covered: boolean
   /** Rightward shift (px) so a narrower panel still covers the rail completely. */
   shiftX: number
   /**
@@ -228,24 +305,45 @@ interface RailWaveProps {
    * user drags the conversation width.
    */
   columns: number
+  /**
+   * Draw WHOLE cards only (prefs.wholeCards): a card the rail's viewport would
+   * cut in half — at the bottom of the visible band, since the row-snap scroll
+   * already guarantees the TOP row tops out exactly — is not painted and not
+   * hit-testable. See `partialAt` for why this is a per-card hide rather than a
+   * clip of the band.
+   */
+  wholeCards: boolean
+  /**
+   * The drawer's own phase, forwarded from the parent, or `null` when the deck
+   * must not cascade (`openShape: 'zoom'`). It drives the OPEN/CLOSE cascade: the
+   * deck's cards fold in one after another — from the bottom-left card to the
+   * top-right one — on top of the whole-group slide+zoom.
+   */
+  deckPhase: 'in' | 'out' | null
 }
 
 export function RailWave(props: RailWaveProps): React.ReactElement {
-  const { deck, cardBodies, railElRef, onAddClick, items, side, pad, railW, stackHeight, rows, deckH, paneH, lastRow, addRadius, active, placeCards, scaleFor, nearest, stepScale, xPts, yPts, addSlotFor, restLayout, restAdd, live, shiftX, columns } = props
+  const { deck, cardBodies, railElRef, onAddClick, items, side, pad, railW, stackHeight, rows, deckH, paneH, lastRow, addRadius, active, placeCards, scaleFor, nearest, stepScale, xPts, yPts, addSlotFor, restLayout, restAdd, live, onScreen, covered, shiftX, columns, wholeCards, deckPhase } = props
   const n = items.length
   /**
    * The rail's scroll content = the deck + the TAIL (see the tail element's note).
    *
-   * The tail is sized to `contentBottom + paneH − deckH`: it ends exactly one viewport
-   * below the deepest CARD, which makes the scrollable range `contentBottom − clientH`.
-   * At the bottom detent the viewport floor therefore sits just under the last row — no
-   * blank area beyond it — while every row that a wheel notch can reach still tops out.
-   * `contentBottom` is the deepest card bottom; the add tile sits inside the grid or in
-   * the last row's free cell, so it never extends the range.
+   * The tail sizes the browser's own scroll range to the LAST detent the wheel may
+   * reach, so a trackpad flick cannot fly past it into blank space. `deckH` is the
+   * deck's own box (the deepest card or the settings tile, plus the bottom pad);
+   * the max() keeps the content at least as tall as that box, and the detent term
+   * makes the cap reachable — the two differ by only the deck's bottom pad.
    */
   const scrollPitch = Math.max(1, side + pad)
-  const contentBottom = restLayout.reduce((m, c) => Math.max(m, c.top + c.h), RAIL_ROW_SEAT)
-  const scrollContentH = contentBottom + paneH
+  /**
+   * `lastRow` is the SMALLEST detent that shows the deepest component (the parent
+   * computes it — see the note there), not the last row that reaches into the
+   * viewport. So the content is sized for THAT detent and no taller: at the old
+   * `contentBottom + paneH` the range ran hundreds of px past the cap, and the
+   * wheel handler's clamp never sees a flick (the browser's own range is what a
+   * flick obeys).
+   */
+  const scrollContentH = Math.max(deckH, RAIL_ROW_SEAT + lastRow * scrollPitch + paneH)
   const tailH = Math.max(0, scrollContentH - deckH)
   /**
    * Highest row that may top out, from the parent: the last row whose CARDS still
@@ -260,6 +358,12 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
   //      centres + midpoints) so the peak glides between cards and gaps.
   const [focusY, setFocusY] = React.useState<number | null>(null)
   const [focusX, setFocusX] = React.useState<number | null>(null)
+  /**
+   * Is the pointer on the widget surface? — the reveal switch for the 设置 tile
+   * (see the wrapper's note). A state, not a DOM write: enter/leave fire once per
+   * crossing, so a re-render here is free, and React then owns the class it sets.
+   */
+  const [surfaceHover, setSurfaceHover] = React.useState(false)
   /**
    * The morph progress, `0` at rest and `1` fully engaged — the `p` of
    * `displayed = 1 + (target − 1) · p` (see the note above `SLOT_SPRING`).
@@ -316,20 +420,12 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
    * the rail's own box and its scrollTop. Cards of a row are right-anchored, hence
    * `contentW –right –w —contentW –right`. Defined after the wave geometry
    * because it reads the LIVE layout (see `onCard` below).
+   *
+   * The tolerance-free twin of this test (`hitLayout`) that used to sit here had
+   * NO caller and is deleted (2026-10-01): the whole-card rule below has to live
+   * in exactly one oracle, and a dead second copy is precisely where it would get
+   * forgotten.
    */
-  const hitLayout = (layout: ReadonlyArray<{ top: number; right: number; w: number; h: number }>, add: { top: number; right: number } | null, clientX: number, clientY: number): boolean => {
-    const rail = railElement()
-    if (rail === null) return false
-    const box = rail.getBoundingClientRect()
-    const contentW = rail.clientWidth - 2 * pad
-    const cx = clientX - box.left - pad
-    const cy = clientY - box.top - RAIL_TOP_INSET + rail.scrollTop
-    for (const c of layout) {
-      if (cx >= contentW - c.right - c.w && cx <= contentW - c.right && cy >= c.top && cy <= c.top + c.h) return true
-    }
-    if (add !== null && cx >= contentW - add.right - side && cx <= contentW - add.right && cy >= add.top && cy <= add.top + side) return true
-    return false
-  }
   /**
    * How far outside its own box a tile still counts as hovered.
    *
@@ -342,11 +438,36 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
    */
   const TILE_TOLERANCE = 7
   /**
+   * Is the pointer really over OUR paint?
+   *
+   * The arithmetic below answers "would a tile be here". This answers the other half of the
+   * question the user is asking — "is that tile what I am pointing at" — which arithmetic
+   * cannot: the tile boxes stay where they are when somebody else paints over the rail (the
+   * official right panel, a shell overlay, a modal). `elementFromPoint` is the DOM's own
+   * answer, and it already skips whatever the user cannot touch (`pointer-events: none`,
+   * `visibility: hidden`), so a yielded or retired rail drops out of it by itself.
+   *
+   * `null` means "outside the viewport / nothing there": treated as ours so the guard can
+   * never invent a refusal it cannot justify.
+   */
+  const ownsPoint = (clientX: number, clientY: number): boolean => {
+    const hit = document.elementFromPoint(clientX, clientY)
+    if (hit === null) return true
+    return hit.closest(OWN_PAINT) !== null
+  }
+  /**
    * Tighter variant of `hitLayout`: tests `TILE_TOLERANCE` around the PAINTED tiles
    * instead of the bare boxes. This is the oracle for "is the pointer still on the
    * widgets" once the wave is armed.
    */
   const onCard = (clientX: number, clientY: number): boolean => {
+    // Nothing of the rail is on screen (retired / no room): every box below is a leftover.
+    // This is also what makes the ARMED release path correct — `nearSurface` is `onCard`, so a
+    // drawer retired while the wave was live releases it on the next pointer move.
+    if (!onScreenRef.current) return false
+    // The rail is open and laid out but the official right panel owns the space (and covers it
+    // completely — see the `covered` prop). Same leftover-boxes situation, same answer.
+    if (coveredRef.current) return false
     const rail = railElement()
     if (rail === null) return false
     // The overlay is the painted surface exactly while `morph`: at rest it is
@@ -359,20 +480,41 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     const cx = clientX - box.left - pad
     const cy = clientY - box.top - RAIL_TOP_INSET + rail.scrollTop
     const t = TILE_TOLERANCE
-    for (const c of layout) {
+    // A card the viewport cuts is not drawn (see `syncWholeCards`), so it must not
+    // be hoverable either: its area is empty band, and treating it as a tile would
+    // arm the wave — and hold it armed — over a card nobody can see. Tested at the
+    // RESTING seat, the geometry the rule is defined on; a magnified card is
+    // allowed to reach past the band, that is the wave itself.
+    const band = wholeCards ? bandOf(rail) : null
+    for (let i = 0; i < layout.length; i++) {
+      const c = layout[i]
+      const rest = restLayout[i]
+      if (band !== null && rest !== undefined && cutBy(band, rest)) continue
       const left = contentW - c.right - c.w
       const right = contentW - c.right
-      if (cx >= left - t && cx <= right + t && cy >= c.top - t && cy <= c.top + c.h + t) return true
+      // Geometric hit only means "a tile would occupy this point". The paint test is what
+      // makes it real, and it runs LAST so the common path — the pointer over the
+      // conversation, no tile anywhere near — never pays for a hit test.
+      if (cx >= left - t && cx <= right + t && cy >= c.top - t && cy <= c.top + c.h + t) return ownsPoint(clientX, clientY)
     }
-    if (add !== null) {
+    if (add !== null && !(band !== null && cutBy(band, { top: restAdd.top, h: side }))) {
       const left = contentW - add.right - side
       const right = contentW - add.right
-      if (cx >= left - t && cx <= right + t && cy >= add.top - t && cy <= add.top + side + t) return true
+      if (cx >= left - t && cx <= right + t && cy >= add.top - t && cy <= add.top + side + t) return ownsPoint(clientX, clientY)
     }
     return false
   }
   const moveRailFocus = (clientX: number, clientY: number, el: HTMLDivElement): void => {
     lastClientXYRef.current = { x: clientX, y: clientY }
+    // ── A RETIRED RAIL IS NOT HOVERABLE ──
+    // The pointer position is remembered above (the scroll re-target reads it), but no focus is
+    // resolved and any that was live is dropped: without this the geometric oracle in `onCard`
+    // finds a tile in the collapsed drawer's leftover boxes and the rail lights up over the
+    // conversation. See the `onScreen` prop.
+    if (!onScreenRef.current || coveredRef.current) {
+      if (armedRef.current || focusX !== null || focusY !== null) leaveRail()
+      return
+    }
     const rect = el.getBoundingClientRect()
     contentXRef.current = clientX - rect.left
     contentYRef.current = clientY - rect.top - 2 + el.scrollTop
@@ -393,19 +535,117 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     if (lastClientXYRef.current === null) return
     moveRailFocus(lastClientXYRef.current.x, lastClientXYRef.current.y, el)
   }
+  /**
+   * The freshest `moveRailFocus`, for the once-mounted window listener.
+   *
+   * That listener cannot close over it directly: its effect has `[]` on purpose
+   * (see below), so the closure it captured was built on the FIRST render — with
+   * the rail's initial `pad`/`side`/`railW` — and would arm the wave against a
+   * layout the window no longer has. Writing the ref during render is the same
+   * pattern `lastRowRef` uses.
+   */
+  const moveFocusRef = React.useRef(moveRailFocus)
+  moveFocusRef.current = moveRailFocus
+  /**
+   * The freshest `onScreen`, for the same once-mounted window listener, and for `onCard` (which
+   * is called from the pointer-leave timer and from the scroll re-target, not only from a render).
+   */
+  const onScreenRef = React.useRef(onScreen)
+  onScreenRef.current = onScreen
+  /** The freshest `covered`, for the same three callers. */
+  const coveredRef = React.useRef(covered)
+  coveredRef.current = covered
+  /**
+   * Drop the wave outright — focus, arming, surface hover and the morph spring.
+   *
+   * Every "the rail is not the surface under the pointer any more" transition goes through
+   * here, including the two that NO pointer event reports: the drawer retiring under a
+   * stationary pointer, and the official right panel opening over it (the owner's report of
+   * 2026-10-03). In both, the pointer never moves, so no `mousemove` ever reaches the oracle
+   * and the armed state would simply stay lit — and because the magnify layer is portaled to
+   * <body> at z-index 26, a lit wave paints its cards OVER the panel that just opened.
+   */
+  const standDown = (): void => {
+    setFocusY(null); setFocusX(null)
+    armedRef.current = false
+    setSurfaceHover(false)
+    const st = morphRef.current
+    if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0 }
+    st.p = 0; st.from = 0; st.to = 0
+    setMorphP(0)
+  }
+  const standDownRef = React.useRef(standDown)
+  standDownRef.current = standDown
   React.useEffect(() => () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
     if (morphRef.current.raf) cancelAnimationFrame(morphRef.current.raf)
   }, [])
   React.useEffect(() => {
-    if (live) return
-    setFocusY(null); setFocusX(null)
-    armedRef.current = false
-    const st = morphRef.current
-    if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0 }
-    st.p = 0; st.from = 0; st.to = 0
-    setMorphP(0)
-  }, [live])
+    // The rail must be open AND on screen AND not covered for the wave to exist at all.
+    if (live && onScreen && !covered) return
+    standDownRef.current()
+  }, [live, onScreen, covered])
+  /**
+   * The freshest `leaveRail` (defined far below, next to `nearSurface`, hence a ref).
+   */
+  const leaveRailRef = React.useRef<(x?: number, y?: number) => void>(() => {})
+  /**
+   * Re-check the pointer against the CURRENT geometry, and only ever RELEASE.
+   *
+   * The oracle runs on events, so it is blind to the third way a tile can stop being under
+   * the pointer: the tile moves and the pointer does not. Every layout change that moves the
+   * rail — a window resize, the sidebar swallowing it, a column/card-size switch, the deck's
+   * own reflow — re-seats the tiles while `lastClientXYRef` still holds the old position, and
+   * the wave stays lit over band that is now empty. This is the same defect family as the
+   * retired drawer and the covered rail; here it is the GEOMETRY that moved away.
+   *
+   * Deliberately release-only: arming on a layout change would light the wave up on its own,
+   * which is exactly the "synthesised enter" failure the window listener's note warns about.
+   * `railScrollSync` keeps its own (arming) re-target for real scrolling.
+   */
+  const revalidate = (): void => {
+    if (!armedRef.current && focusX === null && focusY === null) return
+    const p = lastClientXYRef.current
+    if (p === null) return
+    if (onScreenRef.current && !coveredRef.current && onCard(p.x, p.y)) return
+    leaveRailRef.current(p.x, p.y)
+  }
+  const revalidateRef = React.useRef(revalidate)
+  revalidateRef.current = revalidate
+  /**
+   * The deps are the scalars that move the tiles; `restLayout`/`focusLayout` are new arrays
+   * every render and cannot be tracked. Writes are guarded by `revalidate` itself (no arming
+   * pointer position ⇒ nothing to do), so a stable state costs one ref read per change.
+   */
+  React.useEffect(() => {
+    revalidateRef.current()
+  }, [onScreen, covered, side, pad, columns, railW, shiftX])
+  /**
+   * A transition is the one layout change that moves the rail box WITHOUT a React render:
+   * the swallow/anchor slide animates `.dsx-stats-rail` via `right`/`transform` (see
+   * rail.module.css), so no prop changes while it runs and the deps effect above never
+   * fires. The tiles genuinely travel under a stationary pointer for its whole duration, so
+   * the release has to be hooked to the transition, not polled — a per-frame
+   * `getBoundingClientRect` in the middle of the spring's writes is exactly what the
+   * transform-based slot style exists to avoid.
+   */
+  React.useEffect(() => {
+    const onLayout = (): void => { revalidateRef.current() }
+    const onTransitionEnd = (e: TransitionEvent): void => {
+      const el = e.target
+      if (!(el instanceof Element)) return
+      if (el.closest('.dsx-stats-rail, .dsx-stats-drawer') === null) return
+      revalidateRef.current()
+    }
+    window.addEventListener('resize', onLayout, { passive: true })
+    window.addEventListener('transitionend', onTransitionEnd, true)
+    window.addEventListener('transitioncancel', onTransitionEnd, true)
+    return () => {
+      window.removeEventListener('resize', onLayout)
+      window.removeEventListener('transitionend', onTransitionEnd, true)
+      window.removeEventListener('transitioncancel', onTransitionEnd, true)
+    }
+  }, [])
   // ---- Wave geometry (pure, recomputed per frame). ----
   const engaged = focusX !== null && focusY !== null && armedRef.current
   // Focus is in rail-content coordinates: rawX is the rail-box X minus the left
@@ -568,6 +808,75 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     railScrollVarRef.current = railScrollTop
     document.documentElement.style.setProperty('--dsx-rail-scroll', `${railScrollTop}px`)
   }
+  // ---- Draw WHOLE cards only (prefs.wholeCards) -----------------------------
+  /**
+   * The rail's visible band, in DECK coordinates.
+   *
+   * The deck sits inside the rail's content box, whose top edge is the rail's
+   * border-box top plus its 4px top padding, minus `scrollTop`; so a deck point
+   * `d` is painted at `boxTop + 4 − scrollTop + d` and the band the rail clips to
+   * is `[scrollTop − 4, scrollTop − 4 + clientHeight]`.
+   */
+  const bandOf = (rail: HTMLDivElement): { lo: number; hi: number } => {
+    const lo = rail.scrollTop - RAIL_TOP_INSET
+    return { lo, hi: lo + rail.clientHeight }
+  }
+  /** Would the rail's viewport cut this resting box — top or bottom? */
+  const cutBy = (band: { lo: number; hi: number }, box: { top: number; h: number }): boolean =>
+    box.top < band.lo - 0.5 || box.top + box.h > band.hi + 0.5
+  /**
+   * Apply the rule to the RESTING deck, which the parent builds once and hands
+   * over as a stable element (so it cannot be re-rendered per scroll frame).
+   *
+   * A CLASS is toggled rather than an inline `visibility`: those same slots are
+   * hidden by `.dsx-wave-deck.dsx-wave-on` while the magnify overlay paints, and
+   * an inline style would outrank that rule — the resting deck would then paint
+   * straight through the overlay, i.e. two decks at two geometries at once.
+   *
+   * WHY HIDE THE CARD INSTEAD OF CLIPPING THE BAND: the band's bottom edge falls
+   * only `pad` (24px by default) below the last whole card, while that card's
+   * drop shadow reaches ~28px past its own box — so a clip (or an opaque mask)
+   * would shave the shadow of the last card you can see. Hiding the partial card
+   * itself leaves the band intact but unpainted, and every visible card keeps its
+   * whole shadow.
+   */
+  const syncWholeCards = (rail: HTMLDivElement): void => {
+    const wrap = deckWrapRef.current
+    if (wrap === null) return
+    const band = bandOf(rail)
+    const slots = wrap.querySelectorAll<HTMLElement>('.dsx-stats-card-slot')
+    for (let i = 0; i < slots.length; i++) {
+      const c = restLayout[i]
+      if (c === undefined) continue
+      const cut = !wholeCards || cutBy(band, c)
+      if (cut !== slots[i].classList.contains(SLOT_CUT_CLASS)) slots[i].classList.toggle(SLOT_CUT_CLASS, cut)
+    }
+    // The bottom tile is a component too (it is the 设置 entry point), so it obeys
+    // the same rule: a half tile is not painted. It is the LAST element of the
+    // deck and the scroll cap is computed from its bottom (see the parent's
+    // `lastRow`), which is what keeps it reachable instead of hidden for good.
+    const tile = wrap.querySelector<HTMLElement>('.dsx-stats-add')
+    if (tile !== null) {
+      const cut = !wholeCards || cutBy(band, { top: restAdd.top, h: side })
+      if (cut !== tile.classList.contains(SLOT_CUT_CLASS)) tile.classList.toggle(SLOT_CUT_CLASS, cut)
+    }
+  }
+  const deckWrapRef = React.useRef<HTMLDivElement | null>(null)
+  // Every render, not on a dependency list: the rail can scroll (and therefore
+  // re-cut the bottom row) without anything this component receives changing, and
+  // the pass is a 15-node class compare on an idempotent path.
+  React.useLayoutEffect(() => {
+    const rail = railElement()
+    if (rail !== null) syncWholeCards(rail)
+  })
+  // The overlay's own slots carry the same class. It uses the RENDER state
+  // (`railScrollTop` + the `paneH` prop) rather than reading the rail element:
+  // this runs during render, where `railElement()` would touch refs declared
+  // further down the component (and get a TDZ ReferenceError). `paneH <= 0` means
+  // the pane observer has not run yet — cut nothing rather than everything.
+  const overlayBand = paneH > 0 ? { lo: railScrollTop - RAIL_TOP_INSET, hi: railScrollTop - RAIL_TOP_INSET + paneH } : null
+  /** The settings tile's own whole-card verdict, shared by both decks. */
+  const tileCut = wholeCards && overlayBand !== null && cutBy(overlayBand, { top: restAdd.top, h: side })
   // ---- Deck rearrangement wave on a column-count change ---------------------
   // The column count is the one DISCRETE step of a live width drag. The slots
   // already glide to their new geometry (their spring transition), so this only
@@ -575,13 +884,22 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
   // deck (per-slot delay via the CSS :nth-child stagger). The old whole-deck
   // `scale(0.93 −1.035)` jelly moved the entire rail as one block, which is
   // exactly what was rejected.
-  const deckWrapRef = React.useRef<HTMLDivElement | null>(null)
+  //
+  // STAND DOWN WHILE A DECK CASCADE IS LIVE (`deckPhase !== null`, the 'stagger'
+  // shape's open/close fold): the bob is a CSS ANIMATION on `transform`, and an
+  // animation outranks the inline `transform` the fold writes every frame — the
+  // two would fight over the same property and the fold would freeze for the
+  // bob's whole life. A column change during an open is the NORMAL case (the rail
+  // mounts before the pane observer has measured it), so this is not a corner.
   const lastColumnsRef = React.useRef(columns)
+  const deckPhaseRef = React.useRef(deckPhase)
+  deckPhaseRef.current = deckPhase
   React.useEffect(() => {
     if (lastColumnsRef.current === columns) return
     lastColumnsRef.current = columns
     const el = deckWrapRef.current
     if (el === null) return
+    if (deckPhaseRef.current !== null) return
     // Restart the wave: drop the class, force a style flush, re-add it.
     el.classList.remove('dsx-wave-run')
     void el.offsetWidth
@@ -589,6 +907,13 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     const timer = window.setTimeout(() => el.classList.remove('dsx-wave-run'), 900)
     return () => window.clearTimeout(timer)
   }, [columns])
+  // A fold that STARTS while the bob is still armed takes the property over: drop
+  // the class now instead of letting the bob's tail overwrite the first frames.
+  React.useEffect(() => {
+    if (deckPhase === null) return
+    const el = deckWrapRef.current
+    if (el !== null) el.classList.remove('dsx-wave-run')
+  }, [deckPhase])
   /**
    * The overlay slots carry NO transition: every frame of the morph is written
    * from `scaleArr` (spring progress × live target). `none` is also load-bearing
@@ -645,7 +970,12 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     // The static deck hides only while the morph is REAL: at rest the deck is the
     // painted surface and keeps its interactive affordances (they live on the
     // real cards), while the transparent overlay only stays composited.
-    React.createElement('div', { ref: deckWrapRef, className: morph ? 'dsx-wave-deck dsx-wave-on' : 'dsx-wave-deck' }, deck),
+    //
+    // `deckPhase` is NOT a class here any more: the open/close fold is driven per
+    // frame from rail-view (inline `transform`, its own clock — see
+    // deck-cascade.ts), so the deck only needs the state for the reflow gate
+    // above, which reads it through `deckPhaseRef`.
+    React.createElement('div', { ref: deckWrapRef, className: 'dsx-wave-deck' + (morph ? ' dsx-wave-on' : '') }, deck),
     // ── SCROLL TAIL: the room the LAST row needs in order to top out ──
     //
     // The rail's scroll range is `contentH − clientH`. `deckH` is the deck's own box
@@ -743,6 +1073,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     armedRef.current = false
     setFocusY(null); setFocusX(null)
   }
+  leaveRailRef.current = leaveRail
   /**
    * ── POINTER WATCHER: the wave can never outlive the hover ──
    *
@@ -771,6 +1102,14 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     const onMove = (e: MouseEvent): void => {
       const { clientX: x, clientY: y } = e
       lastClientXYRef.current = { x, y }
+      // The FOCUS is driven from here too, not only from the surface's own
+      // `onMouseMove`: the magnify overlay is portaled to <body> (see the layer's
+      // note), so a pointer over a magnified card never reaches the surface's
+      // subtree — its moves would have been invisible to the wave, which would
+      // then freeze while the pointer is on the very card it is magnifying.
+      // `moveRailFocus` is a no-op unless the pointer is on a tile.
+      const rail = railElRef.current
+      if (rail !== null) moveFocusRef.current(x, y, rail)
       if (!armedRef.current) return
       // Debounce: the pointer pushes the release into the future by resetting the
       // timer, and the release always happens once it stops.
@@ -975,6 +1314,17 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     /**
+     * The MAGNIFY OVERLAY needs the same listener, because it is portaled to
+     * <body> (see its z-index note) and, while the wave is live, its own box
+     * covers the rail's with `pointer-events: auto` — so a wheel over a magnified
+     * card, over a gap between two of them, or over the overhang now targets the
+     * LAYER and would never reach the rail. That is the documented "the wheel over
+     * a magnified card still scrolls the rail" (measured 2026-10-01: without this
+     * the wheel did nothing at all while hovering).
+     */
+    const magnifyLayerEl = magnifyLayerRef.current
+    if (magnifyLayerEl !== null) magnifyLayerEl.addEventListener('wheel', onWheel, { passive: false })
+    /**
      * The guard listens to the rail's OWN scroll events: any offset that settles off
      * the row grid (a stray native scroll, an interrupted tween, a rail scrollbar
      * drag) is snapped back onto the nearest row. See `onScrollGuard`.
@@ -986,6 +1336,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     if (guardTarget !== null) guardTarget.addEventListener('scroll', onScrollGuard, { passive: true })
     return () => {
       el.removeEventListener('wheel', onWheel)
+      if (magnifyLayerEl !== null) magnifyLayerEl.removeEventListener('wheel', onWheel)
       if (guardTarget !== null) guardTarget.removeEventListener('scroll', onScrollGuard)
       window.clearTimeout(guardTimer)
       stopTween()
@@ -1017,14 +1368,78 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
    * briefly smaller than the painted cards would drop the hover on the overhang.
    */
   const OVERHANG_STEP = 8
-  const overhang = morph && engaged
-    ? Math.ceil(Math.max(0, focusLayout.reduce((m, c, i) => Math.max(m, c.right + items[i].baseW * c.s), 0) - (railW - 2 * pad)) / OVERHANG_STEP) * OVERHANG_STEP
+  /**
+   * Gate on `morph` alone — NOT on `morph && engaged` (fixed 2026-10-01).
+   *
+   * `engaged` drops the moment the pointer leaves a tile, while the cards are
+   * still magnified and only spring back over the next ~250ms. With the overhang
+   * tied to `engaged`, the layer lost its left padding on that first frame while
+   * the cards were still ~25% wider than their seat: the leftmost magnified card
+   * was painted ~13px past the layer's box and `overflow: hidden` sliced that
+   * strip off — the reported "left-edge truncation when the highlight goes away"
+   * (measured with .tmp-diag-rail.cjs: layerW 238 → 198 and padLeft 64 → 24 on
+   * the frame the pointer left, with the card still 37px into the overhang).
+   * Recomputing it from the LIVE layout for the whole morph costs the same
+   * 8px-quantised writes the engage already pays.
+   *
+   * THREE terms, not one (fixed 2026-10-02, both after a full-session report of
+   * "左侧的截断效果仍然存在" on the glow and on the 设置 tile):
+   *
+   *   - `reachCards` — how far the magnified carDS paint past the content box.
+   *     The original term.
+   *   - `reachAdd` — the SETTINGS TILE. `addSlotFor` seats it one pitch to the
+   *     LEFT of the last row's leftmost card (and in the bottom-right fallback
+   *     otherwise), so it is a magnetised participant like any card, but it is
+   *     NOT in `items`/`focusLayout` — the old reduce therefore ignored it
+   *     entirely. With the tile in the leftmost column at magnify 1.4 its left
+   *     edge lands ~51px past the rail's left edge while the card-only overhang
+   *     is 0: the whole tile, dashed border included, was clipped away.
+   *   - `reachFocus + GLOW_SPREAD − pad` — the hover GLOW of the card under the
+   *     pointer only (the resting deck's copy is `visibility: hidden` for the
+   *     whole morph, so no other card paints a shadow). `GLOW_SPREAD` is the
+   *     shadow's blur radius; `pad` is the room the layer's own padding already
+   *     gives it.
+   *
+   * All three are folded into the SAME 8px-quantised expression, so the write
+   * budget is unchanged: the overhang still only moves when the quantised
+   * maximum does.
+   */
+  const reachCards = focusLayout.reduce((m, c, i) => Math.max(m, c.right + items[i].baseW * c.s), 0)
+  const reachAdd = focusedAdd.right + side * addScale
+  // Only the peak card (the one `.dsx-slot-focused` marks) paints the glow, and
+  // the render marks EVERY card within 0.0005 of the peak — same set here.
+  const peakScale = n > 0 ? focusLayout[peakIdx].s : 1
+  const reachFocus = engaged && peakScale > 1.001
+    ? focusLayout.reduce((m, c, i) => (c.s >= peakScale - 0.0005 ? Math.max(m, c.right + items[i].baseW * c.s) : m), 0)
     : 0
-  const magnifyLayer = React.createElement('div', { key: '__magnify', ref: magnifyLayerRef, className: 'dsx-magnify-layer', style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: RAIL_RIGHT_VAR, bottom: 0, width: `${railW + overhang}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad + overhang}px`, zIndex: 25, overflow: 'hidden', background: 'transparent', transform: `translateX(${shiftX}px)`, opacity: morph ? 1 : 0,
+  const overhang = morph
+    ? Math.ceil(Math.max(0, Math.max(reachCards, reachAdd, reachFocus > 0 ? reachFocus + GLOW_SPREAD - pad : 0) - (railW - 2 * pad)) / OVERHANG_STEP) * OVERHANG_STEP
+    : 0
+  const magnifyLayer = React.createElement('div', { key: '__magnify', ref: magnifyLayerRef,
+    // The CSS twin of the inline `covered` styles below (see rail.module.css). Same
+    // attribute name the drawer uses for its own yield rule, so one selector shape
+    // covers both boxes.
+    'data-yielded': covered ? '' : undefined, // The reveal class rides the layer too: it is portaled to <body>, so the
+    // surface wrapper is no longer its ancestor and the tile it mirrors would
+    // never see `dsx-surface-hover` (see the CSS note on the tile).
+    //
+    // `covered` suppresses it outright: the layer is portaled to <body> and carries z-index 26,
+    // so it is NOT inside the drawer an the drawer's own `[data-yielded]` rule cannot reach it
+    // (see the `covered` prop) — and at 26 it out-stacks the official right column, which means a
+    // live wave paints its cards straight OVER the panel the user just opened.
+    className: 'dsx-magnify-layer' + (!covered && (surfaceHover || morph) ? ' dsx-surface-hover' : ''), style: { position: 'fixed', top: 'var(--dsx-rail-top,0px)', right: RAIL_RIGHT_VAR, bottom: 0, width: `${railW + overhang}px`, boxSizing: 'border-box', padding: `4px ${pad}px ${pad}px ${pad + overhang}px`, // ABOVE the shell's overlay outlet (z-index 20): the enhancer's rounded
+    // center-column card lives there, and a magnified card that grows left of the
+    // rail is painted over the conversation — with a lower index that strip was
+    // covered by the card and read as a hard cut on the card's left edge
+    // (reproduced 2026-10-01 once the corrected budget made the rail wide enough
+    // for the overhang to reach the card). The settings panel is 30; this layer
+    // stays under it.
+    zIndex: 26, overflow: 'hidden', background: 'transparent', transform: `translateX(${shiftX}px)`, opacity: covered ? 0 : morph ? 1 : 0,
     // While the wave is live the LAYER ITSELF is hit-capable, not just the cards:
     // that is what covers the gaps between cards (and the strip the overhang
-    // opens up) so the pointer never falls through the surface mid-move.
-    pointerEvents: morph ? 'auto' : 'none',
+    // opens up) so the pointer never falls through the surface mid-move. Covered, it must be
+    // hit-transparent as well, or it would swallow the panel's own clicks.
+    pointerEvents: covered ? 'none' : morph ? 'auto' : 'none',
     // Keep the layer COMPOSITED across the idle−攍ive flip, so revealing it is a
     // compositor property change instead of a fresh layer promotion.
     //
@@ -1067,6 +1482,11 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
         const dx = rest.right - c.right
         const dy = c.top - rest.top
         const focused = engaged && peak > 1.001 && c.s >= peak - 0.0005
+        // The same whole-card rule the resting deck applies, so engaging the wave
+        // cannot resurrect a card the user was never shown: the overlay is a
+        // SECOND set of nodes, and without this the half card would come back the
+        // moment the pointer entered the rail.
+        const cut = wholeCards && overlayBand !== null && cutBy(overlayBand, rest)
         // `will-change: transform` is PERMANENT here, not gated on `morph`.
         //
         // Promoting these slots IS the enter's cost. Measured on the real GPU
@@ -1081,10 +1501,14 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
         // and the static deck stays unpromoted. Rail scrolling was re-measured
         // with the hint resident (scripts/diag-rail-scroll-perf.cjs) and shows no
         // regression (p95 28ms / 55 slow frames vs p95 30ms / 62 without it).
-        const slotStyle = { position: 'absolute' as const, top: `${rest.top.toFixed(2)}px`, right: `${rest.right.toFixed(2)}px`, width: `${baseW}px`, height: `${side}px`, transformOrigin: 'top right', transform: `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${c.s.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: zTier(idx), pointerEvents: morph ? 'auto' as const : 'none' as const }
+        // `pointer-events: none` on the LAYER does not cover its children: a child that sets
+        // `auto` is hit-testable again, and these slots deliberately do (see below). So the
+        // covered case has to be spelled out here as well, or the invisible overlay would keep
+        // swallowing clicks meant for the official right panel.
+        const slotStyle = { position: 'absolute' as const, top: `${rest.top.toFixed(2)}px`, right: `${rest.right.toFixed(2)}px`, width: `${baseW}px`, height: `${side}px`, transformOrigin: 'top right', transform: `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${c.s.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: zTier(idx), pointerEvents: covered ? 'none' as const : morph ? 'auto' as const : 'none' as const }
         return React.createElement('div', {
           key: it.w.id,
-          className: 'dsx-stats-card-slot' + (focused ? ' dsx-slot-focused' : ''),
+          className: 'dsx-stats-card-slot' + (focused ? ' dsx-slot-focused' : '') + (cut ? ` ${SLOT_CUT_CLASS}` : ''),
           style: slotStyle,
         },
           // Always mounted (see `cardBodies`): the slot div carries the wave
@@ -1100,33 +1524,47 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
       // visibility:hidden), so it carries the real click handler. Same
       // transform-delta treatment as the slots above: `restAdd` is the seat, the
       // per-frame displacement rides the transform.
-      React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), tabIndex: morph ? 0 : -1, onClick: onAddClick, style: { position: 'absolute', top: `${restAdd.top.toFixed(2)}px`, right: `${restAdd.right.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, transformOrigin: 'top right', transform: `translate3d(${(restAdd.right - focusedAdd.right).toFixed(2)}px, ${(focusedAdd.top - restAdd.top).toFixed(2)}px, 0) scale(${addScale.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: 30, pointerEvents: morph ? 'auto' as const : 'none' as const } },
-        React.createElement('span', { className: 'dsx-stats-add-icon' },
-          React.createElement('svg', { width: 22, height: 22, viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true }, React.createElement('path', { d: 'M8 3.2v9.6M3.2 8h9.6', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' })),
-        ),
+      React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add' + (tileCut ? ` ${SLOT_CUT_CLASS}` : ''), 'aria-label': t('ui.rail.addAria'), tabIndex: morph && !covered ? 0 : -1, onClick: onAddClick, style: { position: 'absolute', top: `${restAdd.top.toFixed(2)}px`, right: `${restAdd.right.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, transformOrigin: 'top right', transform: `translate3d(${(restAdd.right - focusedAdd.right).toFixed(2)}px, ${(focusedAdd.top - restAdd.top).toFixed(2)}px, 0) scale(${addScale.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: 30, pointerEvents: covered ? 'none' as const : morph ? 'auto' as const : 'none' as const } },
+        React.createElement('span', { className: 'dsx-stats-add-icon' }, settingsGearIcon(20)),
         React.createElement('span', { className: 'dsx-stats-add-label' }, t('ui.rail.addLabel')),
       ),
     )
   )
   /**
-   * ONE surface for the rail + overlay: the wrapper owns the pointer, so the wave
-   * cannot be disengaged by moving between the two boxes (see `leaveRail`). No
-   * layout box of its own —both children are `position: fixed`.
+   * ONE surface for the rail + overlay: the wrapper owns the pointer for the RAIL,
+   * so the wave cannot be disengaged by moving between the two boxes (see
+   * `leaveRail`). No layout box of its own —both children are `position: fixed`.
    *
    * Hover-outline consistency rides on the same structure: the magnified card
    * under the pointer is `.dsx-slot-focused`, and the wrapper's coordinates are
    * the RAIL's (the overlay is a sibling), so `moveRailFocus` resolves the peak in
    * rail-content space exactly like the resting deck does.
+   *
+   * The OVERLAY is not inside this wrapper any more — it is PORTALED to <body> so
+   * it can out-stack the shell's overlay outlet (see the layer's z-index note).
+   * Three things follow, all handled above: the pointer over a magnified card is
+   * tracked by the window listener (`moveFocusRef`), a leave is decided by the
+   * same listener's geometric check rather than by this wrapper's mouseleave, and
+   * `morph` reveals the tile as well as `surfaceHover` does.
    */
   return React.createElement('div', {
     key: '__surface',
     ref: surfaceRef,
     'data-dsx-surface': '',
+    // `dsx-surface-hover` reveals the 设置 tile (see the CSS note): the tile is
+    // the deck's LAST element and would otherwise hold a visible cell of the rail
+    // all the time. Enter/leave are React's synthesised pair, so they fire once
+    // per crossing rather than per frame — the wave's own per-frame work rides
+    // `onMouseMove` and stays untouched. `morph` counts as hovering too, because
+    // while the wave is live the pointer is on the portaled overlay, outside this
+    // wrapper's subtree. A covered rail is not hovering anything of ours.
+    className: 'dsx-surface' + (!covered && (surfaceHover || morph) ? ' dsx-surface-hover' : ''),
     style: { display: 'contents' },
     onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => {
       const el = railElRef.current
       if (el !== null) moveRailFocus(e.clientX, e.clientY, el)
     },
-    onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => { leaveRail(e.clientX, e.clientY) },
-  }, rail, magnifyLayer)
+    onMouseEnter: () => setSurfaceHover(true),
+    onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => { setSurfaceHover(false); leaveRail(e.clientX, e.clientY) },
+  }, rail, createPortal(magnifyLayer, document.body))
 }

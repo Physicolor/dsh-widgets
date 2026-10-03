@@ -25,6 +25,68 @@ import type { Prefs } from '../runtime/prefs'
 export const ANCHOR_FOLLOW = typeof CSS !== 'undefined' && typeof CSS.supports === 'function'
   && CSS.supports('right: anchor(--dsx-center right)')
 
+/**
+ * ── THE SHELL-METRIC MEMO: one live-document read per frame, not per caller ──
+ *
+ * Every reader below asks the LIVE document a question — a `getBoundingClientRect`,
+ * a `getComputedStyle`, a custom property — and each of those can FORCE a style
+ * recalc and a layout of the whole page, which is exactly what they do during an
+ * animation, when the document is dirty by design. `resolveRailSpace` asks several
+ * of them, and it is called from two hot paths that repeat the SAME question many
+ * times over: a render of the rail (rail-view.tsx) and the store's subscriber (every
+ * widget data emit, via the composition root's layout gate and `updateRailBudget`).
+ *
+ * Measured 2026-10-03 at the owner's stage (1707×1067 @ DSF 1.5, `diag-fold-gbcr.cjs`
+ * counting every `getBoundingClientRect` / `getComputedStyle` the page makes while the
+ * rail is toggled 8×): 167 rect reads and 97 computed-style reads, of which ~113 and
+ * ~77 were OURS — `measuredRightbarWidth` 41×, `measureRailTop` 36×, `groupDurationMs`
+ * (the transition duration, per fold) 41×, `planCascade` 16×, `rowFitSide` 12× — while
+ * the frame time during that fold was 33ms p50 / 67ms p95 (32–46 fps on a 60Hz display).
+ *
+ * The answers cannot change unless the SHELL re-lays-out, and the shell says so: the
+ * ResizeObserver, the viewport resize listener and the pointer-down paths in
+ * `measure.ts` already exist to detect it, and they call `invalidateRailMetrics()`.
+ * On top of that the cache is dropped at the end of the frame that filled it, so an
+ * unobserved change can never be more than one frame stale — the same freshness the
+ * per-render reads had, at a fraction of the cost.
+ */
+const metricCache = new Map<string, unknown>()
+let metricClearRaf = 0
+let metricsEpoch = 0
+
+/**
+ * Throw away every memoised shell read. Called by the observer paths in `measure.ts`
+ * (a resize, a track transition, a drag) and by the frame boundary below.
+ */
+export function invalidateRailMetrics(): void {
+  metricCache.clear()
+  metricsEpoch += 1
+}
+
+/** The epoch the memo is currently serving — a cheap cache key for derived values. */
+export function railMetricsEpoch(): number {
+  return metricsEpoch
+}
+
+/**
+ * Memoised live-document read. `key` must be unique per question (and per element
+ * identity when a reader may be handed a different host): a cache hit skips the DOM
+ * call entirely.
+ */
+function shellRead<T>(key: string, read: () => T): T {
+  if (metricCache.has(key)) return metricCache.get(key) as T
+  const value = read()
+  metricCache.set(key, value)
+  if (metricClearRaf === 0 && typeof requestAnimationFrame === 'function') {
+    metricClearRaf = requestAnimationFrame(() => {
+      metricClearRaf = 0
+      metricCache.clear()
+      metricsEpoch += 1
+    })
+  }
+  return value
+}
+
 export interface WavePlace { s: number; top: number; right: number; w: number; h: number }
 
 /**
@@ -95,6 +157,24 @@ const RAIL_MAX_ROWS = 5
  * a live drag to one per tier crossed instead of one per 8px of budget.
  */
 const CARD_SIZE_STEP = 10
+/**
+ * How many size TIERS the deck may grow a card past the user's own base size
+ * (2 = 20px).
+ *
+ * The 5-row ceiling alone (RAIL_MAX_ROWS) is an ABSOLUTE size: it is derived from
+ * the rail's height, so its distance from the user's base depends entirely on that
+ * base — 8% at the default 150px (`162`), but 60% at 100px. Combined with the
+ * auto-fill (fewer columns ⇒ each remaining cell is ~50% wider) that produced the
+ * reported jump: dragging 卡片基准边长 from 109 to 110 dropped the deck from 3
+ * columns of 109 to 2 columns of **160** — a 1px setting change doubling the card
+ * (measured 2026-10-01 with .tmp-diag3.cjs, pad 10). Bounding the automatic
+ * growth to the base keeps the ceiling's own intent ("the largest allowed card",
+ * not "whatever the height allows") and caps one step of the setting at 20px.
+ *
+ * The 5-row ceiling still wins whenever it is the tighter of the two, so the
+ * documented default behaviour (150 → 160 at a 1000px window) is unchanged.
+ */
+const RAIL_GROWTH_TIERS = 2
 
 /**
  * Conversation column width (px), 0 while the shell has not mounted it.
@@ -105,12 +185,41 @@ const CARD_SIZE_STEP = 10
  * budget stuck at 0 because the read happened during that window).
  */
 export function readColumnWidth(): number {
-  const columnEl = document.querySelector('[class$="_centerCol"]')
-  const measured = columnEl === null ? 0 : columnEl.getBoundingClientRect().width
-  if (measured > 0) return measured
-  const host = document.querySelector('[data-phase]') ?? columnEl
-  const cs = host === null ? null : getComputedStyle(host)
-  return cs === null ? 0 : Number.parseFloat(cs.getPropertyValue('--dsh-conversation-column-width'))
+  return shellRead('columnWidth', () => {
+    const columnEl = document.querySelector('[class$="_centerCol"]')
+    const measured = columnEl === null ? 0 : columnEl.getBoundingClientRect().width
+    if (measured > 0) return measured
+    const host = document.querySelector('[data-phase]') ?? columnEl
+    const cs = host === null ? null : getComputedStyle(host)
+    return cs === null ? 0 : Number.parseFloat(cs.getPropertyValue('--dsh-conversation-column-width'))
+  })
+}
+
+/**
+ * The shell's chat measure — the width the transcript is allowed to occupy.
+ *
+ * TWO NAMES, both live in the wild: DSH 0.1.x publishes `--dsh-chat-content-width`
+ * and DSH 0.2.x renamed it `--dsh-chat-user-width` (measured 2026-10-01 on
+ * 0.2.0: the conversation root's inline style reads
+ * `--dsh-conversation-column-width: 1298px; --dsh-chat-user-width: 748px`, and
+ * `--dsh-chat-content-width` is GONE). Reading only the old name silently fell
+ * back to the estimate below, which is 831px at a 1578px window instead of the
+ * real 748px — i.e. the budget was ~83px short and the rail sat one column
+ * narrow no matter how much blank the transcript left (the reported "there is
+ * room for another column but it never appears").
+ */
+function readChatMeasure(host: Element | null): number {
+  if (host === null) return Number.NaN
+  // One host per frame in practice (`[data-phase]`), and the value lives on the shell's
+  // own root, so a single key is honest here.
+  return shellRead('chatMeasure', () => {
+    const cs = getComputedStyle(host)
+    for (const name of ['--dsh-chat-user-width', '--dsh-chat-content-width']) {
+      const v = Number.parseFloat(cs.getPropertyValue(name))
+      if (Number.isFinite(v) && v > 0) return v
+    }
+    return Number.NaN
+  })
 }
 
 /** Read the official transcript measure / column width off the conversation root. */
@@ -118,11 +227,10 @@ export function readRailBudget(): number {
   const host = document.querySelector('[data-phase]') ?? document.querySelector('[class$="_centerCol"]')
   const columnEl = document.querySelector('[class$="_centerCol"]')
   if (host === null && columnEl === null) return 0
-  const cs = host === null ? null : getComputedStyle(host)
-  const content = cs === null ? Number.NaN : Number.parseFloat(cs.getPropertyValue('--dsh-chat-content-width'))
   const columnW = readColumnWidth()
   if (!(columnW > 0)) return 0
-  // Fallback mirrors the official clamp when the measure variable is absent.
+  const content = readChatMeasure(host)
+  // Fallback mirrors the official clamp when neither measure variable is present.
   const measure = Number.isFinite(content) && content > 0
     ? content
     : Math.min(920, Math.max(680, columnW * 0.64))
@@ -216,20 +324,24 @@ function readTargetColumnWidth(): number | null {
  * room. Falls back to the measured column so a drag (inline == current) works.
  */
 function readTargetRightbarWidth(): number {
-  const frame = document.querySelector('[class$="_frame"]') as HTMLElement | null
-  const tracks = splitTracks(frame?.style.gridTemplateColumns ?? '')
-  if (tracks.length >= 3) {
-    const target = trackTargetPx(tracks[tracks.length - 1])
-    if (target !== null) return target
-  }
-  const column = document.querySelector('[class$="_rightbarCol"]')
-  return column === null ? 0 : Math.round(column.getBoundingClientRect().width)
+  return shellRead('rightbarTargetW', () => {
+    const frame = document.querySelector('[class$="_frame"]') as HTMLElement | null
+    const tracks = splitTracks(frame?.style.gridTemplateColumns ?? '')
+    if (tracks.length >= 3) {
+      const target = trackTargetPx(tracks[tracks.length - 1])
+      if (target !== null) return target
+    }
+    const column = document.querySelector('[class$="_rightbarCol"]')
+    return column === null ? 0 : Math.round(column.getBoundingClientRect().width)
+  })
 }
 
 /** Current right-column width (0 when no panel is on screen at all). */
 function measuredRightbarWidth(): number {
-  const column = document.querySelector('[class$="_rightbarCol"]')
-  return column === null ? 0 : Math.round(column.getBoundingClientRect().width)
+  return shellRead('rightbarW', () => {
+    const column = document.querySelector('[class$="_rightbarCol"]')
+    return column === null ? 0 : Math.round(column.getBoundingClientRect().width)
+  })
 }
 
 /** The rail's normal right inset: it follows the conversation column's right edge. */
@@ -323,8 +435,7 @@ export function resolveRailSpace(prefs: Prefs, budget: number): RailSpace {
 export function predictRailBudget(): number | null {  const column = readTargetColumnWidth()
   if (column === null) return null
   const host = document.querySelector('[data-phase]')
-  const cs = host === null ? null : getComputedStyle(host)
-  const content = cs === null ? Number.NaN : Number.parseFloat(cs.getPropertyValue('--dsh-chat-content-width'))
+  const content = readChatMeasure(host)
   const measure = Number.isFinite(content) && content > 0
     ? content
     : Math.min(920, Math.max(680, column * 0.64))
@@ -362,12 +473,16 @@ export function readMaxCardSide(pad: number, base: number): number {
  *   side = (railHeight –6 –rows·pad) / rows
  */
 function rowFitSide(rows: number, pad: number): number {
-  const rail = document.querySelector('.dsx-stats-rail')
-  const innerH = rail !== null
-    ? rail.clientHeight
-    : Math.max(0, window.innerHeight - (Number.parseFloat(
+  // `clientHeight` / the fallback's computed style are LAYOUT reads: memoised per frame
+  // because `readMinCardSide` and `readMaxCardSide` each ask for them on every render and
+  // every store emit (see the memo's note at the top of the file).
+  const innerH = shellRead('railInnerH', () => {
+    const rail = document.querySelector('.dsx-stats-rail')
+    if (rail !== null) return rail.clientHeight
+    return Math.max(0, window.innerHeight - (Number.parseFloat(
       getComputedStyle(document.documentElement).getPropertyValue('--dsx-rail-top'),
     ) || 0))
+  })
   if (!(innerH > 0)) return RAIL_MIN_SIDE
   return Math.floor((innerH - 6 - rows * pad) / rows)
 }
@@ -423,6 +538,8 @@ export function resolveRailLayout(prefs: Prefs, budget: number, minSide: number,
   const base = prefs.cardSide
   const maxCols = [1, 2, 3, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
   const widthOf = (columns: number, side: number): number => (columns > 1 ? columns * side + (columns + 1) * pad : side + pad * 2)
+  /** Floor onto the GLOBAL size-tier grid (100 −110 −120 …). */
+  const tier = (v: number): number => Math.floor(v / CARD_SIZE_STEP) * CARD_SIZE_STEP
   // Before the first measurement (-1) the budget is unknown: assume the rail
   // fits, so a plugin start never flashes a collapsed deck.
   if (!(budget >= 0)) return { side: base, columns: maxCols, railW: widthOf(maxCols, base), constrained: false }
@@ -437,18 +554,22 @@ export function resolveRailLayout(prefs: Prefs, budget: number, minSide: number,
   // 2. the 1fr share: the leftover width split between those columns.
   const fluid = columns > 1 ? Math.floor((room - (columns + 1) * pad) / columns) : Math.floor(room - pad * 2)
   if (fluid < base) {
-    // Narrower than the base size: shrink the single card down to the automatic
-    // floor —on the same TIER grid (150 −140 −—, and collapse below the floor.
-    const tiered = base + Math.floor((fluid - base) / CARD_SIZE_STEP) * CARD_SIZE_STEP
+    // The share is below the requested base — the narrow case the floor exists
+    // for. Snap the ACHIEVABLE share onto the global grid (not `base − 1 tier`,
+    // which produced off-grid sizes: 121 → 111) and collapse only when even that
+    // is under the automatic floor.
+    const tiered = tier(fluid)
     if (tiered < minSide) return { side: base, columns: 1, railW: 0, constrained: true }
-    return { side: tiered, columns: 1, railW: widthOf(1, tiered), constrained: false }
+    return { side: tiered, columns, railW: widthOf(columns, tiered), constrained: false }
   }
-  // 3. tiers: the share above the base snaps to CARD_SIZE_STEP steps (150 −160
-  // −170 — and the five-row ceiling gets the last word —the CEILING itself is
-  // snapped onto the same tier grid, so a card never lands on an off-tier size
-  // like 162 (the user's "档位" reading: every size is a tier).
-  const ceiling = base + Math.floor((maxSide - base) / CARD_SIZE_STEP) * CARD_SIZE_STEP
-  const side = Math.min(base + Math.floor((fluid - base) / CARD_SIZE_STEP) * CARD_SIZE_STEP, ceiling)
+  // 3. The size the deck would draw: the share, snapped DOWN onto the global
+  //    tier grid (so every automatic size is a real tier, and growing the base
+  //    can never shrink the card through a re-anchored ladder — measured before
+  //    this: base 116 → 166px, base 117 → 157px), bounded by
+  //      - the 5-row ceiling (`maxSide`), and
+  //      - two tiers of growth past the user's own base (RAIL_GROWTH_TIERS).
+  const ceiling = Math.max(base, Math.min(tier(maxSide), tier(base + RAIL_GROWTH_TIERS * CARD_SIZE_STEP)))
+  const side = Math.max(base, Math.min(tier(fluid), ceiling))
   return { side, columns, railW: widthOf(columns, side), constrained: false }
 }
 

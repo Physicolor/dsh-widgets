@@ -208,6 +208,7 @@
 |   |   |   |-- contract/    # the widget contract
 |   |   |   |   |-- helpers.ts    # defineWidget, label resolvers, instance keys, sizesOf
 |   |   |   |   `-- types.ts    # every shape a unit/renderer/shell exchanges (zero imports)
+|   |   |   |-- anim-curve.ts    # the open/close easing + the spring settle folded into it
 |   |   |   |-- format.ts    # number / duration / percent formatting
 |   |   |   |-- heatmap-accounting.ts    # the fallback daily-token log (no usage-center)
 |   |   |   |-- morph-spring.ts    # the spring curve the wave animates with
@@ -245,7 +246,7 @@
 |   |   |   |-- bridge.ts    # the snapshot type every surface reads
 |   |   |   |-- controller.ts    # the controller interface the settings pages take
 |   |   |   |-- host-sync.ts    # the /api/widgets-state client (debounced PUT)
-|   |   |   `-- prefs.ts    # prefs shape + normalize + localStorage load/save
+|   |   |   `-- prefs.ts    # prefs shape + normalize + localStorage load/save（缓动数学已移到 lib/anim-curve.ts 并从这里再导出）
 |   |   |-- styles/    # tokens + five layers; the import order in client/index.ts is the cascade
 |   |   |   |-- card.module.css
 |   |   |   |-- market.module.css
@@ -388,6 +389,7 @@
 | 改右栏什么时候测量、让位时机 | `src/client/rail/measure.ts` | ResizeObserver / 每帧宽度跟踪 / yield beat 都在这里 |
 | 改右栏画什么（网格、加号、抽屉） | `src/client/rail/rail-view.tsx` | `createRailView(deps)` 工厂 |
 | **改悬浮放大的动画手感** | `src/client/lib/morph-spring.ts`（曲线参数 `WAVE_SPRING`） | 见 §6 |
+| **改展开/收起的手感（曲线、回弹幅度、起始缩放）** | `src/client/lib/anim-curve.ts`（`AnimCurve` / `overshootCurve`） | 设置页写 `prefs.animCurve` / `animShiftCurve` / `animBounce` / `animScale`；两种展开方式共用同一条曲线对象 |
 | 改放大波的几何（哪个卡片被放大、放大到多少、谁和谁换位） | `src/client/rail/wave/wave-geometry.ts` | |
 | 改放大波的交互（命中测试、指针跟随、两层 deck 切换） | `src/client/rail/wave/RailWave.tsx` | |
 | 改波/放大层的样式 | `src/client/styles/rail.module.css`（`.dsx-magnify-layer` 等） | |
@@ -513,7 +515,7 @@ host/* ──► host/context · host/http · host/exec
 |---|---|---|
 | `lib/contract/types.ts` | 所有共享形状 + 一个数据常量 | **零 import**（只想要类型的消费方不会拖进 i18n 或 React） |
 | `lib/contract/helpers.ts` | `defineWidget`、标签解析、实例键、`sizesOf` | 也只依赖 types |
-| `lib/{format,quota-math,heatmap-accounting,morph-spring}` | 与框架无关的纯函数 | 不 import React / 不改全局 |
+| `lib/{format,quota-math,heatmap-accounting,morph-spring,anim-curve}` | 与框架无关的纯函数 | 不 import React / 不改全局 |
 | `runtime/*` | 框架管道：快照类型、偏好读写、host 同步、controller 接口 | 不知道任何具体卡片 |
 | `data/*` | 把外部输入折成快照 | 只有 `collector.tsx` 碰 React（它是个组件） |
 | `families/<f>/{data,renders}` | 某一族的载荷解析 + 该族的卡片渲染 | 族之间不互相 import |
