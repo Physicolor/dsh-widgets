@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>dsh-widgets — DeepSeek Harness Widget Design System &amp; Component Library</title>
-  <meta name="description" content="dsh-widgets 是面向 DeepSeek Harness 的紧凑组件设计系统：40 个真实 Widget、连续放大的空间几何、基于几何测量的视觉审计（Visual Audit），以及 Agent 生产流程。A compact widget design system and component library for DeepSeek Harness — 33 real dashboard widgets, geometry-based UI auditing, and an agent production pipeline." />
+  <title>dsh-widgets — DeepSeek Harness Widget Design System: 55 live cards on the right</title>
+  <meta name="description" content="dsh-widgets 是 DeepSeek Harness 的右侧实时组件栏：55 个真实组件、一条命令安装、多列网格与连续放大波峰，覆盖会话、机器、额度与成本，并附设计语法与实测视觉审计。A live widget rail for DeepSeek Harness — 55 real cards for session, machine, quota and cost, with the spatial design grammar and a measured visual audit behind them." />
   <link rel="canonical" href="https://physicolor.github.io/dsh-widgets/" />
   <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />
   <meta name="author" content="Physicolor" />
@@ -13,18 +13,18 @@
 
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="dsh-widgets" />
-  <meta property="og:title" content="dsh-widgets — DeepSeek Harness Widget Design System" />
-  <meta property="og:description" content="40 real compact widgets for DeepSeek Harness, with the spatial geometry behind them, a measured visual audit, and an agent production pipeline." />
+  <meta property="og:title" content="dsh-widgets — 55 live cards on the right of DeepSeek Harness" />
+  <meta property="og:description" content="55 live cards for DeepSeek Harness — session, machine, quota and cost at a glance. One-command install, multi-column grid, a continuous magnification wave, and the visual audit that keeps all 55 honest." />
   <meta property="og:url" content="https://physicolor.github.io/dsh-widgets/" />
   <meta property="og:image" content="https://physicolor.github.io/dsh-widgets/assets/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="dsh-widgets — compact widget design system for DeepSeek Harness" />
+  <meta property="og:image:alt" content="dsh-widgets — 55 live cards for DeepSeek Harness" />
   <meta property="og:locale" content="zh_CN" />
   <meta property="og:locale:alternate" content="en_US" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="dsh-widgets — DeepSeek Harness Widget Design System" />
-  <meta name="twitter:description" content="40 real compact widgets for DeepSeek Harness — spatial design grammar, measured visual audit, agent production pipeline." />
+  <meta name="twitter:title" content="dsh-widgets — 55 live cards on the right of DeepSeek Harness" />
+  <meta name="twitter:description" content="55 live cards for DeepSeek Harness — session, machine, quota and cost at a glance; spatial design grammar and a measured visual audit." />
   <meta name="twitter:image" content="https://physicolor.github.io/dsh-widgets/assets/og.png" />
 
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -55,22 +55,24 @@
         "applicationCategory": "DeveloperApplication",
         "applicationSubCategory": "UI component library",
         "operatingSystem": "Web (DeepSeek Harness 0.1.x / 0.2.x)",
-        "softwareVersion": "1.8.3",
+        "softwareVersion": "1.8.4",
         "license": "https://opensource.org/licenses/MIT",
         "url": "https://physicolor.github.io/dsh-widgets/",
         "downloadUrl": "https://www.npmjs.com/package/dsh-widgets",
         "codeRepository": "https://github.com/Physicolor/dsh-widgets",
         "programmingLanguage": "TypeScript",
         "author": { "@type": "Person", "name": "Physicolor" },
-        "description": "A right-hand widget rail for the DeepSeek Harness Web UI: 40 compact dashboard widgets on a 150px grid with a continuous magnification wave, per-instance sizing, and a geometry-based visual audit.",
+        "description": "A live widget rail on the right of DeepSeek Harness: 55 compact dashboard cards for session, machine, quota and cost, on a 150px grid with a continuous magnification wave, per-instance sizing, and a geometry-based visual audit.",
         "featureList": [
-          "40 compact widgets on a 150px grid",
+          "55 compact widgets on a 150px grid",
+          "Session, machine, quota and cost cards, readable at a glance",
+          "One-command install on DeepSeek Harness 0.1.x and 0.2.x (web UI and desktop app)",
           "Continuous dock-style magnification (peak 1.2, 3-step influence)",
           "Right-anchored reflow that keeps the rail edge flush",
           "Rule-based geometry + layout-heuristic visual audit",
           "Widget units produced through an agent pipeline"
         ],
-        "keywords": "dsh-widgets, DeepSeek Harness, widgets, UI components, design system, component library, dashboard widgets, compact interface, information-dense UI, geometry-based UI auditing"
+        "keywords": "dsh-widgets, DeepSeek Harness, DeepSeek Harness plugin, widget rail, widgets, UI components, design system, component library, dashboard widgets, compact interface, information-dense UI, geometry-based UI auditing"
       }
     ]
   }
@@ -535,22 +537,22 @@
       <div class="hero-body reveal">
         <div class="hero-grid">
           <div class="hero-left">
-            <p class="kicker"><img class="kicker-mark" src="assets/icon.svg" alt="" width="18" height="18" /><span data-i18n="kicker">dsh-widgets · v1.8.3 · MIT · DeepSeek Harness 0.1.x / 0.2.x</span></p>
+            <p class="kicker"><img class="kicker-mark" src="assets/icon.svg" alt="" width="18" height="18" /><span data-i18n="kicker">dsh-widgets · v1.8.4 · MIT · DeepSeek Harness 0.1.x / 0.2.x</span></p>
             <h1 class="hero-title">
               <span class="hero-line" data-i18n="heroLine1">DeepSeek Harness</span>
               <span class="hero-line hero-brand" data-i18n="heroLine2">Widgets</span>
             </h1>
-            <p class="hero-tagline" data-i18n="heroTagline">紧凑组件设计系统 · 空间几何 · 可测量的视觉审计</p>
+            <p class="hero-tagline" data-i18n="heroTagline">右侧实时组件栏 · 55 张真实卡片 · 会话、机器、额度与成本一眼看完</p>
             <div class="hero-desc">
               <p class="lead-main" data-i18n="heroLead1">将对话区域中的留白空间，转化为高信息密度、可随时隐藏的辅助界面。</p>
-              <p class="lead-en" data-i18n="heroLead2">40 compact widgets for DeepSeek Harness on a 150px grid — with the spatial geometry behind them, a measured visual audit, and the agent pipeline that produces each unit.</p>
+              <p class="lead-en" data-i18n="heroLead2">55 live cards on the right of DeepSeek Harness — session, machine, quota and cost at a glance, installed with one command. Behind them: the spatial geometry, a measured visual audit, and the agent pipeline that produces each unit.</p>
             </div>
             <div class="hero-cta">
               <a class="btn btn-primary" href="#widgets" data-i18n="ctaWidgets">浏览全部组件</a>
               <a class="btn btn-ghost" href="#grammar" data-i18n="ctaGrammar">看设计语法</a>
             </div>
             <dl class="hero-stats">
-              <div class="hero-stat"><dt>40</dt><dd data-i18n="statWidgets">组件</dd></div>
+              <div class="hero-stat"><dt>55</dt><dd data-i18n="statWidgets">组件</dd></div>
               <div class="hero-stat"><dt>7</dt><dd data-i18n="statCats">分类</dd></div>
               <div class="hero-stat"><dt>150</dt><dd data-i18n="statUnit">px 网格单元</dd></div>
               <div class="hero-stat"><dt>13</dt><dd data-i18n="statRules">条审计规则</dd></div>
@@ -570,7 +572,7 @@
         <div class="terminal">
           <div class="terminal-head">
             <span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span>
-            <span class="terminal-title" data-i18n="termTitle">dsh-widgets@1.8.3 · DeepSeek Harness 插件</span>
+            <span class="terminal-title" data-i18n="termTitle">dsh-widgets@1.8.4 · DeepSeek Harness 插件</span>
             <button class="copy-btn" id="copy-install" type="button" data-i18n="copy">复制</button>
           </div>
           <div class="terminal-body">
@@ -711,7 +713,7 @@
     <section class="audit" id="audit" aria-label="视觉审计">
       <div class="wrap">
         <h2 class="section-title reveal" data-i18n="auTitle">DSH Visual Audit</h2>
-        <p class="section-sub reveal" data-i18n="auSub">几何告诉我们哪里没对齐，设计规则告诉我们那是否要紧。下面是全部 40 个组件按规则算出的结果——没有神经网络，只有测量与规则。</p>
+        <p class="section-sub reveal" data-i18n="auSub">几何告诉我们哪里没对齐，设计规则告诉我们那是否要紧。下面是全部 55 个组件按规则算出的结果——没有神经网络，只有测量与规则。</p>
 
         <div class="au-method reveal">
           <div class="au-layer-card">
@@ -731,7 +733,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
         </div>
 
         <div class="au-layout reveal">
-          <div class="au-list" id="au-list" role="table" aria-label="40 个组件的规则化审计"></div>
+          <div class="au-list" id="au-list" role="table" aria-label="55 个组件的规则化审计"></div>
           <div class="au-detail" id="au-detail"></div>
         </div>
         <div class="au-cases reveal" id="au-cases"></div>
@@ -744,7 +746,7 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
     <section class="gallery" id="widgets" aria-label="组件画廊">
       <div class="wrap">
         <h2 class="section-title reveal" data-i18n="gTitle">组件画廊</h2>
-        <p class="section-sub reveal" data-i18n="gSub">全部 40 个正式组件：真实渲染、真实数据格式、真实尺寸。点开任意一个可以看它的解剖与审计。</p>
+        <p class="section-sub reveal" data-i18n="gSub">全部 55 个正式组件：真实渲染、真实数据格式、真实尺寸。点开任意一个可以看它的解剖与审计。</p>
         <div class="filters reveal" role="group" aria-label="按分类筛选组件">
           <button class="filter is-active" data-filter="all" type="button" data-i18n="gAll">全部</button>
           <button class="filter" data-filter="system" type="button" data-i18n="gSystem">系统</button>
@@ -1971,8 +1973,8 @@ w = pass 1.0 · warn 0.6 · fail 0 · n/a 不计</pre>
         <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
           <rect x="3" y="3" width="7" height="7" rx="2" /><rect x="14" y="3" width="7" height="7" rx="2" opacity=".55" /><rect x="3" y="14" width="7" height="7" rx="2" opacity=".55" /><rect x="14" y="14" width="7" height="7" rx="2" />
         </svg>
-        <span><b>dsh-widgets</b> v1.8.3 · MIT</span>
-        <p class="footer-note" data-i18n="footNote">紧凑组件设计系统：40 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。</p>
+        <span><b>dsh-widgets</b> v1.8.4 · MIT</span>
+        <p class="footer-note" data-i18n="footNote">紧凑组件设计系统：55 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。</p>
       </div>
       <nav class="footer-links" aria-label="页脚">
         <a href="https://github.com/Physicolor/dsh-widgets" target="_blank" rel="noopener">GitHub</a>

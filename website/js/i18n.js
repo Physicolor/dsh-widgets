@@ -48,11 +48,11 @@ window.DASH_I18N = (function () {
     githubAria: 'GitHub 仓库',
 
     /* hero */
-    kicker: 'dsh-widgets · v1.8.3 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
+    kicker: 'dsh-widgets · v1.8.4 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: '将对话区域中的留白空间，转化为高信息密度、可随时隐藏的辅助界面。',
-    heroLead2: 'A collection of compact, beautiful and useful widgets for DeepSeek Harness — live session stats, context, usage and pricing at a glance.',
+    heroLead2: '55 live cards on the right of DeepSeek Harness — session, machine, quota and cost at a glance, installed with one command. Behind them: the spatial geometry, a measured visual audit, and the agent pipeline that produces each unit.',
     ctaWidgets: '浏览全部组件',
     ctaPlay: '创建你的组件',
     statWidgets: '组件', statCats: '分类', statBuiltin: '内置', statMarket: '市场组件',
@@ -63,7 +63,7 @@ window.DASH_I18N = (function () {
     /* install */
     installTitle: '一条命令安装',
     installSub: '从插件市场添加即可——无需改任何配置文件。',
-    termTitle: 'dsh-widgets@1.8.3 · DeepSeek Harness 插件',
+    termTitle: 'dsh-widgets@1.8.4 · DeepSeek Harness 插件',
     termComment: '# 然后硬刷新浏览器（Ctrl+Shift+R），并点击会话顶部的组件图标展开组件栏。',
     copy: '复制', copied: '已复制',
     installNote: '以 npm 包 dsh-widgets 分发 · DeepSeek Harness 0.1.0-rc.6+ / 0.2.x · 本地开发使用 link 安装。',
@@ -240,7 +240,7 @@ window.DASH_I18N = (function () {
 
     /* ── Design Grammar / Anatomy / Visual Audit ── */
     navGrammar: '几何', navAudit: '审计',
-    heroTagline: '紧凑组件设计系统 · 空间几何 · 可测量的视觉审计',
+    heroTagline: '右侧实时组件栏 · 55 张真实卡片 · 会话、机器、额度与成本一眼看完',
     ctaGrammar: '看设计语法',
     statUnit: 'px 网格单元', statRules: '条审计规则',
 
@@ -360,11 +360,11 @@ window.DASH_I18N = (function () {
     menuToggleAria: 'Toggle navigation menu',
     githubAria: 'GitHub repository',
 
-    kicker: 'dsh-widgets · v1.8.3 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
+    kicker: 'dsh-widgets · v1.8.4 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: 'Turn the idle whitespace of the conversation area into a high-information-density, hideable companion surface.',
-    heroLead2: 'A collection of compact, beautiful and useful widgets for DeepSeek Harness — live session stats, context, usage and pricing at a glance.',
+    heroLead2: '55 live cards on the right of DeepSeek Harness — session, machine, quota and cost at a glance, installed with one command. Behind them: the spatial geometry, a measured visual audit, and the agent pipeline that produces each unit.',
     ctaWidgets: 'Explore the widgets',
     ctaPlay: 'Create your widget',
     statWidgets: 'Widgets', statCats: 'Categories', statBuiltin: 'Built-in', statMarket: 'Market units',
@@ -374,7 +374,7 @@ window.DASH_I18N = (function () {
 
     installTitle: 'Install in one command',
     installSub: 'Add it from the plugin market, no config files to touch.',
-    termTitle: 'dsh-widgets@1.8.3 · DeepSeek Harness plugin',
+    termTitle: 'dsh-widgets@1.8.4 · DeepSeek Harness plugin',
     termComment: '# then hard-refresh the browser (Ctrl+Shift+R) and click the Components icon in the session header.',
     copy: 'Copy', copied: 'Copied',
     installNote: 'Distributed as the npm package dsh-widgets · works on DeepSeek Harness 0.1.0-rc.6+ and 0.2.x · local development uses a link install.',
@@ -545,7 +545,7 @@ window.DASH_I18N = (function () {
 
     /* ── Design Grammar / Anatomy / Visual Audit ── */
     navGrammar: 'Grammar', navAudit: 'Audit',
-    heroTagline: 'A compact widget design system · spatial grammar · measurable visual audit',
+    heroTagline: 'A live rail of 55 real cards · session, machine, quota and cost at a glance',
     ctaGrammar: 'Read the grammar',
     statUnit: 'px grid unit', statRules: 'audit rules',
 
