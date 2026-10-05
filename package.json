@@ -1,6 +1,6 @@
 {
   "name": "dsh-widgets",
-  "version": "1.8.3",
+  "version": "1.8.4",
   "description": "组件系统：右侧实时组件栏，会话、机器、额度与成本一眼看完。",
   "title": "组件系统",
   "displayName": "组件系统",
@@ -44,6 +44,7 @@
     "build:types": "node scripts/build-types.mjs",
     "check": "node scripts/gen-registry.mjs --check && tsc --noEmit",
     "check:types": "node scripts/verify-published-types.mjs",
+    "demo:rail": "node scripts/demo/rail-demo.cjs",
     "probe:geometry": "node scripts/probe-geometry.cjs",
     "probe:geometry:offline": "node scripts/probe-geometry.cjs --gallery-only",
     "prepare": "tsdown && node scripts/build-types.mjs"
