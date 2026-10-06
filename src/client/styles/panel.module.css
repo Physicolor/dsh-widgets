@@ -47,8 +47,18 @@
   transform: translateX(calc(100% + 40px));
   /* `width` is animatable here because the drawer changes it in one discrete
    * step (open/close), never per frame — the drag path writes inline directly
-   * and is instant. */
-  transition: transform 0.28s var(--ds-ease-in-out), width var(--ds-transition-duration-slow) var(--ds-ease-in-out), visibility 0s linear 0.28s;
+   * and is instant.
+   *
+   * ONE DURATION FOR THE WHOLE GESTURE. The transform used to be a hardcoded
+   * 0.28s while the shell's grid track (layout client.js) and this plugin's rail
+   * both run `var(--ds-transition-duration-slow)` — 0.3s on the shipped theme.
+   * The 20ms split is visible: the drawer reached its resting place while the
+   * column was still moving, so the "组件 area is eaten by the panel" reading
+   * broke into two instants instead of one sweep. Reading the same token (and
+   * deriving the visibility delay from it) makes the drawer's exit, the rail's
+   * claim and the panel's entrance one motion by construction, and it keeps them
+   * paired under reduced-motion overrides or a retuned theme. */
+  transition: transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), width var(--ds-transition-duration-slow) var(--ds-ease-in-out), visibility 0s linear var(--ds-transition-duration-slow);
   visibility: hidden;
 }
 /* Continuous curvature, bound to 设置 → 圆角 (same switch the cards use). */

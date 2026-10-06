@@ -90,40 +90,97 @@ export const CASCADE_FALLBACK_TOTAL_MS = 300
 export const CASCADE_TRAVEL_SHARE = 0.6
 
 /**
- * How long a memoised {@link groupDurationMs} answer may be served.
+ * The memoised answer, plus the watch that keeps it honest.
  *
- * The value is a THEME constant (the shell's own slow transition), but reading it costs a
- * `getComputedStyle` on the document root — a forced style recalc whenever the document is
- * dirty, which it is by design while the rail animates. It used to be read from the RENDER
- * BODY of rail-view (`cascadeTimingRef` is computed per render), measured 2026-10-03 at 41
- * reads per 8 fold toggles — one of the ten most frequent forced reads of the fold. The TTL
- * is what keeps a theme change from being missed for longer than one gesture's worth of
- * frames while making repeated renders free.
+ * The value is a THEME constant (the shell's own slow transition, declared once in
+ * `ui-theme/base.css`), but reading it costs a `getComputedStyle` on the document root — a
+ * forced style recalc whenever the document is dirty, which it is by design while the rail
+ * animates. A 250ms TTL used to bound how long a theme change could be missed, and that TTL
+ * is what made the read RECUR: the shell's own slow transition is 300ms, so the render that
+ * opened the frame after the TTL expired paid a fresh whole-document style recalc — for a
+ * constant. Measured 2026-10-03 (V8 CPU profile, 3 real drawer toggles): `getPropertyValue`
+ * under this function accounted for 96.8ms of self time, the second largest own-plugin item
+ * of the gesture.
+ *
+ * So the answer is memoised for the session and invalidated on the only event that can
+ * change it — an attribute flip on `<html>`, which is where every theme switch lands
+ * (`class`, `data-theme`, or an inline custom property). A theme change is therefore picked
+ * up on the next render, which is strictly sooner than the old TTL promised, and the
+ * animation path never touches `getComputedStyle` again.
+ *
+ * ── AND WHY A `style` FLIP ONLY COUNTS WHEN IT MENTIONS THE TOKEN ──
+ *
+ * Watching `style` naively made the memo self-defeating: the rail publishes its own anchors
+ * as inline custom properties on the SAME element (`--dsx-rail-top`, `--dsx-rail-w`,
+ * `--dsx-rail-pad`, `--dsx-input-bottom`, `--dsx-rightbar-w`, `--dsx-rail-scroll` — see
+ * `rail/geometry.ts` and `rail/measure.ts`), so every anchor write during a gesture looked
+ * like a theme switch and dropped the memo. Measured 2026-10-03 (forced-layout stacks in the
+ * sidebar trace, 3 real drawer toggles): `refreshGroupDurationMs` was re-entered 7 times,
+ * and the `getPropertyValue` it performs showed up as 41.2ms of native self time in the
+ * paired V8 CPU profile — the plugin's second largest own cost of the gesture, spent
+ * re-reading a constant because we had invalidated ourselves.
+ *
+ * A style flip therefore only invalidates when the attribute's old or new text actually
+ * mentions {@link GROUP_MS_TOKEN}: our own `--dsx-*` writes never do, while a theme that
+ * overrides (or stops overriding) the token inline always does. `attributeOldValue` is what
+ * makes the removal case visible — the token disappears from the new text but is still in
+ * the old one.
  */
-const GROUP_MS_MAX_AGE = 250
-
-/** Memo for {@link groupDurationMs} (see {@link GROUP_MS_MAX_AGE}). */
 let groupMsCache = -1
-let groupMsAt = -1
+/** Whether the invalidation watch has been installed (see {@link groupMsCache}). */
+let groupMsWatch = false
+/** The custom property the memo is about — the shell's own slow-transition token. */
+const GROUP_MS_TOKEN = '--ds-transition-duration-slow'
 
 /**
- * The shell's own slow transition, in ms.
+ * Re-read the theme token and replace the memo.
  *
- * `getComputedStyle` on a custom property returns its raw token, so both spellings
- * a stylesheet may use are accepted; anything unreadable falls back to the value
- * the group's transitions were written against.
+ * Exported so a caller that knows the document just went quiet can force the refresh
+ * without waiting for an attribute flip.
  */
-export function groupDurationMs(fallback: number = CASCADE_FALLBACK_TOTAL_MS): number {
+export function refreshGroupDurationMs(fallback: number = CASCADE_FALLBACK_TOTAL_MS): number {
   if (typeof document === 'undefined') return fallback
-  const now = typeof performance === 'undefined' ? Date.now() : performance.now()
-  if (groupMsAt >= 0 && now - groupMsAt < GROUP_MS_MAX_AGE) return groupMsCache
+  // `getComputedStyle` on a custom property returns its raw token, so both spellings
+  // a stylesheet may use are accepted; anything unreadable falls back to the value
+  // the group's transitions were written against.
   const raw = getComputedStyle(document.documentElement).getPropertyValue('--ds-transition-duration-slow').trim()
   const n = raw.endsWith('ms') ? Number.parseFloat(raw)
     : raw.endsWith('s') ? Number.parseFloat(raw) * 1000
       : Number.NaN
   groupMsCache = Number.isFinite(n) && n > 0 ? n : fallback
-  groupMsAt = now
   return groupMsCache
+}
+
+/** The shell's own slow transition, in ms. */
+export function groupDurationMs(fallback: number = CASCADE_FALLBACK_TOTAL_MS): number {
+  if (typeof document === 'undefined') return fallback
+  if (!groupMsWatch) {
+    // Installed lazily on the first read: the observer has to exist before a theme can
+    // flip, and the only production caller is the rail's render. `attributeFilter` keeps
+    // the watch off unrelated `<html>` churn (the shell toggles a dozen classes there),
+    // and the `style` case is further narrowed to flips that mention the token itself —
+    // see the module note on `GROUP_MS_TOKEN`: our own anchor writes land on the same
+    // element and must not invalidate a constant.
+    groupMsWatch = true
+    if (typeof MutationObserver !== 'undefined') {
+      new MutationObserver((records) => {
+        for (const record of records) {
+          if (record.attributeName !== 'style') { groupMsCache = -1; return }
+          const next = document.documentElement.getAttribute('style') ?? ''
+          if (next.includes(GROUP_MS_TOKEN) || (record.oldValue ?? '').includes(GROUP_MS_TOKEN)) {
+            groupMsCache = -1
+            return
+          }
+        }
+      }).observe(document.documentElement, {
+        attributes: true,
+        attributeOldValue: true,
+        attributeFilter: ['class', 'style', 'data-theme'],
+      })
+    }
+  }
+  if (groupMsCache > 0) return groupMsCache
+  return refreshGroupDurationMs(fallback)
 }
 
 /**

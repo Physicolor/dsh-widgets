@@ -69,6 +69,47 @@ export function railMetricsEpoch(): number {
 }
 
 /**
+ * The rail's own `top` offset, published by `measure.ts` whenever it writes
+ * `--dsx-rail-top`. `-1` means "never published", i.e. fall back to reading the DOM.
+ *
+ * The rail is `position: fixed; top: var(--dsx-rail-top); bottom: 0`
+ * (see RailWave's inline box), so its height is exactly
+ * `window.innerHeight - railTop` — a subtraction on two numbers we already hold,
+ * with NO layout read. `rowFitSide` used to pay `.dsx-stats-rail.clientHeight`
+ * (a forced layout) for the same number on every yield beat, which is what made
+ * the sidebar's `transitionrun` handler the single largest script on the open and
+ * close frames (measured 2026-10-03, E1/E2 `#document.ontransitionrun`: 52–61ms open,
+ * 39–83ms close — still the single largest script on those frames, so every forced
+ * read inside it is what this fix targets).
+ */
+let notedRailTop = -1
+
+/** Publish the rail's `top` offset (see `notedRailTop`). Path is derived, never measured. */
+export function noteRailTop(top: number): void {
+  notedRailTop = Number.isFinite(top) ? top : -1
+}
+
+/** Forget the published `top`, so `rowFitSide` goes back to reading the DOM. */
+export function clearRailTop(): void {
+  notedRailTop = -1
+}
+
+/**
+ * The published rail `top`, or `-1` when it was never published.
+ *
+ * Callers that need the rail's HEIGHT derive it with `window.innerHeight` (see
+ * `notedRailTop`): the rail's box is `top: var(--dsx-rail-top); bottom: 0`, so
+ * the subtraction is exact and costs no layout read. The rail's own pane-height
+ * observer used `.dsx-stats-rail.clientHeight` instead, and that read landed
+ * inside the shell's React commit — a whole-document forced layout per commit
+ * while the sidebar animated (measured 2026-10-03, E2 profile: 130.9ms of
+ * self-time, the largest own-plugin item of the frame).
+ */
+export function getNotedRailTop(): number {
+  return notedRailTop
+}
+
+/**
  * Memoised live-document read. `key` must be unique per question (and per element
  * identity when a reader may be handed a different host): a cache hit skips the DOM
  * call entirely.
@@ -210,6 +251,13 @@ export function readColumnWidth(): number {
  */
 function readChatMeasure(host: Element | null): number {
   if (host === null) return Number.NaN
+  // Fast path, same precedent as `readMeasure` in measure.ts: the value lives INLINE on the
+  // shell's root, so reading it straight off `.style` costs no style resolution. This matters
+  // on the yield beat, where `predictRailBudget` runs INSIDE the frame's `transitionrun`
+  // handler: the computed-style read below resolved the whole document's styles there
+  // (measured 2026-10-03: `#document.ontransitionrun` 52–61ms open / 39–83ms close).
+  const inline = Number.parseFloat((host as HTMLElement).style.getPropertyValue('--dsh-chat-user-width'))
+  if (Number.isFinite(inline) && inline > 0) return inline
   // One host per frame in practice (`[data-phase]`), and the value lives on the shell's
   // own root, so a single key is honest here.
   return shellRead('chatMeasure', () => {
@@ -350,6 +398,34 @@ function railAnchorRight(): string {
 }
 
 /**
+ * Root custom-property write that skips identical values.
+ *
+ * Writing a custom property on `document.documentElement` invalidates every
+ * declaration that depends on it, so an unconditional write buys a full-document
+ * style recalc even when the value did not move. The rail's geometry is written
+ * from two paths that both run on the toggle's hottest beats — the render body
+ * (rail-view.tsx) and the direct-DOM yield beat (`updateRailBudget` in
+ * measure.ts) — and each of them re-derives the SAME value on most passes, so an
+ * unguarded write there is a per-pass document-wide invalidation for no change.
+ *
+ * Measured 2026-10-03 at the owner's stage (1707×1067 @ DSF 1.5, two open/close
+ * cycles, `.tmp-fold-filmstrip.cjs` instrumenting `setProperty`): the rail's own
+ * writes landed 20 times, of which 18 carried the value already in the style
+ * declaration (`--dsx-rail-pad` 6/6 identical, `--dsx-rail-overshoot` 6/6,
+ * `--dsx-rail-w` 6 of 8). Every one of those 18 was a whole-document style
+ * invalidation priced into the fold's frame budget.
+ *
+ * Identical-value writes are what this skips; it never reorders or batches, so a
+ * caller can keep writing from wherever the value is known (including a render
+ * body, where React has not committed yet — see the rail's own note).
+ */
+export function setRailVar(name: string, value: string): void {
+  const style = document.documentElement.style
+  if (style.getPropertyValue(name) === value) return
+  style.setProperty(name, value)
+}
+
+/**
  * Right inset every rail-owned fixed layer reads. Normal mode follows the column
  * (anchor positioning); while a panel is present the rail is pinned to the
  * viewport's right edge —the same value whenever no panel is open —so the
@@ -364,6 +440,15 @@ export function applyRailRight(swallowed: boolean): void {
 
 /** Panel width reached when fully open, held across one open/close gesture. */
 let engagedPanelW = 0
+
+/**
+ * The last deck geometry resolved while the rail was NOT covered, keyed by the
+ * user's own deck settings (`列数:基准边长:内边距`). `resolveRailSpace` replays it
+ * for the whole covered window so the cards keep their cells under the panel and
+ * only the drawer's translate carries them out and back — see that function's
+ * note for the measured 140↔120px shrink the raw preferences caused.
+ */
+let heldDeck: { key: string; side: number; columns: number } | null = null
 
 /** Everything the rail's fixed layers need to know for the current space. */
 export interface RailSpace {
@@ -402,8 +487,34 @@ export interface RailSpace {
 export function resolveRailSpace(prefs: Prefs, budget: number): RailSpace {
   const pad = prefs.panelPadding
   const layout = resolveRailLayout(prefs, budget, readMinCardSide(pad), readMaxCardSide(pad, prefs.cardSide))
-  const columns = layout.constrained ? ([1, 2, 3, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2) : layout.columns
-  const side = layout.constrained ? prefs.cardSide : layout.side
+  /**
+   * ── A YIELDED DECK KEEPS THE GEOMETRY IT HAD ──
+   *
+   * While the panel covers the rail the deck is `constrained`, and the pre-yield
+   * code re-derived `side`/`columns` from the raw PREFERENCES — which are the
+   * deck's BASE, not the geometry it was drawing. A deck that had auto-grown to
+   * three columns of 140px (the fluid share) snapped to three columns of the
+   * user's 120px base for the whole covered window, so every card shrank on the
+   * way under the panel and grew back on the way out. Measured 2026-10-03 on the
+   * owner's stage (1707×1067 @ DSF 1.5, `diag-sidebar-deck-zoom.cjs`, one
+   * open/close cycle): the slot width went 140 → 119.302 → 119.99 → 120 → … →
+   * 140px across 17 distinct values, with NO `dsx-wave-run` beat involved — this
+   * is the reported "组件出现异常的缩小和放大".
+   *
+   * Holding the last UNCONSTRAINED geometry for the yielded window removes the
+   * size change from BOTH directions: the deck keeps its cells and only the
+   * drawer's translate carries it out and back. The memo is keyed by the user's
+   * own deck settings, so changing 列数 / 基准边长 while the panel is open — when
+   * the deck is invisible anyway — still takes effect immediately rather than
+   * being masked by a stale hold.
+   */
+  const prefKey = `${prefs.columns}:${prefs.cardSide}:${pad}`
+  const held = heldDeck !== null && heldDeck.key === prefKey ? heldDeck : null
+  const columns = layout.constrained
+    ? (held !== null ? held.columns : ([1, 2, 3, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2))
+    : layout.columns
+  const side = layout.constrained ? (held !== null ? held.side : prefs.cardSide) : layout.side
+  if (!layout.constrained) heldDeck = { key: prefKey, side: layout.side, columns: layout.columns }
   const drawW = columns > 1 ? columns * side + (columns + 1) * pad : side + pad * 2
   // A panel counts as present while it is on screen OR on its way in. Reading the
   // target alone would drop to 0 the moment a CLOSE begins, snapping the rail out
@@ -473,16 +584,23 @@ export function readMaxCardSide(pad: number, base: number): number {
  *   side = (railHeight –6 –rows·pad) / rows
  */
 function rowFitSide(rows: number, pad: number): number {
-  // `clientHeight` / the fallback's computed style are LAYOUT reads: memoised per frame
-  // because `readMinCardSide` and `readMaxCardSide` each ask for them on every render and
-  // every store emit (see the memo's note at the top of the file).
-  const innerH = shellRead('railInnerH', () => {
-    const rail = document.querySelector('.dsx-stats-rail')
-    if (rail !== null) return rail.clientHeight
-    return Math.max(0, window.innerHeight - (Number.parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue('--dsx-rail-top'),
-    ) || 0))
-  })
+  // Fast path: the rail's box is `top: var(--dsx-rail-top); bottom: 0` (fixed, border-box),
+  // so its height is a SUBTRACTION once measure.ts has published the top. This is what the
+  // fallback branch below already assumed; publishing the number just lets us skip the
+  // `.dsx-stats-rail.clientHeight` forced layout on the yield beat (measured 2026-10-03:
+  // that read was inside the `ontransitionrun` frame — 52–61ms open / 39–83ms close).
+  const innerH = notedRailTop >= 0
+    ? Math.max(0, window.innerHeight - notedRailTop)
+    // `clientHeight` / the fallback's computed style are LAYOUT reads: memoised per frame
+    // because `readMinCardSide` and `readMaxCardSide` each ask for them on every render and
+    // every store emit (see the memo's note at the top of the file).
+    : shellRead('railInnerH', () => {
+      const rail = document.querySelector('.dsx-stats-rail')
+      if (rail !== null) return rail.clientHeight
+      return Math.max(0, window.innerHeight - (Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--dsx-rail-top'),
+      ) || 0))
+    })
   if (!(innerH > 0)) return RAIL_MIN_SIDE
   return Math.floor((innerH - 6 - rows * pad) / rows)
 }

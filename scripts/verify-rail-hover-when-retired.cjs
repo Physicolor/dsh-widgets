@@ -35,7 +35,7 @@ const { chromium } = require('./lib/playwright-core.cjs')
 
 const PORT = process.env.DSH_PORT || '3080'
 const AUTHORITY = `127.0.0.1:${PORT}`
-const OUT = process.argv[2] || path.join(__dirname, '..', '.probe-hover-retired')
+const OUT = (process.argv[2] && !process.argv[2].startsWith('--')) ? process.argv[2] : path.join(__dirname, '..', '.probe-hover-retired')
 const STATE_KEY = 'harness-widgets.state'
 const SAVED_AT_KEY = 'harness-widgets.state.savedAt'
 const fails = []

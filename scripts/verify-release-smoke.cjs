@@ -9,13 +9,24 @@
  *      the ones added since the last release (trajectory), whose source files have no
  *      published release yet.
  *
- * Usage: node scripts/verify-release-smoke.cjs
+ * Usage: node scripts/verify-release-smoke.cjs [--session <substring>]
  */
 const { chromePath } = require("./lib/chrome.cjs")
 const path = require('node:path')
 const { chromium } = require('./lib/playwright-core.cjs')
 const { mintCookie } = require('./diag-auth-lib.cjs')
 
+const arg = (name, dflt) => {
+  const hit = process.argv.find((a) => a.startsWith(`--${name}=`))
+  return hit === undefined ? dflt : hit.slice(name.length + 3)
+}
+/** Session row to pin. Row 0 is the empty 「新会话」 on a fresh profile, which has
+ *  no session header (so no capsule) and no widgets — the test must be able to
+ *  name a real conversation, or every rail assertion below is vacuous. */
+const SESSION = arg('session', '')
+const PORT = process.env.DSH_PORT || '3080'
+const AUTHORITY = `127.0.0.1:${PORT}`
+const URL_ = `http://${AUTHORITY}`
 const fails = []
 const check = (ok, label, detail) => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? ' — ' + detail : ''}`)
@@ -25,13 +36,31 @@ const check = (ok, label, detail) => {
 ;(async () => {
   const browser = await chromium.launch({ executablePath: chromePath(), headless: true })
   const ctx = await browser.newContext({ viewport: { width: 1578, height: 1000 } })
-  await ctx.addCookies([mintCookie('127.0.0.1:3080')])
+  await ctx.addCookies([mintCookie(AUTHORITY)])
   const page = await ctx.newPage()
   const pageErrors = []
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)))
-  await page.goto('http://127.0.0.1:3080', { waitUntil: 'networkidle', timeout: 40000 })
-  const row = page.locator('[class$="_sessionRow"]').first()
+  await page.goto(URL_, { waitUntil: 'networkidle', timeout: 40000 })
+  const row = SESSION === ''
+    ? page.locator('[class$="_sessionRow"]').first()
+    : page.locator('div[class*="sessionRow"]', { hasText: SESSION }).first()
+  if (SESSION !== '' && !(await row.count())) {
+    console.error(`FAILED: no session row matching "${SESSION}"`)
+    await browser.close(); process.exit(1)
+  }
   if (await row.count()) { await row.click().catch(() => {}); await page.waitForTimeout(5000) }
+  if (SESSION !== '') {
+    // The row list re-sorts on click; assert we are really in the pinned conversation
+    // rather than silently measuring whatever row 0 became.
+    const active = await page.evaluate(() => {
+      const el = document.querySelector('div[class*="sessionRow"][aria-selected="true"]')
+      return el === null ? '' : (el.innerText || '').replace(/\s+/g, ' ').trim()
+    })
+    if (!active.includes(SESSION)) {
+      console.error(`FAILED: WRONG CONVERSATION active="${active}" (wanted "${SESSION}")`)
+      await browser.close(); process.exit(1)
+    }
+  }
   const cap = page.locator('button.dsx-stats-capsule').first()
   for (let i = 0; i < 4; i++) {
     if (await page.evaluate(() => !!document.querySelector('.dsx-stats-drawer:not([data-retired]) .dsx-stats-rail'))) break

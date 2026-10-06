@@ -22,6 +22,15 @@ const path = require('node:path')
 const { chromium } = require('./lib/playwright-core.cjs')
 const { mintCookie } = require('./diag-auth-lib.cjs')
 
+const PORT = process.env.DSH_PORT || '3080'
+const AUTHORITY = `127.0.0.1:${PORT}`
+const URL_ = `http://${AUTHORITY}`
+// `--session <name>`: see verify-rail-interaction.cjs — the first sidebar row is
+// the empty 新会话 scratch pad, so the deck has no rows to step through.
+const SESSION = (() => {
+  const i = process.argv.indexOf('--session')
+  return i === -1 ? null : process.argv[i + 1]
+})()
 const fails = []
 const check = (ok, label, detail) => {
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? ' — ' + detail : ''}`)
@@ -34,10 +43,13 @@ const check = (ok, label, detail) => {
     headless: true,
   })
   const ctx = await browser.newContext({ viewport: { width: 1578, height: 1000 } })
-  await ctx.addCookies([mintCookie('127.0.0.1:3080')])
+  await ctx.addCookies([mintCookie(AUTHORITY)])
   const page = await ctx.newPage()
-  await page.goto('http://127.0.0.1:3080', { waitUntil: 'networkidle', timeout: 40000 })
-  const row = page.locator('[class$="_sessionRow"]').first()
+  await page.goto(URL_, { waitUntil: 'networkidle', timeout: 40000 })
+  const row = SESSION === null
+    ? page.locator('[class$="_sessionRow"]').first()
+    : page.locator('[class*="sessionRow"]', { hasText: SESSION }).first()
+  if (SESSION !== null && !(await row.count())) { console.error(`FAIL  no session row matching "${SESSION}"`); await browser.close(); process.exit(1) }
   if (await row.count()) { await row.click().catch(() => {}); await page.waitForTimeout(5000) }
   const cap = page.locator('button.dsx-stats-capsule').first()
   for (let i = 0; i < 4; i++) {

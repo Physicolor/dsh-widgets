@@ -11,6 +11,68 @@
 | GitHub Releases | 同一条目作为 release notes，锚定到发布它的那次提交（tag） | 仓库 → Releases |
 | `docs/` | 原始证据：CDP 探针脚本、截图、JSON 凭证、逐次事故的修复记录 | [`docs/`](docs/) |
 
+## v1.8.4 — 让位效果扛得住重载，折叠不再逐帧重排整页
+
+> 一次以修复为主的补丁版，处理 v1.8.3 之后仍然存在的三类投诉：**shell 重建 frame 之后，吞噬/让位会悄悄失效**；**折叠动画每一帧都在同步强制布局**；以及**右侧边栏开合时，组件区的卡片会先缩进去、再长回来**。前者看不出来 —— 动画曲线正常、帧率也不掉 —— 只有事件日志与 DevTools trace 能看见；后者看得见，但看不出是谁在动它。后续又补上了第四类：**组件区在未激活状态下切换工作区对话后会整片画到会话上**。共十八处改动，全部落在插件内部，没有动官方 shell 一个字节。
+>
+> 关于「对话区平移卡顿」：这一版把插件自己的成本压到侧栏开合手势里采样 CPU 的 **4.9%**（V8 profile，3 次真实 toggle），trace 里最热的五个 JS 帧已经全部是官方 shell 自己（ReactDOM 的提交阶段与调度器工作循环）。那个主体在插件边界之外，**本版不声称修好了它** —— 详见下方「验证」一节的「不做声称」。
+
+### 修复 — shell 重建 frame 后，「同步让位」就死了
+
+- **监听器绑在一个已经不存在的元素上。** 组件栏「与网格过渡同拍、同步让位」的路径监听 AppFrame 上的 `transitionrun`，该元素缓存在模块级 `frameEl` 里，只在*右栏网格列*断开时重绑。当 shell 换掉 frame 节点却没有断开那一列时，旧监听器挂在一个已脱离文档的节点上：`transitionrun(grid-template-columns)` 再也到不了我们这里，让位于是静默退化成 240ms + 520ms 的轮询兜底 —— 这正是车主说的「过几次重载就失效」。现在改成托管在 `document` 捕获阶段的单一监听器，靠类名后缀（`_frame`）识别 frame，而不是靠一个可能失效的元素引用（`src/client/rail/measure.ts` 的 `install()` 与 disposer）。实测 `scripts/diag-yield-beat.cjs --rounds 4`，连续四轮重载：让位延迟 **1ms / 0ms / 0ms / 0ms**（预算 120ms），且对照轮报 `transitionrun=null`（事件确实在我们之上被吞掉，兜底确实就是原先在干活的那条路径）。
+- **`data-yielded` 每帧都在写。** `updateRailBudget` 每轮都无条件 setAttribute；`dsh-ui-harmonizer` 在该抽屉上挂着 MutationObserver，任何属性变更都会重跑 `refreshMaterial`（单次 12–27ms，折叠 trace 里 10 次）。现在只在值真正翻转时才写。
+- **一次 `:root` 变量写夹在两次布局读取之间。** `measureRailTop` 还没读完自己的矩形就先写了 `--dsx-rail-top`；`:root` 上的自定义属性写会让整个文档的样式失效，于是此后每一次读取都变成一次全文档强制重排 —— 这是插件自身最大的一处强制布局来源。该函数已改为「先读后写」（`// ── READS FIRST, WRITES LAST ──`），四处写入集中在函数尾部；节流分支补写 `--dsx-rightbar-w`，避免延后重测漏掉宽度变化。
+
+### 修复 — 折叠动画逐帧强制布局与样式
+
+- **`syncWholeCards` 在读 `rail.scrollTop` 与 `rail.clientHeight`。** 它每次 `useLayoutEffect` 都重新测量组件栏来算可见带，于是车主最常连续播放的这段动画每帧都付一次同步布局。现在改为接收参数、用组件已持有的值算带；该 effect 的依赖数组原本基于对象身份，而 `wave-geometry.ts` 每次渲染都重建 `staticLayout`，因此改用数值指纹守卫。**trace 实证，前后对照**（`--what=fold`，headful 1707×1067 @ DSF 1.5）：`bandOf ← syncWholeCards` 由 **9 次强制布局 + 14 次强制样式降为 0**。剩余的强制布局来源全部在本插件之外（inline `check`/`raf`、官方 shell React `merged-chunk:21638`、`dsh-ui-harmonizer` 自己的 `refreshMaterial`、产品自绘的命中目标）。
+- **13 张卡各自让自己样式失效一次。** `CardBody` 的 `useLayoutEffect` 每一轮都调 `setAttribute` / `removeAttribute` 写 `data-dsx-overflow`，不管溢出状态变没变；任意属性变更都会让该节点局部样式失效，于是一次折叠多付 13 次样式重算（该 effect self-time 44.2ms）。现在用 ref 守卫，只在翻转时动 DOM。
+- **三个组件栏变量每帧写入且无等值短路**，其中 `--dsx-rail-overshoot` 在全仓库没有任何读取者。现在全部走带短路的 `setRailVar`，死变量删除；`setRailPaneH` 也不再使用函数式 updater —— 那个 updater 每次 commit 都要读一次 `rail.clientHeight`，是侧栏关闭帧里最大的自有耗时项（130.9ms）。
+- **组件栏高度被两套算法各推一遍。** `.dsx-stats-rail` 是 `position: fixed; top: var(--dsx-rail-top); bottom: 0; box-sizing: border-box`，所以 `clientHeight = window.innerHeight − --dsx-rail-top` 是恒等式 —— 但 `rowFitSide` 仍在重读 `rail.clientHeight`（一次强制布局），`readChatMeasure` 仍在为一个本已内联写出的变量重跑 `getComputedStyle`。现在组件栏顶点通过旁路通道发布（`noteRailTop` / `clearRailTop`）并从那里读取，chat measure 先走内联快路径。
+
+- **折叠波峰的自有时钟每帧都在重读主题。** `groupDurationMs()` 把 `--ds-transition-duration-slow` 缓存 250ms，靠一个 `MutationObserver` 观察 `<html>` 的 `class` / `style` / `data-theme` 来失效。问题是**组件栏自己就在往同一个 `<html>` 上写内联自定义属性**（`--dsx-rail-top` / `--dsx-rail-w` / `--dsx-rail-pad` / `--dsx-input-bottom` / `--dsx-rightbar-w` / `--dsx-rail-scroll`），因此锚点每写一次，缓存就被当成主题切换打掉一次，`getPropertyValue` 随即重跑 —— 是我们在弄脏自己。现在观察器只在**新旧 `style` 值真的提到那个 token** 时失效缓存（`class` / `data-theme` 仍无条件失效，并开启 `attributeOldValue` 以看见「主题撤销内联覆盖」）。配对 V8 profile：`getPropertyValue` 自耗时 **41.2ms → 1.4ms（−97%）**，强制布局榜单里 `refreshGroupDurationMs` 由 7 次降为 0 次。
+- **一次真实的侧栏手势里，13 张卡各自付一次整文档强制布局。** `CardBody` 的溢出检测每次 commit 都要读 `scrollHeight` / `clientHeight` 来判定 `data-dsx-overflow`。原先的 ref 守卫只挡「结果没变」，挡不住「读本身」；现在改成**读前指纹门**（`out` 对象身份、`unit`、`boxW`、`pinBox`、`pinnedByChart` 全等才跳过），只在几何或内容真的换了才触到 DOM。折叠期间每张卡都会拿到新的 `boxW`（那是动画本身），所以门会正常打开 —— 这是刻意的精确，不是启发式。强制布局次数由 **19 次降为 9 次**，`data-dsx-overflow` 的语义与「每次翻转一次 `console.warn`」完全不变。
+- **让位节拍里的一次裸矩形读。** `measureRailTop` 在拿不到宽度提示时会读一次 `rightbarEl.getBoundingClientRect()`；observe/rebind 时机是布局树干净的时刻，现在在那里把宽度播种进 `entryRightbarW`，于是无提示路径不必再付那次强制布局（2026-10-03 V8 profile 实测 49.0ms 自耗时）。
+
+### 修复 — 右侧边栏开合时，组件区的卡片会先缩进去、再长回来
+
+- **被吞的窗口里，几何是从「用户偏好」重推的，而不是从「正在画的东西」。** `resolveRailSpace` 在 `layout.constrained` 时用 `prefs.cardSide` / `prefs.columns` 当作卡片边长与列数。但那是**基准**：一个已经自动长到 3×140px 的 deck，会在被吞期间被快照成用户的 3×120px 基准，于是每张卡都缩进去、关闭后再长回来 —— 车主看到的「异常缩小和放大」正是这一段，而 `dsx-wave-run` 并未参与（它不是波峰动画的问题）。现在把最后一次**未被覆盖**时解析出的几何记在 `heldDeck` 里（键为 `列数:基准边长:内边距`），被吞窗口内重放它：卡片保持自己的格子，只由抽屉的 `translate` 带出、再带回来，任何一帧都不重新求解尺寸。**实测（`scripts/diag-sidebar-deck-zoom.cjs --cycles=1`，13 卡，headful 1707×1067 @ DSF 1.5）：一次开合内 slot 宽度的不同取值由 17 个（`140 → 119.302 → 119.99 → 120 → … → 140px`）降为 1 个（恒 140px），`dsx-wave-run` 类变更 0 次，slot 变换的不同取值 1 个（`none`）。**
+
+### 变更 — 组件抽屉改骑产品自身的过渡 token
+
+- `panel.module.css` 原先写死 `0.28s`；现在抽屉使用 `var(--ds-transition-duration-slow)` 与 `var(--ds-ease-in-out)` —— 与官方侧边栏轨道动画完全相同的那条曲线 —— 于是吞噬与面板是同一个手势，而不是两个相邻的手势。
+
+### 修复 — 组件区跳回页面顶部（排查中补上的两处锚点兜底）
+
+> 这一节是排查「组件区在未激活时切换工作区对话会跑到页面顶部」时顺手补的**防御性**改动：`--dsx-rail-top` 缺席确实会让两个固定层落到 `top: 0`，但它**不是车主那一次复现的触发路径**（真正的原因见下一节）。留着是因为它关掉的是一条真实存在的静默失效路径。
+
+- **`--dsx-rail-top` 在首次测量时根本没被写出来，而这条变量一旦缺席，两个固定层就会画在页面顶部。** 组件栏与放大层都是 `position: fixed; top: var(--dsx-rail-top, 0px)`；这条变量**没有任何 CSS 侧定义**，唯一写入者是 `measure.ts`。而 `measureRailTop()` 有三条「只写 `--dsx-rightbar-w`、提前 return」的捷径（仅横向的 RO tick、宽度变化 tick、250ms 纵向节流），它们之所以成立，前提是**锚点已经发布过一次**；`install()` 的第一次调用恰好总是命中其中一条（此时 `rightbarEl` 尚未重绑，`rightbarW` 解析为 `0`，而 `lastRightbarW` 仍是 `-1`，`rightbarW !== lastRightbarW` 必然成立），于是锚点只能等一个被延后的 tick 才出现。新增 `anchorPublished` 门：在首次写出 `--dsx-rail-top` 之前，三条捷径全部不生效，每次 pass 都跑完整的纵向探针。实测（`scripts/verify-rail-anchor-guard.cjs`）首次命中组件栏的那一帧即已是 `railTop="44px"` / `y=44`。
+- **disposer 会把锚点删掉。** `measure.ts` 的清理段调用 `removeProperty('--dsx-rail-top')`，而 shell 重建 frame 会让插件根重挂载：旧实例删掉变量、新实例的第一次测量又命中上面的捷径 —— 中间只要有一帧画到了已挂载的组件栏，整片组件区就落在页面顶部。现在清理段**不再移除**这条变量（陈旧但真实的锚点最多差几个像素，缺失的锚点是一整页的跳变），并同时重置 `anchorPublished` / `lastRightbarW` / `lastVerticalProbeAt`，使下一次 install 的首个 pass 一定走完整探针。
+- **兜底：没有锚点就不许画。** `rail.module.css` 增加 `html:not([style*='--dsx-rail-top'])` 三重选择器（组件栏 / 放大层 / 设置抽屉），在锚点未发布时把这三层设为 `visibility: hidden` —— 因为此时它们唯一可能取到的位置就是错的。同一 commit 内 `measure.ts` 就会写出内联变量，所以正常会话下这条规则永不匹配。`.dsx-stats-addpanel` 与放大层同样消费这条变量，一并覆盖。
+- 顺带修掉一个同源缺口：宽度解析为 `0` 可能是「右栏真的关着」，也可能是「还没绑定 `[class$='_rightbarCol']`」。新增 `widthMeasured` 判定，只有前者才允许写 `--dsx-rightbar-w`，否则会用一个假的 `0px` 覆盖掉回退链里给旧版安装准备的 `--dsh-sidebar-width`。
+
+### 修复 — 未激活时切换工作区对话，整片组件区画到会话上（真正的触发路径）
+
+- **触发与锚点无关：切换对话会让 React 把整棵已挂载的抽屉卸掉、再重新挂上。** 组件区的「会话存在」信号来自 composer collector 的挂载 / 卸载（`src/client/index.ts` 的 `conversation.composer.dock` 注册）；切换对话时它有若干帧处于卸载状态，`snap.hasSession` 短暂为 false，于是 `src/client/rail/rail-view.tsx` 的 `keepMounted = retired && snap.hasSession && (everOpenRef.current || prewarm)` 变为 false，紧接着 `if (retired && !keepMounted) return null` 让整棵抽屉卸载。hasSession 回来后，新实例的 `everOpenRef` 重新是 false，2.5s 的 `prewarm` 定时器再把抽屉挂回来 —— 但这是一副**从未折叠过**的 deck：13 个槽位带着 inline `transform: none` 落在静止网格（x1257 / 1407 / 1557，y50 / 200 / … / 650），正是车主看到的「组件区出现在页面顶部」。实测（`scripts/.tmp-who-clears.cjs`，包装 `CSSStyleDeclaration.prototype.transform` 的 setter 并给每个节点打标记）：切换后 13 个槽位在同一时刻成批出生，`[transform writes on deck slots SINCE the switch] 0` —— 不是谁清掉了折叠位移，是新节点从来就没有过位移。「只切对话、指针不动」也稳定复现，因为这条路径完全不经过悬浮 / 放大状态。
+- **它们之所以真的被画出来，是 `rail.module.css` 里一条刻意的 `visibility: visible`。** 波峰覆盖层必须在静默中换牌，所以 `.dsx-wave-deck .dsx-stats-card-slot, .dsx-wave-deck .dsx-stats-add { visibility: visible }` 必须显式声明；同处注释写明这里**刻意不用 `opacity: 0`**（实测每次进入会多付 50–68ms 纯绘制停顿，且 style/layout 约 1ms）。而**子元素显式 `visibility: visible` 会压过祖先继承来的 `hidden`，与 `!important` 无关** —— 于是这张牌穿过 hidden 的 deck → rail → surface → drawer-zoom → drawer 一路画到会话上。实测（`scripts/.tmp-closed-rest.cjs`）关闭态下 `.dsx-stats-card-slot` 自身为 `vis=visible`，而它上面整整七层祖先全是 `hidden`。现在抽屉处于 parking（`[data-retired]`）或会话消失（`body.dsx-stats-no-session`）时，用同文件末尾顺序更靠后的规则把这份显式 `visible` 收回：
+  ```css
+  .dsx-stats-drawer[data-retired] .dsx-stats-card-slot,
+  .dsx-stats-drawer[data-retired] .dsx-stats-add,
+  body.dsx-stats-no-session .dsx-stats-drawer .dsx-stats-card-slot,
+  body.dsx-stats-no-session .dsx-stats-drawer .dsx-stats-add { visibility: hidden !important }
+  ```
+  被 portal 到 `<body>` 的放大覆盖层不在 `.dsx-stats-drawer` 之下，因此正常悬浮换牌不受影响（`scripts/verify-rail-covered-hover.cjs` 仍然全过）。
+
+### 验证 — 测了什么，以及没有声称什么
+
+- **覆盖几何**（`scripts/verify-swallow-20.cjs`，9/9）：开启过程 83 帧里组件栏右缘全程钉在 1920，右栏轨道逐帧插值 0 → 397 → 864，抽屉以运动离场（`translateX` 采样 `[…, 498, 591, 621, 631, 637, 641, 641, …]`）并最终完全离屏于 `[1950, 2551]`，关闭时回到 `[1309, 1910]`，全程从未跳进对话列。
+- **帧预算**（`scripts/diag-anim-perf.cjs`，headful 1707×1067 @ DSF 1.5）：冷折叠、关闭、热折叠、指针扫过波峰四个场景的 p50 16.7 / p95 16.8 前后不变，折叠类场景 26ms 以上帧为 0。侧栏开/关场景里插件自身的份额下降 —— LoAF `FrameRequestCallback` **48ms → 12–14ms**，`ontransitionrun` 的工作从 `DIV.ontransitionrun`（77ms 记在插件内的一个 DIV 上）移到了 `#document.ontransitionrun`（52–61ms，document 捕获阶段），正是新的绑定位置 —— 同时开启场景的最坏帧由 100.2ms 降到 83.4–83.5ms。
+- **插件自身份额**（`scripts/diag-cpu-profile.cjs`，`CYCLES=3`，同一会话按标题 pin 并证明）：三次真实侧栏开合、采样 CPU 1280ms 中插件自耗 **63ms（4.9%）**；同一条 `--what=sidebar` trace 里最热的五个 JS 帧已全部是官方 shell（`index-5SrrfWpU.js:56:34474` ReactDOM 提交 36×922ms、`:41:1926` 调度器 28×234ms、官方 combo `:73005` 40×140ms），插件条目退出榜单。强制布局榜单里插件只剩 `CardBody` 的溢出读（9×）与 `measuredRightbarWidth` 的 `shellRead`（6×）。
+- **锚点守卫**（`scripts/verify-rail-anchor-guard.cjs`）：在同一任务内 `removeProperty('--dsx-rail-top')` 后立刻读 —— 组件栏与放大层的 computed `top` 确实回落到 `0px`，但 `visibility` 已是 `hidden`（兜底生效，不会被画到页面顶）；600ms 后变量恢复为 `44px`；随后一次真实右栏开合采样 **157 帧，锚点为空的帧数 0，y<40 的可见固定层 0 个**。重载路径（`.tmp-rail-boot-top.cjs --mode=reload`，633 帧）与 hero→会话的 SPA 重挂载路径（`--mode=switch`，908 帧）复算后同样为 **0 个真实可疑帧**（此前探针报的 452 个「可疑帧」全部是 `inset:0` 的 drawer/zoom 包装层 —— 它们的 `box.top` 恒为 0，纳入判据即假阳性）。
+- **关闭态切换对话不泄漏**（`scripts/verify-closed-switch-leak.cjs`）：先把组件栏关到 parking（并断言 drawer 确实 retired、rail 元素 `visibility: hidden` —— 早期几轮探针都在「栏已打开」的状态下测，量错了对象），再点进另一个工作区的会话，然后逐帧统计。判据必须是**祖先感知**的 `el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })`：元素自身的 `visibility: visible` / `opacity: 1` 并不代表被画出来 —— opacity 不继承，而放大覆盖层是在**图层级**用 opacity 把自己的槽位子树压掉的。实测 **519 帧全清白（0 帧画出组件区），y<40 的 0 帧，无页面错误**，并先断言「整段窗口内组件栏一次都没有被重新点亮」，否则过滤条件会把要找的帧正好排除掉。同一判据的反向灵敏度也已核对：栏开着时它能看见 **13 个槽位 @ y50**（不是「什么都看不见所以恒过」）。
+- **同一测试的负向对照**（`scripts/.tmp-leak-negative.cjs`，一次性）：注入一条特异性更高的规则（`.dsx-stats-drawer[data-retired] .dsx-wave-deck .dsx-stats-card-slot { visibility: visible !important }`）把修复压回去，同样的流程立刻复现 **786 / 1053 帧泄漏**（槽位 `1257x50 140`、`1407x50 140`、`1557x50 140` …）—— 所以上面那个 0 是真的被这条 CSS 挡住的，不是判据失灵。人工截图亦核对：修复后截图右侧整片空白，修复前同位置是完整的 11 张卡片。
+- **不做声称**：折叠的 fps 未被声称改善（同一条五轮 trace 下 52.2 → 49.7 fps，即在噪声内持平）；侧栏场景的 p95 也**不**声称改善：那些帧间隔被量化到 vsync 的整数倍（16.7 → 33.4 → 50.1），同一份产物重复跑会同时落在 33.4 与 50.2 上。该动画的 p95 由官方 `grid-template-columns` 轨道过渡本身决定 —— 那是主线程布局，插件改不了。**「对话区域平移延迟/卡顿」同样不被声称修复**：把组件数从 13 砍到 3 后，shell 提交的**单次**成本反而从 55.82ms 升到 90.05ms/call，说明那个成本与我们的卡数无关，它由官方 React 的提交阶段决定，位于插件边界之外。含全部重复跑的完整前后数字见 `docs/verify-report3/perf-before-after.json`，推理过程与业界依据见 `docs/reports/sidebar-animation-performance.md`。
+
 ## v1.8.3 — 右侧边栏在 DSH 0.2 上重新吞掉组件栏，插件列表也终于认得出我们
 
 > 一次以修复为主的补丁版，同时把仓库里一直未发布的 DSH 0.2 适配一并送出：组件栏按 0.2 的层叠与轨道语义重新对齐，OpenCode 数据链路改为按需拉取，插件在 DSH 自己的插件列表里终于有了图标、名称与简短的中文说明。

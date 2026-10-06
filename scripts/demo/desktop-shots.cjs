@@ -26,7 +26,7 @@ const ROOT = path.join(__dirname, '..', '..')
 const AUTHORITY = val('--authority', process.env.DSH_LIVE_AUTHORITY || '127.0.0.1:19387')
 const NEEDLE = val('--needle', process.env.DSH_SESSION_NEEDLE || '')
 const FONT = val('--font', "'HarmonyOS Sans SC', 'HarmonyOS Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif")
-const W = 1707, H = 1019, DSF = 1.5   // → 2560x1528 physical, the poster's input size
+const W = Number(val('--w', '1707')), H = Number(val('--h', '1019')), DSF = Number(val('--dsf', '1.5'))   // 1707x1019 @1.5 → 2560x1528, the poster's input size
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 

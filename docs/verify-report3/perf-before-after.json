@@ -1,0 +1,174 @@
+{
+  "report": "FIX-2026-10-03.md",
+  "plugin": "dsh-widgets",
+  "from_version": "1.8.3",
+  "to_version": "1.8.4",
+  "head_commit_before": "dbebb21",
+  "stage": {
+    "viewport": "1707x1067",
+    "device_scale_factor": 1.5,
+    "headless": false,
+    "note": "车主真机 stage。diag-anim-perf.cjs 默认 1578x1000@1，必须用 W/H/DSF 覆盖；DSH_PORT=19387、DSH_LIVE_AUTHORITY=127.0.0.1:19387 必须显式给出，否则探针打 3080 并 ERR_CONNECTION_REFUSED。"
+  },
+  "baseline_bundle": {
+    "path": "D:\\dsh-home\\plugins\\.tmp-prefix-lib-client.js",
+    "bytes": 902982,
+    "sha256": "854A8E0F8CAF3E27AA532AE8D50F999F5F00D7353BFCD8CB1F55C9EFC75C1220",
+    "identity_proof": "与 `git show dbebb21:lib/client.js` 逐字节相同；`bindFrameTransition=True / isFrameElement=False`",
+    "note": "= HEAD(1.8.3) 版本，即修复前的真实产品状态"
+  },
+  "fixed_bundle": {
+    "path": "lib/client.js",
+    "bytes": 910451,
+    "sha256": "77CEBACF5185E20E715481E933F9C677092B31CEDAF5CB7F8C8FA7D651981201",
+    "identity_proof": "pnpm build 重建前后逐字节相同（pre = post），src 与产物一致",
+    "note": "0.279% 体积增长"
+  },
+  "anim_perf_frames": {
+    "tool": "scripts/diag-anim-perf.cjs (headful, 1707x1067 @ DSF 1.5)",
+    "method_caveat": "E1/E2 的 p95 被量化到 vsync 整数倍（16.7 的 2 倍 = 33.4、3 倍 = 50.1），同一份 bundle 重复跑会在这两个值之间跳；因此凡涉及 p95 的结论都同时给出全部重复跑的读数，不用单次读数下判断。A–D 不在这个量化档位上，读数稳定。",
+    "scenarios": {
+      "A_cold_fold": {
+        "before": { "runs": 1, "frames": 72, "p50": 16.7, "p95": 16.8, "max": 16.9, "over26": "0/72" },
+        "after": { "runs": 3, "frames": 72, "p50": 16.7, "p95": 16.8, "max": "16.8 / 16.8 / 16.8", "over26": "0/72" },
+        "verdict": "零掉帧，前后一致"
+      },
+      "B_close": {
+        "before": { "runs": 1, "frames": 72, "p50": 16.7, "p95": 16.8, "max": 16.9, "over26": "0/72" },
+        "after": { "runs": 3, "frames": 72, "p50": 16.7, "p95": "16.8 / 16.8 / 16.9", "max": "16.8 / 16.8 / 33.3", "over26": "0/72, 0/72, 1/71" },
+        "verdict": "三次里一次出现单帧 33.3ms（2 个 vsync），不是结构性掉帧"
+      },
+      "C_warm_fold": {
+        "before": { "runs": 1, "frames": 72, "p50": 16.7, "p95": 16.8, "max": 16.8, "over26": "0/72" },
+        "after": { "runs": 3, "frames": 72, "p50": 16.7, "p95": 16.8, "max": "16.8 / 16.8 / 16.8", "over26": "0/72" },
+        "verdict": "零掉帧，前后一致"
+      },
+      "D_pointer_sweep_wave": {
+        "before": { "runs": 1, "frames": 84, "p50": 16.7, "p95": 16.8, "max": 16.8, "over26": "0/84" },
+        "after": { "runs": 3, "frames": "77 / 82 / 83", "p50": 16.7, "p95": "16.9 / 16.8 / 16.8", "max": "83.5 / 50.0 / 33.4", "over26": "3/77, 1/82, 1/83" },
+        "verdict": "连续波峰动画的 p50/p95 前后完全一致（16.7/16.8）；POST 那次 max 83.5 的尾部与 D 窗口内 WebSocket.onmessage 群同帧（见 trace）。第 6 处修复的价值不体现在这里的 fps，而体现在下面 forced_layout_stacks —— 它是把同步强制布局从动画帧里摘掉，不是提 fps。"
+      },
+      "E1_sidebar_open": {
+        "before": { "runs": 1, "frames": 55, "p50": 16.7, "p95": 50.0, "max": 100.2, "mean": 21.6, "over26": "8/55", "over50": "2/55" },
+        "after": { "runs": 3, "frames": "61 / 57 / 54", "p50": 16.7, "p95": "33.4 / 33.5 / 50.2", "max": "83.5 / 83.4 / 83.5", "mean": "19.7 / 20.8 / 21.6", "over26": "6/61, 9/57, 9/54", "over50": "2/61, 2/57, 3/54" },
+        "verdict": "POST 的三次 p95 跨越 33.4 与 50.2 两档 ⇒ 不可声称改善。可以声称的是 max：PRE 100.2（6 个 vsync）到 POST 三次全在 83.4–83.5（5 个 vsync），最坏帧被削掉一个 vsync。E1 的这个 p95 档位由官方 grid-template-columns 轨道动画本身决定，插件改动不改变它的振幅。"
+      },
+      "E2_sidebar_close": {
+        "before": { "runs": 1, "frames": 52, "p50": 16.7, "p95": 50.2, "max": 133.6, "mean": 22.8, "over26": "7/52", "over50": "3/52" },
+        "after": { "runs": 3, "frames": "57 / 60 / 56", "p50": 16.7, "p95": "33.5 / 33.5 / 33.5", "max": "100.1 / 83.6 / 133.7", "mean": "20.8 / 19.5 / 21.2", "over26": "8/57, 7/60, 8/56", "over50": "2/57, 1/60, 2/56" },
+        "verdict": "POST 三次 p95 全部落在 33.5（PRE 单次 50.2）；mean 22.8 → 19.5–21.2；over50 3/52 → 1–2 帧。PRE 只有 1 次采样，因此这条改善的强度是「方向一致、样本单薄」，不作为硬结论。max 三次里仍有 133.7，与 PRE 的 133.6 相同 —— 那是一帧 React commit 尖峰，见 loaf_e2。"
+      }
+    },
+    "loaf_e1": {
+      "before": { "dur_ms": 131, "block_ms": 77, "style_ms": 4, "render_ms": 94, "attribution": "VoidFunction:31ms | DIV.ontransitionrun:77ms | FrameRequestCallback:11ms" },
+      "after": { "dur_ms": "101 / 105 / 138", "block_ms": "50 / 52 / 81", "style_ms": "3 / 4 / 4", "render_ms": "69 / 70 / 79", "attribution": "VoidFunction:28-49ms | #document.ontransitionrun:52-61ms | FrameRequestCallback:11-13ms" },
+      "verdict": "关键结构性变化：`DIV.ontransitionrun`（冒泡到组件树内的 DIV，77ms 全部记在插件身上）变成 `#document.ontransitionrun`（document 捕获阶段，52–61ms）。这正是第 1 处修复；render 94 → 69–79ms。"
+    },
+    "loaf_e2": {
+      "before": { "dur_ms": 162, "block_ms": 106, "style_ms": 3, "render_ms": 123, "attribution": "VoidFunction:31ms | DIV.ontransitionrun:71ms | FrameRequestCallback:48ms | (尾部 108ms) Response.json.then:45ms" },
+      "after": { "dur_ms": "134 / 167 / 167", "block_ms": "77 / 115 / 115", "style_ms": "23 / 24 / 29", "render_ms": "75 / 123 / 123", "attribution": "VoidFunction:33-38ms | #document.ontransitionrun:39-83ms | FrameRequestCallback:12-14ms | (尾部) Response.json.then:45-50ms" },
+      "verdict": "插件可控项里最干净的一条：FrameRequestCallback 48ms → 12–14ms（-72%）。best run 的 render 123 → 75ms。尾部 LoAF 由 Response.json.then 45ms 主导，属产品/运行时地板，不在插件变更范围。"
+    }
+  },
+  "forced_layout_stacks": {
+    "tool": "scripts/diag-fold-trace.cjs --what=fold --reps=5 (headless=false, gap 320ms, 1707x1067 @ DSF 1.5)",
+    "fps": { "before": 52.2, "after": 49.7, "note": "234 rAF / 4.5s vs 245 rAF / 4.9s，噪声内持平。仓库内不存在「36.1 → 50.7」这一数字的出处，不得引用。" },
+    "layout_phase": { "before": { "ms": 771, "count": 286, "max_ms": 20.5 }, "after": { "ms": 1066, "count": 297, "max_ms": 21.1 } },
+    "update_layout_tree": { "before": { "ms": 589, "count": 309, "max_ms": 48.7 }, "after": { "ms": 703, "count": 320, "max_ms": 52.7 } },
+    "forced_layout_by_js": {
+      "before": [
+        "20x check@inline:7229 ← raf@inline:7249",
+        "17x merged-chunk:21638 ← gi ← Lu (shell React)",
+        "10x detectGlass ← refreshMaterial (dsh-ui-harmonizer)",
+        "9x bandOf:25732 ← syncWholeCards:25759  ← 第 6 处修复的目标",
+        "5x measureRailTop:24966",
+        "1x groupDurationMs:26596",
+        "1x place:38341 ← showNow:38370 (dsh-notification)"
+      ],
+      "after": [
+        "19x check@inline:7229 ← raf@inline:7249",
+        "17x merged-chunk:21638 ← gi ← Lu (shell React)",
+        "10x detectGlass ← refreshMaterial (dsh-ui-harmonizer)",
+        "bandOf ← syncWholeCards: 消失",
+        "7x measureRailTop:25012",
+        "1x groupDurationMs:26695",
+        "1x place:38439 ← showNow:38468 (dsh-notification)"
+      ]
+    },
+    "forced_style_by_js": {
+      "before": ["20x check@inline:7229", "17x :21638", "14x bandOf ← syncWholeCards", "10x expectHitTarget", "10x detectGlass ← refreshMaterial", "5x measureRailTop:24966"],
+      "after": ["19x check@inline:7229", "17x :21638", "17x :27357", "10x expectHitTarget", "10x detectGlass ← refreshMaterial", "7x measureRailTop:25012"]
+    },
+    "verdict": "本报告最强的一条证据：第 6 处修复把 9 次强制布局 + 14 次强制样式从 trace 里彻底清掉，前后栈名逐字可对。剩余前四项（inline check/raf、shell React :21638、harmonizer refreshMaterial、产品自绘 hit-target）均不在插件源码内。"
+  },
+  "swallow_geometry": {
+    "tool": "scripts/verify-swallow-20.cjs --session \"修复侧边栏动画卡顿与覆盖效果\"",
+    "before": "1.8.3 条目记录的状态：grid 一帧 1640px → 776px，frame 上零 transitionrun/start/end，右栏约 500ms 后才跳回",
+    "after": {
+      "exit": 0,
+      "passed": "9/9",
+      "rail_right_edges": "1920（恒钉在视口右缘，全程 83 帧）",
+      "rail_min_x": 1460,
+      "sidebar_left": 1056,
+      "rightbar_columns_observed": "0 → 397 → 864（逐帧插值）",
+      "drawer_final": { "x": 1950, "right": 2551 },
+      "drawer_translateX_samples": "[0,0,0,0,0,0,498,591,621,631,637,641,641,641,...]",
+      "verdict": "既钉住右缘（自然遮挡），又以运动而非跳变离场（吞噬）"
+    }
+  },
+  "yield_beat": {
+    "tool": "scripts/diag-yield-beat.cjs --rounds 4 --session \"修复侧边栏动画卡顿与覆盖效果\"",
+    "invariant": "transitionrun(grid-template-columns) → 同步 data-yielded，budget 120ms",
+    "after_runs": "4 轮：1ms / 0ms / 0ms / 0ms；3 轮复跑：1ms / 0ms / 0ms",
+    "control": "各轮 control 均 transitionrun=null，说明对照条件下事件确实被 document 之上吞掉",
+    "root_cause_before": "frameEl 只在右栏列断连时重绑；shell 重建 frame 后监听器成死引用 ⇒ yield beat 静默失效，退化到 240ms + 520ms 轮询防抖（正是车主报的「反复重载后适配失效」）",
+    "verdict": "改为 document 捕获阶段监听后，跨 4 次 reload 全部 0–1ms"
+  },
+  "full_suite": {
+    "pass": [
+      "verify-release-smoke.cjs PASS=6",
+      "verify-rail-covered-hover.cjs PASS=24",
+      "verify-rail-hover-when-retired.cjs PASS=9",
+      "verify-rail-glow-clip.cjs PASS=14",
+      "verify-anim-curve-unit.mjs PASS=8",
+      "verify-deck-cascade-unit.mjs PASS=59",
+      "pnpm check (tsc --noEmit + gen-registry OK 55 units)",
+      "pnpm build 重建前后 client.js 逐字节相同"
+    ],
+    "pre_existing_failures_not_regressions": [
+      {
+        "script": "verify-rail-interaction.cjs",
+        "result": "PASS=10 FAIL=4",
+        "pre_result": "PASS=10 FAIL=4（四条 FAIL 文本逐字相同，用同一 --session 对跑）",
+        "cause": "组件栏在该会话里没有可滚余量。实测 1578x1000 @ DSF 2：rail clientHeight 956 / scrollHeight 972 => 仅 16px；deck 842/842 => deck 自身完全不滚。wheel 探针要测 5 行以上的行程与整行停靠，4 条 FAIL 全是 detents=0 / offsets=0,0,0,... 这类「测不到」而非「测到错值」。PRE/POST 几何读数完全一致：rail 956/972/overflow 16、deck 842/842/842、distinctX [1158,1298,1438]、columns 3、railW 430、5 行 26 卡全可见 => 修复 4（rowFitSide 改读已发布的 rail 顶点）没有改变任何一列的布局结果。"
+      },
+      {
+        "script": "verify-rail-scroll.cjs",
+        "result": "PASS=5 FAIL=4",
+        "pre_result": "PASS=5 FAIL=4（逐字相同）",
+        "cause": "同 verify-rail-interaction.cjs：16px 可滚余量，无对象可测。"
+      },
+      {
+        "script": "verify-deck-cascade-live.cjs",
+        "result": "PASS=78 FAIL=3",
+        "pre_result": "PASS=77 FAIL=4",
+        "cause": "两条 stagger FAIL（探针 viewport 1578x640@1、midFold 采样点 167ms）PRE 同样失败；provider TypeError 来自 agent-team 插件链，POST 还少一条 reversal FAIL"
+      },
+      {
+        "script": "verify-rail-rework.cjs",
+        "result": "PASS=59 FAIL=0",
+        "pre_result": "PASS=59 FAIL=0",
+        "cause": "三跑中一次命中 WorkBuddyProbeControl 的 provider TypeError（约 1/3 概率），栈指向 @deepseek-ai/dsh-experimental-client-ui-agent-team，全仓 grep 不到该符号"
+      }
+    ]
+  },
+  "out_of_scope_floor": [
+    "Response.json.then（E2 尾部 LoAF 45–50ms）——产品/运行时",
+    "VoidFunction（E1/E2 首帧 28–49ms）——React 调度",
+    "ResizeObserverCallback（13–14ms）",
+    "DOMWebSocket.onmessage（7–25ms 群）——会话流",
+    "dsh-ui-harmonizer refreshMaterial (detectGlass) 10x —— 该插件自己的 MutationObserver；我们的 --dsx-* 变量写会触发它",
+    "shell React merged-chunk:21638 (17x) 与 ae@index-5SrrfWpU.js（47 调用 / 999ms）——官方 shell",
+    "rail-view.tsx RO measure() 的 React commit 本身 —— 第 5 处修复移除了 updater 形式，但 commit 仍在 ontransitionrun 栈之外"
+  ]
+}

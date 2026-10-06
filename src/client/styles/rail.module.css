@@ -188,6 +188,27 @@ body.dsx-stats-no-session .dsx-stats-drawer {
   pointer-events: none !important;
 }
 
+/* ── LAST RESORT: NEVER PAINT WITHOUT A PUBLISHED ANCHOR ──
+   `--dsx-rail-top` has no CSS-side definition; its ONLY writer is measure.ts,
+   which sets it inline on <html>. Every rail-owned fixed layer resolves its box
+   as `top: var(--dsx-rail-top, 0px)`, so an unpublished anchor silently becomes
+   `top: 0` and drops the whole component area onto the page top — the reported
+   「组件区域在未激活状态下切换工作区对话后会自动显示在页面顶部」(2026-10-04).
+
+   measure.ts now (a) forces a full vertical probe on the first pass of every
+   install, before any of the width-only shortcuts may return, and (b) leaves the
+   value in place across teardown instead of removing it. This selector is the
+   third line of defence for a path that bypasses both: while <html> carries no
+   inline anchor, the layers are not allowed to paint at all, because the only
+   position they could take is the wrong one. The inline write happens in the
+   same commit that installs the measure layer, so in a healthy session this
+   never matches. */
+html:not([style*='--dsx-rail-top']) .dsx-stats-rail,
+html:not([style*='--dsx-rail-top']) .dsx-magnify-layer,
+html:not([style*='--dsx-rail-top']) .dsx-stats-addpanel {
+  visibility: hidden !important;
+}
+
 /* ── RETIRED (owner decision 2026-10-03): closed, but still mounted ──
    Opening the rail used to mount 13 widget cards from scratch: ~285ms of main-thread
    React work per toggle on the owner's stage (1707×1067 @ DSF 1.5), which starved the
@@ -344,6 +365,53 @@ body.dsx-stats-no-session .dsx-stats-drawer {
 .dsx-wave-deck.dsx-wave-on .dsx-stats-card-slot,
 .dsx-wave-deck.dsx-wave-on .dsx-stats-add {
   visibility: hidden;
+}
+
+/* ── THE RETIREMENT MUST REACH THE DECK (owner report 2026-10-04, fifth round) ──
+   `visibility` is inherited, but inheritance is not the last word: a descendant
+   that sets `visibility: visible` paints anyway, an `!important` hidden ancestor
+   included — re-enabling a subtree is exactly what the property is for. The rule
+   just above (`.dsx-wave-deck .dsx-stats-card-slot { visibility: visible }`) does
+   that on purpose, so it exists so the magnify overlay can hand the cards back in
+   the same commit it takes over, and the whole static deck is therefore
+   hidden-ANCESTOR + visible-SELF: nothing written on an ancestor can hide it.
+
+   On a retired drawer that is normally invisible-but-harmless, because a retired
+   deck is not merely hidden, it is PARKED. The close fold deliberately leaves every
+   card on its retracted offset — off the right edge of the viewport (measured
+   `matrix(0.5, 0, 0, 0.5, 639, -25)`, box x=1966 on the 1707px stage) — so
+   "painted" and "on screen" never overlap.
+
+   But that parking is the RESIDUE of a fold that ran inside THIS deck node, and a
+   drawer that is unmounted and mounted again comes back with brand-new slots that
+   were never folded: their inline transform is `none`, they sit at the resting
+   grid, and with the self-`visible` rule above the whole component area paints
+   over the top of the conversation — the reported 「组件区域在未激活状态下切换工作
+   区对话后会自动显示在页面顶部」.
+
+   That remount is the ordinary consequence of a conversation switch: the switch
+   drops `hasSession` for a beat, `keepMounted` (rail-view.tsx) goes false and the
+   drawer returns null; when the session signal is back, the fresh instance's
+   `everOpenRef` is false again, so the retired drawer is re-mounted by the 2.5s
+   `prewarm` timer — which is why the cards pop in ~2.5s AFTER the switch rather
+   than with it. Measured with scripts/.tmp-closed-anim.cjs and
+   scripts/.tmp-who-clears.cjs: 0 on-screen slots before the switch, 2 after (11 in
+   the screenshot), ZERO transform writes on the deck slots, and 13 brand-new slot
+   nodes born at one instant ≈2.5s after the click.
+
+   So retirement gets its own descendant rule: while the drawer is retired nothing
+   inside it may paint, parked or not. The magnify overlay is untouched — it is
+   portaled to <body>, outside this subtree, and the hand-off it needs only ever
+   happens on an OPEN drawer (`onScreen: !retired && !hidden`). `!important`
+   because the opt-in above is precisely what it has to beat.
+
+   The no-session case is the same leak through a different ancestor (there is a
+   beat between the class flip and React's commit), so it is spelled out too. */
+.dsx-stats-drawer[data-retired] .dsx-stats-card-slot,
+.dsx-stats-drawer[data-retired] .dsx-stats-add,
+body.dsx-stats-no-session .dsx-stats-drawer .dsx-stats-card-slot,
+body.dsx-stats-no-session .dsx-stats-drawer .dsx-stats-add {
+  visibility: hidden !important;
 }
 
 /* prefs.wholeCards (设置 → 高级设置) — a card the rail's viewport would cut in

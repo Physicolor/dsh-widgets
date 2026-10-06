@@ -31,7 +31,7 @@ import { cardRadius } from '../render/card-geometry'
 import { WidgetsPage } from '../surfaces/Settings'
 import { COL_GAP, DETAIL_W, LIST_W } from '../surfaces/layout'
 import { t } from '../i18n'
-import { BASE_SIDE, RAIL_ROW_SEAT, applyRailRight, resolveRailSpace } from './geometry'
+import { BASE_SIDE, RAIL_ROW_SEAT, applyRailRight, getNotedRailTop, resolveRailSpace, setRailVar } from './geometry'
 import { RailWave } from './wave/RailWave'
 import { createWaveGeometry } from './wave/wave-geometry'
 import {
@@ -236,7 +236,24 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         const measure = (): void => {
           const rail = railElRef.current
           if (rail === null) return
-          setRailPaneH((prev) => (prev === rail.clientHeight ? prev : rail.clientHeight))
+          // Hand React a VALUE, never an updater: an updater runs in the RENDER
+          // phase, where the DOM is already dirty from the commit, so the read
+          // forced a whole-document layout and its cost landed on the sidebar
+          // animation. Measured 2026-10-03 (E2 profile): that updater's self-time
+          // was 130.9ms — the single largest own-plugin item of the frame. A plain
+          // value keeps the same Object.is bail-out, so an unchanged height still
+          // skips the re-render.
+          //
+          // And do not read `rail.clientHeight` at all while the published rail
+          // `top` is known: the element is `top: var(--dsx-rail-top); bottom: 0`
+          // with a border-box and no border, so its padding-box height IS
+          // `window.innerHeight − railTop` — an arithmetic identity, no layout.
+          // Verified against the live stage (1707×1067): closed `top=44, h=1023`
+          // and open `top=72, h=995`, both exactly `innerHeight − top`. The DOM
+          // read still exists as the fallback for the window before the first
+          // publish (and after teardown), where the identity has no `top` to use.
+          const top = getNotedRailTop()
+          setRailPaneH(top >= 0 ? Math.max(0, window.innerHeight - top) : rail.clientHeight)
         }
         measure()
         if (typeof ResizeObserver === 'undefined') return
@@ -620,9 +637,17 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       // so the conversation column keeps the resting rail's width at all times.
       const railW = space.drawW
       const hidden = space.hidden
-      document.documentElement.style.setProperty('--dsx-rail-w', `${space.claimW}px`)
-      document.documentElement.style.setProperty('--dsx-rail-pad', `${pad}px`)
-      document.documentElement.style.setProperty('--dsx-rail-overshoot', `0px`)
+      // Guarded root writes: this runs in the render body, i.e. on EVERY render
+      // of the rail — and the rail re-renders on each wave follow frame. An
+      // unguarded `setProperty` on :root invalidates every declaration that
+      // reads the custom property, so identical values would buy a whole-document
+      // style recalc per frame. Measured 2026-10-03 (owner's stage, two
+      // open/close cycles, `.tmp-fold-filmstrip.cjs`): the rail's own writes
+      // landed 20×, 18 of them carrying the value already in the declaration
+      // (`--dsx-rail-pad` 6/6 identical, `--dsx-rail-w` 6 of 8; `--dsx-rail-overshoot`
+      // 6/6 — that one is a dead variable, no rule reads it, so it is gone).
+      setRailVar('--dsx-rail-w', `${space.claimW}px`)
+      setRailVar('--dsx-rail-pad', `${pad}px`)
       applyRailRight(space.swallowed)
       // --dsx-rail-scroll is owned by RailWave (it tracks the rail's scrollTop).
       // Live stats (session figures + the bridge's payload slices + this

@@ -16,7 +16,7 @@
  * `prefs` is a LIVE binding, hence `getPrefs()` at the point of use.
  */
 
-import { ANCHOR_FOLLOW, RAIL_BOX_INSET, RailSpace, applyRailRight, invalidateRailMetrics, predictRailBudget, readColumnWidth, readRailBudget, resolveRailLayout, resolveRailSpace } from './geometry'
+import { ANCHOR_FOLLOW, RAIL_BOX_INSET, RailSpace, applyRailRight, clearRailTop, invalidateRailMetrics, noteRailTop, predictRailBudget, readColumnWidth, readRailBudget, resolveRailLayout, resolveRailSpace } from './geometry'
 import { type Prefs } from '../runtime/prefs'
 
 /** What the measurement layer needs from the composition root. */
@@ -51,6 +51,24 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
   let raf = 0
   /** Last measured official right-bar width (px); -1 = never measured. */
   let lastRightbarW = -1
+  /**
+   *True once this measure layer has written `--dsx-rail-top` at least once.
+   *
+   *Every early return below (the horizontal-only tick, the moving-width tick,
+   * the 250ms vertical throttle) deliberately skips the header/composer probes,
+   * and each of them therefore skips the ANCHOR write too. That shortcut is only
+   * sound while an anchor is already published: the rail and the magnify layer
+   * are `position: fixed; top: var(--dsx-rail-top, 0px)`, so a pass that returns
+   * before the first write leaves two fully-surfaced layers pinned to the page
+   * top. The first pass after `install()` used to always take one of those
+   * branches (`rightbarW` is not yet bound while `lastRightbarW` is still -1),
+   * so the anchor only appeared on a later, deferred tick — and a frame rebuild
+   * that remounted the rail inside that window painted the whole component area
+   * over the page top (owner report 2026-10-04: 「组件区域在未激活状态下切换工作
+   * 区对话后会自动显示在页面顶部」). Until the first write lands, the shortcuts
+   * are disabled and every pass runs the full vertical probe.
+   */
+  let anchorPublished = false
   /** Timer that ends the track-sync window. */
   let syncTimer = 0
   let ro: ResizeObserver | null = null
@@ -100,8 +118,8 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
    * that leaves the deck's shape unchanged costs no React render.
    */
   let lastSpaceKey = ''
-  /** The AppFrame whose track transition drives the yield beat. */
-  let frameEl: Element | null = null
+  /** Class-name suffix of the shell's AppFrame (its prefix is build-hashed). */
+  const FRAME_CLASS_SUFFIX = '_frame'
   /** Debounces the budget refresh until a track movement has settled. */
   let railBudgetTimer = 0
   /**
@@ -126,20 +144,37 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
    * `grid-template-columns`). This is the earliest possible beat —the observer's
    * first delivery trails it by ~100ms —so the rail's yield lands on the same
    * frame as the panel's first pixel of movement.
+   *
+   * BOUND ON `document`, NOT ON THE FRAME ELEMENT, and that is the fix for the
+   * owner's "the swallow adaptation keeps breaking after a reload". `transitionrun`
+   * bubbles, so one document-level listener observes every frame the shell will
+   * ever render. The previous version attached to the first `[class$="_frame"]`
+   * and only re-bound when the RIGHT-BAR COLUMN was missing or detached — so a
+   * shell that swapped the AppFrame out (plugin reload, layout remount,
+   * navigation) while the right-bar column stayed connected left the listener on
+   * a node no longer in the document. The beat then went silent and the rail fell
+   * back to the 240ms/520ms `scheduleBudgetRefresh` polls: the adaptation still
+   * "worked", it just arrived two or three frames late, which is precisely the
+   * panel-first/rail-after split this beat exists to remove. A live listener
+   * cannot go stale, so there is no self-heal to get wrong.
    */
   function onTrackTransitionRun(event: Event): void {
     if ((event as TransitionEvent).propertyName !== 'grid-template-columns') return
+    if (!isFrameElement(event.target)) return
     const predicted = predictRailBudget()
     if (predicted !== null) updateRailBudget(predicted)
     scheduleBudgetRefresh()
   }
-  /** Keep the transition listener bound to whatever frame the shell renders. */
-  function bindFrameTransition(): void {
-    const frame = document.querySelector('[class$="_frame"]')
-    if (frame === frameEl) return
-    frameEl?.removeEventListener('transitionrun', onTrackTransitionRun)
-    frameEl = frame
-    frameEl?.addEventListener('transitionrun', onTrackTransitionRun)
+  /**
+   * Does this class list name an AppFrame? Mirrors the `[class$="_frame"]`
+   * selector without a query — the shell hashes the prefix, so the suffix is the
+   * only stable part, and the element may carry several classes at once.
+   */
+  function isFrameElement(el: EventTarget | null): boolean {
+    if (el === null || !(el instanceof Element)) return false
+    const cls = el.classList
+    for (let i = 0; i < cls.length; i++) if (cls[i].endsWith(FRAME_CLASS_SUFFIX)) return true
+    return false
   }
   /**
    * Custom-property write that skips identical values.
@@ -178,7 +213,6 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     const current = getRailBudget()
     if (current >= 0 && Math.abs(next - current) < 8) return
     setRailBudget(next)
-    setVar('--dsx-rail-avail', `${next}px`)
     // Apply the yield to the DOM directly, not only through React: during the
     // track animation React's commit can land ~100ms late (the main thread is
     // busy re-laying out the columns), which is exactly the "panel first, rail
@@ -190,8 +224,20 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     if (drawer !== null) {
       const opacity = space.hidden ? '0' : '1'
       if (drawer.style.opacity !== opacity) drawer.style.opacity = opacity
-      if (space.yielded) drawer.setAttribute('data-yielded', '')
-      else drawer.removeAttribute('data-yielded')
+      // Same value-skip as above, but load-bearing for a second reason: this
+      // attribute is the yield's selector hook (`body:has(...[data-yielded])
+      // .dsx-stats-addpanel.open` pushes the add panel out, card.module.css
+      // drops pointer events) AND it sits on a subtree watched by
+      // dsh-ui-harmonizer's MutationObserver, whose `refreshMaterial` measured
+      // 12–27ms per call (21.5ms/call over 13 calls in the 2026-10-03 fold
+      // trace). Removing an absent attribute or re-setting one that is already
+      // there is no state change, so it must not cost a style recalc plus a
+      // reconciler pass.
+      const wants = space.yielded
+      if (wants !== drawer.hasAttribute('data-yielded')) {
+        if (wants) drawer.setAttribute('data-yielded', '')
+        else drawer.removeAttribute('data-yielded')
+      }
     }
     const key = spaceKey(space)
     if (key === lastSpaceKey) return
@@ -346,7 +392,6 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
   }
   function observeMeasured(): void {
     if (!ro) return
-    bindFrameTransition()
     for (const sel of ['[data-conversation-scroll]', '[data-slot="conversation.session.header"]', '[data-composer-seat]', '[class$="_rightbarCol"]']) {
       const el = document.querySelector(sel)
       if (el && !observedEls.has(el)) {
@@ -357,7 +402,16 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     const rightbar = document.querySelector('[class$="_rightbarCol"]')
     if (rightbar !== null && rightbar !== rightbarEl) {
       rightbarEl = rightbar
-      entryRightbarW = null
+      // Seed the width hint at BIND time, while the layout tree is clean, so the
+      // unhinted path below never needs a bare `getBoundingClientRect()`. That
+      // read is safe here and only here: re-binding happens when the shell swaps
+      // the measured nodes out, not per frame, whereas the unhinted callers
+      // (viewport resize, the 250ms vertical probe) would otherwise each pay a
+      // forced layout DURING the sidebar tween — measured 2026-10-03 (V8 CPU
+      // profile, 3 real toggles): 49.0ms self-time. The ResizeObserver keeps this
+      // fresh: it hands `scheduleMeasure` the new width as a hint whenever the
+      // column actually resizes, so the seed is only ever the starting value.
+      entryRightbarW = Math.round(rightbar.getBoundingClientRect().width)
     }
   }
   function measureRailTop(widthHint?: number, horizontalOnly = false): void {
@@ -373,7 +427,13 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     // offset falls back to that variable when this one is absent, so both
     // layouts work.
     const rightbarW = widthHint ?? entryRightbarW ?? (rightbarEl !== null ? Math.round(rightbarEl.getBoundingClientRect().width) : 0)
-    if (horizontalOnly) {
+    // A `0` above is ambiguous: it is the real width of a closed right column,
+    // but it is ALSO what an unbound measure layer reports before the shell has
+    // mounted `[class$='_rightbarCol']`. Only the first may be published —
+    // writing a fake `0px` would override the `--dsh-sidebar-width` fallback the
+    // rail's offset chain keeps for older installs.
+    const widthMeasured = rightbarEl !== null || entryRightbarW !== null || typeof widthHint === 'number'
+    if (horizontalOnly && anchorPublished) {
       // The observer reported the right-bar column only: the vertical anchors
       // cannot have moved, so skip the header/composer probes entirely (each
       // one forces a re-layout while the shell eases its grid track).
@@ -397,7 +457,7 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
       // tick, not only when the rounded width changes: a stalled frame must
       // not expire the freeze while the track is still moving.
       armSyncFreeze()
-      setVar('--dsx-rightbar-w', `${rightbarW}px`)
+      if (widthMeasured) setVar('--dsx-rightbar-w', `${rightbarW}px`)
       lastRightbarW = rightbarW
       return
     }
@@ -408,11 +468,13 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
         // the track movement so `right` lands on the measured value every
         // frame instead of chasing it.
         armSyncFreeze()
-        setVar('--dsx-rightbar-w', `${rightbarW}px`)
+        if (widthMeasured) setVar('--dsx-rightbar-w', `${rightbarW}px`)
       }
       // While the track moves, only the width matters; skip the heavier header
-      // and composer probes so the transition keeps the main thread.
-      return
+      // and composer probes so the transition keeps the main thread. Exception:
+      // before the anchor exists there is nothing to keep the rail attached to,
+      // so this one pass must run them (see `anchorPublished`).
+      if (anchorPublished) return
     }
     lastRightbarW = rightbarW
     // ── The one write that has to be GUARDED, because it is on the hot path ──
@@ -425,13 +487,14 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     // RecalcStyleDuration and 582–624ms in LayoutDuration per four seconds of toggling, with
     // UpdateLayoutTree events up to 96ms, and rendered at 32–46fps on a 60Hz display.
     // `setVar` skips identical values, so the write now costs nothing unless the panel really
-    // moved.
-    setVar('--dsx-rightbar-w', `${rightbarW}px`)
+    // moved. It is DEFERRED to the end of this function (see READS FIRST, WRITES LAST):
+    // written here it would dirty the tree that the capsule/dock reads below then force.
     // Throttled vertical probes (see VERTICAL_PROBE_INTERVAL_MS): the rail top
     // and the composer gap cannot move with a horizontal track change, so a
     // burst of composer/scroll resizes must not buy a forced re-layout each.
     const now = performance.now()
-    if (now - lastVerticalProbeAt < VERTICAL_PROBE_INTERVAL_MS) {
+    if (anchorPublished && now - lastVerticalProbeAt < VERTICAL_PROBE_INTERVAL_MS) {
+      if (widthMeasured) setVar('--dsx-rightbar-w', `${rightbarW}px`)
       if (verticalTimer === 0) {
         verticalTimer = window.setTimeout(() => {
           verticalTimer = 0
@@ -475,10 +538,6 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     const capsuleTop = capsule === null ? null : capsule.getBoundingClientRect().top
     const wanted = capsuleTop === null || !(capsuleTop > 0) ? top + 12 : Math.round(capsuleTop)
     const railTop = Math.max(Math.round(top) - RAIL_TOP_EDGE, wanted)
-    // Same guard as `--dsx-rightbar-w` above: these two anchors move on a resize, not on
-    // every throttled probe, and an unconditional write costs the whole document a style
-    // recalc each time it runs.
-    setVar('--dsx-rail-top', `${railTop}px`)
     // Composer bottom gap: one "breathing" band under everything in the input
     // column —the composer dock stats bar (`.FJxK*_root` inside
     // `composer.dock`) plus its own bottom padding —so a fixed
@@ -491,8 +550,34 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     const comp = (dockBox !== null && dockBox.height > 0 && dockBox.bottom > 0)
       ? dock
       : (document.querySelector('[data-composer-seat]') || document.querySelector('[data-conversation-composer-overlay]') || el)
-    const gap = comp ? Math.max(0, window.innerHeight - comp.getBoundingClientRect().bottom) : 0
+    // The dock IS the composer seat in the common case, so reuse the box already
+    // read above instead of asking for the same element twice.
+    const compBox = comp === null ? null : (comp === dock ? dockBox : comp.getBoundingClientRect())
+    const gap = compBox === null ? 0 : Math.max(0, window.innerHeight - compBox.bottom)
+    // ── READS FIRST, WRITES LAST ──
+    // Both anchors above are READ from the live layout (capsule / dock / composer
+    // seat) and WRITTEN as document-level custom properties, which invalidates
+    // every declaration that depends on them. Interleaving the two —write
+    // `--dsx-rail-top`, then read the dock and the composer seat— turned each of
+    // those later reads into a FORCED re-layout of the whole document: measured
+    // 2026-10-03 on `diag-fold-trace.cjs`, this function was the plugin's largest
+    // remaining forced-layout source (9 stacks of 10, against the shell's own 26).
+    // Reading everything before writing anything costs at most the single layout
+    // the incoming dirty tree already owed, and changes no value.
+    // Same guard as `--dsx-rightbar-w` above: these two anchors move on a resize, not on
+    // every throttled probe, and an unconditional write costs the whole document a style
+    // recalc each time it runs.
+    if (widthMeasured) setVar('--dsx-rightbar-w', `${rightbarW}px`)
+    setVar('--dsx-rail-top', `${railTop}px`)
     setVar('--dsx-input-bottom', `${gap}px`)
+    // The rail is attached now: from here on the width-only shortcuts above are
+    // sound, because `--dsx-rail-top` already holds a live value (see anchorPublished).
+    anchorPublished = true
+    // Publish the same number to geometry so `rowFitSide` can derive the rail's
+    // height (`window.innerHeight - railTop`, its fixed `top`/`bottom: 0` box)
+    // instead of paying `.dsx-stats-rail.clientHeight`, a forced layout that used
+    // to run inside the yield beat's `transitionrun` frame (see noteRailTop).
+    noteRailTop(railTop)
   }
   /** Pending observer hint: the reported right-bar width and whether the
    *  trigger was the right-bar column alone (horizontal-only, no vertical work). */
@@ -528,6 +613,9 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     document.addEventListener('pointerup', onAnyPointerUp, true)
     document.addEventListener('pointercancel', onAnyPointerUp, true)
     window.addEventListener('blur', onWindowBlur)
+    // One document-level listener for the yield beat (see onTrackTransitionRun):
+    // `transitionrun` bubbles, so it survives every AppFrame the shell swaps in.
+    document.addEventListener('transitionrun', onTrackTransitionRun, true)
     if (typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver((entries) => {
         // The SHELL re-laid-out: drop the memoised metrics so this pass reads it (the
@@ -573,14 +661,25 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
       if (verticalTimer !== 0) window.clearTimeout(verticalTimer)
       if (settleTimer !== 0) window.clearTimeout(settleTimer)
       if (railBudgetTimer !== 0) window.clearTimeout(railBudgetTimer)
-      frameEl?.removeEventListener('transitionrun', onTrackTransitionRun)
-      frameEl = null
-      document.documentElement.style.removeProperty('--dsx-rail-avail')
+      document.removeEventListener('transitionrun', onTrackTransitionRun, true)
       document.documentElement.classList.remove('dsx-syncing')
       document.documentElement.classList.remove('dsx-live-width')
-      document.documentElement.style.removeProperty('--dsx-rail-top')
+      // Reset the per-install gates so the NEXT install takes the full vertical
+      // probe on its first pass and publishes `--dsx-rail-top` before any of the
+      // width-only shortcuts can return (see `anchorPublished`).
+      anchorPublished = false
+      lastRightbarW = -1
+      lastVerticalProbeAt = 0
+      // `--dsx-rail-top` is deliberately LEFT IN PLACE. Removing it here used to
+      // be the hygiene step, but the rail and the magnify layer both resolve
+      // `top: var(--dsx-rail-top, 0px)` — so any teardown that is not matched by
+      // an immediate remount dropped every mounted rail surface onto the page top
+      // (owner report 2026-10-04). A stale-but-real anchor is a pixel or two off at
+      // worst; a missing one is a full-page-top jump. The next install overwrites
+      // it on the first pass.
       document.documentElement.style.removeProperty('--dsx-input-bottom')
       document.documentElement.style.removeProperty('--dsx-rightbar-w')
+      clearRailTop()
     }
   }
 

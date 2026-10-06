@@ -30,7 +30,15 @@ const { chromium } = require('./lib/playwright-core.cjs')
 
 const PORT = process.env.DSH_PORT || '3080'
 const AUTHORITY = `127.0.0.1:${PORT}`
-const OUT = process.argv[2] || path.join(__dirname, '..', '.probe-rail-rework')
+const OUT = (process.argv[2] && !process.argv[2].startsWith('--')) ? process.argv[2] : path.join(__dirname, '..', '.probe-rail-rework')
+// `--session <name>`: see verify-rail-interaction.cjs — the first sidebar row is
+// the empty 新会话 scratch pad, so the deck mounts no widget cards and the card /
+// cascade geometry below measures nothing. Passing the flag used to be swallowed
+// as the OUT directory, which made every run silently probe an empty session.
+const SESSION = (() => {
+  const i = process.argv.indexOf('--session')
+  return i === -1 ? null : process.argv[i + 1]
+})()
 const fails = []
 const check = (ok, label, detail) => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${detail === undefined ? '' : '  — ' + detail}`)
@@ -60,9 +68,13 @@ const check = (ok, label, detail) => {
   await page.goto(`http://127.0.0.1:${PORT}`, { waitUntil: 'domcontentloaded', timeout: 40000 })
   await page.waitForTimeout(4000)
 
-  // A fresh context has no active session of its own; open the first one offered.
+  // A fresh context has no active session of its own; open the one the caller named,
+  // or the first one offered.
   if (!(await page.locator('.dsx-stats-rail').count())) {
-    const row = page.locator('[class$="_sessionRow"]').first()
+    const row = SESSION === null
+      ? page.locator('[class$="_sessionRow"]').first()
+      : page.locator('[class*="sessionRow"]', { hasText: SESSION }).first()
+    if (SESSION !== null && !(await row.count())) { check(false, 'the named session exists', `no row matching "${SESSION}"`); await browser.close(); process.exit(1) }
     if (await row.count()) { await row.click().catch(() => {}); await page.waitForTimeout(6000) }
   }
   const capsule = page.locator('button.dsx-stats-capsule').first()

@@ -243,22 +243,80 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
    * in BOTH surfaces and can never ship silently again.
    */
   const cardRef = React.useRef<HTMLDivElement | null>(null)
+  /**
+   * The guard result of the LAST run, so the attribute is only touched on a FLIP.
+   *
+   * This is not a micro-optimisation: Blink treats ANY attribute mutation as a
+   * local style invalidation even when no rule matches `[data-dsx-overflow]`, so
+   * the unconditional `removeAttribute` below re-dirtied the style tree after each
+   * card, and the next card's `scrollHeight`/`clientHeight` read then paid a fresh
+   * whole-document layout. With 13 cards in the deck that is 13 forced layouts per
+   * commit instead of one — measured 2026-10-03 (E1 profile, the sidebar-open
+   * frame): this effect's self-time was 44.2ms, the largest own-plugin item of the
+   * frame after the cleanup below. Gating on the flip keeps the rendered result
+   * identical (the attribute is still present exactly while the card overflows,
+   * and the warning still fires once per flip) while leaving the style tree clean.
+   */
+  const overflowRef = React.useRef(false)
+  /**
+   * The inputs the last run MEASURED, so an unchanged card never re-measures.
+   *
+   * The effect below has no dependency array, so it runs on every commit — and a
+   * shell commit that has nothing to do with this card (the sidebar's own React
+   * work is the case that asked for this) still landed one `scrollHeight`/
+   * `clientHeight` read per card, each paying its own whole-document layout. The
+   * flip guard above cannot help: it sits AFTER the read it is meant to avoid.
+   *
+   * So gate on what the measurement DEPENDS on — the rendered out object's
+   * identity, the width the card was laid out at, and the two flags that pick the
+   * check — and skip the read when none of them moved. This is exact rather than
+   * heuristic: the deck hands a card the same `out` until its data changes (the
+   * rail caches the render out per widget) and the same `boxW` until the geometry
+   * decides otherwise, so an unchanged tuple means an unchanged box and an
+   * unchanged verdict. A resize that happens without a commit (the slot's own
+   * 0.26s size transition) was never seen by this effect either way, and the
+   * commit that TARGETS the new size re-opens the gate with the new `boxW`.
+   *
+   * ONE HARD CASE REMAINS, and it is the one the sidebar gesture hits: the fold
+   * itself hands every card a NEW `boxW`, because the drawer's open shape resolves
+   * the deck grid a size class smaller than the resting one (that IS the animation).
+   * So during a fold the tuple moves for every card on every commit that re-plans
+   * the grid — 19 forced layouts per 3 toggles in the 2026-10-03 sidebar trace —
+   * even though each of those reads is what the fold's own transformation is
+   * measuring. The gate cannot be widened past that without either guessing (a card
+   * that is not flagged may start clipping once the slot narrows, and one that IS
+   * flagged must be allowed to clear when the slot widens back) or moving the read
+   * out of the commit, which is a separate change: this effect is the plugin's
+   * largest remaining own cost of the gesture (41.2ms of the paired V8 CPU
+   * profile's sampled CPU) and is left exact on purpose.
+   */
+  const overflowKey = React.useRef<{ out: WidgetRenderOut; unit: number; boxW: number; pinBox: boolean; pinnedByChart: boolean } | null>(null)
   React.useLayoutEffect(() => {
     const el = cardRef.current
     if (el === null) return
+    const prev = overflowKey.current
+    if (
+      prev !== null &&
+      Object.is(prev.out, out) &&
+      prev.unit === unit &&
+      prev.boxW === boxW &&
+      prev.pinBox === (pinBox === true) &&
+      prev.pinnedByChart === pinnedByChart
+    ) return
+    overflowKey.current = { out, unit, boxW, pinBox: pinBox === true, pinnedByChart }
     // A card whose HEIGHT is already pinned by its own style (every chart card, and
     // every preview tile) can only ever fail the guard by CLIPPING, so the check is
     // the scroll-vs-client one; a card that still lets its content size it is
     // measured against the tile it was asked for.
     const pinned = pinBox === true || pinnedByChart
     const overflow = pinned ? el.scrollHeight > el.clientHeight + 1 : el.clientHeight > unit + 1
+    if (overflow === overflowRef.current) return
+    overflowRef.current = overflow
     if (!overflow) {
       el.removeAttribute('data-dsx-overflow')
       return
     }
-    if (el.getAttribute('data-dsx-overflow') !== '1') {
-      console.warn(`[dsh-widgets] card content does not fit its tile (${pinned ? 'clipped' : 'grew'}): ${out.title}`)
-    }
+    console.warn(`[dsh-widgets] card content does not fit its tile (${pinned ? 'clipped' : 'grew'}): ${out.title}`)
     el.setAttribute('data-dsx-overflow', '1')
   })
   // Loading skeleton (see SkeletonBody): declared AFTER the hooks so the hook

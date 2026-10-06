@@ -840,10 +840,11 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
    * itself leaves the band intact but unpainted, and every visible card keeps its
    * whole shadow.
    */
-  const syncWholeCards = (rail: HTMLDivElement): void => {
+  const syncWholeCards = (): void => {
     const wrap = deckWrapRef.current
     if (wrap === null) return
-    const band = bandOf(rail)
+    if (paneH <= 0) return
+    const band = { lo: railScrollTop - RAIL_TOP_INSET, hi: railScrollTop - RAIL_TOP_INSET + paneH }
     const slots = wrap.querySelectorAll<HTMLElement>('.dsx-stats-card-slot')
     for (let i = 0; i < slots.length; i++) {
       const c = restLayout[i]
@@ -862,12 +863,51 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     }
   }
   const deckWrapRef = React.useRef<HTMLDivElement | null>(null)
-  // Every render, not on a dependency list: the rail can scroll (and therefore
-  // re-cut the bottom row) without anything this component receives changing, and
-  // the pass is a 15-node class compare on an idempotent path.
+  /** Fingerprint the whole-card cut was last computed from (see the effect below). */
+  const lastCutKeyRef = React.useRef<number[]>([])
+  /**
+   * Keep the whole-card cut in step with the rail, on every render rather than
+   * on a dependency list: the rail can scroll (and therefore re-cut the bottom
+   * row) without anything this component receives changing — a scroll only
+   * moves `railScrollTop`.
+   *
+   * The band is built from RENDER STATE (`railScrollTop` + `paneH`), NOT from
+   * `rail.scrollTop` / `rail.clientHeight`. Reading those two here forced a
+   * layout flush on every single render of the wave, and this component renders
+   * on EVERY hover-follow frame — the 2026-10-03 devtools.timeline trace at the
+   * owner's stage (`--what=fold --reps=5`, 1707×1067 @ DSF 1.5, headful) put
+   * `bandOf ← syncWholeCards` at 9 forced layouts and 14 forced styles across the
+   * five fold cycles, and it is gone from both stacks afterwards. `paneH` is the
+   * parent's measure of that same `clientHeight`, and the overlay slots below
+   * already cut from this very same render-state band, so both decks now agree by
+   * construction. (The fold itself ran at 52.2 fps before and 49.7 fps after —
+   * unchanged within noise. This fix removes synchronous layout from the
+   * animation frame; it does not raise the frame rate.)
+   *
+   * The fingerprint is the second half of the fix. The verdict depends on the
+   * band and on each resting shape's top/height — nothing else — so a render that
+   * leaves all of them alone (every hover-follow frame) skips the deck walk.
+   * Compared numerically, not by object identity: the parent REBUILDS
+   * `staticLayout` on every render (wave-geometry's `placeCards`), so identity
+   * would never match and the guard would be dead weight.
+   *
+   * `paneH <= 0` means the pane observer has not measured the rail yet: cut
+   * nothing rather than everything, and CLEAR the fingerprint so the first real
+   * measure always runs instead of matching a stale one.
+   */
   React.useLayoutEffect(() => {
-    const rail = railElement()
-    if (rail !== null) syncWholeCards(rail)
+    if (paneH <= 0) {
+      lastCutKeyRef.current.length = 0
+      return
+    }
+    const key = lastCutKeyRef.current
+    const next: number[] = [wholeCards ? 1 : 0, railScrollTop, paneH, side, restAdd.top]
+    for (let i = 0; i < restLayout.length; i++) next.push(restLayout[i].top, restLayout[i].h)
+    let same = key.length === next.length
+    for (let i = 0; same && i < next.length; i++) if (key[i] !== next[i]) same = false
+    if (same) return
+    lastCutKeyRef.current = next
+    syncWholeCards()
   })
   // The overlay's own slots carry the same class. It uses the RENDER state
   // (`railScrollTop` + the `paneH` prop) rather than reading the rail element:

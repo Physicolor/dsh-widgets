@@ -36,7 +36,15 @@ const { chromium } = require('./lib/playwright-core.cjs')
 
 const PORT = process.env.DSH_PORT || '3080'
 const AUTHORITY = `127.0.0.1:${PORT}`
-const OUT = process.argv[2] || path.join(__dirname, '..', '.probe-deck-cascade')
+const OUT = (process.argv[2] && !process.argv[2].startsWith('--')) ? process.argv[2] : path.join(__dirname, '..', '.probe-deck-cascade')
+// `--session <name>`: see verify-rail-interaction.cjs — the first sidebar row is the
+// empty 新会话 scratch pad, so the deck mounts no widget cards and every cascade
+// assertion below measures an empty rail. Passing the flag used to be swallowed as
+// the OUT directory, which made each run silently probe an empty session.
+const SESSION = (() => {
+  const i = process.argv.indexOf('--session')
+  return i === -1 ? null : process.argv[i + 1]
+})()
 const STATE_KEY = 'harness-widgets.state'
 const SAVED_AT_KEY = 'harness-widgets.state.savedAt'
 const fails = []
@@ -154,12 +162,16 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
    * never came).
    */
   const ensureSession = async () => {
+    let sawRow = false
     for (let i = 0; i < 20; i++) {
       if ((await capsule().count()) > 0) return true
-      const row = page.locator('[class$="_sessionRow"]').first()
-      if ((await row.count()) > 0) await row.click().catch(() => {})
+      const row = SESSION === null
+        ? page.locator('[class$="_sessionRow"]').first()
+        : page.locator('[class*="sessionRow"]', { hasText: SESSION }).first()
+      if ((await row.count()) > 0) { sawRow = true; await row.click().catch(() => {}) }
       await page.waitForTimeout(1500)
     }
+    if (SESSION !== null && !sawRow) { check(false, 'the named session exists', `no row matching "${SESSION}"`); return false }
     return (await capsule().count()) > 0
   }
   const waitRail = async (want, timeout = 5000) => {
