@@ -11,9 +11,12 @@ description: "A live widget rail on the right: session, machine, quota and cost 
 <h1 align="center">DeepSeek-Harness Widgets</h1>
 
 <p align="center">
-  <strong>55 live cards on the right side of your DeepSeek Harness — session, machine, quota and cost at a glance.</strong><br>
-  One command to install · multi-column grids · 2×4 tiles · a continuous magnification wave · per-instance configuration<br>
-  Web UI and desktop app · DeepSeek Harness 0.1.x / 0.2.x · MIT
+  <strong>A customizable widget system for the right side of DeepSeek Harness.</strong><br>
+  Install the cards you want · arrange them in a grid · a magnification wave under your pointer · hide the whole rail in one click
+</p>
+
+<p align="center">
+  <sub>Session, machine, quota and cost — the numbers you keep opening other tabs for, sitting quietly beside the conversation.</sub>
 </p>
 
 ## Install in one command
@@ -47,17 +50,15 @@ reorders and resizes the cards.
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/dock-magnify.png" alt="the magnification wave following the pointer" width="49%">
-  <img src="docs/screenshots/rail-drawer-open-mid.png" alt="the sliding drawer" width="49%">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/rail-demo.gif" alt="the rail's magnification wave following the pointer, stepped frame by frame" width="330">
+  <img src="docs/screenshots/rail-demo.gif" alt="the rail's magnification wave following the pointer" width="40%">
+  <img src="docs/screenshots/desktop-market.png" alt="the widget market and the installed-card list" width="48%">
   <br>
-  <sub>Motion, not a screen recording: every frame is stepped on a virtual clock in a headless browser and encoded with <a href="docs/screenshots/rail-demo.mp4">ffmpeg (948×1548 MP4, 1.5 MB)</a>. Re-run it with <code>node scripts/demo/rail-demo.cjs</code>.</sub>
+  <sub>The hover wave, live · and the market where every card is installed, sized and switched off.</sub>
 </p>
 
-DeepSeek-Harness Widgets is a **persistent DSH bundle plugin** built on the Cordis composition model. It provides a customizable multi-column widget rail on the right side of the conversation page — real-time session insights, usage monitoring, and quick actions — with an extensible declarative registry.
+> **TL;DR:** add one plugin, and the empty strip on the right of the conversation becomes a grid of live cards — tokens and cache, context, background jobs, your machine, your quota, your spend. Every card is an independent unit you can install, resize, tune or switch off; the whole rail disappears whenever you want the room back.
+
+DeepSeek-Harness Widgets puts a **widget rail** on the right side of the DeepSeek Harness conversation page. Cards are independent units: pick them from the built-in market, place them in a 1–4 column grid, size a card 2×2 or 2×4, configure each instance on its own, and switch off anything you do not watch. The rail only ever claims the empty strip beside the transcript, and the whole thing is one click away from gone.
 
 ## Website / Showcase
 
@@ -299,8 +300,7 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 ## Compatibility
 
-- DeepSeek Harness `0.1.0-rc.6` and later `0.1.x`, plus `0.2.0-rc.1` and later `0.2.x` — verified by installing and booting the plugin on **0.1.7-rc.2** and **0.2.0-rc.2** (host routes answering, the client bundle loaded, all four slot registrations firing, `settings.section` rendering); the pre-0.2 peer declaration was refused outright by that runtime's compatibility check;
-- **The desktop app is verified on the real window, not inferred from the web UI.** DSH `0.2.0-rc.2` / Electron 44, Windows: the rail mounts with its cards, `/api/widgets-state` answers, and no `dsh-widgets` import error reaches the boot log — the clip above was captured there. `docs/probe-desktop.cjs` attaches to the app over CDP for the checks a browser tab cannot reproduce (window chrome geometry, paint order under the Electron title bar);
+- DeepSeek Harness `0.1.0-rc.6` and later `0.1.x`, plus `0.2.0-rc.1` and later `0.2.x` — in the browser and in the desktop app;
 - Integrates via `conversation.input.overlay` / `conversation.session.header.utilities` / `conversation.composer.dock` / `settings.section`;
 - Coordinates explicitly with `dsh-better-sidebar`'s right rail: the rail reads the official right-bar column (keeping `--dsh-sidebar-width` as a fallback for older better-sidebar builds) and its header capsule registers at `order: 5` so the two toggles cannot swap places on a bundle reload; no residue after uninstall.
 
@@ -308,21 +308,17 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 Every release, entry by entry — including the measurement behind each change — lives in **[`CHANGELOG.md`](CHANGELOG.md)** ([中文](CHANGELOG.zh-CN.md)); each version is also published as a [GitHub Release](https://github.com/Physicolor/dsh-widgets/releases) anchored to the commit that shipped it. Raw evidence (CDP probes, screenshots, JSON receipts, per-incident fix records) lives under [`docs/`](docs/). This README keeps only the current release at a glance.
 
-### Latest — v1.8.3
+### What's new — v1.8.3
 
-**The plugin loads on DSH 0.2 again — desktop build included — the right sidebar swallows the rail on 0.2's rewritten track syntax, and DSH's own plugin list can finally see us.** Under that compatibility work sits the content release that took the registry from **40 widget units to 55** (17 added, 2 retired) across three batches, plus the layout work and the two reports that only showed up once all of it was on screen.
+**Ready for DSH 0.2, desktop app included** — the plugin installs and loads on both the `0.1.x` and `0.2.x` lines, the right sidebar swallows the rail cleanly again under 0.2's reworked layout tracks, and DSH's own plugin list shows an icon and a description for us. Underneath that sits the card wave that took the library from 40 units to 55:
 
-- **DSH 0.2 loads the plugin (v1.8.2).** DSH 0.1.7 added a peer check at install and boot, and `^0.1.0-rc.6` cannot accept `0.2.0-rc.x` — a 0.x minor is a breaking boundary in semver — so everyone on the `next` line, **including every user of the desktop build, which ships `0.2.0-rc.x`**, was told the plugin is incompatible and never got it loaded. The declared range now covers both lines, and the fix was verified by installing and booting against the real runtimes rather than by reading release notes;
-- **The sidebar swallows the rail on 0.2's track syntax (v1.8.3).** 0.2 rewrote the AppFrame's inline tracks from `280px minmax(0px, 1fr) 720px` to `280px minmax(0px, 1fr) minmax(0px, 864px)`, which the rail's "width the track is heading for" read could not parse — `predictRailBudget` went with it, and the yield degraded to a 240 ms + 520 ms settle debounce. Measured at 1920×1080, one press of the right-panel toggle: before, the grid went `1640px → 776px` in a single frame and fired no `transitionrun` at all; after, 11–13 intermediate widths interpolate frame by frame, the events are all there, and the rail's right edge stays pinned at 1920 the whole way (`scripts/verify-swallow-20.cjs`, 9 assertions);
-- **DSH's own plugin list can see us.** An icon, locales and a short Chinese description for the plugin list, and the OpenCode feed is fetched only when a widget actually renders it;
+- **More of your session, on screen** — Goal Progress, Permissions (the preset in force), Background Jobs, Subagents, Disk & Self-check and Throttle Forecast;
+- **More of your machine and your wallet** — Network Throughput, Power, Process Memory, Session Cost (this session priced through the price table, provenance printed beside it), To Review (your GitHub review queue), Local Dependencies (the port and proxy-egress board), Plan Overview, Trajectory Share, Token Bars and Peak Hours Board;
+- **Cards that behave** — chart cards stay inside their tile, the loading skeleton is exactly the card's own size, a 99% ring no longer reads as 95%, and the quota row adapts its cell count to the width instead of squeezing slivers into one bar;
+- **Sixteen cards renamed to say what they answer** — Usage → Billing Usage, Windows → Usage Rings, Credits → Usage Bars, Quota Manager → Quota Forecast, System Monitor → System Board, Avg TTFT → First-token Latency, and the rest;
+- **The showcase site ships alongside** — every card, the new names, and a widget table generated from the registry, live at [physicolor.github.io/dsh-widgets](https://physicolor.github.io/dsh-widgets/).
 
-- **Seventeen new units, 55 in total.** The session-and-machine wave: **Goal Progress**, **Permissions** (the preset in force), **Background Jobs**, **Subagents**, **Disk & Self-check** (free space plus the DSH session log's size and hourly growth) and **Throttle Forecast** (will the 5h / weekly window hit its cap before it resets). The device wave: **Network Throughput**, **Power** and **Process Memory**, plus **Session Cost** (this session's tokens priced through the price table, provenance printed beside it) and **To Review** (the GitHub review queue, ETag-aware, authenticated only). Then **Local Dependencies** (the port and egress board — a listening port is not an egress verdict) and the third batch's four: **Plan Overview**, **Trajectory Share**, **Token Bars** and **Peak Hours Board**. Behind them: `/api/host/overview` (one merged PowerShell pass for throughput, power, processes, service and proxy health), the review-queue slice (`notif=1`) and the usage-center price-table reader. Two units were retired — the wide bars card merged into **Token Bars**, and Model Config was dropped;
-- **Every card head is one ladder.** A ring head now always draws all three rungs — a figure or caption the widget does not have is *reserved*, not dropped — because the dial is centred against the ladder's own height: measured at side 150, the caption-less **Plan Overview** drew title / figure / ring at **15.7 / 35.3 / 13** where the identical card **with** a caption drew **13 / 32.6 / 17.3**. `docs/probe-head-ladder.cjs` mounts the real `CardBody` with hand-written render outputs (a state no widget's preview data reaches) and pins the contract at two card sizes; the same round gave the head a bare `headIcon` mark, five value tones and the 20px figure rung;
-- **Command Code's monthly limit is back** — the defect that made **Usage Rings** lose its third ring, **Usage Bars** lose its Monthly limit row, and **Quota Forecast** read `-%` with the Budget row at `—`. `/alpha/whoami`, `/alpha/usage/summary` and `/alpha/billing/subscriptions` were measured at **14–21 s** against one shared 8 s per-slice budget, so all three were dropped on every poll. The route now plans per slice (the fast `credits` awaited, the slow three refreshed out of band on their own TTLs), keeps the last good answer when a refresh fails, warms itself at host boot, and the collector re-asks 5 s after any degraded reply — including the first, partial one. `docs/probe-cc-pool.mjs` re-checks the whole family against the real upstream (92 assertions: pooled month 40.5%, per-account 78.7% / 2.1%, real account labels);
-- **Chart cards stay inside their tile, and the instruments tell the truth.** Chart cards are pinned to the tile with an elastic body (measured before: the Command Code Credits card boxed 172.8px in a 160px slot), the loading skeleton is the tile's exact size instead of 13% taller, a 99% ring no longer reads as 95% (ink now comes from the painted extent), the quota row derives its cell count from the width instead of squeezing 24 slivers into one bar, and a chart renderer is created as a real element — calling it inline put its hooks on `CardBody`'s fibre, where an ordinary "no chart, then a chart" swap could empty the whole rail slot (React #310);
-- **Sixteen units were retitled to say what they answer** — Usage → **Billing Usage**, Account → **Account Identity**, Windows → **Usage Rings**, Credits → **Usage Bars**, 5h window → **5h Window**, Quota Manager → **Quota Forecast**, System Monitor → **System Board**, Rate → **Decode Rate**, Avg TTFT → **First-token Latency**, Issues → **Open Issues**, Pushes → **Latest Push**, GitHub · To Review → **To Review** — and the credits card's rows now read **5-hour limit / Weekly limit / Monthly limit**. The shared dictionary, the generated registry and the showcase site were regenerated in the same pass;
-- **The showcase site ships with it.** All 55 cards, the new names, and `v1.8.1` in the hero kicker, the terminal title, the footer and the JSON-LD — `node website/verify.mjs` (88 checks) now asserts every hand-written version string against `package.json` and every count in the prose against the manifest list, because the pre-release audit found the structured data still advertising 1.6.0 and the copy still claiming 40 widgets;
-- **Evidence, not eyeballing.** The offline card gallery (`node scripts/preview/gallery.mjs`) renders every widget through the real `CardBody` with the real theme tokens and photographs it; G7 drives every host route offline (17 cases, stubs only); `docs/probe-cc-slices.mjs` proves the slice pipeline against a latency-controlled fetch stub (13 assertions, `--live` prints the real upstream's per-endpoint latency).
+Each of these, with the measurement behind it, is written up in the [CHANGELOG](CHANGELOG.md).
 
 
 ## Roadmap

@@ -11,9 +11,12 @@ description: "右侧实时组件栏：会话、机器、额度与成本，一眼
 <h1 align="center">DeepSeek-Harness Widgets</h1>
 
 <p align="center">
-  <strong>把 55 张实时看板放到 DeepSeek Harness 右侧——会话、机器、额度与成本，一眼看完。</strong><br>
-  一条命令安装 · 多列网格布局 · 2×4 长方形组件 · 连续波峰悬浮放大 · 每个实例独立配置<br>
-  网页版与桌面端通用 · DeepSeek Harness 0.1.x / 0.2.x · MIT
+  <strong>在 DeepSeek Harness 右侧，装一套可自定义的小组件系统。</strong><br>
+  想要的小组件自己装 · 网格排布 · 指针划过的放大波峰 · 一键整栏收起
+</p>
+
+<p align="center">
+  <sub>会话、机器、额度与成本——那些你总要另开标签页去看的数字，安静地待在对话旁边。</sub>
 </p>
 
 ## 一条命令安装
@@ -46,17 +49,15 @@ dsh plugin --profile <你的 profile 名> add dsh-widgets
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/dock-magnify.png" alt="跟随指针的波峰放大" width="49%">
-  <img src="docs/screenshots/rail-drawer-open-mid.png" alt="滑出式抽屉" width="49%">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/rail-demo.gif" alt="组件栏的波峰放大跟随指针，逐帧步进拍摄" width="330">
+  <img src="docs/screenshots/rail-demo.gif" alt="组件栏的波峰放大跟随指针" width="40%">
+  <img src="docs/screenshots/desktop-market.png" alt="组件市场与已安装列表" width="48%">
   <br>
-  <sub>这是动效，不是录屏：每一帧都在无头浏览器里按虚拟时钟步进拍下，再用 <a href="docs/screenshots/rail-demo.mp4">ffmpeg 编码（948×1548 MP4，1.5 MB）</a>。重跑：<code>node scripts/demo/rail-demo.cjs</code>。</sub>
+  <sub>指针划过的悬浮波峰 · 以及安装、调尺寸、关掉每一张卡的组件市场。</sub>
 </p>
 
-DeepSeek-Harness Widgets 是一个基于 Cordis 组合模型的 DeepSeek Harness **持久 bundle 插件**。它在会话页右侧提供一套可定制的多列组件栏——实时会话洞察、用量监控与快捷操作——并配有一套可扩展的声明式注册表。
+> **一句话：**装一个插件，对话右侧那条空带就变成一格格实时卡片——token 与缓存、上下文、后台任务、机器状态、额度与花费。每张卡都是独立单元，装、改尺寸、调阈值、关掉都随你；整条组件栏想收就收。
+
+DeepSeek-Harness Widgets 会在 DeepSeek Harness 会话页的右侧放上一条**组件栏**。每张卡都是独立单元：从内置市场里挑，放进 1–4 列的网格，选 2×2 或 2×4，按实例单独配置，不看的直接关掉。组件栏只占用正文旁边那条空带，一键即可整栏收起。
 
 ## 官网 / Showcase
 
@@ -280,8 +281,7 @@ node scripts/validate-widget-unit.mjs [dir]   # 部件单元契约校验器（Wo
 
 ## 兼容性
 
-- DeepSeek Harness `0.1.0-rc.6` 起的 `0.1.x`，以及 `0.2.0-rc.1` 起的 `0.2.x`（实测：**0.1.7-rc.2** 与 **0.2.0-rc.2** 上安装、启动、`settings.section` 渲染均通过；0.2 之前旧的 peer 声明会被运行时兼容检查直接拒装）；
-- **桌面端是在真实窗口上验过的，不是从 Web UI 推断的。** DSH `0.2.0-rc.2` / Electron 44 / Windows：组件栏连同卡片一起挂载、`/api/widgets-state` 正常应答、启动日志里没有 `dsh-widgets` 导入失败——上面那段动图就是在桌面端拍的。`docs/probe-desktop.cjs` 通过 CDP 附到应用上，用于浏览器标签页复现不了的检查（窗口 chrome 几何、Electron 标题栏下的绘制顺序）；
+- DeepSeek Harness `0.1.0-rc.6` 起的 `0.1.x`，以及 `0.2.0-rc.1` 起的 `0.2.x`——浏览器与桌面端都可用；
 - 通过 `conversation.input.overlay` / `conversation.session.header.utilities` / `conversation.composer.dock` / `settings.section` 接入；
 - 与 `dsh-better-sidebar` 的右栏显式协调：组件栏读取官方右栏列（旧版 better-sidebar 的 `--dsh-sidebar-width` 保留为回退），页头胶囊注册在 `order: 5`，因此 bundle 重载不会让两个开关互换位置；卸载后无残留。
 
@@ -289,21 +289,17 @@ node scripts/validate-widget-unit.mjs [dir]   # 部件单元契约校验器（Wo
 
 每个版本的逐条记录——连同每条改动背后的实测数据——都在 **[`CHANGELOG.md`](CHANGELOG.md)**（[中文](CHANGELOG.zh-CN.md)）；每个版本同时以 [GitHub Release](https://github.com/Physicolor/dsh-widgets/releases) 发布，锚定到实际发布它的那个 commit。原始证据（CDP 探针、截图、JSON 回执、逐事件的修复记录）在 [`docs/`](docs/) 下。本 README 只保留当前版本的速览。
 
-### 最新版本 — v1.8.3
+### 本次更新 — v1.8.3
 
-**插件重新能在 DSH 0.2 上加载——桌面端构建也一样——右侧边栏在 0.2 改写的轨道语法下重新吞噬组件栏，DSH 自己的插件列表也终于看得见我们。** 兼容工作之下，是把注册表从 **40 个部件单元长到 55 个**（新增 17、退役 2，分三批落地）的内容版本，外加排版收口，以及两个直到全部上屏才被看见的问题。
+**适配 DSH 0.2，桌面端一并可用**——插件在 `0.1.x` 与 `0.2.x` 两条线上都能安装加载；0.2 改写布局轨道后，右侧边栏又能干净地吞噬组件栏；DSH 自己的插件列表里也终于有了我们的图标与简介。这些之下，是让组件库从 40 个单元长到 55 个的那一批新卡：
 
-- **DSH 0.2 能加载插件了（v1.8.2）。** DSH 0.1.7 在安装与启动两处都加了 peer 检查，而 `^0.1.0-rc.6` 无法接受 `0.2.0-rc.x`——0.x 的 minor 在 semver 里就是破坏性边界——于是 `next` 线上的所有人，**包括桌面端构建的所有用户（它随包发的是 `0.2.0-rc.x`）**，都被告知插件不兼容、从未加载成功。声明范围现在同时覆盖两条线，且是靠真机安装启动验过的，不是读发布说明得出的；
-- **右侧边栏在 0.2 的轨道语法下重新吞噬组件栏（v1.8.3）。** 0.2 把 AppFrame 的 inline 轨道从 `280px minmax(0px, 1fr) 720px` 改成 `280px minmax(0px, 1fr) minmax(0px, 864px)`，而组件栏读取「轨道正走向的宽度」的解析只认纯 `px` 末段——`predictRailBudget` 随之失效，让位退化成 240 ms + 520 ms 的防抖。在 1920×1080 实测，按一次右侧栏开关：改前网格单帧从 `1640px` 跳到 `776px`、一个 `transitionrun` 都没有；改后 11–13 个中间宽度逐帧插值、事件一个不少，组件栏右缘全程钉在 1920（`scripts/verify-swallow-20.cjs`，9 条断言）；
-- **DSH 自己的插件列表能看见我们了。** 插件列表里有了图标、多语言与一句中文简介；OpenCode 数据源现在只在真有组件渲染它时才去取；
+- **会话里更多东西上了屏**——目标进度、守卫（当前生效的权限档）、后台任务、子代理、磁盘与自检、窗口预测；
+- **机器与钱包也是**——网络吞吐、供电、进程内存、会话成本（用价格表给本会话计价，并在旁边印出价格来源）、待我处理（GitHub 待审队列）、服务（端口与代理出口看板）、套餐总览、轨迹占比、Token 柱状图、峰谷定价看板；
+- **卡片行为更规矩**——图表卡不再撑破格子、骨架屏改成卡片的精确尺寸、99% 的环不再读成 95%、额度行的格数按宽度推导而不是把纸片塞进一条槽；
+- **16 张卡改名成它们真正回答的问题**——用量 → 账期用量、窗口 → 用量环形图、额度 → 用量柱状图、限流预测 → 额度预测、系统监控 → 系统看板、首 token 平均 → 首 token 延迟，等等；
+- **官网与版本一起走**——全部组件、新名字，组件表由注册表生成，线上地址 [physicolor.github.io/dsh-widgets](https://physicolor.github.io/dsh-widgets/)。
 
-- **17 个新单元，合计 55 个。** 会话与机器批：**目标进度**（阶段、目标、轮次）、**守卫**（当前生效的权限档）、**任务**（后台作业）、**子代理**（已派发的子代理与可续跑数）、**磁盘**（剩余空间 + 会话日志体积与近一小时增量）、**窗口预测**（5h / 周窗口会不会在重置前触及限额）。设备批：**网络** / **供电** / **进程**（逐网卡速率、电池与电源方案、按工作集排序的进程）、**会话成本**（用价格表给本会话 token 计价，并在旁边印出价格来源）、**待我处理**（GitHub 待审队列，ETag 感知、仅登录态）。另有 **服务**（本地端口与出口连通看板——端口在听不等于出口通）与第三批的四个：**套餐总览**、**轨迹占比**、**Token 柱状图**、**峰谷定价看板**。它们背后是新 host 通道：`/api/host/overview`（把吞吐、供电、进程、服务与代理健康合并成一次 PowerShell）、待审切片（`notif=1`）与 usage-center 价格表读取通道。同时退役两个单元：宽版柱状图并入 `heatmap-bars`，model-config 删除；
-- **所有卡片头部共用同一套阶梯。** 环头现在**永远**画满三行——widget 没有的数字或灰字是**占位**，不是被丢掉——因为环是与阶梯自身高度居中的：实测（side 150）没有灰字的「套餐总览」标题/数字/环是 **15.7 / 35.3 / 13**，而有灰字的同一张卡是 **13 / 32.6 / 17.3**。`docs/probe-head-ladder.cjs` 用手写渲染输出挂载**真** `CardBody`（这是任何 widget 预览数据都到不了的状态），在两种卡片尺寸上钉住契约。同一轮还给头部加了裸 `headIcon` 角标、五档 value tone 与 20px 数字位；
-- **Command Code 的月限额回来了** —— 那个让「用量环形图」少一个环、「额度」少一行月限额、「额度预测」退化成 `-%` 且今日推荐 `—` 的缺陷。`/alpha/whoami`、`/alpha/usage/summary`、`/alpha/billing/subscriptions` 实测 **14–21 秒**，而 host 给四个切片共用 8 秒预算，于是每一次轮询它们都被丢掉。现在路由按切片规划（快的 `credits` 照旧 await，慢的三个按各自 TTL 在后台刷新）、刷新失败保留上一个好值、宿主启动时预热，客户端在任何降级回复后 5 秒补看一次（包括首次那份**本身就残缺**的载荷）。`docs/probe-cc-pool.mjs` 对真实上游复核了整个家族（92 条断言：池月 40.5%、单账号 78.7% / 2.1%、真实账号名）；
-- **图表卡不再撑破自己的格子，仪表也不再撒谎。** 图表卡固定为格子尺寸并让图表吃掉剩余高度（改前实测：Command Code 额度卡在 160px 槽位里盒出 172.8px）；骨架屏改成格子的精确尺寸（原比真卡高 13%）；99% 的环不再读成 95%（`cappedArcInk` 改为按**绘制长度**算墨量）；额度行的格数改为按宽度推导，而不是把 24 根纸片塞进一条 132px 的槽；图表渲染器改为创建真实元素——内联调用会把它的 hooks 挂到 `CardBody` 的 fiber 上，于是一次普通的「先无图、后有图」切换会渲染出比上一轮更多的 hooks，让 DSH 的 slot 边界清空整个抽屉（React #310）；
-- **16 个单元改名，改成它们真正回答的问题**（用量 → 账期用量、账户 → 账户身份、窗口 → 用量环形图、额度 → 用量柱状图、5h 窗口 → 5 小时窗口、限流预测 → 额度预测、系统监控 → 系统看板、速率 → 解码速率、首 token 平均 → 首 token 延迟、问题 → 未关闭 Issue、提交 → 最近提交……），额度行也统一成 5 小时限额 / 周限额 / 月限额；共享词典、生成的注册表与官网在同一轮里重新生成；
-- **官网随版本一起走。** 55 张卡、新名字，以及 hero kicker、终端标题、页脚与 JSON-LD 里的 `v1.8.1`——`node website/verify.mjs`（88 项检查）现在会把每一处手写版本号与 `package.json` 对齐、把文案里的每个数量与 manifest 列表对齐，因为发版前审计发现结构化数据里还写着 1.6.0；
-- **靠证据，不靠肉眼。** 离线卡片画廊（`node scripts/preview/gallery.mjs`）用真 `CardBody` + 真主题 token 渲染每个部件并逐格截图；G7 用纯桩离线跑完每条 host 路由（17 个案例）；`docs/probe-cc-slices.mjs` 用可控延迟的 fetch 桩证明切片流水线（13 条断言，`--live` 另打真实上游逐端点延迟）。
+以上每一条连同背后的实测数据，都写在 [CHANGELOG](CHANGELOG.zh-CN.md) 里。
 
 ## 路线图
 
