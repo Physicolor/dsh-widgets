@@ -4,19 +4,24 @@ The captured / generated images the README and the plugin market showcase use.
 
 | File | Origin | What it shows |
 | --- | --- | --- |
+| `cover.png` | generated | the poster on the README's first screen (English copy) — `docs/poster/index.html` via `node docs/poster/render.cjs` |
+| `cover.zh-CN.png` | generated | the same poster with the Chinese copy (`?lang=zh`), used by `README.zh-CN.md` |
+| `desktop-rail.png` | captured, desktop app | the rail in a 4-column grid with the hover wave engaged (shot by `scripts/demo/desktop-shots.cjs`; the poster embeds it as `docs/poster/rail-portrait.png`) |
+| `desktop-rail-rest.png` | captured, desktop app | the same rail at rest, 3 columns |
+| `desktop-market.png` | captured, desktop app | the market panel — install, resize and switch cards off |
+| `rail-demo.gif` | captured, frame-stepped | the magnification wave in motion (13 fps palette GIF, 480×784, 3.8 MB) |
+| `rail-demo.mp4` | captured, frame-stepped | the same clip at full resolution (948×1548, 25 fps, 1.5 MB) |
 | `rail-widgets.png` | captured | the right-hand rail with its widgets seated |
 | `dock-magnify.png` | captured | the macOS-Dock-style magnification wave |
 | `add-panel.png` | captured | the add-widget panel |
-| `rail-demo.gif` | captured, frame-stepped | the magnification wave in motion — the README's motion asset (13 fps palette GIF, 480×784, 3.8 MB) |
-| `rail-demo.mp4` | captured, frame-stepped | the same clip at full resolution (948×1548, 25 fps, 1.5 MB) |
 | `widget-cards.png` | generated | the first five widget cards, screenshotted from `widget-cards-preview.html` with headless Edge |
 | `widget-cards-preview.html` | generated | a standalone HTML page reproducing those five cards (re-shoot with `msedge --headless=new --screenshot=widget-cards.png --window-size=900,260 widget-cards-preview.html`) |
 
-The two `rail-demo.*` files come from `node scripts/demo/rail-demo.cjs` — **not** a screen
-recorder. The script steps the live page on CDP virtual time (one exact per-frame budget
-per screenshot), so the same input renders the same clip, and it crops to the rail alone
-so the owner's conversation never lands in a public asset. Re-run it after a visual change
-that deserves to be seen in motion.
+The `desktop-*` files come from `scripts/demo/desktop-shots.cjs` — captures of the running
+app with the type forced to HarmonyOS Sans SC at capture time (verified with CDP's platform
+font report), cropped so the owner's conversation is never in a public asset. The two
+`rail-demo.*` files come from `scripts/demo/rail-demo.cjs`, which steps the page on CDP
+virtual time (one exact per-frame budget per screenshot) instead of screen-recording it.
 
 ## Plugin market (dsh-market) PR — optional
 

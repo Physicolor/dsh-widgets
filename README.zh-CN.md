@@ -45,7 +45,7 @@ dsh plugin --profile <你的 profile 名> add dsh-widgets
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/cover.png" alt="DeepSeek-Harness Widgets 预览" width="100%">
+  <img src="docs/screenshots/cover.zh-CN.png" alt="DeepSeek-Harness Widgets 预览" width="100%">
 </p>
 
 <p align="center">
