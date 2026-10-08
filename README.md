@@ -60,6 +60,8 @@ DeepSeek-Harness Widgets puts a **widget rail** on the right side of the DeepSee
 
 **Why it is worth installing**: the numbers it shows are the ones you otherwise open another tab or another panel for — how much context is left, what this session has cost, how many days the quota has left, how hot the machine is. They belong beside the conversation: one glance, no interruption.
 
+**If it earns its place**: the plugin has no distribution channel beyond being found — a star on [Physicolor/dsh-widgets](https://github.com/Physicolor/dsh-widgets) is what moves it up the DSH plugin directories where other people are looking (GitHub search and recommendations both rank by stars). Arriving from a video? Saying which cards you installed in the comments tells me more about what to add than a star does; bug reports and card ideas live in [`issues`](https://github.com/Physicolor/dsh-widgets/issues).
+
 ## Website / Showcase
 
 A self-contained showcase site lives in [`website/`](website/) and is live at **https://physicolor.github.io/dsh-widgets/** — what dsh-widgets is, why it exists, all 55 real widgets, the **DSH Widget Design Grammar** (the real unit/spacing/magnification formulas from `src/client/index.ts`, with an interactive rail running the actual magnification + right-anchored reflow), **Widget Anatomy** (a real card at ×2 with every padding, gap and inset measured from the DOM), the **DSH Visual Audit** (13 declared rules scored over all 55 widgets from live `getBoundingClientRect` measurements — rule-based, not a model), the widget-unit architecture, the production workflow, and a requirement-form → widget-spec generator. Plain HTML/CSS/JS, no build step, all paths relative for the project Pages base path. `node website/verify.mjs` self-verifies (static + SEO + Edge-headless browser checks, 88 checks); the widget table, the static gallery markup and the JSON-LD `ItemList` are generated from the manifests by `node website/gen-site.mjs` (`--check` fails on drift); `node website/gen-og.mjs` regenerates the social card. Deploy: see `website/README.md`.
@@ -350,16 +352,6 @@ The widget system is now built for scale: each widget is an independent, contrac
 - **Widget marketplace**: open a third-party widget registration mechanism so community widgets can join like plugins — the unit + discovery architecture (v1.3.0) is the carrier; a future `widgets-market` bundle can drop units into `src/widgets/` the same way;
 - **More locales**: the dictionary layer now has zh/en for every key — adding `ja`/`ko` etc. is a pure dictionary extension;
 - **Cross-device sync** (optional): today each DSH service keeps its own `dsh-widgets-state.json` — a cloud/account sync layer could share one configuration across machines, but local-first independence is the deliberate default.
-
-## If this is useful
-
-The plugin has no distribution channel beyond being found: if it saves you a glance or two, a star on
-[Physicolor/dsh-widgets](https://github.com/Physicolor/dsh-widgets) is what moves it up the DSH plugin
-directories where other people are looking (GitHub search and recommendations both rank by stars).
-Bug reports and card ideas are just as welcome — [`issues`](https://github.com/Physicolor/dsh-widgets/issues) is open.
-
-Arriving from a video? Saying which cards you installed in the comments tells me more about what to
-add than a star does.
 
 ## License
 

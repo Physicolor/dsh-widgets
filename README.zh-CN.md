@@ -64,6 +64,8 @@ DeepSeek-Harness Widgets 会在 DeepSeek Harness 会话页的右侧放上一条*
 
 **为什么值得装**：那些数字本来要另开标签页或另开面板才看得到——上下文还剩多少、这个会话花了多少、额度还有几天到期、机器烫不烫。它们更适合安静地待在对话旁边，扫一眼就走，不打断你正在做的事。
 
+**如果它帮上了忙**：这个插件没有别的分发渠道，只有「被人看到」这一条——在 [Physicolor/dsh-widgets](https://github.com/Physicolor/dsh-widgets) 点一个 star，就是把它推到 DSH 各插件目录前列、让更多人看到的那一下（GitHub 的搜索与推荐都按 star 排序）。从视频过来的话，在弹幕或评论里说一句你装了哪几张卡，比 star 更能让我知道该往哪加；Bug 与组件想法在 [`issues`](https://github.com/Physicolor/dsh-widgets/issues) 里一直开着。
+
 ## 官网 / Showcase
 
 项目官网位于 [`website/`](website/)，线上地址 **https://physicolor.github.io/dsh-widgets/**，是一座**设计系统站点**：讲 dsh-widgets 是什么、为什么存在、全部 55 个真实组件，以及 **DSH Widget Design Grammar**（直接取自 `src/client/index.ts` 的真实单位/间距/放大公式，并带一条交互式组件栏跑插件自己的放大曲线与右对齐回流）、**Widget Anatomy**（一张真实卡片放大 ×2，每一处内边距、间距与内缩都从 DOM 实测标注）、**DSH Visual Audit**（13 条明示规则对全部 55 个组件按真实 `getBoundingClientRect` 测量打分——规则驱动，不是模型打分）、部件单元化架构、生产 Workflow，以及「需求表 → Widget Specification」生成器。站点为纯 HTML/CSS/JS，无构建步骤，所有路径都是相对路径（适配项目 Pages 的 base path）。`node website/verify.mjs` 自校验（静态 + SEO + Edge 无头浏览器检查，共 88 项）；组件表、静态画廊 markup 与 JSON-LD `ItemList` 由 `node website/gen-site.mjs` 从各 manifest 生成（`--check` 在漂移时报错）；`node website/gen-og.mjs` 重新生成社交分享图。部署方式见 `website/README.md`。
@@ -334,15 +336,6 @@ node scripts/validate-widget-unit.mjs [dir]   # 部件单元契约校验器（Wo
 - **部件市场**：开放第三方部件注册机制，让社区部件像插件一样入驻——单元 + 发现架构（v1.3.0）就是载体；未来的 `widgets-market` bundle 可以同样地把单元放进 `src/widgets/`；
 - **更多语言**：字典层每个 key 都已有 zh/en——加 `ja`/`ko` 等纯属字典扩展；
 - **跨设备同步**（可选）：今天每台 DSH 服务各存一份 `dsh-widgets-state.json`——云/账号同步层可以让多台机器共享一份配置，但「本地优先、设备独立」是刻意保留的默认行为。
-
-## 如果它有用
-
-这个插件没有别的分发渠道，只有「被人看到」这一条：如果它帮你省下了几次翻找，在
-[Physicolor/dsh-widgets](https://github.com/Physicolor/dsh-widgets) 点一个 star，就是把它
-推到 DSH 各插件目录前列、让更多人看到的那一下（GitHub 的搜索与推荐都按 star 排序）。
-Bug 与组件想法同样欢迎——[`issues`](https://github.com/Physicolor/dsh-widgets/issues) 一直开着。
-
-如果是从视频过来的，在弹幕或评论里说一句你装了哪几张卡，比 star 更能让我知道该往哪加。
 
 ## License
 
