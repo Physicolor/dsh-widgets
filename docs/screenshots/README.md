@@ -10,6 +10,7 @@ The captured / generated images the README and the plugin market showcase use.
 | `desktop-rail-rest.png` | captured, desktop app | the same rail at rest, 3 columns |
 | `desktop-market.png` | captured, desktop app | the market panel — install, resize and switch cards off |
 | `rail-demo.gif` | captured, frame-stepped | the magnification wave in motion (13 fps palette GIF, 480×784, 3.8 MB) |
+| `rail-demo-still.png` | captured, frame-stepped | the resting rail (frame 16 of the same clip, before the pointer starts gliding), the README's first-screen still — `ffmpeg -i rail-demo.mp4 -vf "select=eq(n\,16),scale=960:-1:flags=lanczos" -vframes 1 rail-demo-still.png` (192-colour palette PNG, 188 KB) |
 | `rail-demo.mp4` | captured, frame-stepped | the same clip at full resolution (948×1548, 25 fps, 1.5 MB) |
 | `rail-widgets.png` | captured | the right-hand rail with its widgets seated |
 | `dock-magnify.png` | captured | the macOS-Dock-style magnification wave |

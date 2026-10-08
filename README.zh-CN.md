@@ -8,40 +8,23 @@ description: "右侧实时组件栏：会话、机器、额度与成本，一眼
   <img src="docs/icon/icon.svg" alt="dsh-widgets" width="104" height="104">
 </p>
 
-<h1 align="center">DeepSeek-Harness Widgets</h1>
+<h1 align="center">DeepSeek-Harness Widgets · 组件栏</h1>
 
 <p align="center">
-  <strong>在 DeepSeek Harness 右侧，装一套可自定义的小组件系统。</strong><br>
-  想要的小组件自己装 · 网格排布 · 指针划过的放大波峰 · 一键整栏收起
+  <strong>对话右边那条空带，变成一格格实时卡片；想收起来，一键就收起。</strong>
 </p>
 
 <p align="center">
-  <sub>会话、机器、额度与成本——那些你总要另开标签页去看的数字，安静地待在对话旁边。</sub>
+  55 张卡：会话 · 上下文 · 后台任务 · 这台机器 · 额度与花费 · 峰谷定价<br>
+  每张独立安装、2×2 / 2×4 调尺寸、按实例调阈值、不看就关；指针划过有 macOS 坞站式放大波峰。
 </p>
 
-## 一条命令安装
-
-```sh
-dsh plugin --profile <你的 profile 名> add dsh-widgets
-# 然后重启 dsh web，并硬刷新浏览器（Ctrl+Shift+R）
-```
-
-支持 DeepSeek Harness `0.1.0-rc.6+`（0.1.x）与 `0.2.0-rc.1+`（0.2.x）。组件栏挂在会话头部的
-**组件** 图标后面；在 设置 → **组件** 里安装、排序与调整尺寸。
-
-## 你能得到什么
-
-- **实时会话**——轮次·步数、上下文水位与压缩、token 与缓存命中率、LLM 时长、首 token 延迟、工具调用、后台任务与子代理；
-- **钱与额度**——OpenCode Go 的滚动 / 周 / 月窗口；Command Code 的 5 小时 / 周 / 月限额，点一下即在整个 Key 池之间切换，外加余额、月末外推与今日推荐；
-- **这台机器**——CPU / GPU / 内存 / 磁盘 / 网络 / 供电，含迷你折线、环形图，以及本地服务与代理出口看板；
-- **你自己的视图**——每个组件都是独立单元：装它、选 2×2 或 2×4、改它的阈值，或者干脆关掉；其余由组件栏自行排布。
-
 <p align="center">
-  <img src="https://img.shields.io/npm/v/dsh-widgets?style=flat&label=latest%20release&color=4D6BFE" alt="Latest release">
-  <img src="https://img.shields.io/npm/dt/dsh-widgets?style=flat&label=total%20downloads&color=4D6BFE" alt="Total downloads">
+  <img src="https://img.shields.io/npm/v/dsh-widgets?style=flat&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=4D6BFE" alt="最新版本">
+  <img src="https://img.shields.io/npm/dt/dsh-widgets?style=flat&label=%E7%B4%AF%E8%AE%A1%E4%B8%8B%E8%BD%BD&color=4D6BFE" alt="累计下载">
   <a href="https://github.com/Physicolor/dsh-widgets/stargazers"><img src="https://img.shields.io/github/stars/Physicolor/dsh-widgets?style=flat&label=%E2%98%85&color=08C" alt="GitHub stars"></a>
   <img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License">
-  <img src="https://img.shields.io/badge/DSH%200.1.x%20%2F%200.2.x-4493F8?style=flat-square" alt="Supported: DeepSeek Harness 0.1.x and 0.2.x">
+  <img src="https://img.shields.io/badge/DSH%200.1.x%20%2F%200.2.x-4493F8?style=flat-square" alt="支持 DeepSeek Harness 0.1.x 与 0.2.x">
 </p>
 
 <p align="center">
@@ -49,15 +32,37 @@ dsh plugin --profile <你的 profile 名> add dsh-widgets
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/rail-demo.gif" alt="组件栏的波峰放大跟随指针" width="40%">
+  <img src="docs/screenshots/rail-demo-still.png" alt="组件栏静息时的网格（波峰放大动图见「波峰放大（动图）」）" width="40%">
   <img src="docs/screenshots/desktop-market.png" alt="组件市场与已安装列表" width="48%">
   <br>
-  <sub>指针划过的悬浮波峰 · 以及安装、调尺寸、关掉每一张卡的组件市场。</sub>
+  <sub>装好之后的样子（左边的静帧点开是动效：<a href="docs/screenshots/rail-demo.gif">rail-demo.gif</a>，3.8 MB）· 以及安装、调尺寸、关掉每一张卡的组件市场。</sub>
 </p>
+
+**安装（30 秒）**：把下面两行整段复制给你的 DSH agent，或者自己在终端跑：
+
+```sh
+# `web` 是 `dsh web` 的默认 profile 名；你自己的 profile 名 = $DSH_HOME/profiles/ 下的目录名
+dsh plugin --profile web add dsh-widgets
+# 装完重启 dsh web，浏览器硬刷新一次（Ctrl+Shift+R）
+```
+
+> 不会用命令也没关系——跟你的 DSH 说一句「**装上 dsh-widgets 插件，重启 web 之后告诉我**」就行；装完点会话头部的 **组件** 图标，栏就出来了。
+
+支持 DeepSeek Harness `0.1.0-rc.6+`（0.1.x）与 `0.2.0-rc.1+`（0.2.x）。组件栏挂在会话头部的
+**组件** 图标后面；在 设置 → **组件** 里安装、排序与调整尺寸。
+
+**你得到的**：55 张卡，装的、摆的、调的都随你——
+
+- **实时会话**——轮次·步数、上下文水位与压缩、token 与缓存命中率、LLM 时长、首 token 延迟、工具调用、后台任务与子代理；
+- **钱与额度**——OpenCode Go 的滚动 / 周 / 月窗口；Command Code 的 5 小时 / 周 / 月限额，点一下即在整个 Key 池之间切换，外加余额、月末外推与今日推荐；
+- **这台机器**——CPU / GPU / 内存 / 磁盘 / 网络 / 供电，含迷你折线、环形图，以及本地服务与代理出口看板；
+- **你自己的视图**——每张卡都是独立单元：装它、选 2×2 或 2×4、改它的阈值，或者干脆关掉；其余由组件栏自行排布。
 
 > **一句话：**装一个插件，对话右侧那条空带就变成一格格实时卡片——token 与缓存、上下文、后台任务、机器状态、额度与花费。每张卡都是独立单元，装、改尺寸、调阈值、关掉都随你；整条组件栏想收就收。
 
 DeepSeek-Harness Widgets 会在 DeepSeek Harness 会话页的右侧放上一条**组件栏**。每张卡都是独立单元：从内置市场里挑，放进 1–4 列的网格，选 2×2 或 2×4，按实例单独配置，不看的直接关掉。组件栏只占用正文旁边那条空带，一键即可整栏收起。
+
+**为什么值得装**：那些数字本来要另开标签页或另开面板才看得到——上下文还剩多少、这个会话花了多少、额度还有几天到期、机器烫不烫。它们更适合安静地待在对话旁边，扫一眼就走，不打断你正在做的事。
 
 ## 官网 / Showcase
 
@@ -154,6 +159,17 @@ macOS Dock 式悬浮放大，两种跟随模式（在 **设置 → 组件 → �
 **滚动终点**（2026-10-01）：滚轮停在一个「最下面的组件刚好完整显示」的挡位上，而不是「最后一行顶到栏顶」。因为整行挡位保证顶部完整、整卡规则保证底部完整之后，再往下滚只会把最后一行往上拉、在下面留出一整条空白；现在栏底与最后一个组件之间最多只有一个卡片间距，浏览器的滚动范围也同步收到这个终点，触控板惯性冲不过去。
 
 放大波峰是连续的：指针扫过时下面几行会被推开，被推出视口的那张卡仍会被视口裁掉——跟随裁剪意味着动画中卡片会不断闪现消失，所以静态判定（静息座位）是刻意的，波峰本身不受影响。放大层的**左侧余量在收回过程中同样保留**（`overhang` 现在跟随整个 morph，而不是只在「已激活」时计算）：否则指针离开的第一帧余量归零，而卡片还有约 25% 的放大没退回去，最左那张会被 `overflow: hidden` 切掉一条——就是那个「高亮消失时左侧被截断」的现象。
+
+### 波峰放大（动图）
+
+指针沿组件栏滑过时，卡片按欧氏距离连续放大、下面几行被推开，离开时原路退回——不是两张图交叉淡入。
+首屏那张静帧只是装好之后的静息状态；动效在这里：
+
+<p align="center">
+  <img src="docs/screenshots/rail-demo.gif" alt="指针划过组件栏时的连续放大波峰" width="320">
+  <br>
+  <sub>480×784 · 13 fps · 88 色 GIF（3.8 MB）；原速 mp4 见 <a href="docs/screenshots/rail-demo.mp4">rail-demo.mp4</a>。</sub>
+</p>
 
 ### 内置部件
 
@@ -321,10 +337,12 @@ node scripts/validate-widget-unit.mjs [dir]   # 部件单元契约校验器（Wo
 
 ## 如果它有用
 
-这个插件除了「被搜到」之外没有任何分发渠道：如果它帮你省下了几次翻找，那么在
+这个插件没有别的分发渠道，只有「被人看到」这一条：如果它帮你省下了几次翻找，在
 [Physicolor/dsh-widgets](https://github.com/Physicolor/dsh-widgets) 点一个 star，就是把它
-推到 DSH 各插件目录前列、让更多人看到的那一下。Bug 与组件想法同样欢迎——
-[`issues`](https://github.com/Physicolor/dsh-widgets/issues) 一直开着。
+推到 DSH 各插件目录前列、让更多人看到的那一下（GitHub 的搜索与推荐都按 star 排序）。
+Bug 与组件想法同样欢迎——[`issues`](https://github.com/Physicolor/dsh-widgets/issues) 一直开着。
+
+如果是从视频过来的，在弹幕或评论里说一句你装了哪几张卡，比 star 更能让我知道该往哪加。
 
 ## License
 

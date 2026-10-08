@@ -11,31 +11,10 @@ description: "A live widget rail on the right: session, machine, quota and cost 
 <h1 align="center">DeepSeek-Harness Widgets</h1>
 
 <p align="center">
-  <strong>A customizable widget system for the right side of DeepSeek Harness.</strong><br>
-  Install the cards you want · arrange them in a grid · a magnification wave under your pointer · hide the whole rail in one click
+  <strong>The blank strip beside the conversation, as a grid of live cards — and one click to put it away.</strong><br>
+  55 cards: session · context · background jobs · the machine · quota and spend · peak pricing<br>
+  Install each one, size it 2×2 or 2×4, tune it per instance, switch off what you do not watch; a macOS-Dock-style magnification wave follows the pointer.
 </p>
-
-<p align="center">
-  <sub>Session, machine, quota and cost — the numbers you keep opening other tabs for, sitting quietly beside the conversation.</sub>
-</p>
-
-## Install in one command
-
-```sh
-dsh plugin --profile <your-profile> add dsh-widgets
-# then restart dsh web and hard-refresh the browser (Ctrl+Shift+R)
-```
-
-Works on DeepSeek Harness `0.1.0-rc.6+` (0.1.x) and `0.2.0-rc.1+` (0.2.x). The rail lives
-behind the **Widgets** icon in the session header; Settings → **Widgets** installs,
-reorders and resizes the cards.
-
-## What you get
-
-- **The session, live** — turns · steps, context level and compaction, tokens and cache hit rate, LLM time, first-token latency, tool calls, background jobs and subagents;
-- **Money and quota** — OpenCode Go's rolling / weekly / monthly windows; Command Code's 5-hour / weekly / monthly limits with one tap to cycle the whole key pool, its credit balances, a month-end projection and today's budget;
-- **The machine** — CPU / GPU / memory / disk / network / power, with sparklines, rings and a local-service plus proxy-egress board;
-- **Your own view** — every card is an independent unit: install it, size it 2×2 or 2×4, tune its thresholds, or switch it off. The rail packs the rest.
 
 <p align="center">
   <img src="https://img.shields.io/npm/v/dsh-widgets?style=flat&label=latest%20release&color=4D6BFE" alt="Latest release">
@@ -50,15 +29,36 @@ reorders and resizes the cards.
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/rail-demo.gif" alt="the rail's magnification wave following the pointer" width="40%">
+  <img src="docs/screenshots/rail-demo-still.png" alt="the resting rail grid (motion GIF: see “The wave, in motion”)" width="40%">
   <img src="docs/screenshots/desktop-market.png" alt="the widget market and the installed-card list" width="48%">
   <br>
-  <sub>The hover wave, live · and the market where every card is installed, sized and switched off.</sub>
+  <sub>What it looks like once installed (click the left still for the motion: <a href="docs/screenshots/rail-demo.gif">rail-demo.gif</a>, 3.8 MB) · and the market where every card is installed, sized and switched off.</sub>
 </p>
+
+**Install (30 seconds)** — paste these two lines to your DSH agent, or run them yourself:
+
+```sh
+# `web` is the profile name `dsh web` boots; yours is the directory name under $DSH_HOME/profiles/
+dsh plugin --profile web add dsh-widgets
+# then restart dsh web and hard-refresh the browser (Ctrl+Shift+R)
+```
+
+> No shell needed either way — say “**install the dsh-widgets plugin, restart web, then tell me**” to your DSH. The rail lives behind the **Widgets** icon in the session header; Settings → **Widgets** installs, reorders and resizes the cards.
+
+Works on DeepSeek Harness `0.1.0-rc.6+` (0.1.x) and `0.2.0-rc.1+` (0.2.x).
+
+**What you get** — 55 cards, yours to install, place and tune:
+
+- **The session, live** — turns · steps, context level and compaction, tokens and cache hit rate, LLM time, first-token latency, tool calls, background jobs and subagents;
+- **Money and quota** — OpenCode Go's rolling / weekly / monthly windows; Command Code's 5-hour / weekly / monthly limits with one tap to cycle the whole key pool, its credit balances, a month-end projection and today's budget;
+- **The machine** — CPU / GPU / memory / disk / network / power, with sparklines, rings and a local-service plus proxy-egress board;
+- **Your own view** — every card is an independent unit: install it, size it 2×2 or 2×4, tune its thresholds, or switch it off. The rail packs the rest.
 
 > **TL;DR:** add one plugin, and the empty strip on the right of the conversation becomes a grid of live cards — tokens and cache, context, background jobs, your machine, your quota, your spend. Every card is an independent unit you can install, resize, tune or switch off; the whole rail disappears whenever you want the room back.
 
 DeepSeek-Harness Widgets puts a **widget rail** on the right side of the DeepSeek Harness conversation page. Cards are independent units: pick them from the built-in market, place them in a 1–4 column grid, size a card 2×2 or 2×4, configure each instance on its own, and switch off anything you do not watch. The rail only ever claims the empty strip beside the transcript, and the whole thing is one click away from gone.
+
+**Why it is worth installing**: the numbers it shows are the ones you otherwise open another tab or another panel for — how much context is left, what this session has cost, how many days the quota has left, how hot the machine is. They belong beside the conversation: one glance, no interruption.
 
 ## Website / Showcase
 
@@ -164,6 +164,18 @@ The bottom **Settings** gear obeys the same rule (a half tile is not drawn), and
 **Where the scroll ends** (2026-10-01): the wheel stops at the smallest detent that shows the deepest component whole, instead of pulling the last row up to the top. With the row detents keeping the top whole and this rule keeping the bottom whole, scrolling further would only lift the last row and leave a viewport of blank band under it; the pane now ends within one card gap of the last component, and the browser's own scroll range is trimmed to the same stop so trackpad inertia cannot overshoot it.
 
 The magnify wave is continuous: hovering pushes the rows below it down, and the card pushed past the viewport edge is still clipped — following that would pop cards in and out mid-animation, so the whole-card test is deliberately static (the resting seat) and the wave itself is untouched. The overlay's **left overhang is kept for the whole morph**, not just while the wave is engaged: on the frame the pointer leaves, the overhang used to collapse to 0 while the cards were still ~25% enlarged, and `overflow: hidden` sliced a strip off the leftmost one — the reported "left-edge truncation when the highlight goes away".
+
+### The wave, in motion
+
+As the pointer travels along the rail every card scales by its own Euclidean distance to it and the
+rows below are pushed aside; leaving runs the same curve backwards — never one deck cross-fading into
+another. The still on the first screen is only the resting rail; the motion is here:
+
+<p align="center">
+  <img src="docs/screenshots/rail-demo.gif" alt="the continuous magnification wave under a pointer travelling down the rail" width="320">
+  <br>
+  <sub>480×784 · 13 fps · 88-colour GIF (3.8 MB); the same clip at full speed is <a href="docs/screenshots/rail-demo.mp4">rail-demo.mp4</a>.</sub>
+</p>
 
 ### Built-in Widgets
 
@@ -341,10 +353,13 @@ The widget system is now built for scale: each widget is an independent, contrac
 
 ## If this is useful
 
-The plugin has no distribution channel beyond being found: if it saves you a glance or two,
-a star on [Physicolor/dsh-widgets](https://github.com/Physicolor/dsh-widgets) is what moves
-it up the DSH plugin directories where other people are looking. Bug reports and card ideas
-are just as welcome — [`issues`](https://github.com/Physicolor/dsh-widgets/issues) is open.
+The plugin has no distribution channel beyond being found: if it saves you a glance or two, a star on
+[Physicolor/dsh-widgets](https://github.com/Physicolor/dsh-widgets) is what moves it up the DSH plugin
+directories where other people are looking (GitHub search and recommendations both rank by stars).
+Bug reports and card ideas are just as welcome — [`issues`](https://github.com/Physicolor/dsh-widgets/issues) is open.
+
+Arriving from a video? Saying which cards you installed in the comments tells me more about what to
+add than a star does.
 
 ## License
 
