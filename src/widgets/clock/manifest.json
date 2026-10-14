@@ -1,0 +1,53 @@
+{
+  "id": "clock",
+  "order": 31,
+  "group": "clock",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "group.clock": "时钟",
+      "widget.clock.name": "时钟",
+      "widget.clock.desc": "指针或数字时钟，可选出时区（本地 / 北京 / 东京 / 伦敦 / 纽约 / UTC）与秒针；秒针每秒走一格",
+      "card.clock.face": "表盘样式",
+      "card.clock.faceAnalog": "指针表盘",
+      "card.clock.faceDigital": "数字显示",
+      "card.clock.timeZone": "时区",
+      "card.clock.showLabel": "显示时区标签",
+      "card.clock.seconds": "显示秒针",
+      "card.clock.h24": "24 小时制",
+      "card.clock.am": "上午",
+      "card.clock.pm": "下午",
+      "card.clock.md": "{m}月{d}日",
+      "card.clock.weekday.0": "周日",
+      "card.clock.weekday.1": "周一",
+      "card.clock.weekday.2": "周二",
+      "card.clock.weekday.3": "周三",
+      "card.clock.weekday.4": "周四",
+      "card.clock.weekday.5": "周五",
+      "card.clock.weekday.6": "周六"
+    },
+    "en": {
+      "group.clock": "Clock",
+      "widget.clock.name": "Clock",
+      "widget.clock.desc": "An analog or digital clock with a selectable zone (Local / Beijing / Tokyo / London / New York / UTC) and a ticking second hand",
+      "card.clock.face": "Dial",
+      "card.clock.faceAnalog": "Analog",
+      "card.clock.faceDigital": "Digital",
+      "card.clock.timeZone": "Time zone",
+      "card.clock.showLabel": "Show the zone caption",
+      "card.clock.seconds": "Show seconds",
+      "card.clock.h24": "24-hour clock",
+      "card.clock.am": "AM",
+      "card.clock.pm": "PM",
+      "card.clock.md": "{m}/{d}",
+      "card.clock.weekday.0": "Sun",
+      "card.clock.weekday.1": "Mon",
+      "card.clock.weekday.2": "Tue",
+      "card.clock.weekday.3": "Wed",
+      "card.clock.weekday.4": "Thu",
+      "card.clock.weekday.5": "Fri",
+      "card.clock.weekday.6": "Sat"
+    }
+  }
+}

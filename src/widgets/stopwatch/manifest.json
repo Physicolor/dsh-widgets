@@ -1,0 +1,37 @@
+{
+  "id": "stopwatch",
+  "order": 34,
+  "group": "time",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "locale": {
+    "zh": {
+      "group.time": "时间",
+      "widget.stopwatch.name": "秒表",
+      "widget.stopwatch.desc": "可交互正计时秒表：开始 / 暂停 / 继续 / 复位，读数每秒自己走，状态存在实例配置里（刷新、换浏览器都不丢）",
+      "widget.stopwatch.simToggle": "切换 未开始 / 计时中 / 已暂停 预览",
+      "card.stopwatch.title": "秒表",
+      "card.stopwatch.ready": "未开始",
+      "card.stopwatch.running": "计时中",
+      "card.stopwatch.paused": "已暂停 · 已计 {t}",
+      "card.stopwatch.start": "开始",
+      "card.stopwatch.resume": "继续",
+      "card.stopwatch.pause": "暂停",
+      "card.stopwatch.reset": "复位"
+    },
+    "en": {
+      "group.time": "Time",
+      "widget.stopwatch.name": "Stopwatch",
+      "widget.stopwatch.desc": "An interactive stopwatch: start / pause / resume / reset, counted up by the card itself every second, with the state kept in the instance config so it survives a refresh and another browser",
+      "widget.stopwatch.simToggle": "Cycle not-started / running / paused",
+      "card.stopwatch.title": "Stopwatch",
+      "card.stopwatch.ready": "Not started",
+      "card.stopwatch.running": "Running",
+      "card.stopwatch.paused": "Paused · {t}",
+      "card.stopwatch.start": "Start",
+      "card.stopwatch.resume": "Resume",
+      "card.stopwatch.pause": "Pause",
+      "card.stopwatch.reset": "Reset"
+    }
+  }
+}

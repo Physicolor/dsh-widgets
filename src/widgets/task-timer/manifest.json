@@ -1,0 +1,41 @@
+{
+  "id": "task-timer",
+  "order": 33,
+  "group": "time",
+  "builtin": true,
+  "sizes": ["2x2", "2x4"],
+  "locale": {
+    "zh": {
+      "group.time": "时间",
+      "widget.task-timer.name": "任务计时",
+      "widget.task-timer.desc": "本回合已运行多久，以及它此刻在等什么（工具调用 / 模型步）：数字来自本会话既有投影，回合运行中每秒推进，无 open turn 时显示「空闲」",
+      "card.task-timer.title": "任务计时",
+      "card.task-timer.idle": "空闲",
+      "card.task-timer.running": "计时中",
+      "card.task-timer.labelTurn": "本回合",
+      "card.task-timer.labelTool": "当前工具",
+      "card.task-timer.labelModel": "模型",
+      "card.task-timer.labelTools": "工具",
+      "card.task-timer.labelCalls": "本会话轮次",
+      "card.task-timer.labelSteps": "本会话步数",
+      "card.task-timer.toolCount": "{n} 个并行",
+      "card.task-timer.simToggle": "切换预览状态"
+    },
+    "en": {
+      "group.time": "Time",
+      "widget.task-timer.name": "Task Timer",
+      "widget.task-timer.desc": "How long this turn has run, and what it is waiting on right now (a tool call or a model step); both come from projections the session already has, advancing every second while a turn runs",
+      "card.task-timer.title": "Task Timer",
+      "card.task-timer.idle": "Idle",
+      "card.task-timer.running": "Running",
+      "card.task-timer.labelTurn": "This turn",
+      "card.task-timer.labelTool": "Running tool",
+      "card.task-timer.labelModel": "Model",
+      "card.task-timer.labelTools": "Tools",
+      "card.task-timer.labelCalls": "Session turns",
+      "card.task-timer.labelSteps": "Session steps",
+      "card.task-timer.toolCount": "{n} in parallel",
+      "card.task-timer.simToggle": "Cycle preview state"
+    }
+  }
+}

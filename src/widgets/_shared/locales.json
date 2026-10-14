@@ -8,6 +8,7 @@
     "usage.week": "周",
     "usage.month": "月",
     "group.commandcode": "Command Code",
+    "group.deepseek": "DeepSeek 官方",
     "cc.notConfigured": "未配置 COMMANDCODE_API_KEY（host 自动读取环境变量 / 凭据，无需手动填写）",
     "cc.unconfigured": "未配置 COMMANDCODE_API_KEY — host 自动读取环境变量 / $DSH_HOME/.credentials.yaml / .env，重启后自动生效",
     "cc.unloaded": "dsh web 未重启，等待 host 路由加载（重启后自动刷新）",
@@ -77,7 +78,13 @@
     "github.contrib.title": "提交热度图",
     "github.board.title": "仓库脉搏",
     "github.contrib.windowYear": "近一年",
-    "github.contrib.windowQuarter": "近 3 个月"
+    "github.contrib.windowQuarter": "近 3 个月",
+    "tz.local": "本地",
+    "tz.beijing": "北京",
+    "tz.tokyo": "东京",
+    "tz.london": "伦敦",
+    "tz.newyork": "纽约",
+    "tz.utc": "UTC"
   },
   "en": {
     "usage.title": "OpenCode Usage",
@@ -88,6 +95,7 @@
     "usage.week": "Week",
     "usage.month": "Month",
     "group.commandcode": "Command Code",
+    "group.deepseek": "DeepSeek Official",
     "cc.notConfigured": "COMMANDCODE_API_KEY not configured (host auto-reads env / credentials, no manual entry)",
     "cc.unconfigured": "COMMANDCODE_API_KEY not configured — the host auto-reads env / $DSH_HOME/.credentials.yaml / .env; effective after a restart",
     "cc.unloaded": "dsh web not restarted — waiting for the host route (auto-refresh after restart)",
@@ -157,6 +165,12 @@
     "github.contrib.title": "Contributions",
     "github.board.title": "Repo pulse",
     "github.contrib.windowYear": "last year",
-    "github.contrib.windowQuarter": "last 3 months"
+    "github.contrib.windowQuarter": "last 3 months",
+    "tz.local": "Local",
+    "tz.beijing": "Beijing",
+    "tz.tokyo": "Tokyo",
+    "tz.london": "London",
+    "tz.newyork": "New York",
+    "tz.utc": "UTC"
   }
 }
