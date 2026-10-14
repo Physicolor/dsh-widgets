@@ -91,6 +91,12 @@ function stubFetch(url) {
     return json({ full_name: 'acme/widgets', stargazers_count: 12, forks_count: 3, pushed_at: '2026-01-06T00:00:00Z' })
   }
   if (u.startsWith('https://api.github.com/search/issues')) return json({ total_count: 2 })
+  if (u === 'https://api.deepseek.com/user/balance') {
+    return json({
+      is_available: true,
+      balance_infos: [{ currency: 'CNY', total_balance: '110.00', granted_balance: '10.00', topped_up_balance: '100.00' }],
+    })
+  }
   return { ok: false, status: 404, text: async () => '{"error":"unmocked"}', json: async () => ({ error: 'unmocked' }) }
 }
 
@@ -153,6 +159,9 @@ const CASES = [
   ['/api/github (empty request)', { method: 'GET', url: '/api/github' }],
   ['/api/github?user=acme&repos=acme/widgets', { method: 'GET', url: '/api/github?user=acme&repos=acme/widgets' }],
   ['/api/github?user=acme&notif=1', { method: 'GET', url: '/api/github?user=acme&notif=1' }],
+  // DeepSeek balance: the official account read PLUS the day's observed spend the
+  // host derives by sampling it (the ledger lands in the throwaway DSH_HOME).
+  ['/api/deepseek-balance', { method: 'GET', url: '/api/deepseek-balance' }],
   ['/api/widgets-state GET (fresh dir)', { method: 'GET', url: '/api/widgets-state' }],
   ['/api/widgets-state PUT', putBody({ savedAt: 1, state: { railOpen: true, order: ['sys-cpu@1x1'] } })],
   ['/api/widgets-state GET (after PUT)', { method: 'GET', url: '/api/widgets-state' }],

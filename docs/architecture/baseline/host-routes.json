@@ -210,6 +210,20 @@
    "repos": []
   }
  },
+ "/api/deepseek-balance": {
+  "status": 200,
+  "shape": {
+   "available": true,
+   "currency": "s",
+   "day": "s",
+   "granted": 0,
+   "hasBalance": true,
+   "sampledAt": 0,
+   "spentToday": 0,
+   "toppedUp": 0,
+   "total": 0
+  }
+ },
  "/api/widgets-state GET (fresh dir)": {
   "status": 200,
   "shape": {
