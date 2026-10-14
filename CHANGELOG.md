@@ -13,6 +13,83 @@ Where each kind of detail lives:
 
 Every entry is written in the language of the file it lives in: English here, Chinese in `CHANGELOG.zh-CN.md`. A term that names a piece of the UI is quoted the way the UI itself says it in that language.
 
+## v1.8.5 — five more cards on the clock, a data-source contract, and a rail that reads its co-tenant
+
+> The biggest content drop since the card library was opened: **six new units** — a clock, a calendar tied to DSH's own schedule service, a task timer, a stopwatch, a countdown and the DeepSeek official balance card — take the registry from 55 to **61**, and the data behind every card moved onto a declared contract (a unit names its sources in `manifest.json`; one generic poller answers for all of them). Underneath sit four defects the owner hit in the same fortnight: **the hover oracle was a whole row off on a rail a co-tenant had pushed down** (25 of 45 checks failed), **the session-header anchor froze whenever the shell swapped its node**, **the whole-card rule and the wheel cap were laid out blind** because `paneH` had never been measured at all, and **nvidia-smi's MiB were passed through as bytes**. Two build-facing additions come with them: an **offline gate suite** (`node scripts/gates.mjs`, G1–G12) wired into a new CI workflow, and the **card title** / **body-posture** standards the two review incidents below produced. Published as a **patch** at the owner's call, as v1.8.1 was: the content is feature-grade, the version number is not the point.
+
+### Added — the time family: clock, calendar, task timer, stopwatch, countdown
+
+- **Five units at orders 31–35**, each built through the production workflow and archived per unit in `docs/workflow/records/2026-10-14-*.json` (all four records sit at `INTEGRATION`, with 2–4 REWORK rounds apiece):
+  - `clock` (2×2) — analog or digital dial, six zones, a second hand that actually ticks;
+  - `calendar` (2×2 / 2×4) — this month, today badged, weekends or statutory holidays tinted, and **days carrying a DSH scheduled task dotted**; the 2×4 lists the upcoming ones. It declares `reads: ["schedule"]` and falls back to a plain month grid on a deployment without the schedule subsystem;
+  - `task-timer` (2×2 / 2×4) — how long this turn has run and what it is waiting on right now (a tool call or a model step), read from projections the session already has, advancing every second while a turn is open;
+  - `stopwatch` (2×2) — start / pause / resume / reset, the reading advancing by itself, the state stored in the instance config so a reload or another browser keeps it;
+  - `countdown` (2×2) — duration capsules (1 / 3 / 5 / 10 minutes, one of them customisable) **or** the next DSH scheduled task.
+- **The REWORK rounds are the interesting half** (they are what the two standards below were written from): the countdown shipped first without `reads: ["schedule"]` and with a dead `done` field; the calendar drew its agenda in the wrong direction and truncated its `when` column until the column was given 64px; the stopwatch's first face was rebuilt as `HH:MM:SS.cc` with circular controls; and the task timer called the tool counter “calls” until it was renamed `tools`, with the 2×2's sub-line moved onto the parallel-call count.
+- **Shared machinery, not five copies**: `src/client/lib/clock-face.ts` + `timer-state.ts`, the rich renderers `src/client/render/rich/{clock-face,month-grid,timer-face}.tsx`, one `CardBody` rich block and the rail's timer dispatch. Adding the five needed nothing outside those files plus the five unit directories.
+- **What the units found upstream** is written down instead of worked around (`docs/research/TIME-CARDS-INTEGRATION.md`, against 0.2.0-rc.2): `schedule.create` has no `@Remote` face, so a card cannot create a reminder (it can list / catalog / history / update / delete); `todos` carry no id and no date and are cleared on `turn/start`; `jobsBySession` does not exist — the real API is `ctx.jobs` — so the jobs card's per-session figure is **always null** in this deployment; and the renderer's own tick is the only place a “moving” reading can live.
+
+### Added — DeepSeek balance, and the host route it reads
+
+- **`deepseek-balance`** (2×2, order 68, group `deepseek`, `source: deepseek`) shows the official account balance with the ledger-derived day's spend beside it.
+- It is the first unit to need a **host route of its own**: `src/host/deepseek.ts` publishes `/api/deepseek-balance` (ten fields — `available` / `currency` / `day` / `granted` / `hasBalance` / `sampledAt` / `spentToday` / `toppedUp` / `total`), and the route table, the client contract and the bridge snapshot (`bridge.deepseekBalance` plus its error sibling) were extended with it.
+- The derived day is folded **offline, against the built bundle**: `scripts/verify-deepseek-balance.mjs` runs 17 assertions over the ledger fold and every error code the route can answer with (gate **G12**).
+
+### Added — the v1.11 data-source contract, and one poller for all of them
+
+- A unit no longer reaches for data; it **declares** it (`reads: ["schedule"]`, `source: "deepseek"`, a skeleton) and the client answers. `src/client/data/sources.ts` + `source-contract.ts` + `source-poller.tsx` implement that, the six families moved their fetch/parse halves into `src/client/families/<family>/adapter.ts`, and `scripts/gen-registry.mjs` now fails the build when a declaration drifts from the unit (`node scripts/verify-source-contract.mjs --prove`, gate **G9**).
+- **G11** (`scripts/verify-source-resolution.mjs`) answers the next question down — for a given install, *which* sources are polled, *which* instances feed them and at what cadence — as pure rules, executed.
+- Deliberately no new host routes here: the families keep the endpoints they already had, so this is a client-side re-plumbing and `docs/architecture/baseline/host-routes.json` is unchanged for it.
+
+### Fixed — the hover oracle and the wave read the co-tenant's push (2026-10-08)
+
+- **`dsh-pinned-summary` seats its band above the deck by writing `padding-top` on the rail** (an `!important` inline longhand — measured on the owner's GUI: `135px = 4 + 131`). The rail's `clientHeight` does not change, so the deck simply starts 131px lower inside it — and **both halves of the pointer→deck mapping subtracted the constant 4px**: every pointer position resolved exactly one row away (pitch 140), so the wave armed on the tile *below* the pointer (hovered #0 → focused #3, #1 → #4) and wherever the shifted point landed in a gap it released a hover that had just engaged — the owner's 「组件区域偶发：鼠标悬浮后组件进入悬浮态又立刻停止」.
+- The inset is now **measured off the rail** (`readTopInset`; `padding-top` is read in the same forced-layout frame the oracle already pays for) and the oracle, the peak and the whole-card test all read it. `scripts/verify-rail-interaction.cjs`: **45 checks, 25 FAIL → 45/45 PASS**.
+- The whole-card band and the wheel cap were **deliberately left on the authored 4px in that round** — correcting them alone hid the deck's last card for good, because the cap was built on the same constant and concluded “no scrolling needed”. That debt is paid below.
+
+### Fixed — the session-header anchor stopped freezing (2026-10-09)
+
+- The rail's top anchor (`--dsx-rail-top`) is re-probed by a `ResizeObserver` on the session header — except the slot it observed is **`display: contents`, so its box height is always 0 and the observer never fired**. The anchor kept a stale value and the deck's first row sat ~20px under the header. It now observes the real `[class$="_header"]` element (measured 50px) and re-binds when the shell swaps the node. `scripts/verify-rail-hover-alignment.cjs`: **47 checks, all PASS** — first row 50 against header bottom 50, across the plugin boundary. Not reproduced: a session header that *grows*, recorded as a limitation of that probe.
+
+### Fixed — the whole-card band and the wheel cap follow the same measured inset (2026-10-14)
+
+- On a pushed rail the band's floor sat a whole **push** below the rail's real one, so a card sliced by the bottom edge — up to a row's worth of it — was judged whole and painted half off screen (the owner's screenshot, bottom row). `topInset` now feeds `bandOf` / `syncWholeCards` / `overlayBand` **and** the cap (`lastRow = ⌈(contentBottom + inset − RAIL_ROW_SEAT − paneH) / pitch⌉`), so paint, hit test and reachability agree by construction: a card the band hides is exactly one the wheel can still scroll to. With no co-tenant the inset is the authored 4px, so the unpushed geometry is unchanged.
+- **The push is tweened** (~260ms of per-frame inline writes) and moves the deck without changing any size the existing observers can see, so the rail's `style` attribute is watched instead (rAF-coalesced, `Object.is` bail-out when the value did not move). The generic hook was chosen over one co-tenant's private variable name.
+- **The deeper defect behind it: `paneH` had never been measured.** The `ResizeObserver` was attached in a one-shot `setTimeout(…, 0)` that read a null ref and then **gave up for good**; read off the fiber tree on the owner's GUI, with a 956px-tall rail on screen, RailWave's props were `{ paneH: 0, topInset: 4 }` — the whole-card test was skipped (`paneH <= 0`), the scroll cap was 0 and the wheel could not move the deck at all. The element is now resolved self-healingly (query, then write the element back into the shared ref, exactly as RailWave's own `railElement()` already did) and a body-level `childList` observer re-attaches when the drawer arrives a commit late or is re-created.
+- Verified live (`scripts/verify-whole-cards-co-tenant.cjs`, **9/9**, headful against the owner's GUI with `dsh-pinned-summary` actually docked): the real push measured **79px**, and the authored-4 band had been painting one card **19px past the rail's floor**; with the fix every card is hidden exactly while it sticks out; after wheeling to the stop, `scrollTop 152` puts the deepest component whole inside the pane (`bottom 823 ≤ 956`) and further notches move nothing; and a synthetic 131px push reproduces the same three properties on demand.
+
+### Changed — the 设置 tile opens the product's own settings window
+
+- The bottom gear used to open the plugin's own floating panel. It now opens **Settings → Widgets** — the app's one place to install, order and size cards — by performing the two clicks a user would: the sidebar-foot Settings trigger, then our own nav row, located through the same `[class$="_settingsArea"]` / `[class$="_navList"]` / `data-dsx-nav` conventions `settings-nav-glyph.ts` already relies on, waiting for the row when the window has to open first.
+- The plugin's panel (Config / Market / Settings tabs, drag-resizable) is **kept in the code as a local spare**, re-armed only by `localStorage['dsx-addpanel-local'] = '1'`; it is no longer on the shipped path. The live probe asserts both directions: the click opens the official window on our section and *not* the panel, and with the flag set the panel still opens.
+- The same probe had to insist the rail be **open** for those checks to mean anything: a retired drawer hands React back the same element object by design, which freezes its whole subtree — so the probe asserts `data-retired` / `aria-pressed` before it measures.
+
+### Changed — the two card standards the new units were reviewed against
+
+- **`docs/design/CARD-BODY-POSTURE.md`** (new): a 2×4 whose body is a single line must sit on the **floor**. `task-timer@2x4` was drawn head-aligned and left a **51.6px** empty band (threshold `36 × scale`) — it passed every gate and one review, which is exactly why the requirement is now a machine assertion (`POSTURE` / `INNER-FIT` / `PHASE3` in `scripts/probe-geometry.cjs`). After the change the largest gap across the 24 shipped 2×4 cards is **26px** (`sys-disk@2x4`), and the stopwatch's fit — which overflowed by **3.6–11.7px** at 150 / 190 / 285 — is computed from the content width (`width − 2·pad − 2·inset`) and green at all three tiers.
+- **`docs/design/CARD-TITLE-STANDARD.md`** (new): a card may drop its title only when **C1** (the body says what it is) and **C2** (the body fills the card) hold together — `clock`, `calendar` and `quote` qualify. The clock's dial grew **96 → 120px** so that `2·pad + box ≤ unit` (12 + 120 + 12 = 144 ≤ 150) still holds with the title gone, and the visual audit now scores **58 units**.
+- `docs/workflow/03-specification.md` gained both fields as **required** spec inputs (`referenceCard`, `bodyPosture`), with the incident recorded as the reason: a missing one is a REWORK, not a judgement call.
+
+### Added — the offline gate suite, and CI that runs it
+
+- `scripts/gates.mjs`: **G1** registry · **G2** units · **G3** types (against a recorded baseline) · **G4** render (byte-identical snapshots, zh + en) · **G5** css (the compiled stylesheet against the baseline — needs a build first) · **G7** published types · **G8** host routes · **G9** source contract (`--prove`) · **G10** external-unit review · **G11** source resolution · **G12** balance fold. Exposed as `pnpm test` / `pnpm test:list`.
+- **`.github/workflows/ci.yml`** runs `pnpm run build` and then `pnpm test` on every push to `main` and every pull request, mirroring the local procedure exactly (G5 reads the compiled bundle), so “green here” and “green locally” mean the same thing. Until this release the only workflows were `pages` and `publish`, i.e. a pull request could merge with a stale registry, a drifted render or a new type error.
+- Baselines refreshed with it — `docs/architecture/baseline/*.json` — and the card gallery re-shot (`docs/preview/cards/*.png`).
+
+### Fixed — nvidia-smi's MiB are not bytes
+
+- `src/host/sysinfo.ts` passed the driver's memory figures straight through, so the GPU card's “5.9 GB” was 5.9 MiB of the unit nvidia-smi actually reports. Converted at the boundary.
+
+### Changed — the 0.2 line installs without an exemption
+
+- `peerDependencies` widened to `^0.1.0-rc.6 || ^0.2.0-rc.1` for both `@deepseek-ai/dsh-client-ui-primitives` and `…-ui-slots`, so the 0.2 release candidates load without a `compatibility.json` exemption in the profile (the v1.8.1 note that asked for this is closed).
+
+### Verified — what ran, and what is not claimed
+
+- `node scripts/gates.mjs`: **11/11 green** (G1–G12, no G6) on the release commit. `node website/verify.mjs`: **88/88**, including the release-copy assertions — every version string the site shows against `package.json`, every prose count against the unit directories, and the site's own unit count derived from `src/widgets/` rather than hard-coded.
+- `scripts/probe-geometry.cjs`: **11/11**, now carrying the posture and inner-fit assertions above; the four 2026-10-14 units were each re-verified at `gates 11/11 + probe-geometry 11/11` plus a live pass by their own production records.
+- **Not claimed:** the calendar's and the countdown's schedule-bound reading is only as live as DSH's `schedule` service (see the upstream gaps above); the postures standard covers the 2×4 single-line case that produced it, not every layout; and the site's own `verify.mjs` needs a Chrome/Edge install plus a browser launch, so it stays a release-time and CI check rather than part of `pnpm test`.
+
 ## v1.8.4 — the swallow survives a reload, and the fold stops re-laying out the page
 
 > A fix-led patch for the three complaints that survived v1.8.3: **the swallow quietly stopped working after the shell rebuilt its frame**; **the fold animation synchronously forced layout on every frame**; and **the widgets visibly shrank and grew back while the right sidebar opened and closed**. The first two were invisible — the animation curve was right and the frame rate did not drop — and could only be seen in the event log and the DevTools trace; the third was visible but not attributable. A fourth class was folded in afterwards: **switching workspace conversations while the component area was not active painted the whole area onto the conversation**. Eighteen changes, all inside the plugin — the shell was not touched.

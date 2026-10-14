@@ -15,7 +15,7 @@ description: "右侧实时组件栏：会话、机器、额度与成本，一眼
 </p>
 
 <p align="center">
-  55 张卡：会话 · 上下文 · 后台任务 · 这台机器 · 额度与花费 · 峰谷定价<br>
+  61 张卡：会话 · 上下文 · 后台任务 · 这台机器 · 额度与花费 · 峰谷定价<br>
   每张独立安装、2×2 / 2×4 调尺寸、按实例调阈值、不看就关；指针划过有 macOS 坞站式放大波峰。
 </p>
 
@@ -51,10 +51,11 @@ dsh plugin --profile web add dsh-widgets
 支持 DeepSeek Harness `0.1.0-rc.6+`（0.1.x）与 `0.2.0-rc.1+`（0.2.x）。组件栏挂在会话头部的
 **组件** 图标后面；在 设置 → **组件** 里安装、排序与调整尺寸。
 
-**你得到的**：55 张卡，装的、摆的、调的都随你——
+**你得到的**：61 张卡，装的、摆的、调的都随你——
 
 - **实时会话**——轮次·步数、上下文水位与压缩、token 与缓存命中率、LLM 时长、首 token 延迟、工具调用、后台任务与子代理；
 - **钱与额度**——OpenCode Go 的滚动 / 周 / 月窗口；Command Code 的 5 小时 / 周 / 月限额，点一下即在整个 Key 池之间切换，外加余额、月末外推与今日推荐；
+- **时间，以及官方钱包**——时钟（指针或数字、六个时区）、日历（有 DSH 定时任务的日子打点；2×2 月历，2×4 多一列临近日程）、任务计时器（本回合已跑多久、此刻在等什么）、秒表（开始 / 暂停 / 复位）、倒计时（时长胶囊或最近的定时任务），以及 DeepSeek 余额卡（旁边是账本推导的当日花费）；
 - **这台机器**——CPU / GPU / 内存 / 磁盘 / 网络 / 供电，含迷你折线、环形图，以及本地服务与代理出口看板；
 - **你自己的视图**——每张卡都是独立单元：装它、选 2×2 或 2×4、改它的阈值，或者干脆关掉；其余由组件栏自行排布。
 
@@ -68,7 +69,7 @@ DeepSeek-Harness Widgets 会在 DeepSeek Harness 会话页的右侧放上一条*
 
 ## 官网 / Showcase
 
-项目官网位于 [`website/`](website/)，线上地址 **https://physicolor.github.io/dsh-widgets/**，是一座**设计系统站点**：讲 dsh-widgets 是什么、为什么存在、全部 55 个真实组件，以及 **DSH Widget Design Grammar**（直接取自 `src/client/index.ts` 的真实单位/间距/放大公式，并带一条交互式组件栏跑插件自己的放大曲线与右对齐回流）、**Widget Anatomy**（一张真实卡片放大 ×2，每一处内边距、间距与内缩都从 DOM 实测标注）、**DSH Visual Audit**（13 条明示规则对全部 55 个组件按真实 `getBoundingClientRect` 测量打分——规则驱动，不是模型打分）、部件单元化架构、生产 Workflow，以及「需求表 → Widget Specification」生成器。站点为纯 HTML/CSS/JS，无构建步骤，所有路径都是相对路径（适配项目 Pages 的 base path）。`node website/verify.mjs` 自校验（静态 + SEO + Edge 无头浏览器检查，共 88 项）；组件表、静态画廊 markup 与 JSON-LD `ItemList` 由 `node website/gen-site.mjs` 从各 manifest 生成（`--check` 在漂移时报错）；`node website/gen-og.mjs` 重新生成社交分享图。部署方式见 `website/README.md`。
+项目官网位于 [`website/`](website/)，线上地址 **https://physicolor.github.io/dsh-widgets/**，是一座**设计系统站点**：讲 dsh-widgets 是什么、为什么存在、全部 61 个真实组件，以及 **DSH Widget Design Grammar**（直接取自 `src/client/index.ts` 的真实单位/间距/放大公式，并带一条交互式组件栏跑插件自己的放大曲线与右对齐回流）、**Widget Anatomy**（一张真实卡片放大 ×2，每一处内边距、间距与内缩都从 DOM 实测标注）、**DSH Visual Audit**（13 条明示规则对全部 61 个组件按真实 `getBoundingClientRect` 测量打分——规则驱动，不是模型打分）、部件单元化架构、生产 Workflow，以及「需求表 → Widget Specification」生成器。站点为纯 HTML/CSS/JS，无构建步骤，所有路径都是相对路径（适配项目 Pages 的 base path）。`node website/verify.mjs` 自校验（静态 + SEO + Edge 无头浏览器检查，共 88 项）；组件表、静态画廊 markup 与 JSON-LD `ItemList` 由 `node website/gen-site.mjs` 从各 manifest 生成（`--check` 在漂移时报错）；`node website/gen-og.mjs` 重新生成社交分享图。部署方式见 `website/README.md`。
 
 ---
 
@@ -156,7 +157,9 @@ macOS Dock 式悬浮放大，两种跟随模式（在 **设置 → 组件 → �
 
 **只显示完整组件**（默认开）解决的是另一件事：整行挡位滚动保证了顶部不被截断，但视口高度不是行高的整数倍，所以最底下那张卡本来会被切掉一半。开启后这张卡**既不绘制也不参与命中测试**（它的位置是空白带，悬停不该唤醒波峰）。做法是给那一个卡片槽加一个类隐藏它，而**不是**把可视区域整体裁掉——可视区底边只在最后一张完整卡片下方 `间距`（默认 24px）处，而卡片的投影要伸出卡片本体约 28px，一刀裁下去会切掉你看得见的那张卡的阴影；隐藏卡片本体则让这条带子保持完整只是不画东西，所以每张可见卡片的阴影都是完整的。跨过边缘那一刻是**淡出**（`opacity` 0.18s，`visibility` 的翻转延后到淡出结束），滚回来时立即显示并淡入——`visibility` 不能插值，所以离散的那一半靠 `transition-delay` 延后，而延时只写在「被裁掉」这条规则上（transition 读的是变化之后的样式），于是裁掉＝淡出、恢复＝立刻出现再淡入。
 
-底部那颗**设置**齿轮同样遵守这条规则（被切一半就不画），它同时是一个**悬停才出现**的入口：平时不绘制，指针进入组件栏（或放大层）时淡入。它的格子仍然保留在布局里——否则每次悬停都会改变栏高与滚动终点，卡片会跟着跳一下——被门控的只有绘制。
+这条规则判定的是**组件栏真实的滚动可视盒**：判定与挡位终点都读「栏自身 `padding-top` 的实测值」，而不是写死的 4px（2026-10-14）。原因是右侧列现在有同居者——置顶摘要卡片会把组件往下推 `!important` 的 `padding-top`（实测 79–131px），而栏的 `clientHeight` 一点都不变：旧实现按 4px 算，可视盒的**底边就比真实底边低了整整一个「推动量」**，于是被底边切掉一角的卡片被判为完整、连同探出屏幕的那半截一起画了出来（车主截图里最底下那排）。同一处修正也进了滚动终点公式（`lastRow` 用同一个实测 inset），所以被判截断的那张卡**仍然滚得到**——两半必须一起改，只改判定会让它永远消失。推动量在原地动画（约 260ms 内逐帧写样式）期间也跟得上：栏上一个 `style` 属性的 MutationObserver 以 rAF 合并重测，值没变就 `Object.is` 直接跳过。
+
+底部那颗**设置**齿轮同样遵守这条规则（被切一半就不画），它同时是一个**悬停才出现**的入口：平时不绘制，指针进入组件栏（或放大层）时淡入。它的格子仍然保留在布局里——否则每次悬停都会改变栏高与滚动终点，卡片会跟着跳一下——被门控的只有绘制。它**点开的是产品自己的设置窗口**，并直接停在 **设置 → 组件** 这一页（2026-10-14）：那是全应用唯一的组件配置入口，插件不再自造第二套界面。实现上它替用户点两下——侧栏底部的设置触发行，然后是我们的 `组件` 导航行（沿用 `settings-nav-glyph` 自己的 `_settingsArea` / `_navList` / `data-dsx-nav` 约定定位），窗口还没开时开窗后再等导航行出现。插件原有的那张自造面板（组件配置 / 组件市场 / 组件设置三个 tab、可拖宽）**保留在代码里但不再走这条路**，只在本机 `localStorage['dsx-addpanel-local'] = '1'` 时重新接管齿轮（本机备用，不随发布推送）。
 
 **滚动终点**（2026-10-01）：滚轮停在一个「最下面的组件刚好完整显示」的挡位上，而不是「最后一行顶到栏顶」。因为整行挡位保证顶部完整、整卡规则保证底部完整之后，再往下滚只会把最后一行往上拉、在下面留出一整条空白；现在栏底与最后一个组件之间最多只有一个卡片间距，浏览器的滚动范围也同步收到这个终点，触控板惯性冲不过去。
 
@@ -250,6 +253,20 @@ Command Code provider 的「账户轮换」卡片可以把多个订阅挂在一�
 
 滚动 / 每周 / 每月三个用量窗口 + 百分比 + 重置时间。Host 半注册同源路由代理 `opencode.ai`；浏览器不发任何跨域请求，密钥走 DSH credentials。两种呈现：**用量对比**（三窗口柱状图）与**用量环图**（三窗口环形图——环中心百分比、悬停显示精确值、按同一紧急度配色）。
 
+### DeepSeek 余额
+
+一张 2×2 卡，通过 host 同源路由 `/api/deepseek-balance` 读 DeepSeek **官方开放平台**账户——密钥来自 `credentials.resolve('DEEPSEEK_API_KEY')`（环境变量 → `$DSH_HOME/.credentials.yaml` → `.env`），浏览器永远看不到它，也没有任何输入框要你填。
+
+| 卡面 | 是什么 |
+| --- | --- |
+| `¥110` | 官方**总余额**（`GET https://api.deepseek.com/user/balance`） |
+| `刚刚更新 · 赠送 ¥10` | 这次采样的年龄，后面是赠送余额（只有账户真的有赠送时才印） |
+| 充值 / 今日消耗 / 对话消耗 | 充值余额、今天的消耗，以及本次对话花掉的部分 |
+
+**「今日消耗」是量出来的，不是查出来的。** 官方接口只给余额，没有用量也没有历史，所以 host 的做法是**采样余额**（当日台账落在 `profiles/web/dsh-widgets-balance.json`），把观测到的下降累加起来：充值或赠送不算负消耗，跨天（或换币种）重新起算。因此它覆盖的是 dsh 真正运行的那些时段——这件事写在悬停提示里，而不是让这个数字假装成一张账单。**对话消耗**复用 `session-cost` 的同一套纯函数定价（命中的规则带峰谷、而会话记录没有逐请求时间戳时印 `≈`）；没有价格表时印本会话的 token 并带单位，而不是编一个费率。
+
+颜色在这里表示**等级**，这也是它所属家族里唯一用色的卡：低于你自己设的阈值（每卡设置「余额预警阈值」，默认 10）大数字转琥珀色，低于阈值一半转红色；`is_available: false`（DeepSeek 已停止为该账户提供服务）为红色，原因在悬停里。「没有数字」的每一种情形各有各的说法——没配密钥、密钥被拒、host 没重启、超时——而不是笼统一句「暂不可用」。
+
 ### 峰谷定价（市场组件）
 
 仅 2×2 的峰谷定价卡片，显示当前是否处于 DeepSeek 高峰计费时段。高峰时段（北京时间 UTC+8）为周一至周五 **09:00–12:00** 与 **14:00–18:00**——按[官方定价页](https://api-docs.deepseek.com/quick_start/pricing)的说明，其余时间一律为低峰，**中国法定节假日全天**（不是「工作日之外才便宜」）以及调休上班的周末同样按低谷计费。后半句不是细节：只看工作日时钟，2026 年会把 **19 天**当成高峰报价（元旦 1/1–1/2、春节 2/16–2/20 与 2/23、清明 4/6、劳动节 5/1 与 5/4–5/5、端午 6/19、中秋 9/25、国庆 10/1–10/2 与 10/5–10/7）。低峰显示 **CHEAP**；处于高峰窗口时显示 **EXPENSIVE**，数字本身变红并做 1.6s 呼吸闪烁（文字级告警，卡片边框保持干净），同时标题下方对应的时段行亮起品牌蓝并微微放大。整天低谷的日子，标题下的计量行直接写明原因（`中秋节 · 全天低谷` / `周末 · 全天低谷`），而不是点亮一个根本不生效的时段。以上全部可按卡片配置：高峰时段、周末/节假日开关、时区（`北京 UTC+8` 或本机时区），以及一个**额外低谷日**列表（用于国务院尚未公布下一年放假安排的年份）——这种年份卡片会退回「工作日 + 周末」判断，并把这件事写进悬停提示，而不是猜。法定假期区间放在 [`src/widgets/peak-pricing/holidays.ts`](src/widgets/peak-pricing/holidays.ts)，整套规则由 `docs/verify-peak-pricing.cjs` 复核（34 条断言）。
@@ -264,7 +281,7 @@ Command Code provider 的「账户轮换」卡片可以把多个订阅挂在一�
 - **组件栏由三个模块构成**：`rail/geometry.ts`（空间与预算解算，纯计算）、`rail/measure.ts`（锚点探针、宽度跟踪、ResizeObserver 扇出与让位节拍——直接写 DOM，因此不会比 React 的提交晚一帧）、`rail/rail-view.tsx`（`createRailView(deps)`：网格、放大波、加号面板与滑动抽屉）。`client/index.ts` 只做装配——bridge、四个槽位注册、页头胶囊与设置页（308 行）；
 - **放大波**：曲线在 `lib/morph-spring.ts`（`WAVE_SPRING`），布局与比例场在 `rail/wave/wave-geometry.ts`，交互与逐帧写样式在 `rail/wave/RailWave.tsx`；
 - **数据收集器**：挂载在 `conversation.composer.dock` slot，该 slot 仅在存在活跃会话时渲染——天然的「会话存活」信号；
-- **Host 半**：[`src/host/`](src/host/)——一个上游渠道一个模块（`opencode` / `commandcode` / `usage-daily` / `github` / `sysinfo`）外加状态文件，共用 `host/http.ts`（memo 与请求体读取）、`host/exec.ts`（唯一的子进程缝）与 `host/context.ts`（ctx 契约）。[`src/index.ts`](src/index.ts) 是 31 行，只组装 `HOST_ROUTES`。路由：`/api/opencode-usage`、`/api/opencode-usage-multi`、`/api/commandcode-usage`、`/api/widgets-usage-daily`、`/api/github`、`/api/widgets-state`（组件栏配置的权威副本，持久化到 `profiles/web/dsh-widgets-state.json`——浏览器换 origin、无痕模式、清除站点数据都丢不了）与 `/api/sysinfo`；
+- **Host 半**：[`src/host/`](src/host/)——一个上游渠道一个模块（`opencode` / `commandcode` / `usage-daily` / `github` / `deepseek` / `sysinfo`）外加状态文件，共用 `host/http.ts`（memo 与请求体读取）、`host/exec.ts`（唯一的子进程缝）与 `host/context.ts`（ctx 契约）。[`src/index.ts`](src/index.ts) 是 31 行，只组装 `HOST_ROUTES`。路由：`/api/opencode-usage`、`/api/opencode-usage-multi`、`/api/commandcode-usage`、`/api/widgets-usage-daily`、`/api/github`、`/api/deepseek-balance`、`/api/widgets-state`（组件栏配置的权威副本，持久化到 `profiles/web/dsh-widgets-state.json`——浏览器换 origin、无痕模式、清除站点数据都丢不了）与 `/api/sysinfo`；
 - **可逆清理**：所有注册都由 fiber 的 effect 生命周期管理；卸载即完全恢复；
 - **Slot 接入**：`conversation.input.overlay`（组件栏抽屉、放大浮层与设置抽屉——刻意放进对话子树，它会画在官方右栏面板**之下**，面板因此能吞掉组件栏）、`conversation.session.header.utilities`（「组件」胶囊，注册在 `order: 5`，避免与 `dsh-better-sidebar` 的底部面板开关撞号而换位）、`conversation.composer.dock`（数据收集器）、`settings.section`（设置页）；
 - **空间契约**：组件栏从不索取固定宽度。它的预算是「官方对话列宽 − 官方正文 measure − 74px 盒内缩」，两个数都读产品自己发布的变量并带几何回退；在预算内它是一个流式网格（`repeat(auto-fill, minmax(基准边长, 1fr))` 的语义：列数按基准边长自动填充、上限为用户设置；卡片边长 = 该列数下的等分宽度，按 10px 档位量化，夹在自动下限与「5 行可见」上限之间），因此正文始终保住产品自己的 measure。空间连单列都放不下时才让位。实测见 [CHANGELOG.md](CHANGELOG.md)。
@@ -307,15 +324,17 @@ node scripts/validate-widget-unit.mjs [dir]   # 部件单元契约校验器（Wo
 
 每个版本的逐条记录——连同每条改动背后的实测数据——都在 **[`CHANGELOG.md`](CHANGELOG.md)**（[中文](CHANGELOG.zh-CN.md)）；每个版本同时以 [GitHub Release](https://github.com/Physicolor/dsh-widgets/releases) 发布，锚定到实际发布它的那个 commit。原始证据（CDP 探针、截图、JSON 回执、逐事件的修复记录）在 [`docs/`](docs/) 下。本 README 只保留当前版本的速览。
 
-### 本次更新 — v1.8.3
+### 本次更新 — v1.8.5
 
-**适配 DSH 0.2，桌面端一并可用**——插件在 `0.1.x` 与 `0.2.x` 两条线上都能安装加载；0.2 改写布局轨道后，右侧边栏又能干净地吞噬组件栏；DSH 自己的插件列表里也终于有了我们的图标与简介。这些之下，是让组件库从 40 个单元长到 55 个的那一批新卡：
+**又多了六张卡，而且每张卡背后的数据现在由自己声明**——注册表从 55 个单元长到 **61**：
 
-- **会话里更多东西上了屏**——目标进度、守卫（当前生效的权限档）、后台任务、子代理、磁盘与自检、窗口预测；
-- **机器与钱包也是**——网络吞吐、供电、进程内存、会话成本（用价格表给本会话计价，并在旁边印出价格来源）、待我处理（GitHub 待审队列）、服务（端口与代理出口看板）、套餐总览、轨迹占比、Token 柱状图、峰谷定价看板；
-- **卡片行为更规矩**——图表卡不再撑破格子、骨架屏改成卡片的精确尺寸、99% 的环不再读成 95%、额度行的格数按宽度推导而不是把纸片塞进一条槽；
-- **16 张卡改名成它们真正回答的问题**——用量 → 账期用量、窗口 → 用量环形图、额度 → 用量柱状图、限流预测 → 额度预测、系统监控 → 系统看板、首 token 平均 → 首 token 延迟，等等；
-- **官网与版本一起走**——全部组件、新名字，组件表由注册表生成，线上地址 [physicolor.github.io/dsh-widgets](https://physicolor.github.io/dsh-widgets/)。
+- **时间族**——时钟（指针或数字、六个时区，秒针真的在跳）、日历（有 DSH 定时任务的日子打点；2×2 月历，2×4 多一列临近日程）、任务计时器（本回合已跑多久、此刻在等什么）、秒表（开始 / 暂停 / 复位）、倒计时（时长胶囊，或最近的定时任务）；
+- **DeepSeek 余额**——官方账户余额，旁边是账本推导出的当日花费；它读自己那条 host 路由（`/api/deepseek-balance`），折叠逻辑由一个新增的离线闸门守着；
+- **数据源声明式契约**——单元自己说清楚读什么（`reads` / `source` / 骨架屏），一个通用轮询器替所有人应答；声明与单元漂移时**构建直接失败**；
+- **四个缺陷消失**——同住者把组件栏压下去之后，悬浮波峰不再在指针下面一整行处激活（45 项：25 FAIL → 45/45 PASS）；shell 换节点后会话头部锚点不再冻结；整卡判定与滚轮终点开始读同一个实测 inset——而且 `paneH` 终于被量到了（此前从未）；nvidia-smi 的 MiB 不再被当成字节透传；
+- **「设置」齿轮改为打开 设置 → 组件**——应用自己那一页，而不是我们自造的第二套面板（那套面板保留为代码里的本机备用，靠 `localStorage['dsx-addpanel-local'] = '1'` 重新启用）；
+- **两份有牙齿的卡片标准**——`docs/design/CARD-BODY-POSTURE.md` 与 `CARD-TITLE-STANDARD.md`，都是「过了当时所有闸门的事故」催生的，现在都由 `scripts/probe-geometry.cjs` 机器断言；
+- **CI 与可在 CI 里跑的离线闸门**——`node scripts/gates.mjs`（G1–G12），以及 `.github/workflows/ci.yml`：每次 push 与 PR 都跑 `pnpm run build` + `pnpm test`。
 
 以上每一条连同背后的实测数据，都写在 [CHANGELOG](CHANGELOG.zh-CN.md) 里。
 
@@ -329,7 +348,7 @@ node scripts/validate-widget-unit.mjs [dir]   # 部件单元契约校验器（Wo
 - **Agent 生产部件**：机器可读契约（`manifest.json` + `defineWidget` 描述符 + 模板 + 共享 API）正是一个 worker agent 端到端造出一个部件所需要的一切；v1.3.0 的并行创建测试证明两个 agent 可以同时添加部件、零文件冲突；
 - **更多硬件指标**：通过可选的 LibreHardwareMonitor 桥拿 CPU 温度（外部依赖、需显式开启——刻意不打包）、NVIDIA 之外的 AMD/Intel GPU 支持、按网卡的流量；
 - **热度图范围/周期控制**：让 2×4 热度图与柱状图能选当前半年 / 7 天默认值之外的自定义范围（周/月等）；
-- **多平台用量部件**：Z.ai、DeepSeek 余额等，复用 host 同源代理 + credentials 模式；
+- **更多用量提供方**：Z.ai 等，复用 host 同源代理 + credentials 模式（DeepSeek 官方余额卡已在 v1.8.5 上线）；
 - **峰谷定价的节假日表，每年一次**：法定假期区间放在 `src/widgets/peak-pricing/holidays.ts`，逐条抄自国务院办公厅的年度通知（2026 年 = 国办发明电〔2025〕7号）。下一年的安排通常在前一年 11 月公布——届时补上区间并扩展 `HOLIDAY_YEARS` 即可；在此之前卡片退回「工作日 + 周末」判断、在悬停提示里说明这一点，并可用卡片级的**额外低谷日**字段补齐。同一张卡上仍待做的：工作日集合自定义（时段与时区已经可改）；
 - **实用工具部件**：一键压缩（需要 DSH 官方 compaction 能力）等；
 - **外部集成**：飞书 / 微信推送与交互，密钥严格走 DSH credentials；

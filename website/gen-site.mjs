@@ -41,6 +41,10 @@ const GROUPS = {
   pricing: { en: 'Peak Pricing', zh: '峰谷定价' },
   device: { en: 'Device', zh: '设备状态' },
   github: { en: 'GitHub', zh: 'GitHub' },
+  clock: { en: 'Clock', zh: '时钟' },
+  calendar: { en: 'Calendar', zh: '日历' },
+  time: { en: 'Time', zh: '时间' },
+  deepseek: { en: 'DeepSeek', zh: 'DeepSeek 官方' },
   other: { en: 'Others', zh: '其它' }
 };
 

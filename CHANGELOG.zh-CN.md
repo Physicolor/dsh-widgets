@@ -11,6 +11,83 @@
 | GitHub Releases | 同一条目作为 release notes，锚定到发布它的那次提交（tag） | 仓库 → Releases |
 | `docs/` | 原始证据：CDP 探针脚本、截图、JSON 凭证、逐次事故的修复记录 | [`docs/`](docs/) |
 
+## v1.8.5 — 五张会走的卡、一份数据源契约，和一条会读「同住者」的组件栏
+
+> 组件库开放以来内容最多的一次：**六个新单元**——时钟、接入 DSH 原生定时任务的日历、任务计时器、秒表、倒计时，以及 DeepSeek 官方余额卡——把注册表从 55 推到 **61**；同时每张卡背后的数据搬到了一纸声明式契约上（单元在 `manifest.json` 里声明自己读哪些源，一个通用轮询器替所有人应答）。这些之下，是同两周里车主真正撞到的四个缺陷：**同住者把组件栏压下去之后，悬浮命中整整偏了一行**（45 项里 25 项 FAIL）、**会话头部的锚点在 shell 换节点后冻结**、**整卡规则与滚轮终点一直在「盲画」**（`paneH` 从来没被量到过），以及 **nvidia-smi 的 MiB 被当成字节直接透传**。随它们一起进来的还有两件面向构建的东西：一套**离线闸门**（`node scripts/gates.mjs`，G1–G12）接进新的 CI workflow，以及下面两次 Review 事故催生的**卡片标题**与**主体姿态**两份标准。按车主指定以 **patch** 发布，和 v1.8.1 一样：内容够得上 feature，版本号不是重点。
+
+### 新增 —— 时间族五张卡：时钟、日历、任务计时器、秒表、倒计时
+
+- **五个单元，order 31–35**，各自走完整条生产流程，逐单元留档在 `docs/workflow/records/2026-10-14-*.json`（四份记录都停在 `INTEGRATION`，各有 2–4 轮 REWORK）：
+  - `clock`（2×2）——指针或数字表盘，六个时区，秒针是真的在跳；
+  - `calendar`（2×2 / 2×4）——本月月历，今日高亮、周末或法定节假日染色，**有 DSH 定时任务的日子打点**，2×4 右侧列出临近日程；它声明 `reads: ["schedule"]`，在没有定时任务子系统的部署里退回纯月历；
+  - `task-timer`（2×2 / 2×4）——本回合已运行多久、此刻在等什么（工具调用还是模型步），取会话既有的投影，回合运行中每秒推进；
+  - `stopwatch`（2×2）——开始 / 暂停 / 继续 / 复位，读数自己走，状态存在实例配置里，刷新或换浏览器都不丢；
+  - `countdown`（2×2）——时长胶囊（1 / 3 / 5 / 10 分钟，其中一格可自定义）**或** 盯住最近的 DSH 定时任务。
+- **REWORK 的几轮才是重点**（下面两份标准就是从它们写出来的）：倒计时首版漏了 `reads: ["schedule"]`、还留着一个死的 `done` 字段；日历的日程画反了方向、`when` 列一直截断，直到给到 64px；秒表的初版表盘整体重做为 `HH:MM:SS.cc` + 圆形控件；任务计时器把工具计数叫成 "calls"，改名 `tools`，并把 2×2 的副行让给并行调用数。
+- **共享机制，不是五份拷贝**：`src/client/lib/clock-face.ts` + `timer-state.ts`、富渲染 `src/client/render/rich/{clock-face,month-grid,timer-face}.tsx`、一个 `CardBody` 富区块、以及组件栏的计时派发。新增这五张不需要动这四处之外 + 五个单元目录之外的任何文件。
+- **它们撞到的上游限制如实记下、而不是绕过去**（`docs/research/TIME-CARDS-INTEGRATION.md`，对照 0.2.0-rc.2）：`schedule.create` 没有 `@Remote` 面，卡片**建不了**提醒（list / catalog / history / update / delete 都可以）；`todos` 既没有 id 也没有日期，且 `turn/start` 会清空；`jobsBySession` 并不存在（真实 API 是 `ctx.jobs`），所以后台任务卡的「本会话」数字在该部署里**恒为 null**；而「会走」的读数只能落在渲染器自带的 tick 上。
+
+### 新增 —— DeepSeek 余额，以及它读的那条 host 路由
+
+- **`deepseek-balance`**（2×2，order 68，group `deepseek`，`source: deepseek`）：官方账户余额，旁边是账本推导出的当日花费。
+- 它是第一个需要**自己那条 host 路由**的单元：`src/host/deepseek.ts` 发布 `/api/deepseek-balance`（十个字段——`available` / `currency` / `day` / `granted` / `hasBalance` / `sampledAt` / `spentToday` / `toppedUp` / `total`），路由表、客户端契约与 bridge 快照（`bridge.deepseekBalance` 及其 error 兄弟）一并扩展。
+- 推导出的「当日」在**离线、对着构建产物**折叠验证：`scripts/verify-deepseek-balance.mjs` 跑 17 条断言，覆盖账本折叠与路由可能回出的**每一个错误码**（闸门 **G12**）。
+
+### 新增 —— v1.11 数据源契约，和一个替所有人应答的轮询器
+
+- 单元不再自己去取数，而是**声明**（`reads: ["schedule"]`、`source: "deepseek"`、骨架屏），由客户端应答。落地在 `src/client/data/sources.ts` + `source-contract.ts` + `source-poller.tsx`，六个家族把 fetch/parse 两半搬进 `src/client/families/<family>/adapter.ts`，`scripts/gen-registry.mjs` 现在会在声明与单元漂移时**直接让构建失败**（`node scripts/verify-source-contract.mjs --prove`，闸门 **G9**）。
+- **G11**（`scripts/verify-source-resolution.mjs`）回答再往下一层的问题——某次安装到底会轮询哪些源、哪些实例喂它、节奏如何——以纯规则的形式**实际执行**，而不是写在文档里。
+- 这里刻意**没有**新增 host 路由：各家族继续用原有端点，所以这是一次纯客户端的重新接线，`docs/architecture/baseline/host-routes.json` 不因它变化。
+
+### 修复 —— 悬浮命中与波峰开始读同住者的推动量（2026-10-08）
+
+- **`dsh-pinned-summary` 通过给组件栏写 `padding-top` 把自己的卡片安在 deck 上方**（`!important` 内联长写；车主 GUI 上实测 `135px = 4 + 131`）。栏的 `clientHeight` 一点都不变，于是 deck 在栏内整体下移 131px——而**指针→deck 映射的两半都在减那个常量 4px**：每个指针位置都恰好落偏一行（行距 140），波峰因此在指针**下面**那张卡上激活（悬停 #0 → 聚焦 #3，#1 → #4），而当偏移后的点落进卡片间隙时，刚进入悬浮态的卡会立刻被松开，就是车主报的「组件区域偶发：鼠标悬浮后组件进入悬浮态又立刻停止」。
+- inset 现在**从栏上实测**（`readTopInset`，`padding-top` 就在命中判定本已付出代价的那次强制布局里读），命中判定、波峰与整卡规则三者共用。`scripts/verify-rail-interaction.cjs`：**45 项，25 FAIL → 45/45 PASS**。
+- 整卡判定带与滚轮终点在那一轮被**刻意留在写死的 4px 上**——只改它们会让 deck 最后一张卡永远消失，因为终点计算也用同一个常量，并会得出「不需要滚动」。这笔债在本版下面还清。
+
+### 修复 —— 会话头部锚点不再冻结（2026-10-09）
+
+- 组件栏顶部锚点（`--dsx-rail-top`）靠一个挂在会话头部上的 `ResizeObserver` 复测——可它观察的槽位是 **`display: contents`，盒子高度恒为 0，观察器永远不回调**。锚点因此停在旧值，deck 首行被头部盖住约 20px。现在观察真实的 `[class$="_header"]` 元素（实测 50px），并在 shell 换节点时重新绑定。`scripts/verify-rail-hover-alignment.cjs`：**47 项全 PASS**——首行 50 对头部底边 50，跨插件边界一致。未能复现的是「会话头部变高」，作为该探针的 limitation 记录。
+
+### 修复 —— 整卡判定带与滚轮终点同读实测 inset（2026-10-14）
+
+- 在被推动过的组件栏上，判定带的底边比栏的真实底边低了整整一个**推动量**，于是被底边切掉一角的卡——最多差一整行——会被判为完整，连同探出屏幕的那半截一起画出来（车主截图里最底下那排）。现在 `topInset` 同时喂给 `bandOf` / `syncWholeCards` / `overlayBand` **和**终点（`lastRow = ⌈(contentBottom + inset − RAIL_ROW_SEAT − paneH) / pitch⌉`），因此绘制、命中与可达性在构造上一致：判定带藏起来的卡，恰好是滚轮还能滚到的那张。没有同住者时 inset 就是写死的 4px，未推动的几何与从前逐像素相同。
+- **推动量是原地动画的**（约 260ms 内逐帧写内联样式），它移动 deck 却不让任何既有观察者看见尺寸变化，所以改为观察栏的 `style` 属性（rAF 合并；值没变则由 `Object.is` 直接跳过）。这里选的是通用钩子，而不是某个同住者的私有变量名。
+- **藏在它背后的更深缺陷：`paneH` 从来没被量到过。** 那个 `ResizeObserver` 挂在一次性的 `setTimeout(…, 0)` 里，读到空 ref 就**永久放弃**；在车主 GUI 上从 fiber 树读出，屏幕上是 956px 高的组件栏，而 RailWave 的 props 是 `{ paneH: 0, topInset: 4 }`——整卡规则被 `paneH <= 0` 直接跳过、滚动终点为 0、滚轮根本推不动 deck。现在元素靠自愈解析（查 DOM 后写回共享 ref，和 RailWave 自己的 `railElement()` 同一种做法），并用一个 body 级 `childList` 观察器在抽屉晚一帧到达或被重建时重新挂载。
+- 实时验证（`scripts/verify-whole-cards-co-tenant.cjs`，**9/9**，对着车主 GUI、且置顶摘要真的停靠着）：实测推动量 **79px**，写死 4px 时那张卡曾被画出栏底 **19px**；修复后每张卡都恰好在「探出可视盒」时被隐藏；滚轮滚到终点后 `scrollTop 152` 让最深的组件完整落在栏内（`bottom 823 ≤ 956`），再滚不动；另外用一个合成的 131px 推动量把同样三条性质按需复现。
+
+### 变更 —— 「设置」齿轮改为打开产品自己的设置窗口
+
+- 底部那颗齿轮以前打开插件自造的浮层。现在它打开 **设置 → 组件**——全应用唯一安装、排序、调尺寸组件的地方——做法是替用户点两下：侧栏底部的设置触发行，然后是我们的导航行；定位沿用 `settings-nav-glyph.ts` 自己已经在用的 `[class$="_settingsArea"]` / `[class$="_navList"]` / `data-dsx-nav` 约定，窗口需要先打开时就等导航行出现。
+- 插件自造的面板（组件配置 / 组件市场 / 组件设置三个 tab、可拖宽）**保留在代码里作为本机备用**，只有 `localStorage['dsx-addpanel-local'] = '1'` 时才重新接管；它已经不在发布路径上。实时探针两个方向都断言：点击打开的是官方窗口的组件页、且**不是**自造面板；设了标志位后自造面板仍能打开。
+- 同一个探针还坚持组件栏必须是**打开**状态，否则这些检查毫无意义：退休状态的抽屉会按设计把同一个 element 对象交回给 React，整棵子树因此冻结——所以探针先断言 `data-retired` / `aria-pressed` 再测量。
+
+### 变更 —— 新单元照着评审的两份卡片标准
+
+- **`docs/design/CARD-BODY-POSTURE.md`**（新）：主体只有一行的 2×4 必须**贴底**。`task-timer@2x4` 首版顶部对齐，卡底留了 **51.6px** 空带（阈值 `36 × scale`）——它过了当时所有闸门与一次 Review，正因如此这条要求现在是机器断言（`scripts/probe-geometry.cjs` 里的 `POSTURE` / `INNER-FIT` / `PHASE3`）。改完之后，全部 24 张 2×4 里最大空带是 **26px**（`sys-disk@2x4`）；秒表的拟合——在 150 / 190 / 285 三档曾溢出 **3.6–11.7px**——改成按内容宽度算（`width − 2·pad − 2·inset`），三档全绿。
+- **`docs/design/CARD-TITLE-STANDARD.md`**（新）：只有在 **C1**（主体自述它是什么）与 **C2**（主体填满卡片）同时成立时才允许去掉标题——`clock`、`calendar`、`quote` 满足。时钟表盘从 **96 → 120px**，好让去掉标题后仍满足 `2·pad + box ≤ unit`（12 + 120 + 12 = 144 ≤ 150）；视觉审计现在覆盖 **58 个单元**。
+- `docs/workflow/03-specification.md` 把这两项加为**必填** spec 输入（`referenceCard`、`bodyPosture`），并把那次事故写成理由：缺一项按 REWORK 处理，不是判断题。
+
+### 新增 —— 离线闸门套件，以及跑它的 CI
+
+- `scripts/gates.mjs`：**G1** registry · **G2** units · **G3** types（对已记录基线）· **G4** render（zh + en 逐字节快照）· **G5** css（编译后样式表对基线——需先构建）· **G7** published-types · **G8** host-routes · **G9** source-contract（`--prove`）· **G10** external-review · **G11** source-resolution · **G12** balance-fold。入口是 `pnpm test` / `pnpm test:list`。
+- **`.github/workflows/ci.yml`** 在每次 push 到 `main` 与每个 PR 上跑 `pnpm run build` 再跑 `pnpm test`，与本地流程逐字一致（G5 读的是编译产物），所以「CI 绿」与「本地绿」含义相同。在此之前仓库只有 `pages` 与 `publish` 两个 workflow——也就是说一个 PR 可以带着过期注册表、漂移的渲染结果或新的类型错误合并进去。
+- 基线随之刷新——`docs/architecture/baseline/*.json`——卡片画廊也重拍了一遍（`docs/preview/cards/*.png`）。
+
+### 修复 —— nvidia-smi 的 MiB 不是字节
+
+- `src/host/sysinfo.ts` 把驱动报的内存数字直接透传，于是 GPU 卡上的「5.9 GB」其实是 nvidia-smi 单位下的 5.9 MiB。改为在边界处换算。
+
+### 变更 —— 0.2 线无需豁免即可安装
+
+- `peerDependencies` 放宽为 `^0.1.0-rc.6 || ^0.2.0-rc.1`（`@deepseek-ai/dsh-client-ui-primitives` 与 `…-ui-slots` 各一份），0.2 的 rc 因此不需要 profile 里的 `compatibility.json` 豁免即可加载（v1.8.1 条目里那条待办到此关闭）。
+
+### 验证 —— 跑了什么，以及没有声称什么
+
+- `node scripts/gates.mjs`：发布提交上 **11/11 全绿**（G1–G12，无 G6）。`node website/verify.mjs`：**88/88**，其中包含发布文案断言——页面上每一处版本串对 `package.json`、每一处文案里的数量对单元目录，而站点自己的单元数是从 `src/widgets/` 推导的，不是写死的。
+- `scripts/probe-geometry.cjs`：**11/11**，已带上上面那条姿态与内拟合断言；2026-10-14 的四个单元各自按 `gates 11/11 + probe-geometry 11/11 + 实时通过` 复验过一遍，留有生产记录。
+- **未声称**：日历与倒计时里依赖日程的那半，只和 DSH `schedule` 服务一样新（见上文上游缺口）；姿态标准覆盖的是催生它的「2×4 单行主体」这一类，不是全部版式；站点自己的 `verify.mjs` 需要 Chrome/Edge 并要起浏览器，因此它留在发版时与 CI 里，不进 `pnpm test`。
+
 ## v1.8.4 — 让位效果扛得住重载，折叠不再逐帧重排整页
 
 > 一次以修复为主的补丁版，处理 v1.8.3 之后仍然存在的三类投诉：**shell 重建 frame 之后，吞噬/让位会悄悄失效**；**折叠动画每一帧都在同步强制布局**；以及**右侧边栏开合时，组件区的卡片会先缩进去、再长回来**。前者看不出来 —— 动画曲线正常、帧率也不掉 —— 只有事件日志与 DevTools trace 能看见；后者看得见，但看不出是谁在动它。后续又补上了第四类：**组件区在未激活状态下切换工作区对话后会整片画到会话上**。共十八处改动，全部落在插件内部，没有动官方 shell 一个字节。

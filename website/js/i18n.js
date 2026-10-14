@@ -48,11 +48,11 @@ window.DASH_I18N = (function () {
     githubAria: 'GitHub 仓库',
 
     /* hero */
-    kicker: 'dsh-widgets · v1.8.4 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
+    kicker: 'dsh-widgets · v1.8.5 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: '将对话区域中的留白空间，转化为高信息密度、可随时隐藏的辅助界面。',
-    heroLead2: '55 live cards on the right of DeepSeek Harness — session, machine, quota and cost at a glance, installed with one command. Behind them: the spatial geometry, a measured visual audit, and the agent pipeline that produces each unit.',
+    heroLead2: '61 live cards on the right of DeepSeek Harness — session, machine, quota and cost at a glance, installed with one command. Behind them: the spatial geometry, a measured visual audit, and the agent pipeline that produces each unit.',
     ctaWidgets: '浏览全部组件',
     ctaPlay: '创建你的组件',
     statWidgets: '组件', statCats: '分类', statBuiltin: '内置', statMarket: '市场组件',
@@ -63,7 +63,7 @@ window.DASH_I18N = (function () {
     /* install */
     installTitle: '一条命令安装',
     installSub: '从插件市场添加即可——无需改任何配置文件。',
-    termTitle: 'dsh-widgets@1.8.4 · DeepSeek Harness 插件',
+    termTitle: 'dsh-widgets@1.8.5 · DeepSeek Harness 插件',
     termComment: '# 然后硬刷新浏览器（Ctrl+Shift+R），并点击会话顶部的组件图标展开组件栏。',
     copy: '复制', copied: '已复制',
     installNote: '以 npm 包 dsh-widgets 分发 · DeepSeek Harness 0.1.0-rc.6+ / 0.2.x · 本地开发使用 link 安装。',
@@ -240,7 +240,7 @@ window.DASH_I18N = (function () {
 
     /* ── Design Grammar / Anatomy / Visual Audit ── */
     navGrammar: '几何', navAudit: '审计',
-    heroTagline: '右侧实时组件栏 · 55 张真实卡片 · 会话、机器、额度与成本一眼看完',
+    heroTagline: '右侧实时组件栏 · 61 张真实卡片 · 会话、机器、额度与成本一眼看完',
     ctaGrammar: '看设计语法',
     statUnit: 'px 网格单元', statRules: '条审计规则',
 
@@ -318,12 +318,12 @@ window.DASH_I18N = (function () {
     dtVariants: '尺寸变体', dtIntent: '设计意图', dtGeometry: '几何测量', dtAudit: '规则化审计', dtSource: '源码入口',
     openDetail: '解剖 / 审计',
     'group.system': '系统', 'group.commandcode': 'Command Code', 'group.coding-plan': '用量热度',
-    'group.opencode-go': 'OpenCode Go', 'group.pricing': '峰谷定价', 'group.device': '设备状态', 'group.github': 'GitHub', 'group.other': '其它',
+    'group.opencode-go': 'OpenCode Go', 'group.pricing': '峰谷定价', 'group.device': '设备状态', 'group.github': 'GitHub', 'group.clock': '时钟', 'group.calendar': '日历', 'group.time': '时间', 'group.deepseek': 'DeepSeek 官方', 'group.other': '其它',
     'pattern.value': '主读数', 'pattern.valuePair': '主值 + 副值', 'pattern.bars': '柱状', 'pattern.rings': '环形',
     'pattern.heat': '热度图', 'pattern.line': '折线', 'pattern.segments': '分段条', 'pattern.meter': '状态计量',
     'pattern.text': '文本块', 'pattern.status': '状态字', 'pattern.chart': '图表',
     'ia.readonly': '只读', 'ia.action': '一键动作', 'ia.cycle': '点击切换',
-    footNote: '紧凑组件设计系统：55 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。',
+    footNote: '紧凑组件设计系统：61 个 Widget、空间几何、规则化视觉审计，为 DeepSeek Harness 而做。',
     footSource: '组件源码'
   };
 
@@ -360,11 +360,11 @@ window.DASH_I18N = (function () {
     menuToggleAria: 'Toggle navigation menu',
     githubAria: 'GitHub repository',
 
-    kicker: 'dsh-widgets · v1.8.4 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
+    kicker: 'dsh-widgets · v1.8.5 · MIT · DeepSeek Harness 0.1.x / 0.2.x',
     heroLine1: 'DeepSeek Harness',
     heroLine2: 'Widgets',
     heroLead1: 'Turn the idle whitespace of the conversation area into a high-information-density, hideable companion surface.',
-    heroLead2: '55 live cards on the right of DeepSeek Harness — session, machine, quota and cost at a glance, installed with one command. Behind them: the spatial geometry, a measured visual audit, and the agent pipeline that produces each unit.',
+    heroLead2: '61 live cards on the right of DeepSeek Harness — session, machine, quota and cost at a glance, installed with one command. Behind them: the spatial geometry, a measured visual audit, and the agent pipeline that produces each unit.',
     ctaWidgets: 'Explore the widgets',
     ctaPlay: 'Create your widget',
     statWidgets: 'Widgets', statCats: 'Categories', statBuiltin: 'Built-in', statMarket: 'Market units',
@@ -374,7 +374,7 @@ window.DASH_I18N = (function () {
 
     installTitle: 'Install in one command',
     installSub: 'Add it from the plugin market, no config files to touch.',
-    termTitle: 'dsh-widgets@1.8.4 · DeepSeek Harness plugin',
+    termTitle: 'dsh-widgets@1.8.5 · DeepSeek Harness plugin',
     termComment: '# then hard-refresh the browser (Ctrl+Shift+R) and click the Components icon in the session header.',
     copy: 'Copy', copied: 'Copied',
     installNote: 'Distributed as the npm package dsh-widgets · works on DeepSeek Harness 0.1.0-rc.6+ and 0.2.x · local development uses a link install.',
@@ -545,7 +545,7 @@ window.DASH_I18N = (function () {
 
     /* ── Design Grammar / Anatomy / Visual Audit ── */
     navGrammar: 'Grammar', navAudit: 'Audit',
-    heroTagline: 'A live rail of 55 real cards · session, machine, quota and cost at a glance',
+    heroTagline: 'A live rail of 61 real cards · session, machine, quota and cost at a glance',
     ctaGrammar: 'Read the grammar',
     statUnit: 'px grid unit', statRules: 'audit rules',
 
@@ -587,7 +587,7 @@ window.DASH_I18N = (function () {
     'an.box': 'card box',
 
     auTitle: 'DSH Visual Audit',
-    auSub: 'Geometry tells us what is misaligned; the design rules tell us whether it matters. Below is every one of the 55 widgets scored by rules — no neural network, just measurements and rules.',
+    auSub: 'Geometry tells us what is misaligned; the design rules tell us whether it matters. Below is every one of the 61 widgets scored by rules — no neural network, just measurements and rules.',
     auGeoTitle: 'Layer 1 · geometric measurement',
     auGeoSub: 'getBoundingClientRect on the real rendered card: padding, right-slot alignment, block rhythm, overflow, action inset.',
     auHeurTitle: 'Layer 2 · design rules',
@@ -623,12 +623,12 @@ window.DASH_I18N = (function () {
     dtVariants: 'Size variants', dtIntent: 'Design intent', dtGeometry: 'Measured geometry', dtAudit: 'Rule-based audit', dtSource: 'Source',
     openDetail: 'Anatomy / audit',
     'group.system': 'System', 'group.commandcode': 'Command Code', 'group.coding-plan': 'Coding Plan Usage',
-    'group.opencode-go': 'OpenCode Go', 'group.pricing': 'Peak Pricing', 'group.device': 'Device', 'group.github': 'GitHub', 'group.other': 'Others',
+    'group.opencode-go': 'OpenCode Go', 'group.pricing': 'Peak Pricing', 'group.device': 'Device', 'group.github': 'GitHub', 'group.clock': 'Clock', 'group.calendar': 'Calendar', 'group.time': 'Time', 'group.deepseek': 'DeepSeek', 'group.other': 'Others',
     'pattern.value': 'Primary value', 'pattern.valuePair': 'Value pair', 'pattern.bars': 'Bars', 'pattern.rings': 'Rings',
     'pattern.heat': 'Heatmap', 'pattern.line': 'Sparkline', 'pattern.segments': 'Segment bar', 'pattern.meter': 'State meter',
     'pattern.text': 'Text block', 'pattern.status': 'Status word', 'pattern.chart': 'Chart',
     'ia.readonly': 'Read-only', 'ia.action': 'One-tap action', 'ia.cycle': 'Tap to cycle',
-    footNote: 'A compact widget design system: 55 widgets, spatial grammar, rule-based visual audit — built for DeepSeek Harness.',
+    footNote: 'A compact widget design system: 61 widgets, spatial grammar, rule-based visual audit — built for DeepSeek Harness.',
     footSource: 'Widget source'
   };
 
