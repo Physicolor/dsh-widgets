@@ -19,7 +19,7 @@
  *      config-driven card previews the instance's real settings.
  */
 
-import { WIDGETS } from '../../generated.registry'
+import { WIDGETS } from '../../lib/registry'
 import { instanceKey } from '../../lib/contract/helpers'
 import type { WidgetRenderOut, WidgetSize, WidgetStats } from '../../lib/contract/types'
 import { PREVIEW_STATS } from './preview-stats'

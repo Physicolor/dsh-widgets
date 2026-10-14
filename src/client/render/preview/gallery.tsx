@@ -16,7 +16,7 @@
  * a stateful card's states are eyeballed without waiting for the real condition.
  */
 import * as React from 'react'
-import { WIDGETS, WIDGET_LOCALES } from '../../generated.registry'
+import { WIDGETS, WIDGET_LOCALES } from '../../lib/registry'
 import { setExtraLocales } from '../../i18n'
 import { DEFAULT_CORNER_PERCENT } from '../../runtime/prefs'
 import type { Prefs } from '../../runtime/prefs'

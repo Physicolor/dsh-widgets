@@ -207,9 +207,40 @@ ${CARD_CSS}
     { name: 'ring-only-dial', out: out({ headRing: RING, headAfter: undefined, legend: undefined }) },
     { name: 'plain-ladder', out: out({}) },
     { name: 'plain-nocaption', out: out({ legend: undefined }) },
-    { name: 'head-mark', out: out({ headIcon: { name: 'github' } }) }
+    { name: 'head-mark', out: out({ headIcon: { name: 'github' } }) },
+    // The TIMER bodies (2026-10-14). These exist because the owner found the
+    // stopwatch CLIPPED at the market's preview scale while every 150px gallery
+    // shot looked fine: the layout's sizes were fitted by hand against one scale.
+    // Rendered here at EVERY size below, including the market preview's 285, so a
+    // scale-dependent slip is a FAILURE in an offline probe instead of a screenshot
+    // the owner has to catch.
+    { name: 'timer-stopwatch', out: { title: '', rich: { type: 'timer', timer: {
+      mode: 'stopwatch', layout: 'dial', hundredths: true, at: 1791943770000, baseMs: 754000, startedAt: null,
+      controls: [
+        { id: 'timer:reset', glyph: 'reset', tone: 'primary', big: true, label: '复位' },
+        { id: 'timer:start', glyph: 'play', tone: 'primary', big: true, label: '开始' },
+      ],
+    } } } },
+    { name: 'timer-picker', out: { title: '倒计时', rich: { type: 'timer', timer: {
+      mode: 'countdown', layout: 'picker', at: 1791943770000, baseMs: 0, startedAt: null, durationMs: 0,
+      capsules: [
+        { id: 'timer:pick:1', minutes: 1, label: '1', sub: '分钟' },
+        { id: 'timer:pick:3', minutes: 3, label: '3', sub: '分钟' },
+        { id: 'timer:pick:5', minutes: 5, label: '5', sub: '分钟' },
+        { id: 'timer:pick:10', minutes: 10, label: '10', sub: '分钟' },
+      ],
+    } } } },
+    { name: 'timer-dial', out: { title: '倒计时', headAction: { id: 'timer:reset', label: '返回' }, rich: { type: 'timer', timer: {
+      mode: 'countdown', layout: 'dial-head', at: 1791943770000, baseMs: 420000, startedAt: null, durationMs: 1500000,
+      controls: [
+        { id: 'timer:reset', glyph: 'reset', tone: 'primary', big: true, label: '复位' },
+        { id: 'timer:start', glyph: 'play', tone: 'primary', big: true, label: '继续' },
+      ],
+    } } } }
   ]
-  var SIZES = [150, 190]
+  // 150 = the rail's default side, 190 = a magnified card, 285 = the market /
+  // 组件配置 preview stage (the box the owner's screenshot came from).
+  var SIZES = [150, 190, 285]
   var cells = []
   VARIANTS.forEach(function (v) {
     SIZES.forEach(function (unit) {
@@ -249,5 +280,23 @@ for (const cell of cells) {
   shot += 1
 }
 await page.screenshot({ path: join(SHOT_DIR, `_sheet${DARK ? '-dark' : ''}.png`), fullPage: true })
+// The FIXTURE page is shot too, but only its timer cells (the other variants are
+// measured, not eyeballed) and only at the market's 285 preview side — the scale the
+// owner reviews cards at, and the one that shipped a clipped stopwatch.
+try {
+  await page.goto('file:///' + join(OUT_DIR, 'head-fixture.html').split('\\').join('/'), { waitUntil: 'load' })
+  await page.waitForSelector('.h-cell', { timeout: 15000 })
+  await page.waitForTimeout(300)
+  const fixtureCells = await page.$$('.h-cell')
+  for (const cell of fixtureCells) {
+    const variant = await cell.getAttribute('data-variant')
+    const unit = await cell.getAttribute('data-unit')
+    if (!String(variant).startsWith('timer-') || unit !== '285') continue
+    await cell.screenshot({ path: join(SHOT_DIR, `_fixture-${variant}@${unit}${DARK ? '-dark' : ''}.png`) })
+    shot += 1
+  }
+} catch (error) {
+  console.error('[gallery] fixture shots failed:', error.message)
+}
 await browser.close()
 console.log(`[gallery] ${shot} PNG(s) → ${SHOT_DIR}`)

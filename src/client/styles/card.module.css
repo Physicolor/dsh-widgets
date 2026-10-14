@@ -88,6 +88,17 @@
   corner-shape: squircle;
 }
 
+/* The timer's ROUND controls stay CIRCLES inside a squircle card.
+ *
+ * `corner-shape` INHERITS, so the 连续曲率 setting turned every `border-radius: 50%`
+ * descendant into a superellipse — the owner's 「按钮应该是圆形」 (2026-10-14): the
+ * stopwatch's two discs were rendering as rounded squares. The capsules (the countdown
+ * picker) are deliberate rounded rectangles and keep the squircle; only the discs opt
+ * back out. */
+.dsx-timer-disc {
+  corner-shape: round;
+}
+
 /* Tile-fits guard (see the layout effect in CardBody): a card whose content does not
  * fit its tile is a BUILD defect, not a data state — it is clipped in a preview and
  * grows past its grid row on the rail — so it is marked in both surfaces instead of

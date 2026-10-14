@@ -7,7 +7,7 @@
  */
 
 import * as React from 'react'
-import { WIDGETS } from '../../generated.registry'
+import { WIDGETS, useWidgetRegistry } from '../../lib/registry'
 import { parseInstanceKey, sizesOf, widgetName, widgetSimToggle, fieldLabel, optionLabel } from '../../lib/contract/helpers'
 import type { ConfigField, WidgetRenderOut, WidgetSize } from '../../lib/contract/types'
 import { nextSim } from '../../render/preview/sim'
@@ -413,6 +413,9 @@ function MetricsFieldControl({ field, value, onChange }: { field: ConfigField; v
 
 export function ConfigTab({ controller }: { controller: WidgetsController }): React.ReactElement {
   const { prefs, setPrefs } = controller
+  // Same reason as the market: a unit registered after mount must appear in the
+  // installed list and resolve in the form below.
+  useWidgetRegistry()
   // Restored from module scope, so closing/reopening the panel keeps the drawer.
   const [selected, setSelected] = React.useState<string>(lastSelectedInstance)
   React.useEffect(() => { lastSelectedInstance = selected }, [selected])

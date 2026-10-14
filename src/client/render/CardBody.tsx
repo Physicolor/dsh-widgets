@@ -14,7 +14,10 @@ import { BASE_SIDE, HEAD_GAP_PX, cardInnerPad, cardRadius } from './card-geometr
 import { CHART_FILLS_BODY, renderChart } from './charts/registry'
 import { Donut } from './charts/donut'
 import { CHART_TONES } from './charts/theme'
-import { databaseIcon, gaugeIcon, githubMarkIcon, hardDriveIcon, performanceIcon, permissionFullAccessIcon, permissionReadOnlyIcon, permissionWorkspaceWriteIcon, powerIcon } from './icons'
+import { ChevronLeftIcon, databaseIcon, gaugeIcon, githubMarkIcon, hardDriveIcon, performanceIcon, permissionFullAccessIcon, permissionReadOnlyIcon, permissionWorkspaceWriteIcon, powerIcon, refreshIcon } from './icons'
+import { ClockFace } from './rich/clock-face'
+import { MonthGrid } from './rich/month-grid'
+import { TimerFace } from './rich/timer-face'
 import { DEFAULT_CORNER_PERCENT } from '../runtime/prefs'
 import { t } from '../i18n'
 import type { WidgetAction, WidgetRenderOut, WidgetRich } from '../lib/contract/types'
@@ -79,14 +82,32 @@ function valueColor(out: WidgetRenderOut): string {
   }
 }
 
-function RichBlock({ rich, scale }: { rich: WidgetRich; scale: number }): React.ReactElement {
-  if (rich.type === 'quote' && rich.text) {
+/**
+ * The rich-block dispatcher: the freeform body a widget can hand over instead of
+ * (or beside) a chart.
+ *
+ * It is a COMPONENT, not a plain function called inline, and that is load-bearing
+ * for the two time faces: `ClockFace` owns a 1s interval, so its hooks must belong
+ * to its own fibre. Called inline they would land on `CardBody`'s — and `CardBody`
+ * returns EARLY for the loading skeleton, so the skeleton pass and the loaded pass
+ * would render different hook counts, which React rejects with #310 (the trap
+ * `charts/registry.ts` documents at length). The quote/image branches use no hooks
+ * and are unaffected by the change.
+ */
+function RichBlock({ rich, scale, width, onAction }: { rich: WidgetRich; scale: number; width: number; onAction?: (id: string) => void }): React.ReactElement {  if (rich.type === 'quote' && rich.text) {
     const ta = rich.align ?? 'left'
     return React.createElement('div', { style: { fontSize: `${Math.round(12 * scale)}px`, lineHeight: 1.5, color: 'var(--dsw-alias-label-secondary)', fontStyle: 'italic', marginTop: `${Math.round(6 * scale)}px`, textAlign: ta, whiteSpace: rich.wrap === false ? 'nowrap' : 'pre-wrap', overflow: rich.wrap === false ? 'hidden' : undefined, textOverflow: rich.wrap === false ? 'ellipsis' : undefined } }, rich.text)
   }
   if (rich.type === 'image' && rich.src) {
     return React.createElement('img', { src: rich.src, alt: '', style: { width: '100%', borderRadius: Math.round(6 * scale), marginTop: `${Math.round(6 * scale)}px`, objectFit: 'cover' } })
   }
+  if (rich.type === 'clock' && rich.clock) return React.createElement(ClockFace, { clock: rich.clock, scale })
+  // `width` is the card's real body width: the two blocks that lay themselves out
+  // (the month grid's 2×4 split, the timer's figure) need it, and the widest
+  // consumer is the 2×4 calendar, whose agenda column only exists because the
+  // renderer can tell a 306px body from a 126px one.
+  if (rich.type === 'calendar' && rich.calendar) return React.createElement(MonthGrid, { calendar: rich.calendar, scale, width })
+  if (rich.type === 'timer' && rich.timer) return React.createElement(TimerFace, { timer: rich.timer, scale, width, onAction })
   return React.createElement(React.Fragment)
 }
 
@@ -453,6 +474,25 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // qualitative dial and the exact figure is printed at 20px beside it.
   const RING_STROKE = Math.max(4, Math.round(5 * scale))
   const RING_CAP_GAP = Math.max(3, Math.round(RING_STROKE * 1.2))
+  // A LEADING chevron in the title row (`out.headAction`): the 倒计时 card's way back
+  // from its run view to its capsule picker. It is a title-row sibling rather than a
+  // `corner` (top-right) or an `actions` pill (card floor) because the owner asked for
+  // the reference's top-left back affordance, and the whole chevron+title group is its
+  // hit area. The glyph is the SHARED official chevron (`ChevronLeftIcon`), scaled to
+  // the title's own size — not a hand-drawn path, so it cannot drift from the
+  // product's arrow shape.
+  const chevronPx = Math.max(12, Math.round(titlePx * 1.15))
+  const headActionEl = out.headAction === undefined ? null : React.createElement('span', {
+    key: 'lead',
+    // The wrapper's LAYOUT box is the glyph's VISUAL box (`chevronPx` square, grown
+    // from the left edge): a bare `transform: scale` on an 18px icon leaves a 18px
+    // layout box, so the grown glyph spilled ~4px into the card's padding and the
+    // title sat under it (measured 2026-10-14 by the fixture's 285px sweep).
+    style: { display: 'flex', flex: 'none', alignItems: 'center', justifyContent: 'flex-start', width: `${chevronPx}px`, height: `${titleLine}px`, color: 'var(--dsw-alias-label-secondary)' },
+    'aria-hidden': true,
+  }, React.createElement('span', {
+    style: { display: 'flex', transform: `scale(${(chevronPx / 18).toFixed(3)})`, transformOrigin: 'left center' },
+  }, ChevronLeftIcon()))
   const headFlex = accessoryHead
     ? React.createElement('div', {
         key: 't',
@@ -510,16 +550,53 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
               },
             }, headIcon === undefined ? null : (HEAD_RING_ICONS[headIcon.name] ?? null)),
       )
-    : React.createElement('div', { key: 't', style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, minHeight: `${titleLine}px` } },
-    titleEl,
-    hasHeadRight ? React.createElement('span', { style: { display: 'inline-flex', alignItems: 'baseline', gap: 6, flex: 'none', marginBottom: rightSpill > 0 ? `${-rightSpill}px` : undefined } },
-      out.value != null ? figureEl(out.value, 'hv') : null,
-      out.headRight ? captionEl(out.headRight, 'hr') : null,
-    ) : null,
-  )
-  const headEls: Array<React.ReactElement> = [
-    headFlex,
-  ]
+    : headActionEl === null
+      ? React.createElement('div', {
+        key: 't',
+        style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, minHeight: `${titleLine}px` },
+      },
+      titleEl,
+      hasHeadRight ? React.createElement('span', { style: { display: 'inline-flex', alignItems: 'baseline', gap: 6, flex: 'none', marginBottom: rightSpill > 0 ? `${-rightSpill}px` : undefined } },
+        out.value != null ? figureEl(out.value, 'hv') : null,
+        out.headRight ? captionEl(out.headRight, 'hr') : null,
+      ) : null,
+      )
+      // WITH a `headAction` the chevron and the title form ONE left-aligned group:
+      // `space-between` would push the title to the RIGHT edge (there is no right
+      // slot here), and the owner's reference has 左箭头 + 标题 together top-left.
+      // The whole group is the hit area (`role=button`), which is what "点击整个
+      // 左上角箭头和标题可以返回" asks for.
+      : React.createElement('div', {
+        key: 't',
+        style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, minHeight: `${titleLine}px` },
+      },
+      React.createElement('span', {
+        role: 'button',
+        'aria-label': out.headAction!.label,
+        title: out.headAction!.label,
+        onClick: (e: React.MouseEvent) => { e.stopPropagation(); if (onAction) onAction(out.headAction!.id) },
+        style: { display: 'inline-flex', alignItems: 'center', gap: `${Math.round(3 * scale)}px`, minWidth: 0, cursor: 'pointer' },
+      }, headActionEl, titleEl),
+      hasHeadRight ? React.createElement('span', { style: { display: 'inline-flex', alignItems: 'baseline', gap: 6, flex: 'none', marginBottom: rightSpill > 0 ? `${-rightSpill}px` : undefined } },
+        out.value != null ? figureEl(out.value, 'hv') : null,
+        out.headRight ? captionEl(out.headRight, 'hr') : null,
+      ) : null,
+      )
+  /**
+   * A TITLE ROW THAT WOULD HOLD NOTHING IS NOT DRAWN.
+   *
+   * `title: ''` means "this card has no title" — not "print a blank 16px line above
+   * the body". The strip only disappears when the row would hold nothing else either:
+   * a card with a right-hand figure (`headRight`) or a head accessory (ring/mark) keeps
+   * its row, and a card whose remaining head parts are a `legend`/`headAfter`/`meter`
+   * keeps THOSE rows — only the empty line goes.
+   *
+   * See docs/design/CARD-TITLE-STANDARD.md (T1): dropping the title is only correct for
+   * a card whose BODY fills the tile (a dial, a month grid) — for a one-figure card the
+   * title row is the tile's top weight, and removing it leaves a visibly empty card.
+   */
+  const titleRowEmpty = out.title === '' && !hasHeadRight && !accessoryHead
+  const headEls: Array<React.ReactElement> = titleRowEmpty ? [] : [headFlex]
   if (out.headAfter && !accessoryHead) {
     // Prominent figure + the grey subtitle on their own row under the title.
     //
@@ -587,7 +664,13 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
       } }, m.label)),
     ))
   }
+  /**
+   * The head row as a whole: empty when NOTHING ended up in it (no title row, no
+   * `headAfter`, no `legend`, no `meter`). Read off the assembled list rather than
+   * re-derived from `out`, so a future head part cannot silently keep the strip.
+   */
   const head = headEls
+  const headEmpty = head.length === 0
   const body: React.ReactElement[] = []
   // The line sparkline (sys-gpu-line) is ELASTIC: the card body owns the full
   // remaining height and the chart flexes into it, so the card never bursts
@@ -624,16 +707,10 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
       style: stretchChart || elasticBody ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : undefined,
     }, c))
   }
-  if (out.rich) body.push(React.createElement('div', { key: 'r' }, RichBlock({ rich: out.rich, scale })))
+  if (out.rich) body.push(React.createElement('div', { key: 'r' }, React.createElement(RichBlock, { rich: out.rich, scale, width: boxW, onAction })))
   // Bottom-left value sits in the normal foot; the corner button is absolutely
   // positioned top-right: a brand-blue filled round button with the official
   // refresh/rotate icon; when armed it widens into a「确认」capsule.
-  const compressIcon = React.createElement('svg', { width: Math.round(18 * scale), height: Math.round(18 * scale), viewBox: '0 0 16 16', fill: 'none', 'aria-hidden': true },
-    React.createElement('path', { d: 'M7.92136 0.349152C10.3744 0.349234 12.5564 1.5052 13.9557 3.29894L15.1281 2.12759C15.3303 1.92546 15.6767 2.06943 15.6767 2.35538V5.53923C15.6766 5.71626 15.5329 5.85976 15.3559 5.86002H12.171C11.8854 5.8597 11.7426 5.51465 11.9443 5.31249L12.9641 4.29056C11.8237 2.74305 9.98908 1.74106 7.92136 1.74097C4.46436 1.74097 1.66233 4.543 1.66233 8C1.66233 11.457 4.46436 14.259 7.92136 14.259C11.3782 14.2589 14.1804 11.4569 14.1804 8H15.5722C15.5722 12.2251 12.1465 15.6507 7.92136 15.6508C3.69614 15.6508 0.270508 12.2252 0.270508 8C0.270508 3.77478 3.69614 0.349152 7.92136 0.349152Z', fill: 'currentColor' }),
-  )
-  const cornerPos = out.corner?.pos === 'bottom'
-    ? { bottom: `${innerPad}px`, right: `${innerPad}px` }
-    : { top: `${innerPad}px`, right: `${innerPad}px` }
   // The corner action is a 42px DISC (the owner's call, 2026-09-28, after seeing it
   // at 52): the cache card's head ring is 52px but it is an OUTLINE — a filled disc
   // of the same diameter carries far more ink, so it reads oversized next to it.
@@ -642,6 +719,14 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // hugging the corner. Set inline (the class keeps its own fallback), and the ARMED
   // state keeps the SAME disc: growing into a capsule would reach left under the
   // title, while 「确认」/“Confirm” fit inside this circle at the smaller type size.
+  const cornerPos = out.corner?.pos === 'bottom'
+    ? { bottom: `${innerPad}px`, right: `${innerPad}px` }
+    : { top: `${innerPad}px`, right: `${innerPad}px` }
+  // The shared 16px glyph, scaled to the corner disc's own 18px-at-scale-1 size — the
+  // same wrapper trick the head marks use, so the icon stays crisp at every scale.
+  const cornerIcon = React.createElement('span', {
+    style: { display: 'flex', transform: `scale(${((18 * scale) / 16).toFixed(3)})` },
+  }, refreshIcon)
   const cornerSize = Math.round(42 * scale)
   const corner = out.corner
     ? React.createElement('button', {
@@ -649,7 +734,7 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
         style: { ...cornerPos, width: `${cornerSize}px`, height: `${cornerSize}px`, borderRadius: `${Math.round(cornerSize / 2)}px`, fontSize: `${Math.round(10 * scale)}px` },
         title: out.corner.armed ? out.corner.armedLabel : out.corner.label,
         onClick: (e) => { e.stopPropagation(); if (onAction) onAction(out.corner!.id) },
-      }, out.corner.armed ? out.corner.armedLabel : compressIcon)
+      }, out.corner.armed ? out.corner.armedLabel : cornerIcon)
     : null
   // When the card carries a rich block with a vertical placement (valign), the
   // body owns the full remaining height so the block can sit top/center/bottom;
@@ -668,7 +753,11 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   // `topAligned` is about WHERE the body sits when the body is only as tall as its
   // content. An ELASTIC chart takes the card's whole leftover height instead, so the
   // body flexes in both cases and only `justifyContent` differs.
-  const topAligned = vj || headAnchorsTop || stretchChart
+  //
+  // `headEmpty` joins the set because a card with NO head owns that height: without
+  // it the freed strip stayed above the body (`marginTop: auto` pinned the body to
+  // the floor), which is exactly the dead band the empty title used to draw.
+  const topAligned = vj || headAnchorsTop || stretchChart || headEmpty
   const footStyle: React.CSSProperties = topAligned || elasticBody
     ? {
         flex: '1 1 0',
@@ -716,7 +805,13 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
     // caption was squeezed from 15px to 6.3px (clipped) while the chart below it
     // still overflowed by 10px and covered it. The body is the only part that
     // absorbs a shortfall (it measures itself for exactly that).
-    React.createElement('div', { key: 'head', style: { flex: 'none', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 0 } }, head),
+    //
+    // A card with NO head (titleRowEmpty and nothing else in it) renders no head box
+    // at all: a zero-height `flex: none` row would still be a node in the flex column
+    // and it is the strip this change exists to remove (docs/design/CARD-TITLE-STANDARD.md).
+    head.length === 0
+      ? null
+      : React.createElement('div', { key: 'head', style: { flex: 'none', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 0 } }, head),
     React.createElement('div', { key: 'foot', style: footStyle }, body),
     out.actions ? ActionsBlock({ actions: out.actions, onAction, scale }) : null,
   )

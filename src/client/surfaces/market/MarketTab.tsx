@@ -8,7 +8,7 @@
 
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import { WIDGETS } from '../../generated.registry'
+import { WIDGETS, useWidgetRegistry } from '../../lib/registry'
 import { groupOf, instanceKey, sizesOf, widgetDesc, widgetName, widgetSimToggle } from '../../lib/contract/helpers'
 import type { UsageData, WidgetRenderOut, WidgetSize, WidgetStats } from '../../lib/contract/types'
 import { nextSim } from '../../render/preview/sim'
@@ -107,6 +107,10 @@ function ZoomGhost({ zoom, target, onDone }: {
 
 export function MarketTab({ controller, usageData }: { controller: WidgetsController; usageData: UsageData | null }): React.ReactElement {
   const { prefs, setPrefs } = controller
+  // A third-party unit may register AFTER this panel mounted (a bundle loading
+  // late, a market install): subscribe to the registry so the list, the groups
+  // and the sizes all follow without a reload.
+  useWidgetRegistry()
   // NOTE: every `useState` this component's effects depend on must be declared
   // BEFORE those effects — a dependency array is read at hook-call time, so
   // naming a later `useState` throws "Cannot access X before initialization"

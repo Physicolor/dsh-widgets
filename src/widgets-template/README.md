@@ -39,7 +39,7 @@
   "builtin": true,              // 缺省 true；市场组件（如 usage/peak）为 false
   "sizes": ["2x2"],             // 可选 ["2x2", "2x4"]
   "defaultInstalled": false,    // 仅 stats 家族为 true（首次安装预载）
-  "source": "cc",               // 可选：该卡等待的实时数据源 usage|cc|sys|github（无源=同步投影）
+  "source": "cc",               // 可选：该卡等待的实时数据源 = 某个 families/<id>/adapter.ts 声明的 id（无源=同步投影）
   "skeleton": { "shape": "figures", "count": 3 },  // 可选：有 source 时声明加载骨架轮廓
   "locale": { "zh": {}, "en": {} } // 该 Widget 专属文案；家族共享文案放 src/widgets/_shared/locales.json
 }
@@ -57,6 +57,44 @@
 汇总成 `WIDGET_RUNTIME`，`pnpm check:registry` 在 manifest 与生成物不一致时直接让构建失败。
 **只有真的存在异步数据源时才声明**：只读会话内同步投影的卡（counts / tokens / task /
 trajectory / peak-pricing / heatmap 等）不要写 `source`，它们的 render 永远不是「加载中」。
+
+**`source` 是自由字符串，但必须命中已发现的数据源适配器**（v1.11 适配器契约）：
+合法的 id 来自 `src/client/families/<family>/adapter.ts` 里的 `defineSource({ id })`，
+生成器像发现组件单元一样发现它们。写错一个 id 会让 `pnpm check:registry` 直接失败——
+不会出现「卡片永远停在骨架」的运行时事故。
+
+**标题（`WidgetRenderOut.title`）：默认要写，`''` 是一个有严格条件的特例。**
+
+新卡默认**带标题**——标题是这张卡唯一的口径声明（"首 token 延迟" → `0s` 才有意义）。
+只有**同时**满足两条才允许 `title: ''`（左上角那行会整行消失，腾出的高度归主体）：
+
+1. **主体自述**：主体的结构已经说明它是什么（表盘、月历格、图片、figures 的逐项标签）；
+2. **主体满卡**：主体能吃掉腾出来的高度（自绘块、弹性折线）——只占一行数字/一排 figure 的卡
+   **不能**去标题，去掉后顶部会空出一条，卡片显得没做完。
+
+尺寸按 `2 × cardInnerPad(unit) + box ≤ unit` 选（150 侧：`12 + 120 + 12 = 144 ≤ 150`），
+并把这条式子写进模块注释。完整标准、类型学（T1–T6）与全部 58 个已实装单元的审计见
+[docs/design/CARD-TITLE-STANDARD.md](../../docs/design/CARD-TITLE-STANDARD.md)。
+
+## 新增一个数据源（不是新增一个组件）
+
+一个数据源 = **一个 family 目录 + 一个 host 模块**，不需要改任何共享文件：
+
+1. 在 `src/client/families/<family>/adapter.ts` 里 `defineSource({ id, host, schedule, pulls })`
+   （一个文件可以声明多个源，例如 usage family 同时拥有账户池与机器级日图）；
+2. 在 `src/host/` 加路由模块，并在 `src/host/routes.ts` 注册一行；
+3. 需要它的组件在 `manifest.json` 写 `"source": "<id>"` + `"skeleton"`；
+4. `pnpm gen:registry`（或 `pnpm run build`）。
+
+调度、错误语义、骨架判定都由契约自己承担：`schedule`（mount/settle/poll/railOpen）、
+`apply()` 返回的 `resolved`（源自己决定「这条错误回答算不算答案」）。
+`node scripts/verify-source-contract.mjs --prove` 会在 CI 里真的造一个新源来证明上面这句话。
+
+## 第三方单元（社区部件）
+
+不在本仓库里的单元可以通过 `registerExternalUnit()` 在运行时注册，规则与上面的契约清单
+同一份：见 `docs/workflow/10-third-party-units.md`；离线审核门是
+`node scripts/validate-external-unit.mjs <unit-dir>`。
 
 **`index.ts` 描述符要点**：
 
@@ -82,18 +120,24 @@ export default defineWidget({
 
 | 模块 | 内容 |
 | --- | --- |
-| `src/client/lib/contract.ts` | 契约类型（Widget/WidgetStats/WidgetRenderOut/Chart/…）+ defineWidget + 解析器 |
+| `src/client/lib/contract/types.ts` | 契约类型（Widget/WidgetStats/WidgetRenderOut/Chart/WidgetRuntimeMeta/…） |
+| `src/client/lib/contract/helpers.ts` | `defineWidget` + 标签解析 + 实例键 + `sizesOf` |
+| `src/client/lib/contract/external.ts` | 第三方单元规则（R1–R10）与校验器 |
+| `src/client/lib/registry.ts` | 运行时注册表（内置 + 第三方），组件/实例/运行时元数据/文案的唯一读取口 |
 | `src/client/lib/format.ts` | 纯格式化：fmtDuration/fmtTokens/fmtTps/dayKey/滚动网格/柱状数据 |
-| `src/client/lib/usage-view.ts` | OpenCode 用量家族共享 render 工厂（usageRender/usageBarsRender/usageRingsRender） |
-| `src/client/lib/heatmap-accounting.ts` | token 热度图自记账（持久化 + 时区归日 + 迁移修复） |
+| `src/client/families/<family>/data.ts` | 家族视图与共享 render 工厂 |
+| `src/client/data/sources.ts` | 数据源注册表解析（谁在等哪个源、谁该被轮询） |
 | `src/client/i18n.ts` | `t()` 与 locale 服务接线（shell 字典） |
 
-**新增 Widget 时不要触碰**：`src/client/index.ts`、`components.tsx`、`i18n.ts`（除非改动共享 shell 本身）、`generated.registry.ts`（由生成器产出）。
+**新增 Widget 时不要触碰**：`src/client/index.ts`、`components.tsx`（已拆分为 `render/` 与
+`surfaces/`）、`i18n.ts`（除非改动共享 shell 本身）、`lib/registry.ts`、
+`data/collector.tsx`、`data/sources.ts`、`generated.registry.ts`（由生成器产出）。
 
 ## 验证
 
 ```sh
 pnpm gen:registry      # 重新生成 src/client/generated.registry.ts
 pnpm check:registry    # 校验注册表与单元目录一致（stale 时失败）
-pnpm run build         # 构建 lib/
+pnpm test              # 全部闸门（见 node scripts/gates.mjs --list）
+pnpm run build         # 构建 lib/（G5 的 CSS 闸门需要先构建）
 ```
