@@ -11,6 +11,9 @@ import { execFileP } from './exec'
 import { createMachineSampler } from './machine'
 import { type HostContext } from './context'
 
+/** nvidia-smi's CSV reports GPU memory in MiB (`nounits` only drops the suffix). */
+const MIB = 1024 ** 2
+
   // Machine-local hardware snapshot (System widgets): CPU utilization (delta
   // against the PREVIOUS request — the poll window is the averaging window),
   // memory totals, and the NVIDIA GPU via `nvidia-smi` (temp / util / VRAM).
@@ -68,8 +71,13 @@ export function registerSysinfo(ctx: HostContext): () => void {
           const line = String(stdout).split(/\r?\n/).map((l: string) => l.trim()).find((l: string) => l.length > 0)
           if (line !== undefined) {
             const parts = line.split(',').map((s: string) => s.trim())
-            const memUsed = Number(parts[3])
-            const memTotal = Number(parts[4])
+            // `nounits` strips only the "MiB" SUFFIX — the number stays MiB. The
+            // wire contract is BYTES (same unit as `mem.used` below and the
+            // `SysInfo.gpu` types), so the conversion belongs HERE: without it
+            // 4714 MiB reached `fmtGb` as 4714 "bytes" and the GPU 性能 / GPU 状态
+            // cards printed "0.0 GB" while the GPU was demonstrably busy.
+            const memUsed = Number(parts[3]) * MIB
+            const memTotal = Number(parts[4]) * MIB
             gpu = {
               name: parts[0] ?? '',
               temp: Number(parts[1]),
