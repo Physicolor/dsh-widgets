@@ -611,6 +611,2872 @@
    }
   },
   {
+   "id": "clock",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "rich": {
+     "clock": {
+      "face": "analog",
+      "h24": true,
+      "label": "本地",
+      "seconds": true,
+      "tz": "local"
+     },
+     "type": "clock"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "clock",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "tz": "Asia/Shanghai"
+   },
+   "out": {
+    "rich": {
+     "clock": {
+      "at": 1791943770000,
+      "face": "analog",
+      "h24": true,
+      "label": "北京",
+      "seconds": true,
+      "tz": "Asia/Shanghai"
+     },
+     "type": "clock"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "clock",
+   "size": "2x2",
+   "sim": {
+    "at": 1791907205000,
+    "tz": "Asia/Shanghai"
+   },
+   "out": {
+    "rich": {
+     "clock": {
+      "at": 1791907205000,
+      "face": "analog",
+      "h24": true,
+      "label": "北京",
+      "seconds": true,
+      "tz": "Asia/Shanghai"
+     },
+     "type": "clock"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "clock",
+   "size": "2x2",
+   "sim": {
+    "at": 1791985002000,
+    "tz": "America/New_York",
+    "face": "digital",
+    "h24": false
+   },
+   "out": {
+    "rich": {
+     "clock": {
+      "at": 1791985002000,
+      "dateLine": "上午 · 纽约 · 周三 10月14日",
+      "face": "digital",
+      "h24": false,
+      "label": "纽约",
+      "seconds": true,
+      "tz": "America/New_York"
+     },
+     "type": "clock"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "rich": {
+     "calendar": {
+      "hint": "下一件 每日构建检查 · 还有 19d",
+      "label": "2026年9月",
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        {
+         "day": 1,
+         "kind": "normal"
+        },
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "accent"
+        },
+        {
+         "day": 13,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "accent"
+        },
+        {
+         "day": 20,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "today"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "accent"
+        },
+        {
+         "day": 27,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        null,
+        null,
+        null,
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": {
+    "at": 1791950400000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "hint": "下一件 每日构建检查 · 还有 6h",
+      "label": "2026年10月",
+      "marks": [
+       14,
+       15,
+       17
+      ],
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        },
+        {
+         "day": 3,
+         "kind": "accent"
+        },
+        {
+         "day": 4,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "today"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": {
+    "at": 1771128000000,
+    "tz": "Asia/Shanghai",
+    "tint": "weekend"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "hint": "下一件 每日构建检查 · 还有 10.14",
+      "label": "2026年2月",
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "accent"
+        },
+        {
+         "day": 15,
+         "kind": "today"
+        }
+       ],
+       [
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "accent"
+        },
+        {
+         "day": 22,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "accent"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": {
+    "at": 1788148800000,
+    "tz": "Asia/Shanghai",
+    "tint": "weekend"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "hint": "下一件 每日构建检查 · 还有 10.14",
+      "label": "2026年8月",
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "accent"
+        },
+        {
+         "day": 9,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "accent"
+        },
+        {
+         "day": 16,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "accent"
+        },
+        {
+         "day": 23,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "accent"
+        },
+        {
+         "day": 30,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 31,
+         "kind": "today"
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": {
+    "at": 1799985600000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "hint": "法定节假日表还没有录入 2027 年：本月只按周末染色",
+      "label": "2027年1月",
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "normal"
+        },
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "today"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        }
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": {
+    "at": 1791950400000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday",
+    "scheduleStatus": "unavailable"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "label": "2026年10月",
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        },
+        {
+         "day": 3,
+         "kind": "accent"
+        },
+        {
+         "day": 4,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "today"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "rich": {
+     "calendar": {
+      "agenda": [
+       {
+        "title": "每日构建检查",
+        "when": "10/14 18:00"
+       },
+       {
+        "title": "周报汇总",
+        "when": "10/15 12:00"
+       },
+       {
+        "title": "额度巡检",
+        "when": "10/17 12:00"
+       }
+      ],
+      "agendaEmpty": "近期无日程",
+      "agendaLabel": "临近日程",
+      "hint": "下一件 每日构建检查 · 还有 19d",
+      "label": "2026年9月",
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        {
+         "day": 1,
+         "kind": "normal"
+        },
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "accent"
+        },
+        {
+         "day": 13,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "accent"
+        },
+        {
+         "day": 20,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "today"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "accent"
+        },
+        {
+         "day": 27,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        null,
+        null,
+        null,
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": {
+    "at": 1791950400000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "agenda": [
+       {
+        "title": "每日构建检查",
+        "when": "今天 18:00"
+       },
+       {
+        "title": "周报汇总",
+        "when": "10/15 12:00"
+       },
+       {
+        "title": "额度巡检",
+        "when": "10/17 12:00"
+       }
+      ],
+      "agendaEmpty": "近期无日程",
+      "agendaLabel": "临近日程",
+      "hint": "下一件 每日构建检查 · 还有 6h",
+      "label": "2026年10月",
+      "marks": [
+       14,
+       15,
+       17
+      ],
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        },
+        {
+         "day": 3,
+         "kind": "accent"
+        },
+        {
+         "day": 4,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "today"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": {
+    "at": 1771128000000,
+    "tz": "Asia/Shanghai",
+    "tint": "weekend"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "agenda": [
+       {
+        "title": "每日构建检查",
+        "when": "10/14 18:00"
+       },
+       {
+        "title": "周报汇总",
+        "when": "10/15 12:00"
+       },
+       {
+        "title": "额度巡检",
+        "when": "10/17 12:00"
+       }
+      ],
+      "agendaEmpty": "近期无日程",
+      "agendaLabel": "临近日程",
+      "hint": "下一件 每日构建检查 · 还有 10.14",
+      "label": "2026年2月",
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "accent"
+        },
+        {
+         "day": 15,
+         "kind": "today"
+        }
+       ],
+       [
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "accent"
+        },
+        {
+         "day": 22,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "accent"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": {
+    "at": 1788148800000,
+    "tz": "Asia/Shanghai",
+    "tint": "weekend"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "agenda": [
+       {
+        "title": "每日构建检查",
+        "when": "10/14 18:00"
+       },
+       {
+        "title": "周报汇总",
+        "when": "10/15 12:00"
+       },
+       {
+        "title": "额度巡检",
+        "when": "10/17 12:00"
+       }
+      ],
+      "agendaEmpty": "近期无日程",
+      "agendaLabel": "临近日程",
+      "hint": "下一件 每日构建检查 · 还有 10.14",
+      "label": "2026年8月",
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "accent"
+        },
+        {
+         "day": 9,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "accent"
+        },
+        {
+         "day": 16,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "accent"
+        },
+        {
+         "day": 23,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "accent"
+        },
+        {
+         "day": 30,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 31,
+         "kind": "today"
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": {
+    "at": 1799985600000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "agenda": [],
+      "agendaEmpty": "近期无日程",
+      "agendaLabel": "临近日程",
+      "hint": "法定节假日表还没有录入 2027 年：本月只按周末染色",
+      "label": "2027年1月",
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "normal"
+        },
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "today"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        }
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": {
+    "at": 1791950400000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday",
+    "scheduleStatus": "unavailable"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "label": "2026年10月",
+      "weekdays": [
+       "一",
+       "二",
+       "三",
+       "四",
+       "五",
+       "六",
+       "日"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        },
+        {
+         "day": 3,
+         "kind": "accent"
+        },
+        {
+         "day": 4,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "today"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "cardHint": "计时中 · 2 个并行",
+    "sub": "当前工具 pwsh 1:24",
+    "title": "任务计时",
+    "value": "4:12"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x2",
+   "sim": {
+    "liveTurnMs": 252000,
+    "liveStepMs": 84000,
+    "toolName": "pwsh",
+    "toolMs": 84000,
+    "toolCount": 2
+   },
+   "out": {
+    "cardHint": "计时中 · 2 个并行",
+    "sub": "当前工具 pwsh 1:24",
+    "title": "任务计时",
+    "value": "4:12"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x2",
+   "sim": {
+    "liveTurnMs": 12000,
+    "liveStepMs": 12000,
+    "toolName": null,
+    "toolMs": null,
+    "toolCount": null
+   },
+   "out": {
+    "cardHint": "计时中",
+    "sub": "模型 0:12",
+    "title": "任务计时",
+    "value": "0:12"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x2",
+   "sim": {
+    "liveTurnMs": null,
+    "liveStepMs": null
+   },
+   "out": {
+    "cardHint": "计时中 · 2 个并行",
+    "sub": "当前工具 pwsh 1:24",
+    "title": "任务计时",
+    "value": "—",
+    "valueTone": "muted"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "计时中",
+    "chart": {
+     "figureRows": [
+      [
+       {
+        "label": "当前工具",
+        "value": "pwsh 1:24"
+       },
+       {
+        "label": "工具",
+        "value": "6"
+       },
+       {
+        "label": "本会话轮次",
+        "value": "7"
+       },
+       {
+        "label": "本会话步数",
+        "value": "23"
+       }
+      ]
+     ],
+     "kind": "figures"
+    },
+    "headAfter": {
+     "big": "4:12",
+     "small": "本回合"
+    },
+    "title": "任务计时"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x4",
+   "sim": {
+    "liveTurnMs": 252000,
+    "liveStepMs": 84000,
+    "toolName": "pwsh",
+    "toolMs": 84000,
+    "toolCount": 2
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "计时中",
+    "chart": {
+     "figureRows": [
+      [
+       {
+        "label": "当前工具",
+        "value": "pwsh 1:24"
+       },
+       {
+        "label": "工具",
+        "value": "6"
+       },
+       {
+        "label": "本会话轮次",
+        "value": "7"
+       },
+       {
+        "label": "本会话步数",
+        "value": "23"
+       }
+      ]
+     ],
+     "kind": "figures"
+    },
+    "headAfter": {
+     "big": "4:12",
+     "small": "本回合"
+    },
+    "title": "任务计时"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x4",
+   "sim": {
+    "liveTurnMs": 12000,
+    "liveStepMs": 12000,
+    "toolName": null,
+    "toolMs": null,
+    "toolCount": null
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "计时中",
+    "chart": {
+     "figureRows": [
+      [
+       {
+        "label": "当前工具",
+        "value": "空闲"
+       },
+       {
+        "label": "工具",
+        "value": "6"
+       },
+       {
+        "label": "本会话轮次",
+        "value": "7"
+       },
+       {
+        "label": "本会话步数",
+        "value": "23"
+       }
+      ]
+     ],
+     "kind": "figures"
+    },
+    "headAfter": {
+     "big": "0:12",
+     "small": "本回合"
+    },
+    "title": "任务计时"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x4",
+   "sim": {
+    "liveTurnMs": null,
+    "liveStepMs": null
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "计时中",
+    "chart": {
+     "figureRows": [
+      [
+       {
+        "label": "当前工具",
+        "value": "pwsh 1:24"
+       },
+       {
+        "label": "工具",
+        "value": "6"
+       },
+       {
+        "label": "本会话轮次",
+        "value": "7"
+       },
+       {
+        "label": "本会话步数",
+        "value": "23"
+       }
+      ]
+     ],
+     "kind": "figures"
+    },
+    "headAfter": {
+     "big": "—",
+     "small": "本回合"
+    },
+    "title": "任务计时"
+   }
+  },
+  {
+   "id": "stopwatch",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "rich": {
+     "timer": {
+      "baseMs": 754000,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "复位",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "play",
+        "id": "timer:start",
+        "label": "继续",
+        "tone": "primary"
+       }
+      ],
+      "hundredths": true,
+      "layout": "dial",
+      "mode": "stopwatch",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "stopwatch",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "baseMs": 754000,
+    "startedAt": null
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 754000,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "复位",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "play",
+        "id": "timer:start",
+        "label": "继续",
+        "tone": "primary"
+       }
+      ],
+      "hundredths": true,
+      "layout": "dial",
+      "mode": "stopwatch",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "stopwatch",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "baseMs": 0,
+    "startedAt": 1791943645000
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "复位",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "pause",
+        "id": "timer:pause",
+        "label": "暂停",
+        "tone": "primary"
+       }
+      ],
+      "hundredths": true,
+      "layout": "dial",
+      "mode": "stopwatch",
+      "startedAt": 1791943645000
+     },
+     "type": "timer"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "stopwatch",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "baseMs": 0,
+    "startedAt": null
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "复位",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "play",
+        "id": "timer:start",
+        "label": "开始",
+        "tone": "primary"
+       }
+      ],
+      "hundredths": true,
+      "layout": "dial",
+      "mode": "stopwatch",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "rich": {
+     "timer": {
+      "baseMs": 0,
+      "capsules": [
+       {
+        "id": "timer:pick:1",
+        "label": "1",
+        "minutes": 1,
+        "sub": "分钟"
+       },
+       {
+        "id": "timer:pick:3",
+        "label": "3",
+        "minutes": 3,
+        "sub": "分钟"
+       },
+       {
+        "id": "timer:pick:5",
+        "label": "5",
+        "minutes": 5,
+        "sub": "分钟"
+       },
+       {
+        "id": "timer:pick:10",
+        "label": "10",
+        "minutes": 10,
+        "sub": "分钟"
+       }
+      ],
+      "durationMs": 0,
+      "layout": "picker",
+      "mode": "countdown",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": "倒计时"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "pick"
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "capsules": [
+       {
+        "id": "timer:pick:1",
+        "label": "1",
+        "minutes": 1,
+        "sub": "分钟"
+       },
+       {
+        "id": "timer:pick:3",
+        "label": "3",
+        "minutes": 3,
+        "sub": "分钟"
+       },
+       {
+        "id": "timer:pick:5",
+        "label": "5",
+        "minutes": 5,
+        "sub": "分钟"
+       },
+       {
+        "id": "timer:pick:10",
+        "label": "10",
+        "minutes": 10,
+        "sub": "分钟"
+       }
+      ],
+      "durationMs": 0,
+      "layout": "picker",
+      "mode": "countdown",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": "倒计时"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "pick",
+    "cdCustom": "8"
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "capsules": [
+       {
+        "id": "timer:pick:1",
+        "label": "1",
+        "minutes": 1,
+        "sub": "分钟"
+       },
+       {
+        "id": "timer:pick:3",
+        "label": "3",
+        "minutes": 3,
+        "sub": "分钟"
+       },
+       {
+        "id": "timer:pick:5",
+        "label": "5",
+        "minutes": 5,
+        "sub": "分钟"
+       },
+       {
+        "id": "timer:pick:8",
+        "label": "8",
+        "minutes": 8,
+        "sub": "分钟"
+       }
+      ],
+      "durationMs": 0,
+      "layout": "picker",
+      "mode": "countdown",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": "倒计时"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "pick",
+    "cdMin": 25,
+    "baseMs": 420000,
+    "startedAt": null,
+    "started": true
+   },
+   "out": {
+    "headAction": {
+     "id": "timer:reset",
+     "label": "返回"
+    },
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 420000,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "复位",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "play",
+        "id": "timer:start",
+        "label": "继续",
+        "tone": "primary"
+       }
+      ],
+      "doneLabel": "时间到",
+      "durationMs": 1500000,
+      "layout": "dial-head",
+      "mode": "countdown",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": "倒计时"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "pick",
+    "cdMin": 25,
+    "baseMs": 0,
+    "startedAt": 1791943620000,
+    "started": true
+   },
+   "out": {
+    "headAction": {
+     "id": "timer:reset",
+     "label": "返回"
+    },
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "复位",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "pause",
+        "id": "timer:pause",
+        "label": "暂停",
+        "tone": "primary"
+       }
+      ],
+      "doneLabel": "时间到",
+      "durationMs": 1500000,
+      "layout": "dial-head",
+      "mode": "countdown",
+      "startedAt": 1791943620000
+     },
+     "type": "timer"
+    },
+    "title": "倒计时"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "pick",
+    "cdMin": 25,
+    "baseMs": 1500000,
+    "startedAt": null,
+    "started": true,
+    "done": true
+   },
+   "out": {
+    "headAction": {
+     "id": "timer:reset",
+     "label": "返回"
+    },
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 1500000,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "复位",
+        "tone": "primary"
+       }
+      ],
+      "done": true,
+      "doneLabel": "时间到",
+      "durationMs": 1500000,
+      "layout": "dial-head",
+      "mode": "countdown",
+      "startedAt": null,
+      "tone": "warn"
+     },
+     "type": "timer"
+    },
+    "title": "倒计时"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "next",
+    "nextAt": 1791950400000,
+    "nextTitle": "每日构建检查",
+    "nextKind": "daily"
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "durationMs": 6630000,
+      "mode": "countdown",
+      "note": "每日构建检查 · 每天",
+      "startedAt": 1791943770000
+     },
+     "type": "timer"
+    },
+    "title": "倒计时"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "next"
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "durationMs": 0,
+      "mode": "countdown",
+      "note": "暂无日程",
+      "startedAt": null,
+      "tone": "muted"
+     },
+     "type": "timer"
+    },
+    "title": "倒计时"
+   }
+  },
+  {
    "id": "heatmap",
    "size": "2x2",
    "sim": null,
@@ -3006,6 +5872,158 @@
     "sub": "账期至 10-10",
     "title": "Command Code",
     "value": "1.2%"
+   }
+  },
+  {
+   "id": "deepseek-balance",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "今日消耗＝host 采样余额得到的当日下降量之和（官方只提供余额、没有用量接口）：dsh 未运行期间的消耗不计入，充值 / 赠送不计为负消耗",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "充值",
+       "value": "¥100"
+      },
+      {
+       "label": "今日消耗",
+       "value": "¥3.2"
+      },
+      {
+       "label": "对话消耗",
+       "value": "≈$0.131"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "¥110"
+    },
+    "legend": "刚刚更新 · 赠送 ¥10",
+    "title": "DeepSeek 余额"
+   }
+  },
+  {
+   "id": "deepseek-balance",
+   "size": "2x2",
+   "sim": {
+    "at": "2026-09-28T05:00:00Z"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "今日消耗＝host 采样余额得到的当日下降量之和（官方只提供余额、没有用量接口）：dsh 未运行期间的消耗不计入，充值 / 赠送不计为负消耗",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "充值",
+       "value": "¥100"
+      },
+      {
+       "label": "今日消耗",
+       "value": "¥3.2"
+      },
+      {
+       "label": "对话消耗",
+       "value": "≈$0.131"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "¥110"
+    },
+    "legend": "刚刚更新 · 赠送 ¥10",
+    "title": "DeepSeek 余额"
+   }
+  },
+  {
+   "id": "deepseek-balance",
+   "size": "2x2",
+   "sim": {
+    "at": "2026-09-28T05:00:00Z",
+    "balance": 15,
+    "spentToday": 9.4
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "余额低于你设的预警阈值 ¥10",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "充值",
+       "value": "¥100"
+      },
+      {
+       "label": "今日消耗",
+       "value": "¥9.4"
+      },
+      {
+       "label": "对话消耗",
+       "value": "≈$0.131"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "¥15"
+    },
+    "legend": "刚刚更新 · 赠送 ¥10",
+    "title": "DeepSeek 余额",
+    "valueTone": "warn"
+   }
+  },
+  {
+   "id": "deepseek-balance",
+   "size": "2x2",
+   "sim": {
+    "at": "2026-09-28T05:00:00Z",
+    "balance": 6.4,
+    "spentToday": 12.6
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "余额低于你设的预警阈值 ¥10",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "充值",
+       "value": "¥100"
+      },
+      {
+       "label": "今日消耗",
+       "value": "¥12.6"
+      },
+      {
+       "label": "对话消耗",
+       "value": "≈$0.131"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "¥6.4"
+    },
+    "legend": "刚刚更新 · 赠送 ¥10",
+    "title": "DeepSeek 余额",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "deepseek-balance",
+   "size": "2x2",
+   "sim": {
+    "error": "unconfigured"
+   },
+   "out": {
+    "cardHint": "未配置 DEEPSEEK_API_KEY — host 自动读取环境变量 / $DSH_HOME/.credentials.yaml / .env，重启后自动生效",
+    "headAfter": {
+     "big": "—"
+    },
+    "legend": "未配置密钥",
+    "title": "DeepSeek 余额",
+    "valueTone": "muted"
    }
   },
   {
@@ -8050,6 +11068,2872 @@
    }
   },
   {
+   "id": "clock",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "rich": {
+     "clock": {
+      "face": "analog",
+      "h24": true,
+      "label": "Local",
+      "seconds": true,
+      "tz": "local"
+     },
+     "type": "clock"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "clock",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "tz": "Asia/Shanghai"
+   },
+   "out": {
+    "rich": {
+     "clock": {
+      "at": 1791943770000,
+      "face": "analog",
+      "h24": true,
+      "label": "Beijing",
+      "seconds": true,
+      "tz": "Asia/Shanghai"
+     },
+     "type": "clock"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "clock",
+   "size": "2x2",
+   "sim": {
+    "at": 1791907205000,
+    "tz": "Asia/Shanghai"
+   },
+   "out": {
+    "rich": {
+     "clock": {
+      "at": 1791907205000,
+      "face": "analog",
+      "h24": true,
+      "label": "Beijing",
+      "seconds": true,
+      "tz": "Asia/Shanghai"
+     },
+     "type": "clock"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "clock",
+   "size": "2x2",
+   "sim": {
+    "at": 1791985002000,
+    "tz": "America/New_York",
+    "face": "digital",
+    "h24": false
+   },
+   "out": {
+    "rich": {
+     "clock": {
+      "at": 1791985002000,
+      "dateLine": "AM · New York · Wed 10/14",
+      "face": "digital",
+      "h24": false,
+      "label": "New York",
+      "seconds": true,
+      "tz": "America/New_York"
+     },
+     "type": "clock"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "rich": {
+     "calendar": {
+      "hint": "Next 每日构建检查 · in 19d",
+      "label": "September 2026",
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        {
+         "day": 1,
+         "kind": "normal"
+        },
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "accent"
+        },
+        {
+         "day": 13,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "accent"
+        },
+        {
+         "day": 20,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "today"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "accent"
+        },
+        {
+         "day": 27,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        null,
+        null,
+        null,
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": {
+    "at": 1791950400000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "hint": "Next 每日构建检查 · in 6h",
+      "label": "October 2026",
+      "marks": [
+       14,
+       15,
+       17
+      ],
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        },
+        {
+         "day": 3,
+         "kind": "accent"
+        },
+        {
+         "day": 4,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "today"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": {
+    "at": 1771128000000,
+    "tz": "Asia/Shanghai",
+    "tint": "weekend"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "hint": "Next 每日构建检查 · in 10.14",
+      "label": "February 2026",
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "accent"
+        },
+        {
+         "day": 15,
+         "kind": "today"
+        }
+       ],
+       [
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "accent"
+        },
+        {
+         "day": 22,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "accent"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": {
+    "at": 1788148800000,
+    "tz": "Asia/Shanghai",
+    "tint": "weekend"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "hint": "Next 每日构建检查 · in 10.14",
+      "label": "August 2026",
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "accent"
+        },
+        {
+         "day": 9,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "accent"
+        },
+        {
+         "day": 16,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "accent"
+        },
+        {
+         "day": 23,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "accent"
+        },
+        {
+         "day": 30,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 31,
+         "kind": "today"
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": {
+    "at": 1799985600000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "hint": "The statutory holiday table does not cover 2027 yet — weekends only this month",
+      "label": "January 2027",
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "normal"
+        },
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "today"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        }
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x2",
+   "sim": {
+    "at": 1791950400000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday",
+    "scheduleStatus": "unavailable"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "label": "October 2026",
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        },
+        {
+         "day": 3,
+         "kind": "accent"
+        },
+        {
+         "day": 4,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "today"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "rich": {
+     "calendar": {
+      "agenda": [
+       {
+        "title": "每日构建检查",
+        "when": "10/14 18:00"
+       },
+       {
+        "title": "周报汇总",
+        "when": "10/15 12:00"
+       },
+       {
+        "title": "额度巡检",
+        "when": "10/17 12:00"
+       }
+      ],
+      "agendaEmpty": "No upcoming tasks",
+      "agendaLabel": "Upcoming",
+      "hint": "Next 每日构建检查 · in 19d",
+      "label": "September 2026",
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        {
+         "day": 1,
+         "kind": "normal"
+        },
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "accent"
+        },
+        {
+         "day": 13,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "accent"
+        },
+        {
+         "day": 20,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "today"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "accent"
+        },
+        {
+         "day": 27,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        null,
+        null,
+        null,
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": {
+    "at": 1791950400000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "agenda": [
+       {
+        "title": "每日构建检查",
+        "when": "Today 18:00"
+       },
+       {
+        "title": "周报汇总",
+        "when": "10/15 12:00"
+       },
+       {
+        "title": "额度巡检",
+        "when": "10/17 12:00"
+       }
+      ],
+      "agendaEmpty": "No upcoming tasks",
+      "agendaLabel": "Upcoming",
+      "hint": "Next 每日构建检查 · in 6h",
+      "label": "October 2026",
+      "marks": [
+       14,
+       15,
+       17
+      ],
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        },
+        {
+         "day": 3,
+         "kind": "accent"
+        },
+        {
+         "day": 4,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "today"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": {
+    "at": 1771128000000,
+    "tz": "Asia/Shanghai",
+    "tint": "weekend"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "agenda": [
+       {
+        "title": "每日构建检查",
+        "when": "10/14 18:00"
+       },
+       {
+        "title": "周报汇总",
+        "when": "10/15 12:00"
+       },
+       {
+        "title": "额度巡检",
+        "when": "10/17 12:00"
+       }
+      ],
+      "agendaEmpty": "No upcoming tasks",
+      "agendaLabel": "Upcoming",
+      "hint": "Next 每日构建检查 · in 10.14",
+      "label": "February 2026",
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "accent"
+        },
+        {
+         "day": 15,
+         "kind": "today"
+        }
+       ],
+       [
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "accent"
+        },
+        {
+         "day": 22,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "accent"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": {
+    "at": 1788148800000,
+    "tz": "Asia/Shanghai",
+    "tint": "weekend"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "agenda": [
+       {
+        "title": "每日构建检查",
+        "when": "10/14 18:00"
+       },
+       {
+        "title": "周报汇总",
+        "when": "10/15 12:00"
+       },
+       {
+        "title": "额度巡检",
+        "when": "10/17 12:00"
+       }
+      ],
+      "agendaEmpty": "No upcoming tasks",
+      "agendaLabel": "Upcoming",
+      "hint": "Next 每日构建检查 · in 10.14",
+      "label": "August 2026",
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 3,
+         "kind": "normal"
+        },
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "accent"
+        },
+        {
+         "day": 9,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "accent"
+        },
+        {
+         "day": 16,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "accent"
+        },
+        {
+         "day": 23,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "accent"
+        },
+        {
+         "day": 30,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 31,
+         "kind": "today"
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": {
+    "at": 1799985600000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "agenda": [],
+      "agendaEmpty": "No upcoming tasks",
+      "agendaLabel": "Upcoming",
+      "hint": "The statutory holiday table does not cover 2027 yet — weekends only this month",
+      "label": "January 2027",
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "normal"
+        },
+        {
+         "day": 2,
+         "kind": "normal"
+        },
+        {
+         "day": 3,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 4,
+         "kind": "normal"
+        },
+        {
+         "day": 5,
+         "kind": "normal"
+        },
+        {
+         "day": 6,
+         "kind": "normal"
+        },
+        {
+         "day": 7,
+         "kind": "normal"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 11,
+         "kind": "normal"
+        },
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "normal"
+        },
+        {
+         "day": 15,
+         "kind": "today"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 18,
+         "kind": "normal"
+        },
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 25,
+         "kind": "normal"
+        },
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        }
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "calendar",
+   "size": "2x4",
+   "sim": {
+    "at": 1791950400000,
+    "tz": "Asia/Shanghai",
+    "tint": "holiday",
+    "scheduleStatus": "unavailable"
+   },
+   "out": {
+    "rich": {
+     "calendar": {
+      "label": "October 2026",
+      "weekdays": [
+       "M",
+       "T",
+       "W",
+       "T",
+       "F",
+       "S",
+       "S"
+      ],
+      "weeks": [
+       [
+        null,
+        null,
+        null,
+        {
+         "day": 1,
+         "kind": "accent"
+        },
+        {
+         "day": 2,
+         "kind": "accent"
+        },
+        {
+         "day": 3,
+         "kind": "accent"
+        },
+        {
+         "day": 4,
+         "kind": "accent"
+        }
+       ],
+       [
+        {
+         "day": 5,
+         "kind": "accent"
+        },
+        {
+         "day": 6,
+         "kind": "accent"
+        },
+        {
+         "day": 7,
+         "kind": "accent"
+        },
+        {
+         "day": 8,
+         "kind": "normal"
+        },
+        {
+         "day": 9,
+         "kind": "normal"
+        },
+        {
+         "day": 10,
+         "kind": "normal"
+        },
+        {
+         "day": 11,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 12,
+         "kind": "normal"
+        },
+        {
+         "day": 13,
+         "kind": "normal"
+        },
+        {
+         "day": 14,
+         "kind": "today"
+        },
+        {
+         "day": 15,
+         "kind": "normal"
+        },
+        {
+         "day": 16,
+         "kind": "normal"
+        },
+        {
+         "day": 17,
+         "kind": "normal"
+        },
+        {
+         "day": 18,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 19,
+         "kind": "normal"
+        },
+        {
+         "day": 20,
+         "kind": "normal"
+        },
+        {
+         "day": 21,
+         "kind": "normal"
+        },
+        {
+         "day": 22,
+         "kind": "normal"
+        },
+        {
+         "day": 23,
+         "kind": "normal"
+        },
+        {
+         "day": 24,
+         "kind": "normal"
+        },
+        {
+         "day": 25,
+         "kind": "normal"
+        }
+       ],
+       [
+        {
+         "day": 26,
+         "kind": "normal"
+        },
+        {
+         "day": 27,
+         "kind": "normal"
+        },
+        {
+         "day": 28,
+         "kind": "normal"
+        },
+        {
+         "day": 29,
+         "kind": "normal"
+        },
+        {
+         "day": 30,
+         "kind": "normal"
+        },
+        {
+         "day": 31,
+         "kind": "normal"
+        },
+        null
+       ]
+      ]
+     },
+     "type": "calendar"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "cardHint": "Running · 2 in parallel",
+    "sub": "Running tool pwsh 1:24",
+    "title": "Task Timer",
+    "value": "4:12"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x2",
+   "sim": {
+    "liveTurnMs": 252000,
+    "liveStepMs": 84000,
+    "toolName": "pwsh",
+    "toolMs": 84000,
+    "toolCount": 2
+   },
+   "out": {
+    "cardHint": "Running · 2 in parallel",
+    "sub": "Running tool pwsh 1:24",
+    "title": "Task Timer",
+    "value": "4:12"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x2",
+   "sim": {
+    "liveTurnMs": 12000,
+    "liveStepMs": 12000,
+    "toolName": null,
+    "toolMs": null,
+    "toolCount": null
+   },
+   "out": {
+    "cardHint": "Running",
+    "sub": "Model 0:12",
+    "title": "Task Timer",
+    "value": "0:12"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x2",
+   "sim": {
+    "liveTurnMs": null,
+    "liveStepMs": null
+   },
+   "out": {
+    "cardHint": "Running · 2 in parallel",
+    "sub": "Running tool pwsh 1:24",
+    "title": "Task Timer",
+    "value": "—",
+    "valueTone": "muted"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x4",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Running",
+    "chart": {
+     "figureRows": [
+      [
+       {
+        "label": "Running tool",
+        "value": "pwsh 1:24"
+       },
+       {
+        "label": "Tools",
+        "value": "6"
+       },
+       {
+        "label": "Session turns",
+        "value": "7"
+       },
+       {
+        "label": "Session steps",
+        "value": "23"
+       }
+      ]
+     ],
+     "kind": "figures"
+    },
+    "headAfter": {
+     "big": "4:12",
+     "small": "This turn"
+    },
+    "title": "Task Timer"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x4",
+   "sim": {
+    "liveTurnMs": 252000,
+    "liveStepMs": 84000,
+    "toolName": "pwsh",
+    "toolMs": 84000,
+    "toolCount": 2
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Running",
+    "chart": {
+     "figureRows": [
+      [
+       {
+        "label": "Running tool",
+        "value": "pwsh 1:24"
+       },
+       {
+        "label": "Tools",
+        "value": "6"
+       },
+       {
+        "label": "Session turns",
+        "value": "7"
+       },
+       {
+        "label": "Session steps",
+        "value": "23"
+       }
+      ]
+     ],
+     "kind": "figures"
+    },
+    "headAfter": {
+     "big": "4:12",
+     "small": "This turn"
+    },
+    "title": "Task Timer"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x4",
+   "sim": {
+    "liveTurnMs": 12000,
+    "liveStepMs": 12000,
+    "toolName": null,
+    "toolMs": null,
+    "toolCount": null
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Running",
+    "chart": {
+     "figureRows": [
+      [
+       {
+        "label": "Running tool",
+        "value": "Idle"
+       },
+       {
+        "label": "Tools",
+        "value": "6"
+       },
+       {
+        "label": "Session turns",
+        "value": "7"
+       },
+       {
+        "label": "Session steps",
+        "value": "23"
+       }
+      ]
+     ],
+     "kind": "figures"
+    },
+    "headAfter": {
+     "big": "0:12",
+     "small": "This turn"
+    },
+    "title": "Task Timer"
+   }
+  },
+  {
+   "id": "task-timer",
+   "size": "2x4",
+   "sim": {
+    "liveTurnMs": null,
+    "liveStepMs": null
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Running",
+    "chart": {
+     "figureRows": [
+      [
+       {
+        "label": "Running tool",
+        "value": "pwsh 1:24"
+       },
+       {
+        "label": "Tools",
+        "value": "6"
+       },
+       {
+        "label": "Session turns",
+        "value": "7"
+       },
+       {
+        "label": "Session steps",
+        "value": "23"
+       }
+      ]
+     ],
+     "kind": "figures"
+    },
+    "headAfter": {
+     "big": "—",
+     "small": "This turn"
+    },
+    "title": "Task Timer"
+   }
+  },
+  {
+   "id": "stopwatch",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "rich": {
+     "timer": {
+      "baseMs": 754000,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "Reset",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "play",
+        "id": "timer:start",
+        "label": "Resume",
+        "tone": "primary"
+       }
+      ],
+      "hundredths": true,
+      "layout": "dial",
+      "mode": "stopwatch",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "stopwatch",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "baseMs": 754000,
+    "startedAt": null
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 754000,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "Reset",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "play",
+        "id": "timer:start",
+        "label": "Resume",
+        "tone": "primary"
+       }
+      ],
+      "hundredths": true,
+      "layout": "dial",
+      "mode": "stopwatch",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "stopwatch",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "baseMs": 0,
+    "startedAt": 1791943645000
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "Reset",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "pause",
+        "id": "timer:pause",
+        "label": "Pause",
+        "tone": "primary"
+       }
+      ],
+      "hundredths": true,
+      "layout": "dial",
+      "mode": "stopwatch",
+      "startedAt": 1791943645000
+     },
+     "type": "timer"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "stopwatch",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "baseMs": 0,
+    "startedAt": null
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "Reset",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "play",
+        "id": "timer:start",
+        "label": "Start",
+        "tone": "primary"
+       }
+      ],
+      "hundredths": true,
+      "layout": "dial",
+      "mode": "stopwatch",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": ""
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "rich": {
+     "timer": {
+      "baseMs": 0,
+      "capsules": [
+       {
+        "id": "timer:pick:1",
+        "label": "1",
+        "minutes": 1,
+        "sub": "min"
+       },
+       {
+        "id": "timer:pick:3",
+        "label": "3",
+        "minutes": 3,
+        "sub": "min"
+       },
+       {
+        "id": "timer:pick:5",
+        "label": "5",
+        "minutes": 5,
+        "sub": "min"
+       },
+       {
+        "id": "timer:pick:10",
+        "label": "10",
+        "minutes": 10,
+        "sub": "min"
+       }
+      ],
+      "durationMs": 0,
+      "layout": "picker",
+      "mode": "countdown",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": "Countdown"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "pick"
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "capsules": [
+       {
+        "id": "timer:pick:1",
+        "label": "1",
+        "minutes": 1,
+        "sub": "min"
+       },
+       {
+        "id": "timer:pick:3",
+        "label": "3",
+        "minutes": 3,
+        "sub": "min"
+       },
+       {
+        "id": "timer:pick:5",
+        "label": "5",
+        "minutes": 5,
+        "sub": "min"
+       },
+       {
+        "id": "timer:pick:10",
+        "label": "10",
+        "minutes": 10,
+        "sub": "min"
+       }
+      ],
+      "durationMs": 0,
+      "layout": "picker",
+      "mode": "countdown",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": "Countdown"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "pick",
+    "cdCustom": "8"
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "capsules": [
+       {
+        "id": "timer:pick:1",
+        "label": "1",
+        "minutes": 1,
+        "sub": "min"
+       },
+       {
+        "id": "timer:pick:3",
+        "label": "3",
+        "minutes": 3,
+        "sub": "min"
+       },
+       {
+        "id": "timer:pick:5",
+        "label": "5",
+        "minutes": 5,
+        "sub": "min"
+       },
+       {
+        "id": "timer:pick:8",
+        "label": "8",
+        "minutes": 8,
+        "sub": "min"
+       }
+      ],
+      "durationMs": 0,
+      "layout": "picker",
+      "mode": "countdown",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": "Countdown"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "pick",
+    "cdMin": 25,
+    "baseMs": 420000,
+    "startedAt": null,
+    "started": true
+   },
+   "out": {
+    "headAction": {
+     "id": "timer:reset",
+     "label": "Back"
+    },
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 420000,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "Reset",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "play",
+        "id": "timer:start",
+        "label": "Resume",
+        "tone": "primary"
+       }
+      ],
+      "doneLabel": "Time is up",
+      "durationMs": 1500000,
+      "layout": "dial-head",
+      "mode": "countdown",
+      "startedAt": null
+     },
+     "type": "timer"
+    },
+    "title": "Countdown"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "pick",
+    "cdMin": 25,
+    "baseMs": 0,
+    "startedAt": 1791943620000,
+    "started": true
+   },
+   "out": {
+    "headAction": {
+     "id": "timer:reset",
+     "label": "Back"
+    },
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "Reset",
+        "tone": "primary"
+       },
+       {
+        "big": true,
+        "glyph": "pause",
+        "id": "timer:pause",
+        "label": "Pause",
+        "tone": "primary"
+       }
+      ],
+      "doneLabel": "Time is up",
+      "durationMs": 1500000,
+      "layout": "dial-head",
+      "mode": "countdown",
+      "startedAt": 1791943620000
+     },
+     "type": "timer"
+    },
+    "title": "Countdown"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "pick",
+    "cdMin": 25,
+    "baseMs": 1500000,
+    "startedAt": null,
+    "started": true,
+    "done": true
+   },
+   "out": {
+    "headAction": {
+     "id": "timer:reset",
+     "label": "Back"
+    },
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 1500000,
+      "controls": [
+       {
+        "big": true,
+        "glyph": "reset",
+        "id": "timer:reset",
+        "label": "Reset",
+        "tone": "primary"
+       }
+      ],
+      "done": true,
+      "doneLabel": "Time is up",
+      "durationMs": 1500000,
+      "layout": "dial-head",
+      "mode": "countdown",
+      "startedAt": null,
+      "tone": "warn"
+     },
+     "type": "timer"
+    },
+    "title": "Countdown"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "next",
+    "nextAt": 1791950400000,
+    "nextTitle": "每日构建检查",
+    "nextKind": "daily"
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "durationMs": 6630000,
+      "mode": "countdown",
+      "note": "每日构建检查 · daily",
+      "startedAt": 1791943770000
+     },
+     "type": "timer"
+    },
+    "title": "Countdown"
+   }
+  },
+  {
+   "id": "countdown",
+   "size": "2x2",
+   "sim": {
+    "at": 1791943770000,
+    "mode": "next"
+   },
+   "out": {
+    "rich": {
+     "timer": {
+      "at": 1791943770000,
+      "baseMs": 0,
+      "durationMs": 0,
+      "mode": "countdown",
+      "note": "No upcoming task",
+      "startedAt": null,
+      "tone": "muted"
+     },
+     "type": "timer"
+    },
+    "title": "Countdown"
+   }
+  },
+  {
    "id": "heatmap",
    "size": "2x2",
    "sim": null,
@@ -10445,6 +16329,158 @@
     "sub": "Period ends 10-10",
     "title": "Command Code",
     "value": "1.2%"
+   }
+  },
+  {
+   "id": "deepseek-balance",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Today's spend sums the balance drops this host sampled (the official API publishes a balance only, no usage): spend while dsh was not running is not counted, and a top-up is not counted as negative spend",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Topped up",
+       "value": "¥100"
+      },
+      {
+       "label": "Today spent",
+       "value": "¥3.2"
+      },
+      {
+       "label": "This chat",
+       "value": "≈$0.131"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "¥110"
+    },
+    "legend": "just now · Granted ¥10",
+    "title": "DeepSeek Balance"
+   }
+  },
+  {
+   "id": "deepseek-balance",
+   "size": "2x2",
+   "sim": {
+    "at": "2026-09-28T05:00:00Z"
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Today's spend sums the balance drops this host sampled (the official API publishes a balance only, no usage): spend while dsh was not running is not counted, and a top-up is not counted as negative spend",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Topped up",
+       "value": "¥100"
+      },
+      {
+       "label": "Today spent",
+       "value": "¥3.2"
+      },
+      {
+       "label": "This chat",
+       "value": "≈$0.131"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "¥110"
+    },
+    "legend": "just now · Granted ¥10",
+    "title": "DeepSeek Balance"
+   }
+  },
+  {
+   "id": "deepseek-balance",
+   "size": "2x2",
+   "sim": {
+    "at": "2026-09-28T05:00:00Z",
+    "balance": 15,
+    "spentToday": 9.4
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Balance is below your alert threshold of ¥10",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Topped up",
+       "value": "¥100"
+      },
+      {
+       "label": "Today spent",
+       "value": "¥9.4"
+      },
+      {
+       "label": "This chat",
+       "value": "≈$0.131"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "¥15"
+    },
+    "legend": "just now · Granted ¥10",
+    "title": "DeepSeek Balance",
+    "valueTone": "warn"
+   }
+  },
+  {
+   "id": "deepseek-balance",
+   "size": "2x2",
+   "sim": {
+    "at": "2026-09-28T05:00:00Z",
+    "balance": 6.4,
+    "spentToday": 12.6
+   },
+   "out": {
+    "bodyAnchor": "bottom",
+    "cardHint": "Balance is below your alert threshold of ¥10",
+    "chart": {
+     "breakdown": [
+      {
+       "label": "Topped up",
+       "value": "¥100"
+      },
+      {
+       "label": "Today spent",
+       "value": "¥12.6"
+      },
+      {
+       "label": "This chat",
+       "value": "≈$0.131"
+      }
+     ],
+     "kind": "breakdown"
+    },
+    "headAfter": {
+     "big": "¥6.4"
+    },
+    "legend": "just now · Granted ¥10",
+    "title": "DeepSeek Balance",
+    "valueTone": "danger"
+   }
+  },
+  {
+   "id": "deepseek-balance",
+   "size": "2x2",
+   "sim": {
+    "error": "unconfigured"
+   },
+   "out": {
+    "cardHint": "DEEPSEEK_API_KEY is not configured — the host auto-reads env / $DSH_HOME/.credentials.yaml / .env; effective after a restart",
+    "headAfter": {
+     "big": "—"
+    },
+    "legend": "No API key",
+    "title": "DeepSeek Balance",
+    "valueTone": "muted"
    }
   },
   {

@@ -1,0 +1,48 @@
+# dsh-widgets — the quality gates, on every push and PR.
+#
+# The plugin has ten offline gates (`node scripts/gates.mjs --list`), and before
+# this workflow they ran only on the owner's machine: a pull request could merge
+# with a stale registry, a drifting render or a new type error, because the only
+# workflows here were `pages` (docs) and `publish` (release tags).
+#
+# The steps mirror the documented local procedure exactly — `pnpm run build`
+# first (the CSS gate reads the COMPILED stylesheet out of lib/client.js), then
+# `pnpm test` — so "green here" and "green locally" mean the same thing.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # G5 compares the compiled CSS in lib/client.js against the recorded
+      # baseline, so the bundle must exist before the gates run.
+      - name: Build bundles (registry + tsdown + types)
+        run: pnpm run build
+
+      - name: Quality gates
+        run: pnpm test
