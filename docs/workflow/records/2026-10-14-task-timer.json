@@ -1,0 +1,85 @@
+{
+  "schema": "dsh-widgets/widget-record/v1",
+  "widgetId": "task-timer",
+  "source": "human",
+  "status": "INTEGRATION",
+  "createdAt": "2026-10-14T14:10:00+08:00",
+  "requirement": {
+    "name": "任务计时",
+    "purpose": "一眼看到「这一回合已经跑了多久」与「当前正在跑的那个工具调用多久了」。数据全部来自本会话既有折叠，不引入任何新数据源。",
+    "size": ["2x2", "2x4"],
+    "title": "任务计时",
+    "coreContent": "本回合已运行时长（主数字，随回合运行每秒推进）+ 当前工具调用（名字 + 时长）/ 当前模型步",
+    "displayedData": ["liveTurnMs", "liveStepMs", "tools.running{name,ms,count}", "tools.tools", "turns", "steps"],
+    "visualReference": "与既有 tps/session-cost 同族：标题 + 底部大字；2x4 走 headAfter.big + 一行 figures",
+    "interaction": "无",
+    "category": "system",
+    "categoryDecision": "existing",
+    "priority": "high",
+    "confirmedByHuman": true,
+    "_confirmation": "2026-10-14 用户回答需求表：秒表与任务计时「两张独立卡（只读任务计时 + 交互秒表）」；2x4 覆盖勾选「任务计时 2x4」"
+  },
+  "technicalAnalysis": {
+    "existingCapability": "sessionStats 投影（turns/steps/llmMs/toolMs）+ 本插件 collector 已折叠 trajectory/tools；缺「本回合」口径——llmMs/toolMs 是全会话累计",
+    "requiredData": ["open turn 内最早 step 的 start.time", "open step 的 start.time", "useChat().timeline"],
+    "dataSource": "本插件 collector 从 useChat().timeline 新增折叠 liveTurnMs / liveStepMs（types.ts + collector.tsx），其余读既有 tools/turns/steps",
+    "requiredProvider": null,
+    "externalDependency": null,
+    "complexity": "Low",
+    "risks": ["无 open turn 时必须 null（不得沿用上一回合的读数）", "工具名过长会触发省略号（数据驱动，允许）"]
+  },
+  "architectureDecision": "Widget + Shared Utility",
+  "specification": {
+    "schema": "dsh-widgets/widget-spec/v1",
+    "widgetId": "task-timer",
+    "size": ["2x2", "2x4"],
+    "titleKeys": { "key": "card.task-timer.title", "titleZh": "任务计时", "titleEn": "Task Timer" },
+    "titlePolicy": "T2 度量型：必须保留标题（docs/design/CARD-TITLE-STANDARD.md）",
+    "visualRequirements": {
+      "2x2": "title + value(fmtClock(liveTurnMs) 或 —) + sub 三态（当前工具 X / 模型 X / 当前工具 空闲）",
+      "2x4": "title + headAfter{big=本回合, small=本回合} + chart figures 一行四格（当前工具 / 工具（去重名数）/ 本会话轮次 / 本会话步数）"
+    },
+    "technicalStrategy": { "architecture": "Widget + Shared Utility", "contractHints": { "chartKinds": ["figures"], "widthForSize": "2x4 = 2*unit+gap" } },
+    "acceptanceCriteria": [
+      "2x2 与 2x4 都可渲染，标题为独立 card.task-timer.title 键",
+      "无 open turn 时主数字为 —（muted），不显示过期读数",
+      "运行中每秒推进（collector 运行态 1s tick），空闲不跳秒",
+      "工具名/并行数不把 sub 挤爆（已按画廊复核修正一轮）",
+      "node scripts/validate-widget-unit.mjs src/widgets/task-timer 全绿"
+    ]
+  },
+  "review": {
+    "reviewer": "independent review subagent (05-review-checklist, 只读复核)",
+    "result": "PASS",
+    "notes": [
+      "Worker 自检 0 failure / 0 warning；主 Agent 两轮 REWORK：2x4 第二格口径（calls→tools）+ 启用 liveStepMs；2x2 sub 截断（画廊图复核）",
+      "★ 独立复核与本记录都曾把「2x4 主体顶对齐」判为非缺陷（D10：与 harness-board 同族）——**车主看图后判定为明显错误**。真因：spec 没写主体姿态、没指定已发行参照卡，闸门只看数据与溢出。已改 bodyAnchor:'bottom'（会话概览姿态），并把该缺陷类别固化为规范 + 机器断言（docs/design/CARD-BODY-POSTURE.md、probe-geometry POSTURE，例外需登记）",
+      "本记录 review.result 曾在复核结束前预置 PASS（复核方指出该 provenance 问题），现按真实时序定稿：REWORK → 修复 → 复验 PASS"
+    ]
+  },
+  "mvw": {
+    "validUnit": true, "contract": true, "discovery": true, "registryAuto": true,
+    "build": true, "marketplace": true, "isolation": true, "iterable": true, "verdict": "MVW_OK"
+  },
+  "validation": {
+    "validateUnit": "PASS (locale.zh/en covers 12 local keys, 0 failure / 0 warning)",
+    "registrySync": "PASS — 61 widget unit(s) up to date",
+    "build": "PASS — tsdown (lib/index.js 82.69 kB, lib/client.js 1.07 MB) + build-types 164 files",
+    "discoveryProbe": "PASS — gates G1/G2；live rail 上真实挂载（verify-time-cards-live.cjs PASS，截图 .tmp-live-time-cards/task-timer.png）",
+    "regression": "`node scripts/verify-render-delta.mjs`（对 git HEAD 的多重集差，可复现）：262 → 340 行，added 78 行 / 6 个 id（本轮四个 + clock/deepseek-balance 两个本会话前就未提交的单元），**CHANGED 0 / removed 0** —— 没有任何已发行卡的输出被改动。probe-geometry 11/11（含新增 POSTURE 断言：24 张 2×4 卡最大空带 26px ≤ 36px）"
+  },
+  "result": "COMPLETED",
+  "history": [
+    { "status": "REQUIREMENT_READY", "at": "2026-10-14T14:10:00+08:00", "note": "用户确认：两张独立卡；任务计时 2x2 + 2x4" },
+    { "status": "TECH_ANALYSIS", "at": "2026-10-14T14:12:00+08:00", "note": "llmMs/toolMs 为全会话累计，无法回答「本回合」→ 从 timeline 新增 liveTurnMs/liveStepMs" },
+    { "status": "ARCHITECTURE_READY", "at": "2026-10-14T14:12:00+08:00", "note": "Widget + Shared Utility（两个纯折叠字段）" },
+    { "status": "IMPLEMENTING", "at": "2026-10-14T14:18:00+08:00", "note": "Worker Agent 按 spec 实现 src/widgets/task-timer/" },
+    { "status": "SELF_REVIEW", "at": "2026-10-14T14:24:00+08:00", "note": "validate-widget-unit：0 failure / 0 warning" },
+    { "status": "REWORK", "at": "2026-10-14T14:30:00+08:00", "note": "主 Agent 复核：2x4 口径 bug（calls→tools）+ liveStepMs 未使用 → Worker 修" },
+    { "status": "REWORK", "at": "2026-10-14T14:42:00+08:00", "note": "画廊图复核：2x2 sub 被截断（当前工具 pwsh 1:24 · 2 …）→ 并行数移入 cardHint" },
+    { "status": "VALIDATION", "at": "2026-10-14T15:00:00+08:00", "note": "gates 11/11；probe-geometry 10/10；live probe PASS（真实会话读数 47:03 / 当前工具 pwsh 0:22）" },
+    { "status": "INTEGRATION", "at": "2026-10-14T15:05:00+08:00", "note": "进 Registry/市场（group time，order 33）；等待 Human Final Confirmation（用户查看产物）" },
+    { "status": "REWORK", "at": "2026-10-14T15:15:00+08:00", "note": "★ 车主看图判定 2x4 主体顶对齐（下方 51.6px 空带）为明显错误：改 bodyAnchor:'bottom'，与已发行 harness-board@2x4 同姿态；并新增 docs/design/CARD-BODY-POSTURE.md + probe-geometry POSTURE 断言（该断言经证伪验证：改回顶对齐立即 FAIL 51.6px > 36px）" },
+    { "status": "VALIDATION", "at": "2026-10-14T15:32:00+08:00", "note": "复验：gates 11/11；probe-geometry 11/11（24 张 2x4 卡最大空带 26px sys-disk@2x4）；live probe PASS" }
+  ]
+}

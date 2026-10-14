@@ -1,0 +1,90 @@
+{
+  "schema": "dsh-widgets/widget-record/v1",
+  "widgetId": "stopwatch",
+  "source": "human",
+  "status": "INTEGRATION",
+  "createdAt": "2026-10-14T14:10:00+08:00",
+  "requirement": {
+    "name": "秒表",
+    "purpose": "一张可交互的正计时秒表：开始 / 暂停 / 继续 / 复位，读数每秒自己走；状态存在实例配置里，刷新与换浏览器都不丢。",
+    "size": ["2x2"],
+    "title": "秒表",
+    "coreContent": "已计时长（主数字 M:SS）+ 状态行 + 开始/暂停/复位按钮",
+    "displayedData": ["cardConfigs.tmBase", "cardConfigs.tmStart", "当前时刻"],
+    "visualReference": "与 tps 同族：标题 + 底部大字 + 状态行；按钮行沿用既有 actions 按钮样式",
+    "interaction": "开始 / 暂停 / 继续 / 复位（WidgetAction id = timer:start | timer:pause | timer:reset）",
+    "category": "time",
+    "categoryDecision": "new",
+    "priority": "high",
+    "confirmedByHuman": true,
+    "_confirmation": "2026-10-14 用户回答需求表：「两张独立卡（只读任务计时 + 交互秒表）」；2x4 未勾选秒表"
+  },
+  "technicalAnalysis": {
+    "existingCapability": "实例 cardConfigs 已由 /api/widgets-state 原子持久化，并经 runtime/live-stats 合并进 WidgetStats；CardBody 已有 actions 按钮与 onAction 链路；rich 渲染器已能自持 1s tick（clock-face 先例）",
+    "requiredData": ["tmBase(累计 ms)", "tmStart(当前段起点 epoch ms)"],
+    "dataSource": "插件自有状态通道（cardConfigs[instanceKey]）—— 研究文档 §3.3 B1/B3，未新增 host 路由、未用 localStorage",
+    "requiredProvider": null,
+    "externalDependency": null,
+    "complexity": "Medium",
+    "risks": ["动作 id 必须在闭集内（timerOpOf），否则组件可写任意配置键", "读数不能挂在 widget render 上（rail 空闲 30s 才重渲）"]
+  },
+  "architectureDecision": "Widget + Shared Utility",
+  "specification": {
+    "schema": "dsh-widgets/widget-spec/v1",
+    "widgetId": "stopwatch",
+    "size": ["2x2"],
+    "titleKeys": { "key": "card.stopwatch.title", "titleZh": "秒表", "titleEn": "Stopwatch" },
+    "titlePolicy": "T2 度量型：保留标题",
+    "visualRequirements": {
+      "2x2": "title + rich(type=timer) 大读数 + 状态行；按钮行由 actions 渲染",
+      "box": "12(pad) + 16(title) + [74 rich] + 6 + 26(buttons) + 12(pad) = 146 ≤ 150，见 render/rich/timer-face.tsx 注释"
+    },
+    "technicalStrategy": {
+      "architecture": "Widget + Shared Utility",
+      "sharedUtility": "src/client/lib/timer-state.ts（纯状态机，读写双方共用）+ src/client/render/rich/timer-face.tsx（自持 1s tick）",
+      "contractHints": { "richType": "timer", "actionIds": ["timer:start", "timer:pause", "timer:reset"] }
+    },
+    "acceptanceCriteria": [
+      "点击开始后读数每秒推进，按钮变为暂停/复位",
+      "复位回到 0:00 且回到「开始」态",
+      "刷新页面 / 另一个浏览器打开同一 host 时读数延续（状态在 cardConfigs）",
+      "预览三态（未开始 / 计时中 / 已暂停）可点切换",
+      "node scripts/validate-widget-unit.mjs src/widgets/stopwatch 全绿"
+    ]
+  },
+  "review": {
+    "reviewer": "independent review subagent (05-review-checklist, 只读复核) + 车主参照图复核",
+    "result": "PASS",
+    "notes": [
+      "Worker 自检 0 failure / 0 warning",
+      "★ 车主按参照图复审两轮：① 改为参考格式（HH:MM:SS.cc + 两个圆形控件 + 无标题 dial 主体）；② 左盘图标改为「与上下文压缩同一个」官方刷新箭头（`render/icons.refreshIcon`，双盘均为实心品牌蓝、白色字形）。共享层新增 TimerControl / in-body 控件派发 / 100ms tick",
+      "★ 车主截图发现 dial 左右被卡片内边距裁切：真根因是「按外框宽度拟合 + 平均字宽估算」。已改为从 width 减去 cardInnerPad 逐字符计算；并新增 probe-geometry INNER-FIT 检查 + 画廊 150/190/285 三档 fixture 变体（该检查经证伪验证）。详见 docs/design/CARD-BODY-POSTURE.md §6",
+      "★ 车主第三轮（2026-10-14）：按钮要正圆 + 时间贴左上 + 字体与既有组件一致。三处真因分别是：①`corner-shape` 会继承，连续曲率把 `border-radius:50%` 的圆盘变成超椭圆圆角方（新增 `.dsx-timer-disc{corner-shape:round}`，与既有 `.dsx-switch-track` 同一手法）；②读数原本整体居中；③读数用了自定的 24–40px 档，而产品字阶里大数字是 `20·scale`px/600（`CardBody.valuePx`）——已统一为 20px/600。圆盘改为按卡宽的 31%（150 卡上 47px）并用 `space-between` 贴左右下角（参考图实测：盘径 31% 卡宽、读数约占卡高 10%）",
+      "★ 新增 probe-geometry 的 TIMER LAYOUT 断言（逐像素）：读数左/上边对齐 ±3px、两盘外边贴内容列 ±2px、盘底离地 ≤10px、盘宽高相等、computed `corner-shape` 必须是 round/superellipse(1)、读数 font-size == 20·scale 且 font-weight == 600。首轮跑即抓出全部三处偏差；修正后 20/20 PASS",
+      "本记录 review.result 曾在复核结束前预置 PASS（复核方指出该 provenance 问题），现按真实时序定稿"
+    ]
+  },
+  "mvw": {
+    "validUnit": true, "contract": true, "discovery": true, "registryAuto": true,
+    "build": true, "marketplace": true, "isolation": true, "iterable": true, "verdict": "MVW_OK"
+  },
+  "validation": {
+    "validateUnit": "PASS (locale.zh/en covers 10 local keys, 0 failure / 0 warning)",
+    "registrySync": "PASS — 61 widget unit(s) up to date",
+    "build": "PASS",
+    "discoveryProbe": "PASS — live rail 实测：开始 → 1s → 3s（render/rich/timer-face.tsx 的 tick + rail 的 timer:* 派发 → cardConfigs → live-stats 回路全部真实生效）",
+    "regression": "`node scripts/verify-render-delta.mjs`：262 → 340 行，CHANGED 0 / removed 0（另有 78 行 added，属本轮四个单元与本会话前未提交的 clock/deepseek-balance）；probe-geometry 11/11"
+  },
+  "result": "COMPLETED",
+  "history": [
+    { "status": "REQUIREMENT_READY", "at": "2026-10-14T14:10:00+08:00", "note": "用户确认独立交互秒表卡；状态通道要求「刷新/跨浏览器不丢」" },
+    { "status": "TECH_ANALYSIS", "at": "2026-10-14T14:12:00+08:00", "note": "复用既有 cardConfigs 持久化 + 新增 timer-state 纯状态机；读数 tick 放渲染器（clock-face 先例）" },
+    { "status": "ARCHITECTURE_READY", "at": "2026-10-14T14:12:00+08:00", "note": "Widget + Shared Utility；不新增 host 路由" },
+    { "status": "IMPLEMENTING", "at": "2026-10-14T14:18:00+08:00", "note": "共享层（timer-state/timer-face/rail 派发）与 Worker 单元并行" },
+    { "status": "SELF_REVIEW", "at": "2026-10-14T14:22:00+08:00", "note": "validate-widget-unit：0 failure / 0 warning" },
+    { "status": "VALIDATION", "at": "2026-10-14T15:00:00+08:00", "note": "live：1s→3s、复位 0:00；gates 11/11；probe-geometry 10/10" },
+    { "status": "INTEGRATION", "at": "2026-10-14T15:05:00+08:00", "note": "进 Registry/市场（group time，order 34）；等待 Human Final Confirmation" },
+    { "status": "REWORK", "at": "2026-10-14T15:16:00+08:00", "note": "★ 车主参照图复审：改为参考格式（HH:MM:SS.cc + 两个圆形控件 + 无标题 dial 主体）；共享层新增 TimerControl/in-body 控件派发/100ms tick；live 复验 1s→4s、复位、刷新不丢均 PASS" },
+    { "status": "VALIDATION", "at": "2026-10-14T15:32:00+08:00", "note": "复验：gates 11/11；probe-geometry 11/11；live probe PASS（标题元素不存在，按 HH:MM:SS.cc 读数识别卡片）" }
+  ]
+}

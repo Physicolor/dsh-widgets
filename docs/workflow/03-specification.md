@@ -25,6 +25,10 @@
   },
   "visualRequirements": {               // Human 提供或标注待确认
     "reference": "官方 ContextMeter JObwrW 模板",
+    "referenceCard": "harness-board",    // ★ 必填：一张【已发行】同族卡 id；没有它 → REWORK
+    "bodyPosture": "floor",              // ★ 必填：'floor'（主体贴底）| 'head'（跟随头部）
+                                         //   判据见 docs/design/CARD-BODY-POSTURE.md：
+                                         //   2x4 且主体只有一行 → 必须 floor
     "layout": "标题行下大百分比，右端 ~X / 窗口；下方横条分段 + 逐段说明行。2x4 变体：百分比移到标题行右端",
     "focus": "百分比为主数字优先",
     "numberHierarchy": {                // ★ 回归测试(C). 主数字槽位：大字独立/标题行内联/右端小字
@@ -77,4 +81,8 @@
 ## 规范约束
 
 - `visualRequirements` 必须有：Human 给了参考 → 原样引用；Human 未给 → 明确写 `"待用户确认"` 并将该字段标为 spec 缺口。**Review 发现 spec 缺口被 Worker 编造补齐 → 按 REWORK 处理（缺口应回到 Human 确认）。**
+- `visualRequirements.referenceCard`（一张**已发行**同族卡的 id）与 `bodyPosture`（`floor` / `head`）是 2026-10-14
+  事故后新增的必填项：`task-timer@2x4` 因为规格里没有这两项，把一行 figures 顶在头部下方、
+  卡底留下 51.6px 空带，并通过了当时所有闸门与一次 Review。**判据、参照卡清单与反例见
+  `docs/design/CARD-BODY-POSTURE.md`；机器断言在 `scripts/probe-geometry.cjs`（POSTURE）。**
 - `forbiddenChanges` 必须逐条列出 Worker 的禁止项（引用 `04-worker-instructions.md` 的默认边界 + 本任务特有项）。

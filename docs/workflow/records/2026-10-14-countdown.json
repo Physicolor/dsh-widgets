@@ -1,0 +1,95 @@
+{
+  "schema": "dsh-widgets/widget-record/v1",
+  "widgetId": "countdown",
+  "source": "human",
+  "status": "INTEGRATION",
+  "createdAt": "2026-10-14T14:10:00+08:00",
+  "requirement": {
+    "name": "倒计时",
+    "purpose": "一个倒计时表：既可以自己设定时长当番茄钟（开始/暂停/继续/复位），也可以盯住「最近的 DSH 定时任务」还剩多久 —— 两个模式在组件配置里切换。",
+    "size": ["2x2"],
+    "title": "倒计时",
+    "coreContent": "剩余时间（主数字 M:SS）+ 状态/目标行；手动模式带控制按钮，定时任务模式只读",
+    "displayedData": ["cardConfigs.tmBase/tmStart", "cdMin/cdMode 配置", "stats.schedule（ScheduleSnapshot）"],
+    "visualReference": "与秒表同族（同一 rich 'timer' 读数）；定时任务模式 note 显示「任务名 · 重复规则」",
+    "interaction": "手动模式：开始/暂停/继续/复位（timer:*）；定时任务模式：无按钮",
+    "category": "time",
+    "categoryDecision": "new",
+    "priority": "high",
+    "confirmedByHuman": true,
+    "_confirmation": "2026-10-14 用户回答需求表：「手动时长 + 下一个定时任务 两种模式」；2x4 未勾选倒计时"
+  },
+  "technicalAnalysis": {
+    "existingCapability": "同上（cardConfigs 状态通道 + timer 渲染器）；DSH 自带定时任务子系统可由客户端 Remote face 读取（remote.schedule.catalog + schedule/changed，研究文档 §4.1 已 VERIFIED）",
+    "requiredData": ["tmBase/tmStart", "cdMin（5/10/15/25/45/60）", "ScheduleCatalogEntry[]（id/title/kind/scheduledAt/status/规则字段）"],
+    "dataSource": "插件自有状态通道 + data/schedule.ts 的日程折叠（新增 WIDGET_RUNTIME.reads=['schedule'] 门控，只有装了读它的卡才订阅）",
+    "requiredProvider": null,
+    "externalDependency": "DSH schedule bundle（可选；缺失时降级，不报错）",
+    "complexity": "Medium",
+    "risks": [
+      "「最近的定时任务」是绝对时刻，而 timer 读数是 duration+锚点 —— 用 durationMs = target − 本次渲染锚点、startedAt = 锚点 编码，自洽",
+      "目标时刻按浏览器本地时区显示（卡片不引入时区配置，已在模块注释写明）",
+      "schedule 面缺失时不得把「读不到」显示成「你没有日程」"
+    ]
+  },
+  "architectureDecision": "Widget + Shared Utility",
+  "specification": {
+    "schema": "dsh-widgets/widget-spec/v1",
+    "widgetId": "countdown",
+    "size": ["2x2"],
+    "titleKeys": { "key": "card.countdown.title", "titleZh": "倒计时", "titleEn": "Countdown" },
+    "titlePolicy": "T2 度量型：保留标题",
+    "visualRequirements": {
+      "manual": "读数 = 剩余；note = 剩余 · 目标 HH:MM（运行）/ 已暂停 · 剩余 M:SS / 未开始；走完显示 时间到 + warn 色",
+      "next": "读数 = 到目标的剩余；note = 任务名 · 规则（每天/每周一/每隔 N 分钟/一次性/cron）",
+      "degrade": "schedule 缺失/失败 → muted + 定时任务不可用；ready 但无未来任务 → muted + 暂无日程（读数 —）"
+    },
+    "technicalStrategy": {
+      "architecture": "Widget + Shared Utility",
+      "sharedUtility": "lib/timer-state.ts + render/rich/timer-face.tsx + data/schedule.ts",
+      "contractHints": { "richType": "timer", "configSchema": ["cdMode(manual|next)", "cdMin(5..60)"] }
+    },
+    "acceptanceCriteria": [
+      "手动模式三态（未开始/计时中/已暂停）+ 走完态",
+      "定时任务模式：有未来任务时倒计时指向该时刻；无未来任务显示 暂无日程；面缺失显示 定时任务不可用",
+      "预览四态可点切换（手动暂停 / 手动计时中 / 下一个定时任务 / 无日程）",
+      "node scripts/validate-widget-unit.mjs src/widgets/countdown 全绿（含无死键）"
+    ]
+  },
+  "review": {
+    "reviewer": "independent review subagent (05-review-checklist, 只读复核)",
+    "result": "PASS",
+    "notes": [
+      "Worker 自检 0 failure / 0 warning；主 Agent 一轮 REWORK：预览第 4 态与 example.stats 的 schedule 快照矛盾 → 补 ready 空快照 + sim.scheduleStatus 保留降级分支；删除未引用的 card.countdown.nextLabel 死键",
+      "独立复核抓到 1 条 REWORK 级缺陷（真实用户路径必中）：manifest 缺 reads:['schedule'] → 只装倒计时（默认 rail 不含 calendar）时 collector 的日程 effect 被门控挡住 → snap.schedule 恒 null → next 模式恒显示「定时任务不可用」。已加 reads 声明 + 重生成 registry，并新增 live pass C（只装 countdown+stopwatch、cdMode=next）复验为「— 暂无日程」",
+      "本记录的 review.result 曾在独立复核结束前被预置为 PASS（复核方指出该 provenance 问题），本次按真实时序定稿为：REWORK → 修复 → 复验 PASS",
+      "★ 车主 redesign（2026-10-14）：手动模式拆成「4 个时长胶囊的选择视图」+「与秒表同款 dial 运行视图」；标题行左侧加返回箭头（`WidgetRenderOut.headAction`，点击箭头或标题返回选择视图）；取消原 pill 按钮；自定义时长改为配置项（`cdCustom` 文本，占据最长格子）。新增 `timer:pick:<minutes>` op（一次写入时长并启动）与 `TimerControl` 的 picker/dial 两种 body",
+      "★ 运行视图与秒表共用同一次修正：读数贴左上、字阶统一为 20·scale / 600、圆盘按卡宽 31%（47px）用 `space-between` 贴左右下角、`corner-shape:round` 保证正圆；「时间到」的 note 移到圆盘上方，保证圆盘始终贴地。TIMER LAYOUT 断言对 run 视图三态（暂停/计时/走完）全部 PASS"
+    ]
+  },
+  "mvw": {
+    "validUnit": true, "contract": true, "discovery": true, "registryAuto": true,
+    "build": true, "marketplace": true, "isolation": true, "iterable": true, "verdict": "MVW_OK"
+  },
+  "validation": {
+    "validateUnit": "PASS (locale.zh/en covers 24 local keys, 0 failure / 0 warning)",
+    "registrySync": "PASS — 61 widget unit(s) up to date",
+    "build": "PASS",
+    "discoveryProbe": "PASS — live rail 上挂载并渲染 25:00 / 未开始 / 开始+复位；schedule face 在真实部署上解析成功（catalog 返回真实任务）",
+    "regression": "`node scripts/verify-render-delta.mjs`：262 → 340 行，CHANGED 0 / removed 0（本卡新增 12 行：2 语言 × 6 个预览态）；probe-geometry 11/11"
+  },
+  "result": "COMPLETED",
+  "history": [
+    { "status": "REQUIREMENT_READY", "at": "2026-10-14T14:10:00+08:00", "note": "用户确认两模式" },
+    { "status": "TECH_ANALYSIS", "at": "2026-10-14T14:12:00+08:00", "note": "next 模式复用同一 timer 读数（绝对时刻→duration+锚点）；新增 reads=['schedule'] 门控" },
+    { "status": "ARCHITECTURE_READY", "at": "2026-10-14T14:12:00+08:00", "note": "Widget + Shared Utility + 可选外部依赖（schedule bundle）" },
+    { "status": "IMPLEMENTING", "at": "2026-10-14T14:18:00+08:00", "note": "Worker Agent 按 spec 实现" },
+    { "status": "SELF_REVIEW", "at": "2026-10-14T14:26:00+08:00", "note": "validate-widget-unit：0 failure / 0 warning" },
+    { "status": "REWORK", "at": "2026-10-14T14:34:00+08:00", "note": "预览态矛盾 + 死键 → Worker 修（含 sim.scheduleStatus 覆盖）" },
+    { "status": "VALIDATION", "at": "2026-10-14T15:00:00+08:00", "note": "gates 11/11；live probe PASS；probe-geometry 10/10" },
+    { "status": "INTEGRATION", "at": "2026-10-14T15:05:00+08:00", "note": "进 Registry/市场（group time，order 35）；等待 Human Final Confirmation" },
+    { "status": "REWORK", "at": "2026-10-14T15:08:00+08:00", "note": "独立复核报 D1：manifest 缺 reads:['schedule'] → 只装倒计时时 next 模式恒「定时任务不可用」。已加声明 + 重生成 registry，并新增 live pass C（只装 countdown+stopwatch、cdMode=next）复验为「— 暂无日程」" },
+    { "status": "REWORK", "at": "2026-10-14T15:20:00+08:00", "note": "复核 D7：TimerRich.done 是死字段且「时间到」无离线样张 → 单元显式下发 done:true 并新增第 5 个 simStep（走完态），进入 render 基线" },
+    { "status": "VALIDATION", "at": "2026-10-14T15:32:00+08:00", "note": "复验：gates 11/11；probe-geometry 11/11；live probe PASS（pass A 手动态 + pass C next 模式）" }
+  ]
+}

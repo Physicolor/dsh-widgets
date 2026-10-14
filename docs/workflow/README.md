@@ -96,6 +96,7 @@ REWORK 是常态；BLOCKED 才是异常。
 | `07-stop-escalation.md` | STOP / Escalation 机制（BLOCKED 触发） |
 | `08-production-record.md` | Production Record 状态机（含 BLOCKED / HUMAN_REVIEW 循环）+ 记录格式 |
 | `09-future-input-adapters.md` | 未来 Screenshot / GitHub / External Code 输入适配位置 |
+| `10-third-party-units.md` | 第三方单元：R1–R10 审核清单、运行时 `registerExternalUnit()` 注册、离线门 `validate-external-unit.mjs` |
 | `record.schema.json` | Production Record 的机器可读 schema |
 | `records/` | 每 Widget 的生产记录档案 |
 

@@ -1,0 +1,93 @@
+{
+  "schema": "dsh-widgets/widget-record/v1",
+  "widgetId": "calendar",
+  "source": "human",
+  "status": "INTEGRATION",
+  "createdAt": "2026-10-14T14:10:00+08:00",
+  "requirement": {
+    "name": "日历（扩容：2×4 + DSH 定时任务联动）",
+    "purpose": "既有「本月月历」卡扩容为两件事：① 有 DSH 定时任务的日子打点；② 2×4 宽版右侧列出临近日程。定位是「一眼看板」，不重做官方日程管理器。",
+    "size": ["2x2", "2x4"],
+    "title": "（无标题，T1：月历自述且满卡）",
+    "coreContent": "2x2：月历 + 日程角标 + hover 下一件；2x4：左月历 + 右「临近日程」列",
+    "displayedData": ["本月格子", "marks（本月有 active 日程的日子）", "agenda（按时刻升序的临近日程）", "nextHint"],
+    "visualReference": "沿用既有月历（owner 参考图）；2x4 右栏为新增议程列，风格与卡片内既有灰色说明行一致",
+    "interaction": "无（沿用既有整卡配置：时区 / 每周起始 / 染色 / 显示相邻月）",
+    "category": "calendar",
+    "categoryDecision": "existing",
+    "priority": "high",
+    "confirmedByHuman": true,
+    "_confirmation": "2026-10-14 用户回答需求表：勾选「日历 2×4（月历 + 临近日程）」；方向表已确认「日程 → 日历」做、「待办绑日程」不做"
+  },
+  "technicalAnalysis": {
+    "existingCapability": "既有 calendar 单元（2x2，月历网格 + 今天徽标 + 染色）；lib/clock-face 的时区读时/月历网格/周表头；rich 'calendar' 渲染器",
+    "requiredData": ["ScheduleCatalogEntry[]{title,kind,scheduledAt,status,规则字段}", "schedule/changed 事件", "卡片时区下的日归属"],
+    "dataSource": "data/schedule.ts：ctx.remote.schedule.catalog() + remote.$on('schedule/changed')；由 manifest reads:['schedule'] 门控（gen-registry 透传进 WIDGET_RUNTIME）",
+    "requiredProvider": null,
+    "externalDependency": "DSH schedule bundle（可选；缺失时退化为纯月历）",
+    "complexity": "Medium",
+    "risks": [
+      "schedule bundle 在发行版 Web 组合里不存在 —— 必须有降级分支且不得显示空议程（已实现：无 agenda 字段 → 2x4 居中画纯月历）",
+      "remote.schedule 是 namespace 服务，需要子 fiber 声明依赖才能读（见 validation 的既有缺陷）",
+      "marks 必须与本卡「今天」用同一时区读数"
+    ]
+  },
+  "architectureDecision": "Widget + Shared Utility",
+  "specification": {
+    "schema": "dsh-widgets/widget-spec/v1",
+    "widgetId": "calendar",
+    "size": ["2x2", "2x4"],
+    "titleKeys": { "key": "（无标题：T1）", "note": "title 恒为 ''，CardBody 整行不渲染" },
+    "visualRequirements": {
+      "marks": "日程日在格子右上角画小圆点（相对定位，不改行高）；今天格子的点画在徽标内用白色",
+      "2x4": "宽度 ≥ 1.6×box 时左格右议程：左列固定 box 宽（与 2x2 完全一致），右列 flex:1 + marginLeft 间距",
+      "degrade": "status='unavailable' → 不传 marks/agenda/hint，2x4 居中画纯月历"
+    },
+    "technicalStrategy": {
+      "architecture": "Widget + Shared Utility",
+      "sharedUtility": "render/rich/month-grid.tsx（两栏 + 角标）、lib/format.fmtUntil、data/schedule.ts",
+      "contractHints": { "richType": "calendar", "widthForSize": "2x4 = 2*unit+gap", "calendarRichExtra": ["marks", "agenda", "agendaLabel", "agendaEmpty"] }
+    },
+    "acceptanceCriteria": [
+      "2x2 行为与改动前完全一致（除新增角标与 hover 下一件）",
+      "2x4 左侧月历与 2x2 像素级同构（同一 box、同一行高算法）",
+      "有 active 日程的日子出现角标；inactive 的不出现",
+      "2x4 议程列显示临近日程（不限于本月）；无未来任务显示「近期无日程」",
+      "schedule 面缺失时 2x4 退化为居中的纯月历（不出现空议程列）",
+      "node scripts/validate-widget-unit.mjs src/widgets/calendar 全绿"
+    ]
+  },
+  "review": {
+    "reviewer": "independent review subagent (05-review-checklist) + 主 Agent 图上/live 复核",
+    "result": "PASS",
+    "notes": [
+      "主 Agent 图上复核发现议程列 when 列 48px 放不下 `10/15 12:00`（截成 `10/15 12:0`）→ 加宽到 64px + ellipsis 兜底",
+      "live 实测：2x4 在真实 rail 上 364px 宽、议程列起点 162px（分裂真的发生）；真实 schedule catalog 返回 1 条任务，因该任务没有未来时刻而正确显示「近期无日程」"
+    ]
+  },
+  "mvw": {
+    "validUnit": true, "contract": true, "discovery": true, "registryAuto": true,
+    "build": true, "marketplace": true, "isolation": true, "iterable": true, "verdict": "MVW_OK"
+  },
+  "validation": {
+    "validateUnit": "PASS (locale.zh/en 覆盖新增 agenda/nextHint/whenToday/whenDate 键)",
+    "registrySync": "PASS — 61 widget unit(s) up to date（含 calendar 的 sizes 2x2+2x4 与 reads=['schedule']）",
+    "build": "PASS",
+    "discoveryProbe": "PASS — live rail 上 calendar@2x4 真实挂载（两栏分裂生效）",
+    "regression": "`node scripts/verify-render-delta.mjs`（对 git HEAD 的多重集差）：262 → 340 行，added 78 行 / 6 个 id，**CHANGED 0 / removed 0**。本卡的 24 行 = 2 语言 ×（2x2 四态变化 + 2x4 六态新增）；probe-geometry 11/11",
+    "preExistingDefectFixed": "ctx.get('remote').schedule / .commands 在本部署上抛 `cannot get property \"remote.schedule\" without inject`：namespace 是独立服务，必须在子 fiber 声明（官方 28 个客户端均在其 inject 列表声明 `remote.<name>`）。此修复同时让既有的「一键 Compact」动作恢复可达（此前属性读抛错被 catch 静默吞掉）。"
+  },
+  "result": "COMPLETED",
+  "history": [
+    { "status": "REQUIREMENT_READY", "at": "2026-10-14T14:10:00+08:00", "note": "用户确认 2x4 + 日程联动；不做「待办绑日程」" },
+    { "status": "TECH_ANALYSIS", "at": "2026-10-14T14:12:00+08:00", "note": "schedule 只有客户端 Remote face（无 host 路由、无投影）→ 新增 reads 门控 + collector 订阅" },
+    { "status": "ARCHITECTURE_READY", "at": "2026-10-14T14:12:00+08:00", "note": "Widget + Shared Utility" },
+    { "status": "IMPLEMENTING", "at": "2026-10-14T14:28:00+08:00", "note": "主 Agent 直接实施（共享层 rich 契约 + 渲染器 + 单元）" },
+    { "status": "REWORK", "at": "2026-10-14T14:40:00+08:00", "note": "议程列 when 截断 → 64px + ellipsis" },
+    { "status": "REWORK", "at": "2026-10-14T14:48:00+08:00", "note": "live 探针发现 remote.schedule 抛 inject 错误 → 改子 fiber 声明 remote.schedule/remote.commands" },
+    { "status": "VALIDATION", "at": "2026-10-14T15:00:00+08:00", "note": "gates 11/11；probe-geometry 10/10；live 2x4 两栏 + 真实 catalog 读数" },
+    { "status": "INTEGRATION", "at": "2026-10-14T15:05:00+08:00", "note": "sizes 2x2+2x4 进市场；等待 Human Final Confirmation" },
+    { "status": "REWORK", "at": "2026-10-14T15:20:00+08:00", "note": "复核 D8：CalendarRich.agenda 注释写 'newest first' 而实现是 soonest first（升序）→ 改注释；复核确认降级路径与 marks 时区口径无误" },
+    { "status": "VALIDATION", "at": "2026-10-14T15:32:00+08:00", "note": "复验：gates 11/11；probe-geometry 11/11；live probe PASS（2x4 两栏分裂、议程列起点 162px、真实 catalog 读数）" }
+  ]
+}

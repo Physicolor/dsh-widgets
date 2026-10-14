@@ -50,7 +50,12 @@ node scripts/validate-widget-unit.mjs src/widgets/<id>   # MVW 硬门槛（Contr
 pnpm check:registry                                       # 注册表与单元同步守卫
 pnpm run build                                            # 生成 + 构建
 node docs/verify-discovery.cjs <id>                       # live bundle 发现探测（含既有全量）
+node scripts/probe-geometry.cjs                           # 几何+版式：溢出 / 文案截断 / 2×4 主体姿态（POSTURE）
 ```
+
+> **POSTURE 是硬性检查（2026-10-14 起）**：2×4 卡片主体之下空带 > `36px × scale` 即 FAIL，
+> 判据与参照卡见 `docs/design/CARD-BODY-POSTURE.md`。这条断言在加入当天被证伪验证过
+> （把 `task-timer` 改回顶对齐 → 实测 51.6px → FAIL）。交付 2×4 时必须贴离线画廊 PNG。
 
 ## 运行时验证
 

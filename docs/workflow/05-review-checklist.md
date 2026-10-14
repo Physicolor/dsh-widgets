@@ -44,12 +44,22 @@ Reviewer 只读共享层与模板 + 目标单元 + spec，不修改任何文件�
 [ ] 核心内容与展示信息完整且正确
 [ ] 主数字槽位符合 spec.visualRequirements.numberHierarchy（大字独立行 / 标题行内联 / 右端小字）
 [ ] 视觉要求落实（布局/重点/风格 token）
+[ ] ★ 主体姿态（docs/design/CARD-BODY-POSTURE.md，2026-10-14 事故后新增，逐条硬性）：
+    [ ] 2x4 的主体只有一行 → 必须 bodyAnchor:'bottom'（贴底）；多行才允许跟随头部
+    [ ] 空带实测 ≤ 36px×scale：`node scripts/probe-geometry.cjs` 的 POSTURE 断言必须 PASS
+    [ ] spec.visualRequirements.referenceCard 指定的那张**已发行**同类卡，姿态与之一致
+        （把两张卡的画廊 PNG 并排看；不接受"文字上同族"）
+    [ ] 没有 referenceCard 的 spec → 直接 REWORK（无法判断姿态对错即无法验收）
 [ ] 信息层级 / 排版 / 间距符合项目视觉规范
 [ ] 文案润色到位（无 raw key、无错译）
 [ ] 数据语义正确（数值单位/格式符合预期）
 [ ] 交互需求落实（如有）
 [ ] 参考图相似度（如提供）
 ```
+
+> **为什么姿态是 Layer 2 的硬性项**：2026-10-14，`task-timer@2x4` 用顶对齐放一行 figures，
+> 卡下方留了 51.6px 空带，一次 Review 曾判它"与 harness-board 同族、非缺陷"。
+> 现在判据是**可测量的空带 + 已发行参照卡的同姿态对照**，不是文字声明。
 
 ## 判定
 
