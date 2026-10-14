@@ -85,6 +85,7 @@ const check = (ok, label, detail) => {
       clientH: rail.clientHeight, pitch,
       railTop: Math.round(rr.top), railLeft: Math.round(rr.left), railRight: Math.round(rr.right),
       railBottom: Math.round(rr.bottom),
+      leftmostCardLeft: Math.round(Math.min(...slots.map((s) => s.getBoundingClientRect().left))),
       deepestCardBottom: Math.max(...cardBottoms),
       firstRowTop: Math.min(...cardTops),
       rowsTopList: [...new Set(tops.map((t) => Math.round((t - 2) / (pitch || 1))))].sort((a, b) => a - b),
@@ -199,15 +200,22 @@ const check = (ok, label, detail) => {
     for (let x = pt.x; x < g.railRight + 60; x += 12) out.push({ x, y: pt.y })
     return out
   })
-  // A column that is EMPTY at every row: with right-anchored rows, a single-column row
-  // leaves its left cells bare — so walking down the FIRST COLUMN crosses real gaps
-  // (verified with elementFromPoint: the magnified neighbour rows do not reach there).
-  await exitTest('down the empty first column', (pt) => {
-    const colX = g.railLeft + 8
-    const out = []
-    for (let y = pt.y; y < pt.y + 420; y += 12) out.push({ x: colX, y })
-    return out
-  })
+  // A column that is EMPTY at every row: with right-anchored rows, a row that does not
+  // fill every column leaves its left cells bare — so walking down the rail's left padding
+  // crosses real gaps. The walk must stay OUTSIDE a card's 7px halo (`TILE_TOLERANCE` in
+  // RailWave) or "still magnified" is the correct answer and the check mis-reports: the
+  // strip is the rail's padding, and a point only 2px left of the leftmost card is inside
+  // that halo (measured 2026-10-08 — the old fixed `railLeft + 8`).
+  const colX = Math.min(g.railLeft + 8, g.leftmostCardLeft - 9)
+  if (colX < g.railLeft + 1) {
+    console.log(`SKIP  down the empty first column: the rail's left strip is ${g.leftmostCardLeft - g.railLeft}px, not wider than the oracle's 7px halo`)
+  } else {
+    await exitTest('down the empty first column', (pt) => {
+      const out = []
+      for (let y = pt.y; y < pt.y + 420; y += 12) out.push({ x: colX, y })
+      return out
+    })
+  }
   await exitTest('down into the band below the deck', (pt) => {
     // End at the rail's bottom-LEFT corner: that column is empty at every row, so the
     // endpoint is plain rail padding (the probe verifies that before asserting).

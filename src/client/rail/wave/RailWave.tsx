@@ -171,7 +171,62 @@ const POINTER_LEAVE_MS = 60
  * must all agree on (see the rowTops / tailH notes in RailWave).
  */
 const RAIL_SCROLL_MS = 240
-const RAIL_TOP_INSET = 4
+/**
+ * The inset the rail AUTHORS (`padding: '4px …'` in the rail element below).
+ *
+ * It is a fallback, not the truth: the rail's `padding-top` is not ours alone, and
+ * every geometric test in this file needs the inset the rail actually HAS. Read it
+ * with `readTopInset`, never from this constant (see the note there).
+ */
+export const RAIL_TOP_INSET = 4
+
+/**
+ * ── THE RAIL'S TOP CONTENT INSET IS MEASURED, NOT ASSUMED ──
+ *
+ * The deck does not necessarily start 4px below the rail's box. A co-tenant may push
+ * the widgets down inside the rail to seat its own band above them, and it must do so
+ * with `!important`, because the rail's padding is an inline style:
+ *
+ *   dsh-pinned-summary: `html[data-dsh-pinned-summary="rail"] .dsx-stats-rail {
+ *     padding-top: calc(var(--dps-rail-pad, 4px) + var(--dsh-pinned-summary-push, 0px))
+ *       !important; }`
+ *
+ * Measured on the owner's GUI (2026-10-08): `padding-top: 135px` = its own 4px plus a
+ * 131px push. BOTH halves of the pointer→deck mapping subtracted the CONSTANT, so every
+ * pointer position resolved exactly one row away (a 140px pitch): the hit oracle armed on
+ * the tile BELOW the pointer and the peak was centred on it too, which is why the wave
+ * magnified the wrong card — verified card by card: hovered #0 → focused #3, #1 → #4, …
+ * — and wherever the shifted point fell into an inter-card gap the wave released a hover
+ * that had just engaged, the owner's 「组件区域偶发：鼠标悬浮后组件进入悬浮态又立刻停止」
+ * (2026-10-08).
+ *
+ * ── THE WHOLE-CARD BAND READS THAT MEASURED INSET TOO (owner, 2026-10-14) ──
+ *
+ * The band (`bandOf` / `syncWholeCards` / `overlayBand`) was deliberately LEFT on the
+ * authored 4px while the oracle was corrected, because correcting it alone hid the deck's
+ * last card for good: the wheel's cap (`lastRow` in rail-view) was built from the same 4px,
+ * so it concluded "no scrolling needed" and the card could never be scrolled back into view
+ * (measured 2026-10-08 on the owner's GUI: `padding-top: 135px`, `maxScroll: 147`, wheel
+ * 0 → 0). The price was the mirror-image defect the owner hit once the pushed rail was full
+ * of cards: the band sat `push` px BELOW the rail's real floor, so a card cut by the bottom
+ * edge — up to a whole row's worth of it — was judged whole and PAINTED half off screen.
+ *
+ * `topInset` (the measured padding-top, handed down by rail-view) now feeds all three bands
+ * AND the cap's `lastRow`, so paint, hit test and reachability agree by construction: a card
+ * the band calls cut is exactly one the wheel can still scroll to.
+ *
+ * The inset the ORACLE and the PEAK use is therefore read off the rail. `padding-top` is
+ * the LAYOUT value (unscaled, in the same frame as `rail.getBoundingClientRect()` and
+ * `rail.clientWidth`, which this oracle already mixes), and it costs nothing extra on the
+ * hot path: `onCard` has already forced layout with its own `getBoundingClientRect` before
+ * this is read. A missing or unparseable value (a detached rail) falls back to the authored
+ * inset. 4px — the unpushed case — still resolves to 4px, so this is a no-op without a
+ * co-tenant's push.
+ */
+const readTopInset = (rail: HTMLDivElement): number => {
+  const v = Number.parseFloat(getComputedStyle(rail).paddingTop)
+  return Number.isFinite(v) ? v : RAIL_TOP_INSET
+}
 
 /** Honour the OS "reduce motion" preference for the scroll animation too. */
 const REDUCE_MOTION = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -236,6 +291,14 @@ interface RailWaveProps {
    * to top out, and not a pixel more (see the tail element's note).
    */
   paneH: number
+  /**
+   * The rail's live top content inset (`padding-top`, px): 4 authored, more when a co-tenant
+   * seats its band above the deck (see `readTopInset`). ALL whole-card bands and the scroll
+   * cap are built on it, and rail-view re-measures it whenever the rail's style attribute
+   * changes — a co-tenant tween writes the push there, and nothing else would notice, because
+   * `padding-top` moves the content without changing the rail's clientHeight.
+   */
+  topInset: number
   /**
    * Highest row that may top out (see the parent's scroll-geometry note): the last row
    * whose CARDS still reach into the viewport. The wheel stops there instead of
@@ -323,7 +386,7 @@ interface RailWaveProps {
 }
 
 export function RailWave(props: RailWaveProps): React.ReactElement {
-  const { deck, cardBodies, railElRef, onAddClick, items, side, pad, railW, stackHeight, rows, deckH, paneH, lastRow, addRadius, active, placeCards, scaleFor, nearest, stepScale, xPts, yPts, addSlotFor, restLayout, restAdd, live, onScreen, covered, shiftX, columns, wholeCards, deckPhase } = props
+  const { deck, cardBodies, railElRef, onAddClick, items, side, pad, railW, stackHeight, rows, deckH, paneH, topInset, lastRow, addRadius, active, placeCards, scaleFor, nearest, stepScale, xPts, yPts, addSlotFor, restLayout, restAdd, live, onScreen, covered, shiftX, columns, wholeCards, deckPhase } = props
   const n = items.length
   /**
    * The rail's scroll content = the deck + the TAIL (see the tail element's note).
@@ -476,16 +539,21 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     const layout = overlaid ? focusLayout : restLayout
     const add = overlaid ? focusedAdd : restAdd
     const box = rail.getBoundingClientRect()
+    // The deck's origin, MEASURED (see `readTopInset`): a co-tenant's push moves the
+    // content, and the constant resolved a tile a whole row away from the pointer.
+    const inset = readTopInset(rail)
     const contentW = rail.clientWidth - 2 * pad
     const cx = clientX - box.left - pad
-    const cy = clientY - box.top - RAIL_TOP_INSET + rail.scrollTop
+    const cy = clientY - box.top - inset + rail.scrollTop
     const t = TILE_TOLERANCE
     // A card the viewport cuts is not drawn (see `syncWholeCards`), so it must not
     // be hoverable either: its area is empty band, and treating it as a tile would
     // arm the wave — and hold it armed — over a card nobody can see. Tested at the
     // RESTING seat, the geometry the rule is defined on; a magnified card is
-    // allowed to reach past the band, that is the wave itself.
-    const band = wholeCards ? bandOf(rail) : null
+    // allowed to reach past the band, that is the wave itself. The band is the SAME
+    // measured one `syncWholeCards` paints from (`inset`, read above), so a card the
+    // rule hides is a card the oracle refuses to arm on — and vice versa.
+    const band = wholeCards ? bandOf(rail, inset) : null
     for (let i = 0; i < layout.length; i++) {
       const c = layout[i]
       const rest = restLayout[i]
@@ -517,7 +585,17 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     }
     const rect = el.getBoundingClientRect()
     contentXRef.current = clientX - rect.left
-    contentYRef.current = clientY - rect.top - 2 + el.scrollTop
+    // The peak's own Y, in the SAME measured frame as `onCard` — with one difference: the
+    // hit oracle works in SEAT space (`placeCards` seats a row at `RAIL_ROW_SEAT + row ·
+    // pitch`), while `scaleFor` centres it on `row · pitch + side/2`, so the wave's
+    // coordinate is the seat's less `RAIL_ROW_SEAT`.
+    //
+    // This read `- 2` for a long time, which was only right by accident: with the authored
+    // 4px inset it landed within 4px of the row centre (invisible at a 140px pitch), and
+    // under a co-tenant's push it put the PEAK one whole row below the pointer — the bell
+    // magnified a different card than the one the (fixed) oracle had just armed on. Both
+    // halves of the mapping must come from the same measured inset.
+    contentYRef.current = clientY - rect.top - readTopInset(el) + el.scrollTop - RAIL_ROW_SEAT
     if (onCard(clientX, clientY)) armedRef.current = true
     if (!armedRef.current) return
     if (rafRef.current) return
@@ -810,15 +888,21 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
   }
   // ---- Draw WHOLE cards only (prefs.wholeCards) -----------------------------
   /**
-   * The rail's visible band, in DECK coordinates.
+   * The rail's visible band, in DECK coordinates — the scrollport, exactly.
    *
    * The deck sits inside the rail's content box, whose top edge is the rail's
-   * border-box top plus its 4px top padding, minus `scrollTop`; so a deck point
-   * `d` is painted at `boxTop + 4 − scrollTop + d` and the band the rail clips to
-   * is `[scrollTop − 4, scrollTop − 4 + clientHeight]`.
+   * border-box top plus its top padding (`inset`), minus `scrollTop`; so a deck point
+   * `d` is painted at `boxTop + inset − scrollTop + d` and the band the rail clips to
+   * is `[scrollTop − inset, scrollTop − inset + clientHeight]`.
+   *
+   * `inset` is MEASURED (see `readTopInset`), never the authored constant: a co-tenant's
+   * push moves the deck without moving the rail's box, so the old 4px put the band's floor
+   * `push` px below the rail's real one and the bottom row was painted half cut (owner,
+   * 2026-10-14, with dsh-pinned-summary docking above the deck). The cap's `lastRow` reads
+   * the same number, so hiding that row never strands it.
    */
-  const bandOf = (rail: HTMLDivElement): { lo: number; hi: number } => {
-    const lo = rail.scrollTop - RAIL_TOP_INSET
+  const bandOf = (rail: HTMLDivElement, inset: number): { lo: number; hi: number } => {
+    const lo = rail.scrollTop - inset
     return { lo, hi: lo + rail.clientHeight }
   }
   /** Would the rail's viewport cut this resting box — top or bottom? */
@@ -844,7 +928,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     const wrap = deckWrapRef.current
     if (wrap === null) return
     if (paneH <= 0) return
-    const band = { lo: railScrollTop - RAIL_TOP_INSET, hi: railScrollTop - RAIL_TOP_INSET + paneH }
+    const band = { lo: railScrollTop - topInset, hi: railScrollTop - topInset + paneH }
     const slots = wrap.querySelectorAll<HTMLElement>('.dsx-stats-card-slot')
     for (let i = 0; i < slots.length; i++) {
       const c = restLayout[i]
@@ -887,6 +971,8 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
    * The fingerprint is the second half of the fix. The verdict depends on the
    * band and on each resting shape's top/height — nothing else — so a render that
    * leaves all of them alone (every hover-follow frame) skips the deck walk.
+   * `topInset` is part of the band and therefore of the fingerprint: a co-tenant's push
+   * re-cuts the bottom row without moving any other input we hold.
    * Compared numerically, not by object identity: the parent REBUILDS
    * `staticLayout` on every render (wave-geometry's `placeCards`), so identity
    * would never match and the guard would be dead weight.
@@ -901,7 +987,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
       return
     }
     const key = lastCutKeyRef.current
-    const next: number[] = [wholeCards ? 1 : 0, railScrollTop, paneH, side, restAdd.top]
+    const next: number[] = [wholeCards ? 1 : 0, railScrollTop, paneH, topInset, side, restAdd.top]
     for (let i = 0; i < restLayout.length; i++) next.push(restLayout[i].top, restLayout[i].h)
     let same = key.length === next.length
     for (let i = 0; same && i < next.length; i++) if (key[i] !== next[i]) same = false
@@ -914,7 +1000,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
   // this runs during render, where `railElement()` would touch refs declared
   // further down the component (and get a TDZ ReferenceError). `paneH <= 0` means
   // the pane observer has not run yet — cut nothing rather than everything.
-  const overlayBand = paneH > 0 ? { lo: railScrollTop - RAIL_TOP_INSET, hi: railScrollTop - RAIL_TOP_INSET + paneH } : null
+  const overlayBand = paneH > 0 ? { lo: railScrollTop - topInset, hi: railScrollTop - topInset + paneH } : null
   /** The settings tile's own whole-card verdict, shared by both decks. */
   const tileCut = wholeCards && overlayBand !== null && cutBy(overlayBand, { top: restAdd.top, h: side })
   // ---- Deck rearrangement wave on a column-count change ---------------------

@@ -19,7 +19,8 @@
 
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import { WIDGETS, WIDGET_RUNTIME } from '../generated.registry'
+import { WIDGETS, WIDGET_RUNTIME } from '../lib/registry'
+import { hasSource } from '../data/sources'
 import { parseInstanceKey, sizesOf, widgetName } from '../lib/contract/helpers'
 import type { WidgetRenderOut, WidgetSize } from '../lib/contract/types'
 import { buildLiveStats } from '../runtime/live-stats'
@@ -28,11 +29,12 @@ import { curveToEasing, curveToProgress, overshootCurve, type Prefs } from '../r
 import { CardBody } from '../render/CardBody'
 import { settingsGearIcon } from '../render/icons'
 import { cardRadius } from '../render/card-geometry'
+import { applyTimerOp, timerOpOf } from '../lib/timer-state'
 import { WidgetsPage } from '../surfaces/Settings'
 import { COL_GAP, DETAIL_W, LIST_W } from '../surfaces/layout'
 import { t } from '../i18n'
 import { BASE_SIDE, RAIL_ROW_SEAT, applyRailRight, getNotedRailTop, resolveRailSpace, setRailVar } from './geometry'
-import { RailWave } from './wave/RailWave'
+import { RAIL_TOP_INSET, RailWave } from './wave/RailWave'
 import { createWaveGeometry } from './wave/wave-geometry'
 import {
   type CascadeAnchor, type CascadeBox, type CascadeEnd, type DeckCascade,
@@ -42,6 +44,62 @@ import {
 /** Map from interactive action id to the slash command it triggers. */
 const ACTION_COMMANDS: Record<string, string> = {
   contextCompact: '/compact',
+}
+
+/**
+ * ── LOCAL-ONLY BACKUP: THE SELF-MADE 组件 CARD (owner decision, 2026-10-14) ──
+ *
+ * The rail's bottom tile used to open OUR OWN floating panel (`dsx-stats-addpanel`, the
+ * 组件配置 / 组件市场 / 高级设置 tabs). It now opens the PRODUCT'S settings window on our
+ * 组件 section instead — one place to configure widgets, the same one the sidebar foot
+ * reaches — and the panel is kept here as a local spare rather than deleted:
+ *
+ *   localStorage.setItem('dsx-addpanel-local', '1')     ← re-arm it on this machine
+ *
+ * It is deliberately NOT part of what ships: the plugin no longer pushes this path, and the
+ * flag lives in `localStorage`, so a fresh checkout behaves like the released build. Read
+ * once at module load: an escape hatch is a developer gesture, not a runtime preference, and
+ * a value read per render would put `localStorage` on the hot path of a hover frame.
+ */
+const LOCAL_ADD_PANEL = ((): boolean => {
+  try { return window.localStorage.getItem('dsx-addpanel-local') === '1' } catch { return false }
+})()
+
+/**
+ * ── THE 设置 TILE OPENS THE OFFICIAL SETTINGS WINDOW (owner, 2026-10-14) ──
+ *
+ * There is no service for this: the settings window is the sidebar-foot seat
+ * (`sidebar.settings` → `settings.section`), and the shell exposes no “open settings on
+ * section X”. So this drives the two clicks a user would perform itself — the foot
+ * trigger, then our own nav row — through the same DOM conventions the section’s glyph
+ * adapter already relies on (`[class$="_settingsArea"]` / `[class$="_navList"]`; see
+ * surfaces/settings-nav-glyph.ts). Our row is found by `data-dsx-nav="widgets"` when the
+ * adapter has already marked it, and by the registered label otherwise (the window may be
+ * on screen before that mark lands).
+ */
+const findSettingsSectionRow = (): HTMLElement | null => {
+  const marked = document.querySelector<HTMLElement>('[data-dsx-nav="widgets"]')
+  if (marked !== null) return marked
+  const label = t('ui.section.label')
+  for (const list of document.querySelectorAll<HTMLElement>('[class$="_navList"]')) {
+    for (const row of list.querySelectorAll<HTMLElement>(':scope > button')) {
+      if ((row.textContent ?? '').trim() === label) return row
+    }
+  }
+  return null
+}
+
+const findSettingsTrigger = (): HTMLElement | null => {
+  const area = document.querySelector<HTMLElement>('[class$="_settingsArea"]')
+  const scoped = area === null ? null : area.querySelector<HTMLElement>('button')
+  if (scoped !== null) return scoped
+  // Fallback for a shell whose foot row is not wrapped in a `_settingsArea`: the trigger IS
+  // the product's Settings button, and its accessible name is the product's own label.
+  for (const label of ['设置', 'Settings']) {
+    const hit = document.querySelector<HTMLElement>(`button[aria-label="${label}"]`)
+    if (hit !== null) return hit
+  }
+  return null
 }
 
 /** What the rail view needs from the composition root that owns the bridge. */
@@ -81,18 +139,19 @@ export interface RailViewDeps {
 /**
  * Is this family's live source still in flight? (see WIDGET_RUNTIME)
  *
- * `commandCodeError` is deliberately part of the test: once the host route has
- * ANSWERED with an error the card must show its real "not configured" state,
- * not a skeleton that never resolves.
+ * The DECISION is the shell's (a widget cannot distinguish "my source is in
+ * flight" from "my source answered with nothing"), but the SEMANTICS belong to the
+ * source's adapter: `sources[id]` turns `ready` the first time that adapter
+ * reports something renderable — including, for the routes whose error IS the
+ * card's real state (`cc`, `github`), an error answer. Before the v1.11 adapter
+ * contract this function tested each payload field by hand, with a different rule
+ * per source and no way to add one without editing here.
  */
-function isSourcePending(source: 'usage' | 'cc' | 'sys' | 'github', snap: BridgeSnapshot): boolean {
-  if (source === 'usage') return snap.usageData === null && (snap.usageMulti === null || snap.usageMulti.keys.length === 0)
-  if (source === 'cc') return snap.commandCode === null && snap.commandCodeError === null
-  // GitHub: the route answers `errors` for the slices it could not fill, so a
-  // 200 with an empty calendar is an ANSWER (the card prints why) — only a
-  // request that has never returned anything is "loading".
-  if (source === 'github') return snap.github === null && snap.githubError === null
-  return snap.sysinfo === null
+function isSourcePending(source: string, snap: BridgeSnapshot): boolean {
+  // A source no adapter serves can never be loading — and a manifest that names
+  // one fails the build (scripts/gen-registry.mjs), so this is the null case only.
+  if (!hasSource(source)) return false
+  return snap.sources[source]?.status !== 'ready'
 }
 
 /** Build the right-rail slot component bound to one composition root. */
@@ -136,17 +195,48 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
        */
       const snapRef = React.useRef(snap)
       snapRef.current = snap
-      const handleAction = (id: string): void => {
+      /**
+       * One card action, dispatched by ID.
+       *
+       * Two kinds exist, and they are tried in this order:
+       *  1. a SLASH COMMAND from the fixed table above (`contextCompact`), which is
+       *     the only kind that needs the two-tap confirm;
+       *  2. a TIMER operation (`timer:start|pause|reset`), which the interactive
+       *     timer cards emit and which writes this INSTANCE's config record.
+       *
+       * The instance key is a parameter rather than a closure field because the id
+       * alone is not unique on a rail that can seat two timer cards: `timer:pause`
+       * names a verb, and WHICH card was pressed is only known here. This is also
+       * why the timer branch is not routed through `armedAction` — one card arming
+       * would arm every timer card on the rail.
+       */
+      const handleAction = (id: string, key: string): void => {
         const command = ACTION_COMMANDS[id]
-        if (!command) return
-        // Read the armed flag through a REF, not the render's state: the card element that
-        // carries this handler may be RECYCLED from an older render (see the card-element
-        // cache by `cardBodyFor`), so a closure over `armedAction` would answer with the
-        // state as of that render and the two-tap confirm would either fire early or never.
-        if (armedRef.current !== id) { setArmedAction(id); return }
-        setArmedAction(null)
-        runCommand(command)
+        if (command !== undefined) {
+          // Read the armed flag through a REF, not the render's state: the card element that
+          // carries this handler may be RECYCLED from an older render (see the card-element
+          // cache by `cardBodyFor`), so a closure over `armedAction` would answer with the
+          // state as of that render and the two-tap confirm would either fire early or never.
+          if (armedRef.current !== id) { setArmedAction(id); return }
+          setArmedAction(null)
+          runCommand(command)
+          return
+        }
+        const op = timerOpOf(id)
+        if (op === null) return
+        // Read prefs LIVE, for the same recycling reason: this closure may be one a
+        // previous render built, so a captured `prefs` would resume from an old state
+        // (and drop whatever the other card wrote meanwhile).
+        const cardConfigs = getPrefs().cardConfigs
+        const config = cardConfigs?.[key] ?? {}
+        const patch = applyTimerOp(config, op, Date.now())
+        // An op that changes nothing (start while running) does not spend a persist
+        // + emit round trip.
+        if (Object.keys(patch).length === 0) return
+        setPrefs({ cardConfigs: { ...cardConfigs, [key]: { ...config, ...patch } } })
       }
+      /** The action handler bound to ONE card instance (see `handleAction`). */
+      const actionsFor = (key: string) => (id: string): void => handleAction(id, key)
       // Whole-card cycle (pooled usage widgets + sys big-figure cards): advance the
       // instance's selection along its cycle and persist it via cardConfigs so
       // the choice survives reloads and other browser origins. The persisted
@@ -217,6 +307,23 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
        * scroll.
        */
       const [railPaneH, setRailPaneH] = React.useState(0)
+      /**
+       * ── THE RAIL'S TOP CONTENT INSET (measured, not assumed) ──
+       *
+       * The deck does not start 4px below the rail's box when a co-tenant seats its own band
+       * above it: dsh-pinned-summary pushes us down with an `!important` inline `padding-top`
+       * (the same number the wave's oracle reads — see `readTopInset` in RailWave). The
+       * whole-card band and the scroll cap are BOTH built on it, so it has to be a render
+       * input, and it has to stay fresh while the push is TWEENED: the tween writes the
+       * inline style every frame, and the rail's `clientHeight` never changes, so neither the
+       * pane observer nor a window resize would notice. Hence the style-attribute
+       * MutationObserver below — the generic hook for "someone moved our content", instead of
+       * depending on one co-tenant's private variable name.
+       *
+       * Default = the authored 4px, which is also the value with no co-tenant at all, so the
+       * unpushed geometry is bit-identical to before (owner request, 2026-10-14).
+       */
+      const [railTopInset, setRailTopInset] = React.useState(RAIL_TOP_INSET)
       // The rail element itself, shared by the wave (hit tests, scroll geometry)
       // and the pane-height observer below. A REAL ref, not a plain `{ current }`
       // object: a plain object is re-created on every render of this component, so
@@ -233,8 +340,28 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         // observed forever. Measured: capturing it left `railPaneH` at 0, the
         // scroll range shrank back to 750 and the last rows became unreachable
         // again —the exact bug this observer exists to prevent.
+        /**
+         * The rail, SELF-HEALED.
+         *
+         * This effect can run a commit BEFORE the drawer renders its rail (the session
+         * arrives, the deck follows a beat later), and the retry that used to attach the
+         * observers was a one-shot `setTimeout(…, 0)`: it read a null ref, returned, and gave
+         * up FOR GOOD. The ResizeObserver was then never attached and `railPaneH` stayed 0 for
+         * the life of the session — measured on the owner's GUI 2026-10-14 off the fiber tree,
+         * with a 956px-tall rail on screen: `RailWave props { paneH: 0, topInset: 4 }`, i.e.
+         * the whole-card band was skipped (`paneH <= 0`), the scroll cap was 0 and the wheel
+         * could not move the deck at all. Query the DOM and write the element back into the
+         * shared ref, exactly like RailWave's own `railElement()`.
+         */
+        const railElement = (): HTMLDivElement | null => {
+          const held = railElRef.current
+          if (held !== null && held.isConnected) return held
+          const found = document.querySelector<HTMLDivElement>('.dsx-stats-rail')
+          if (found !== null) railElRef.current = found
+          return found
+        }
         const measure = (): void => {
-          const rail = railElRef.current
+          const rail = railElement()
           if (rail === null) return
           // Hand React a VALUE, never an updater: an updater runs in the RENDER
           // phase, where the DOM is already dirty from the commit, so the read
@@ -254,18 +381,51 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
           // publish (and after teardown), where the identity has no `top` to use.
           const top = getNotedRailTop()
           setRailPaneH(top >= 0 ? Math.max(0, window.innerHeight - top) : rail.clientHeight)
+          // The deck's real origin inside the rail (see `railTopInset`). A parse failure
+          // (a detached rail, an exotic theme) falls back to the authored inset.
+          const inset = Number.parseFloat(getComputedStyle(rail).paddingTop)
+          setRailTopInset(Number.isFinite(inset) ? inset : RAIL_TOP_INSET)
         }
         measure()
         if (typeof ResizeObserver === 'undefined') return
-        const ro = new ResizeObserver(measure)
+        const ro = new ResizeObserver(() => measure())
         // Window resize changes the rail's height even when nothing else does.
         window.addEventListener('resize', measure)
-        const retry = window.setTimeout(() => {
-          const rail = railElRef.current
-          if (rail !== null) ro.observe(rail)
+        /** The element the two observers are attached to, so re-attaching is idempotent. */
+        let observed: HTMLDivElement | null = null
+        // A co-tenant's push arrives as an inline `padding-top` write (tweened, so many
+        // writes over ~260ms) and moves the deck WITHOUT changing any size the observers
+        // above can see. rAF-coalesced: one measure per frame of the tween at most, and
+        // `setRailTopInset` bails out on an unchanged value.
+        let insetFrame = 0
+        const mo = new MutationObserver(() => {
+          if (insetFrame !== 0) return
+          insetFrame = window.requestAnimationFrame(() => { insetFrame = 0; measure() })
+        })
+        const attach = (): void => {
+          const rail = railElement()
+          if (rail === null || rail === observed) return
+          observed = rail
+          ro.observe(rail)
+          mo.observe(rail, { attributes: true, attributeFilter: ['style'] })
           measure()
-        }, 0)
-        return () => { window.clearTimeout(retry); window.removeEventListener('resize', measure); ro.disconnect() }
+        }
+        attach()
+        // The drawer can arrive AFTER this effect (see `railElement`) and it is re-created
+        // when the slot re-registers, so the attachment is driven by the one signal that
+        // covers both: a body-level childList observer. `attach()` is a no-op — two property
+        // reads on the held ref — unless the rail actually changed, so the transcript's own
+        // streaming mutations cost nothing here. (settings-nav-glyph keeps a body-level
+        // observer for the same class of "the shell mounts our surface later" reasons.)
+        const bodyMo = new MutationObserver(() => attach())
+        bodyMo.observe(document.body, { childList: true, subtree: true })
+        return () => {
+          if (insetFrame !== 0) window.cancelAnimationFrame(insetFrame)
+          bodyMo.disconnect()
+          mo.disconnect()
+          window.removeEventListener('resize', measure)
+          ro.disconnect()
+        }
       }, [snap.open, snap.hasSession])
       // 鈹€鈹€ Drawer open/close animation, matching dsh-better-sidebar's right
       //    panel: a translateX slide with --ds-transition-duration-slow +
@@ -775,11 +935,12 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
        * viewport").
        *
        * Row `r` is seated at `RAIL_ROW_SEAT + r · pitch` (placeCards), and at that
-       * detent the pane's floor sits at `lo + clientH` with `lo = scrollTop − 4`.
-       * The deepest component is whole as soon as
+       * detent the pane's floor sits at `lo + clientH`, where `lo = scrollTop − inset`
+       * and `inset` is the rail's MEASURED top padding (`railTopInset`). The deepest
+       * component is whole as soon as
        *
-       *     contentBottom ≤ (RAIL_ROW_SEAT + r · pitch − 4) + paneH
-       *     r            ≥ (contentBottom + 2 − paneH) / pitch
+       *     contentBottom ≤ (RAIL_ROW_SEAT + r · pitch − inset) + paneH
+       *     r            ≥ (contentBottom + inset − RAIL_ROW_SEAT − paneH) / pitch
        *
        * and the SMALLEST such row is where the wheel stops: from there on the deck
        * has shown everything it owns, so another notch would only pull the last row
@@ -788,11 +949,18 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
        * `paneH − rows·pitch` of nothing below the content; with whole-cards on it
        * also let the bottom row walk out of the pane and vanish mid-scroll.)
        *
+       * ── THE INSET IS THE CO-TENANT'S PUSH (owner, 2026-10-14) ──
+       * With `inset` pinned to the authored 4px, a pushed rail (dsh-pinned-summary docking
+       * above the deck) computed a cap that needed LESS scroll than the deck really did, and
+       * the last rows could not be reached: measured 2026-10-08 on the owner's GUI,
+       * `padding-top: 135px`, `maxScroll: 147`, wheel 0 → 0. The band in RailWave reads this
+       * same number, so the card it hides is a card this cap can still scroll to.
+       *
        * `paneH` is 0 only before the ResizeObserver's first (same-tick, pre-paint)
        * callback; the guard keeps that one frame from computing a runaway cap.
        */
       const lastRow = paneH > 0
-        ? Math.max(0, Math.ceil((contentBottom + RAIL_ROW_SEAT - paneH) / scrollPitch))
+        ? Math.max(0, Math.ceil((contentBottom + railTopInset - RAIL_ROW_SEAT - paneH) / scrollPitch))
         : 0
       // ONE builder for a card's interactive body, shared by the resting deck and
       // the magnify overlay. While the wave is live the overlay is the surface the
@@ -836,7 +1004,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
           return hit.nodes
         }
         const nodes: React.ReactNode[] = [
-          React.createElement(CardBody, { key: 'b', out, unit: side, width, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent, onAction: handleAction, onCycle: cyclePool(it.key) }),
+          React.createElement(CardBody, { key: 'b', out, unit: side, width, squircle: prefs.squircle, cornerPercent: prefs.cornerPercent, onAction: actionsFor(it.key), onCycle: cyclePool(it.key) }),
           React.createElement('span', { key: 'r', className: 'dsx-stats-resize', 'aria-label': aria, onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX; const s0 = getPrefs().cardSide; const move = (ev: PointerEvent) => { setPrefs({ cardSide: Math.max(100, Math.min(220, Math.round(s0 - (ev.clientX - sx)))) }) }; const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up) } }),
         ]
         cardElCache.current.set(cacheKey, { out, unit: side, width, squircle: prefs.squircle, corner: prefs.cornerPercent, aria, nodes })
@@ -848,6 +1016,45 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       // React bails out of every card subtree.
       const overlayCardBodies = items.map((it) => cardBodyFor(it, it.baseW))
       const toggleAdd = (): void => setAddOpen((v) => !v)
+      /**
+       * The 设置 tile's action: bring up the official settings window on OUR section.
+       *
+       * The window is a resident panel (it is not unmounted when it closes), so the common
+       * case is one click on the nav row. When it is not on screen yet the foot trigger opens
+       * it, and the row is picked up on a later frame: the panel's nav is committed by React
+       * after the click and, when the window animates in, the row may not exist for a handful
+       * of frames — so poll instead of guessing a delay. The poll gives up quietly (the
+       * window is opened either way; the user is left on whatever section was active) rather
+       * than throwing inside a pointer handler.
+       */
+      const openSettingsSection = (): void => {
+        // The local spare and the product's window must never be on screen together, and the
+        // outside-click rule below does not fire for a click on the tile itself.
+        setAddOpen(false)
+        const row = findSettingsSectionRow()
+        if (row !== null) {
+          row.click()
+          return
+        }
+        const trigger = findSettingsTrigger()
+        if (trigger === null) return
+        trigger.click()
+        let frames = 0
+        const waitForRow = (): void => {
+          const found = findSettingsSectionRow()
+          if (found !== null) {
+            found.click()
+            return
+          }
+          // ~0.7s at 60Hz: long enough for the window's own open transition, short enough
+          // that a shell which cannot be navigated leaves no timer behind.
+          if (++frames > 42) return
+          window.requestAnimationFrame(waitForRow)
+        }
+        window.requestAnimationFrame(waitForRow)
+      }
+      /** The tile's click: the product's settings window, or the local spare when armed. */
+      const onTileClick = LOCAL_ADD_PANEL ? toggleAdd : openSettingsSection
       /**
        * ── STAGGER ORDER for the open/close cascade (prefs.openShape) ──
        *
@@ -909,7 +1116,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         // Bottom add button, parked inside the deck so it shares the grid layout:
         // it fills the empty last-row cell on odd counts, or sits right-aligned
         // below the rows on even counts / single column.
-        React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), onClick: toggleAdd, style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, '--dsx-slot-delay': cascadeDelay(staggerIn[tileRank], cascadeClock.step), '--dsx-slot-delay-out': cascadeDelay(staggerOut[tileRank], cascadeClock.step) } as React.CSSProperties },
+        React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), onClick: onTileClick, style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, '--dsx-slot-delay': cascadeDelay(staggerIn[tileRank], cascadeClock.step), '--dsx-slot-delay-out': cascadeDelay(staggerOut[tileRank], cascadeClock.step) } as React.CSSProperties },
           React.createElement('span', { className: 'dsx-stats-add-icon' }, settingsGearIcon(20)),
           React.createElement('span', { className: 'dsx-stats-add-label' }, t('ui.rail.addLabel')),
         ),
@@ -931,6 +1138,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         placeCards, scaleFor, nearest, stepScale, xPts, yPts, addSlotFor,
         restLayout: staticLayout, restAdd: staticAdd,
         live: snap.open && snap.hasSession, shiftX: space.shiftX, columns, wholeCards: prefs.wholeCards,
+        topInset: railTopInset,
         // The fold only exists in the 'stagger' shape; 'zoom' passes null, and a
         // non-null value also tells the wave to stand its own reflow animation
         // down for as long as the cards' `transform` belongs to the fold.
@@ -1026,15 +1234,23 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       // rail width (far too fast over the same 0.3s).
       // 2026-10-01 — the slide above gains a ZOOM out of the TOP-RIGHT corner.
       //    Both halves ride ONE `transform` on the same wrapper
-      //    (`translateX(travel) scale(s0)` → `none`), anchored by
-      //    `transform-origin: top right`: the group now appears to grow out of
-      //    the corner it hangs from while it glides into place, and the wrapper's
-      //    top-right corner IS the rail's own whenever no right panel is present
-      //    (the case the animation is seen in).
+      //    (`translateX(travel) scale(s0)` → `none`), anchored by a `transform-origin`
+      //    at that corner: the group appears to grow out of the corner it hangs from
+      //    while it glides into place.
+      //    WHICH corner is the question the owner asked on 2026-10-08 (「为什么…以整个
+      //    右侧区域的右上角为锚点而不是组件区域范围内的右上角」): the wrapper is
+      //    `inset: 0`, so a bare `top right` anchors on the VIEWPORT's top-right — a
+      //    point `--dsx-rail-top` (44px live) ABOVE the rail's own top edge, and the
+      //    point the cards visibly fly in from. The anchor is therefore the rail's own
+      //    top-right corner: `right var(--dsx-rail-top, 0px)`. The cascade reproduces
+      //    this map per card and READS the computed origin off this very element
+      //    (`deck-cascade.ts`, via `getComputedStyle(drawer).transformOrigin`), so the
+      //    two can never disagree.
       //    Both numbers are USER PREFS (设置 → 高级设置): `animScale` is the
       //    starting scale, `animCurve` the easing. `animScale = 1` degenerates to
       //    exactly the old pure slide, so the previous behaviour is still
       //    reachable without a second code path.
+      const foldOrigin = 'right var(--dsx-rail-top, 0px)'
       const drawerTravel = Math.round(railW + 24)
       const drawerAnimating = drawerPhase === 'enter' || drawerPhase === 'leave'
       // Clamped again here (not just in normalizePrefs): this runs on the
@@ -1096,10 +1312,10 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       // The class is also the instant, emit-proof kill switch for the whole
       // group: `body.dsx-stats-no-session` (see the rail-width effect below)
       // hides it in the same style pass the transcript's yield is released.
-      const drawerEl = React.createElement('div', { key: '__drawer', ref: (el: HTMLDivElement | null) => { setDrawerEl(el) }, className: 'dsx-stats-drawer', 'data-yielded': yielded ? '' : undefined, 'data-no-room': hidden ? '' : undefined, 'data-retired': retired ? '' : undefined, style: { position: 'fixed', inset: 0, pointerEvents: 'none', transformOrigin: 'top right', transform: drawerShift, opacity: drawerOpacity, transition: `${shiftEasing}, opacity var(--ds-transition-duration-slow) var(--ds-ease-in-out)` } },
+      const drawerEl = React.createElement('div', { key: '__drawer', ref: (el: HTMLDivElement | null) => { setDrawerEl(el) }, className: 'dsx-stats-drawer', 'data-yielded': yielded ? '' : undefined, 'data-no-room': hidden ? '' : undefined, 'data-retired': retired ? '' : undefined, style: { position: 'fixed', inset: 0, pointerEvents: 'none', transformOrigin: foldOrigin, transform: drawerShift, opacity: drawerOpacity, transition: `${shiftEasing}, opacity var(--ds-transition-duration-slow) var(--ds-ease-in-out)` } },
         // The zoom half: same inset:0 box, so the rail's fixed coordinates are
         // unchanged under either transform (the layer is the containing block).
-        React.createElement('div', { key: '__zoom', className: 'dsx-stats-drawer-zoom', style: { position: 'fixed', inset: 0, pointerEvents: 'none', transformOrigin: 'top right', transform: drawerZoom, transition: zoomEasing } },
+        React.createElement('div', { key: '__zoom', className: 'dsx-stats-drawer-zoom', style: { position: 'fixed', inset: 0, pointerEvents: 'none', transformOrigin: foldOrigin, transform: drawerZoom, transition: zoomEasing } },
           rail,
         ),
         addPanel,

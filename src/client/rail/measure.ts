@@ -72,6 +72,9 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
   /** Timer that ends the track-sync window. */
   let syncTimer = 0
   let ro: ResizeObserver | null = null
+  /** Watches the shell for node swaps so a replaced measured node is re-bound at once
+   *  (see the note in `install`). */
+  let shellMo: MutationObserver | null = null
   /**
    * Elements already handed to the ResizeObserver. The targets MUST be looked up
    * lazily: this plugin applies BEFORE the Web UI shell mounts its frame, so a
@@ -392,7 +395,15 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
   }
   function observeMeasured(): void {
     if (!ro) return
-    for (const sel of ['[data-conversation-scroll]', '[data-slot="conversation.session.header"]', '[data-composer-seat]', '[class$="_rightbarCol"]']) {
+    // `[class$="_header"]` is the OPAQUE session header itself (bg white, z 21). The
+    // `data-slot="conversation.session.header"` wrapper above it is `display: contents`,
+    // and a ResizeObserver NEVER reports a boxless target — so observing only the slot
+    // meant the header could grow (a session title wrapping, the tab row appearing)
+    // without any resize event, leaving `--dsx-rail-top` published from the shorter
+    // header. Everything the rail paints above that opaque edge is painted over, so the
+    // column's first row ends up under the top bar (owner screenshot 2026-10-09:
+    // 「顶部组件盖过顶部栏上方」). Observe the element that actually has a box.
+    for (const sel of ['[data-conversation-scroll]', '[data-slot="conversation.session.header"]', '[class$="_header"]', '[data-composer-seat]', '[class$="_rightbarCol"]']) {
       const el = document.querySelector(sel)
       if (el && !observedEls.has(el)) {
         observedEls.add(el)
@@ -616,6 +627,40 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
     // One document-level listener for the yield beat (see onTrackTransitionRun):
     // `transitionrun` bubbles, so it survives every AppFrame the shell swaps in.
     document.addEventListener('transitionrun', onTrackTransitionRun, true)
+    // ── A MISSED RE-BIND IS A STALE ANCHOR (2026-10-09) ───────────────────────
+    // `observeMeasured()` resolves its targets lazily and runs from
+    // `measureRailTop`, so when the shell REPLACES one of them — a session switch
+    // re-creates the session header — the new node is not observed until some
+    // unrelated event happens to run a measure. Until then `--dsx-rail-top` keeps
+    // the value published from the OLD header: the rail's top stays where the
+    // header used to end, so every row sits that much higher. Nothing is
+    // hit-tested away — the header is opaque white at z-index 21 and the rail
+    // paints at 7, so the first row is PAINTED OVER (the owner's screenshot,
+    // 2026-10-09: 「悬浮后整体瞬间上移…顶部组件盖过顶部栏上方」, and the state could
+    // only be cleared by switching sessions again). Re-bind as soon as the shell
+    // inserts ELEMENT nodes; text-node churn (the streaming transcript) is ignored,
+    // and the work is coalesced to one pass per frame.
+    if (typeof MutationObserver !== 'undefined') {
+      let rebindPending = false
+      shellMo = new MutationObserver((records) => {
+        if (rebindPending) return
+        for (const record of records) {
+          for (const list of [record.addedNodes, record.removedNodes]) {
+            for (const node of list) {
+              if (node.nodeType !== 1) continue
+              rebindPending = true
+              window.requestAnimationFrame(() => {
+                rebindPending = false
+                observeMeasured()
+                scheduleMeasure()
+              })
+              return
+            }
+          }
+        }
+      })
+      shellMo.observe(document.body, { childList: true, subtree: true })
+    }
     if (typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver((entries) => {
         // The SHELL re-laid-out: drop the memoised metrics so this pass reads it (the
@@ -656,6 +701,7 @@ export function createRailMeasure(deps: RailMeasureDeps): RailMeasure {
       lastSeenMeasure = -1
       lastSpaceKey = ''
       if (ro) ro.disconnect()
+      if (shellMo) { shellMo.disconnect(); shellMo = null }
       sub()
       if (syncTimer !== 0) window.clearTimeout(syncTimer)
       if (verticalTimer !== 0) window.clearTimeout(verticalTimer)
