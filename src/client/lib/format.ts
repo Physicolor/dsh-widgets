@@ -14,8 +14,49 @@ export function fmtDuration(ms: number): string {
   return `${Math.floor(whole / 60)}m${whole % 60}s`
 }
 
-/** Compact token count: 517 / 12.2K / 517K / 1.2M. */
-export function fmtTokens(n: number): string {
+/**
+ * A RUNNING CLOCK reading: `M:SS` under an hour, `H:MM:SS` from there.
+ *
+ * Deliberately not `fmtDuration`: that one is a compact *summary* (`2m42s`), which
+ * is right for a settled measurement and wrong for a stopwatch — a figure that
+ * changes every second must not change its SHAPE as it grows (a `4m12s` → `1h4m12s`
+ * jump moves the whole line), and a countdown that reads `12.0s` at twelve seconds
+ * out says nothing about how much of the minute is left. Tabular `M:SS` holds one
+ * geometry from `0:00` to `59:59`, and the digits line up a column.
+ *
+ * Seconds are FLOORED, never rounded: a countdown that rounds shows `0:00` while a
+ * second is still on the clock, and a stopwatch that rounds shows `0:01` before a
+ * second has passed.
+ */
+export function fmtClock(ms: number): string {
+  const total = Math.max(0, Math.floor((Number.isFinite(ms) ? ms : 0) / 1000))
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  const seconds = total % 60
+  const minutes = Math.floor(total / 60)
+  if (minutes < 60) return `${minutes}:${pad(seconds)}`
+  return `${Math.floor(minutes / 60)}:${pad(minutes % 60)}:${pad(seconds)}`
+}
+
+/**
+ * Coarse time UNTIL an instant: `45s` / `3m` / `2h` / `5d`, then the date.
+ *
+ * The mirror of `fmtAgo` for a target in the FUTURE — the past side of that
+ * function clamps a future instant to `0s`, so a card counting down to a scheduled
+ * task could not use it. Coarse on purpose: a reminder that is two days out does
+ * not need its seconds, and the card that wants a live `M:SS` reading owns one
+ * (see the `timer` rich block).
+ */
+export function fmtUntil(at: number, now: number = Date.now()): string {
+  if (!Number.isFinite(at)) return '—'
+  const s = Math.max(0, Math.round((at - now) / 1000))
+  if (s < 60) return `${s}s`
+  if (s < 3600) return `${Math.floor(s / 60)}m`
+  if (s < 86400) return `${Math.floor(s / 3600)}h`
+  if (s < 86400 * 30) return `${Math.floor(s / 86400)}d`
+  return fmtShortDate(new Date(at).toISOString().slice(0, 10))
+}
+
+/** Compact token count: 517 / 12.2K / 517K / 1.2M. */export function fmtTokens(n: number): string {
   const scaled = (v: number): string => (v >= 100 ? String(Math.round(v)) : String(Math.round(v * 10) / 10))
   if (n < 1000) return String(n)
   if (n < 1000000) return `${scaled(n / 1000)}K`

@@ -74,8 +74,14 @@ export function buildLiveStats(snap: BridgeSnapshot, prefs: Prefs, key: string, 
     pricing: snap.pricing,
     github: snap.github,
     githubError: snap.githubError,
+    deepseekBalance: snap.deepseekBalance,
+    deepseekBalanceError: snap.deepseekBalanceError,
     poolModes,
     armedAction,
+    // The DSH scheduled tasks: a bridge SLICE, not part of `snap.stats`, so it is
+    // copied explicitly like the other live sources above. `null` = never read (no
+    // schedule-aware card installed), which the cards render as `—`.
+    schedule: snap.schedule,
     ...(prefs.cardConfigs?.[key] ?? {}),
   } as WidgetStats
 }

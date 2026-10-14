@@ -1,0 +1,28 @@
+/**
+ * G11 build config — compiles the SOURCE-RESOLUTION harness into CommonJS so
+ * `scripts/verify-source-resolution.mjs` can exercise the data-source contract's
+ * pure decision rules offline (no browser, no React, no network).
+ *
+ * Why a separate config from G4's `tsconfig.snapshot.json`: the snapshot compiles
+ * a widget-render closure, this compiles the registry/scheduler closure. Keeping
+ * them apart means a breakage in one does not mask the other, and neither pulls
+ * in `client/index.ts` (which needs the shell).
+ */
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noEmitOnError": false,
+    "types": [],
+    "outDir": "../.tmp-contract",
+    "rootDir": ".."
+  },
+  "include": [
+    "./contract/sources-harness.ts"
+  ]
+}

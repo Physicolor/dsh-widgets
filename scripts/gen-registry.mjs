@@ -27,19 +27,30 @@
 import { readdirSync, readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { discoverAdapters } from './lib/sources.mjs'
 
 const ROOT = join(fileURLToPath(new URL('..', import.meta.url)))
 const WIDGETS_DIR = join(ROOT, 'src', 'widgets')
+const FAMILIES_DIR = join(ROOT, 'src', 'client', 'families')
 const OUT_FILE = join(ROOT, 'src', 'client', 'generated.registry.ts')
 const ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/
 const SIZES = ['2x2', '2x4']
-/** Live data sources a unit may declare (absent = session-local data only). */
-const SOURCES = ['usage', 'cc', 'sys', 'github']
 /** Loading-skeleton silhouettes a unit may declare (see SkeletonShape). */
 const SKELETON_SHAPES = ['text', 'rings', 'bars', 'line', 'heatmap', 'figures', 'quotas']
+/** Non-route data a unit may declare it reads (`manifest.reads`).
+ *
+ *  `source` names a host ROUTE (the adapter contract polls a URL). This list is the
+ *  other kind: data that only exists as a client Remote face with its own change
+ *  event — the DSH scheduled-task subsystem (`ctx.remote.schedule`, see
+ *  data/schedule.ts). Declaring it is what lets the shell spend the subscription
+ *  only while a card that renders it is installed, exactly like a source.
+ *
+ *  A closed list on purpose: a typo would otherwise silently subscribe to nothing
+ *  and the card would sit on `—` for ever with a green build. */
+const READS = ['schedule']
 /** Every manifest key the generator understands. An unknown key is a typo, not a
  *  feature, so it fails the build instead of being silently ignored. */
-const MANIFEST_KEYS = new Set(['id', 'order', 'group', 'builtin', 'defaultInstalled', 'sizes', 'locale', 'source', 'skeleton'])
+const MANIFEST_KEYS = new Set(['id', 'order', 'group', 'builtin', 'defaultInstalled', 'sizes', 'locale', 'source', 'skeleton', 'reads'])
 
 /** Load + parse JSON, dying with a readable path-tagged error. */
 function readJson(file) {
@@ -58,6 +69,18 @@ function identFor(id) {
 
 function main() {
   const checkMode = process.argv.includes('--check')
+
+  // 0) Data-source adapters. DISCOVERED, never whitelisted: an adapter is a file
+  //    under families/<id>/adapter.ts, so a new data source is one family
+  //    directory (+ one host module) and nothing else. A `manifest.source` that
+  //    does not hit this list fails the build below.
+  const discovered = discoverAdapters(ROOT)
+  if (discovered.failures.length > 0) {
+    console.error('[gen-registry] data-source adapter discovery failed:')
+    for (const f of discovered.failures) console.error(`  - ${f}`)
+    process.exit(1)
+  }
+  const SOURCES = discovered.sources.map((s) => s.id)
 
   // 1) Family-shared locale layers (`src/widgets/_shared/*.json`), applied
   //    BEFORE widget manifests so units can override family defaults.
@@ -137,6 +160,15 @@ function main() {
     if (m.source !== undefined && !SOURCES.includes(m.source)) {
       failures.push(`${id}: manifest.source "${m.source}" is not one of ${SOURCES.join(' | ')}`)
     }
+    if (m.reads !== undefined) {
+      if (!Array.isArray(m.reads) || m.reads.some((r) => typeof r !== 'string')) {
+        failures.push(`${id}: manifest.reads must be an array of strings, e.g. ["schedule"]`)
+      } else {
+        for (const r of m.reads) {
+          if (!READS.includes(r)) failures.push(`${id}: manifest.reads "${r}" is not one of ${READS.join(' | ')}`)
+        }
+      }
+    }
     if (m.skeleton !== undefined) {
       if (typeof m.skeleton !== 'object' || m.skeleton === null || Array.isArray(m.skeleton)) {
         failures.push(`${id}: manifest.skeleton must be an object like { "shape": "figures", "count": 3 }`)
@@ -171,6 +203,7 @@ function main() {
       builtin: m.builtin !== false,
       source: m.source,
       skeleton: m.skeleton,
+      reads: Array.isArray(m.reads) ? m.reads : undefined,
     })
   }
   if (failures.length > 0) {
@@ -202,13 +235,22 @@ function main() {
   // NOTE: this file lives at src/client/, so the unit import root is '../widgets'
   // (not '../../widgets', which would reach the repo root).
   const imports = widgets.map((w) => `import ${identFor(w.id)} from '../widgets/${w.id}'`).join('\n')
+  // Data-source adapters: ONE namespace import per family file (a family may
+  // declare several sources — the usage family owns both the pool payload and the
+  // machine-wide day map), flattened at module load through the contract's own
+  // runtime guard. Nothing here lists a source id.
+  const adapterFamilies = [...new Set(discovered.sources.map((s) => s.family))].sort()
+  const adapterNs = (family) => `src_${family.replace(/-/g, '_')}`
+  const adapterImports = adapterFamilies
+    .map((family) => `import * as ${adapterNs(family)} from './families/${family}/adapter'`)
+    .join('\n')
   const instances = widgets
     .flatMap((w) => w.sizes.map((s) => (s === '2x4' ? `\`${w.id}@2x4\`` : `\`${w.id}@2x2\``)))
   const statsIds = widgets.filter((w) => w.defaultInstalled).map((w) => `'${w.id}'`)
   const defaultInstalled = widgets.filter((w) => w.defaultInstalled).map((w) => `\`${w.id}@2x2\``)
-  // Runtime metadata, one line per unit that declares any (source / skeleton).
+  // Runtime metadata, one line per unit that declares any (source / skeleton / reads).
   const runtimeEntries = widgets
-    .filter((w) => w.source !== undefined || w.skeleton !== undefined)
+    .filter((w) => w.source !== undefined || w.skeleton !== undefined || w.reads !== undefined)
     .map((w) => {
       const parts = []
       if (w.source !== undefined) parts.push(`source: ${JSON.stringify(w.source)}`)
@@ -218,6 +260,7 @@ function main() {
         if (w.skeleton.rows !== undefined) inner.push(`rows: ${w.skeleton.rows}`)
         parts.push(`skeleton: { ${inner.join(', ')} }`)
       }
+      if (w.reads !== undefined) parts.push(`reads: [${w.reads.map((r) => JSON.stringify(r)).join(', ')}]`)
       return `  ${JSON.stringify(w.id)}: { ${parts.join(', ')} },`
     })
 
@@ -226,19 +269,41 @@ function main() {
  *
  * Produced by scripts/gen-registry.mjs from the unit dirs under src/widgets/
  * (the machine-readable part comes from each unit's manifest.json; the
- * descriptors come from each unit's index.ts). Regenerate with:
+ * descriptors come from each unit's index.ts) AND from the data-source adapters
+ * under src/client/families/<id>/adapter.ts. Regenerate with:
  *   pnpm gen:registry        (write)
  *   pnpm check:registry      (verify up-to-date — the build/CI guard)
  *
- * Adding a widget = creating one unit dir; the registry follows automatically.
+ * Adding a widget = creating one unit dir; adding a data source = creating one
+ * family adapter file. The registry follows automatically.
  */
 
 ${imports}
+${adapterImports}
+import { isSourceAdapter } from './data/source-contract'
 
 /** Every discovered widget, in manifest display order (then by id). */
 export const WIDGETS: import('./lib/contract/types').Widget[] = [
 ${widgets.map((w) => `  ${identFor(w.id)},`).join('\n')}
 ]
+
+/**
+ * Every discovered DATA SOURCE ADAPTER, in family-path order.
+ *
+ * This is what makes \`manifest.source\` a free string: the set of legal ids comes
+ * from the family directories themselves, so a manifest can only name a source
+ * that actually exists (\`pnpm check:registry\` fails otherwise) and adding one
+ * never edits a shared file. See src/client/data/source-contract.ts.
+ */
+export const SOURCE_ADAPTERS: import('./data/source-contract').SourceAdapter[] = [
+${adapterFamilies.map((family) => `  ${adapterNs(family)},`).join('\n')}
+]
+  .flatMap((mod) => Object.values(mod))
+  .filter(isSourceAdapter)
+  // A family module's namespace also carries its \`default\` (the same object as
+  // one of its named exports), so the id — not the reference — decides identity:
+  // one adapter, one registration, one poller.
+  .filter((a, i, all) => all.findIndex((x) => x.id === a.id) === i)
 
 /**
  * Per-widget RUNTIME metadata, generated from each unit's manifest.json.
@@ -254,10 +319,7 @@ ${widgets.map((w) => `  ${identFor(w.id)},`).join('\n')}
  * there is no central id→source map to edit, and \`check:registry\` fails the build
  * when a manifest drifts from the generated file.
  */
-export const WIDGET_RUNTIME: Record<string, {
-  source?: 'usage' | 'cc' | 'sys' | 'github'
-  skeleton?: { shape: import('./lib/contract/types').SkeletonShape; count?: number; rows?: number }
-}> = {
+export const WIDGET_RUNTIME: Record<string, import('./lib/contract/types').WidgetRuntimeMeta> = {
 ${runtimeEntries.join('\n')}
 }
 

@@ -11,7 +11,7 @@
  * without importing back into their own caller (which would be a cycle).
  */
 
-import type { CommandCodeData, GitHubData, HostOverview, PriceTable, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
+import type { CommandCodeData, DeepSeekBalance, GitHubData, HostOverview, PriceTable, ScheduleSnapshot, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
 import type { Stats } from '../data/session-stats'
 import type { Prefs } from './prefs'
 
@@ -50,6 +50,35 @@ export interface BridgeSnapshot {
   /** `'unloaded'` when the host route is missing (dsh web not restarted),
    *  otherwise a transport code; `null` once a payload has arrived. */
   githubError: string | null
+  /** DeepSeek platform balance + the day's observed spend, from the host
+   *  `/api/deepseek-balance` route (see DeepSeekBalance). */
+  deepseekBalance: DeepSeekBalance | null
+  /** `'unconfigured'` (no key) / `'unauthorized'` (key rejected) / `'unloaded'`
+   *  (host route missing → dsh web not restarted) / a transport code; `null`
+   *  once a payload has arrived. */
+  deepseekBalanceError: string | null
+  /**
+   * Per-source load status, keyed by `manifest.source` (v1.11 adapter contract).
+   *
+   * An ABSENT key means the source's adapter has never answered — the loading
+   * skeleton the unit's manifest declares is still up. `ready` means it produced
+   * something renderable at least once, so the card shows its own state from then
+   * on (a later failure keeps the last good payload; it never re-enters loading).
+   *
+   * The shell reads this to decide the skeleton; the SOURCE decides when it turns
+   * ready (`SourceEffect.resolved`), because only the adapter knows whether its
+   * route's error answer is the card's real state or a transient miss.
+   */
+  sources: Record<string, { status: 'loading' | 'ready' }>
+  /**
+   * The DSH scheduled-task subsystem, folded (see data/schedule.ts).
+   *
+   * `null` = never read (no installed card declares `reads: ['schedule']`), which
+   * is a different statement from `status: 'unavailable'` (a deployment without the
+   * schedule bundle) — cards show `—` for the first and degrade to their plain
+   * layout for the second.
+   */
+  schedule: ScheduleSnapshot | null
   prefs: Prefs
   railBudget: number
 }

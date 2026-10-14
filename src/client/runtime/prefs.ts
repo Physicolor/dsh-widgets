@@ -11,7 +11,7 @@
  * fresh loopback origin per launch.
  */
 
-import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS } from '../generated.registry'
+import { ALL_INSTANCES, DEFAULT_INSTALLED, WIDGETS } from '../lib/registry'
 import { instanceKey, parseInstanceKey, sizesOf } from '../lib/contract/helpers'
 import type { AnimCurve } from '../lib/anim-curve'
 import { DEFAULT_ANIM_BOUNCE, DEFAULT_ANIM_CURVE, MAX_ANIM_BOUNCE, normalizeCurve } from '../lib/anim-curve'

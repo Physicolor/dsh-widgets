@@ -39,6 +39,10 @@ export interface Stats {
   permissions?: PermissionInfo | null
   subagents?: SubagentEntry[] | null
   jobs?: JobInfo[] | null
+  /** The open turn's own elapsed ms (earliest step start → now), or null. */
+  liveTurnMs?: number | null
+  /** The open model step's own elapsed ms, or null when no step is in flight. */
+  liveStepMs?: number | null
 }
 
 /**

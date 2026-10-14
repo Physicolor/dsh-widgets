@@ -15,11 +15,12 @@ import './styles/rail.module.css'
 import './styles/panel.module.css'
 import './styles/market.module.css'
 import './styles/primitives.module.css'
-import { WIDGET_LOCALES } from './generated.registry'
-import type { CommandCodeData, GitHubData, HostOverview, PriceTable, SysInfo, UsageData, UsageMulti } from './lib/contract/types'
+import { WIDGET_LOCALES, subscribeRegistry } from './lib/registry'
+import type { CommandCodeData, DeepSeekBalance, GitHubData, HostOverview, PriceTable, SysInfo, UsageData, UsageMulti } from './lib/contract/types'
 import { loadHeatmapStore } from './lib/heatmap-accounting'
 import { createCollector } from './data/collector'
-import { type BridgeSnapshot } from './runtime/bridge'
+import type { RemoteServiceLike } from './data/schedule'
+import { type BridgeSnapshot, type BridgeState } from './runtime/bridge'
 import { buildLiveStats } from './runtime/live-stats'
 import { type Stats } from './data/session-stats'
 import { SAVED_AT_KEY, STORAGE_KEY, loadSavedAt, loadState, normalizePrefs, type Prefs } from './runtime/prefs'
@@ -36,6 +37,28 @@ import { createRailView } from './rail/rail-view'
 export const inject = ['slots']
 
 /**
+ * THIRD-PARTY UNIT REGISTRATION (ARCH-004 / roadmap `widgets-market`).
+ *
+ * Another client bundle can contribute a widget unit without forking this repo:
+ *
+ * ```ts
+ * import { registerExternalUnit } from 'dsh-widgets/client'
+ *
+ * ctx.effect(() => registerExternalUnit({ manifest, widget }))
+ * ```
+ *
+ * `registerExternalUnit` validates the unit against the same rules the build
+ * pipeline applies to a built-in one (`lib/contract/external.ts`) and THROWS with
+ * the full violation list when a rule is broken — an unreviewed bundle must not be
+ * able to impersonate a built-in, wait on a data source that does not exist, or
+ * list itself in a language nobody can read. `scripts/validate-external-unit.mjs`
+ * is the same checklist as a submission gate, so a contributor can pass review
+ * before shipping. The returned disposer removes the unit again.
+ */
+export { registerExternalUnit, externalUnits, knownSources } from './lib/registry'
+export { validateExternalUnit, type ExternalWidgetUnit, type ExternalManifest } from './lib/contract/external'
+
+/**
  * Client plugin body: restore persisted prefs, register the rail and settings
  * surfaces, and wire the live session stats + OpenCode usage into one bridge.
  * @param ctx - client root context (carries the injected `slots` service).
@@ -46,8 +69,15 @@ export function apply(ctx: ClientContext): void {
   // switches re-render every always-mounted surface via the bridge.
   ctx.effect(() => {
     const disposeLocale = installLocale(ctx.get('locale') as { bind?: (ns: string) => (key: string, params?: Record<string, unknown>) => string; subscribe?: (fn: () => void) => () => void } | undefined, WIDGET_LOCALES)
+    const disposeRegistry = subscribeRegistry(() => {
+      // A third-party unit arrives with its OWN strings (see lib/registry.ts):
+      // re-install so `widget.<id>.name` resolves the moment it is listed. The
+      // merged dictionary is live; the locale SERVICE's copy is not.
+      installLocale(ctx.get('locale') as { bind?: (ns: string) => (key: string, params?: Record<string, unknown>) => string; subscribe?: (fn: () => void) => () => void } | undefined, WIDGET_LOCALES)
+      emit()
+    })
     const disposeListener = onLocaleChange(() => { emit() })
-    return () => { disposeLocale(); disposeListener() }
+    return () => { disposeRegistry(); disposeLocale(); disposeListener() }
   })
   // One-time boot cleanup of the fallback heatmap log: older builds wrote
   // fabricated "recovered history" constants into it (see loadHeatmapStore).
@@ -55,7 +85,7 @@ export function apply(ctx: ClientContext): void {
   // loads —and it must never touch live-accumulated days.
   try { loadHeatmapStore() } catch { /* best-effort */ }
   let prefs = loadState()
-  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, commandCodeDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null, host: null as HostOverview | null, hostError: null as string | null, pricing: null as PriceTable | null, github: null as GitHubData | null, githubError: null as string | null }
+  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, commandCodeDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null, host: null as HostOverview | null, hostError: null as string | null, pricing: null as PriceTable | null, github: null as GitHubData | null, githubError: null as string | null, deepseekBalance: null as DeepSeekBalance | null, deepseekBalanceError: null as string | null, schedule: null as BridgeState['schedule'], sources: {} as BridgeState['sources'] }
 
   const listeners = new Set<() => void>()
   /**
@@ -160,14 +190,52 @@ export function apply(ctx: ClientContext): void {
   })
   void syncWithHost()
 
-  // Command execution for interactive action cards (e.g. one-click Compact).
-  // Resolve the host @Remote command seam if present; cards degrade silently
-  // when it is absent.
-  const remote = ctx.get('remote') as { commands?: { execute?: (agent: unknown, line: string) => Promise<unknown> } } | undefined
+  // ---- The host @Remote seam (slash commands + the scheduled-task face). ----
+  //
+  // A NAMESPACE read (`remote.schedule`, `remote.commands`) is NOT a plain property
+  // access: the namespaces are REGISTERED AS THEIR OWN SERVICES (`"remote.schedule"`
+  // — verified against the official clients, all 28 of which declare exactly those
+  // names in their `inject` lists), and the cordis context proxy refuses a property
+  // the reading fiber did not declare:
+  //     cannot get property "remote.schedule" without inject
+  // Measured on the live GUI (2026-10-14): the schedule read threw inside the
+  // collector's effect, and a throwing effect takes the whole
+  // `conversation.composer.dock` slot entry — i.e. every card's data — down with it.
+  // The same refusal is why `ctx.get('remote').commands.execute` (the one-click
+  // Compact action) had been silently dead: it threw on the property read, inside a
+  // catch that exists to tolerate a MISSING command seam.
+  //
+  // The fix is the documented one: a CHILD fiber that declares the dependency
+  // (`ctx.inject(names, body)` waits for the services and runs the body with them
+  // declared). One fiber PER FACE, so a deployment without the optional schedule
+  // bundle still gets the command seam, and this plugin's own `inject` list stays
+  // `['slots']` — a face that never arrives simply leaves its getter returning
+  // `undefined`, and the affected card degrades instead of the rail failing to load.
+  const remoteScope = (deps: string[]): (() => RemoteServiceLike | undefined) => {
+    let scoped: ClientContext | null = null
+    try {
+      ctx.inject(deps, (inner: ClientContext) => {
+        scoped = inner
+        return () => { scoped = null }
+      })
+    } catch { /* a shell without `inject` keeps the degraded path */ }
+    return () => {
+      if (scoped === null) return undefined
+      try {
+        return (scoped as ClientContext).get('remote') as RemoteServiceLike | undefined
+      } catch {
+        return undefined
+      }
+    }
+  }
+  /** The slash-command seam (`remote.commands`). */
+  const getCommands = remoteScope(['remote', 'remote.commands'])
+  /** The scheduled-task face (`remote.schedule`). */
+  const getRemote = remoteScope(['remote', 'remote.schedule'])
   const runCommand = (line: string): void => {
     void (async () => {
       try {
-        const exe = remote?.commands?.execute
+        const exe = getCommands()?.commands?.execute
         if (!exe) return
         await exe(undefined as unknown, line)
       } catch { /* best-effort: ignore failures on action cards */ }
@@ -251,7 +319,16 @@ export function apply(ctx: ClientContext): void {
   // exists" to the rail.
   ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register(
     { name: 'conversation.composer.dock', id: 'widgets-panel-collector', order: 9999 },
-    createCollector({ useBridge, setState, getState: () => state, getPrefs: () => prefs }),
+    createCollector({
+      useBridge,
+      setState,
+      getState: () => state,
+      getPrefs: () => prefs,
+      // The live `remote` face, resolved through the child fiber above (see the
+      // resolution note there): reading a namespace off the raw service throws
+      // without a declared dependency, so this is the only legal door.
+      getRemote,
+    }),
   ))
 
   // ---- Right rail panel. ----

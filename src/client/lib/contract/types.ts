@@ -298,6 +298,42 @@ export interface GitHubData {
   errors: Record<string, string>
 }
 
+/**
+ * The DeepSeek platform balance behind `/api/deepseek-balance`, from the official
+ * `GET https://api.deepseek.com/user/balance`.
+ *
+ * The four official numbers are passed through as the vendor stated them:
+ * `total` is the whole balance, `toppedUp` what was paid in and `granted` the
+ * credit DeepSeek itself granted (`total = toppedUp + granted` upstream), in
+ * `currency` (CNY on this machine's account).
+ *
+ * `spentToday` is the ONE derived figure here, and it is derived because the
+ * official endpoint publishes no usage at all: the host SAMPLES the balance and
+ * accumulates the drops it observed during `day` (local calendar day). It is
+ * therefore a measurement of what this host watched, not a bill — a spend that
+ * happened while dsh was not running is invisible to it. The card says so on
+ * hover; see `src/host/deepseek.ts` for the fold.
+ *
+ * `hasBalance` is the vendor's own `is_available` ("this account can still call
+ * the API") and is deliberately NOT recomputed from `total > 0`: a grant-only
+ * account with a positive balance can still be flagged, and that verdict is
+ * upstream's to make.
+ */
+export interface DeepSeekBalance {
+  available: true
+  currency: string | null
+  total: number
+  granted: number
+  toppedUp: number
+  hasBalance: boolean
+  /** Σ of the balance drops observed during `day`; 0 when none was seen yet. */
+  spentToday: number
+  /** The local calendar day `spentToday` describes (`YYYY-MM-DD`). */
+  day: string
+  /** Epoch millis of the upstream sample (not of the response). */
+  sampledAt: number
+}
+
 /** One hardware snapshot from the Host `/api/sysinfo` route (machine-local
  *  values only — never session data). `cpu.util` is the utilization averaged
  *  over the window between two host samples (null on the very first sample,
@@ -310,6 +346,8 @@ export interface SysInfo {
     name: string
     temp: number
     util: number
+    /** VRAM in BYTES (the host converts nvidia-smi's MiB — see host/sysinfo.ts);
+     *  `fmtGb` divides by 1024³ and every consumer assumes this unit. */
     memUsed: number
     memTotal: number
     memPercent: number
@@ -480,6 +518,15 @@ export interface WidgetStats {  turns: number
    *  (host route missing → dsh web not restarted), `'unavailable'`, or
    *  `http:<status>`. Per-slice notes live in `github.errors` instead. */
   githubError?: string | null
+  /** DeepSeek platform balance (official `/user/balance`) + the day's observed
+   *  spend, from the host `/api/deepseek-balance` route. `null` while the first
+   *  pass is in flight. */
+  deepseekBalance?: DeepSeekBalance | null
+  /** Stable code when that route could not answer: `'unconfigured'` (no
+   *  DEEPSEEK_API_KEY), `'unauthorized'` (the key was rejected), `'unloaded'`
+   *  (host route missing → dsh web not restarted), `'unavailable'`/`'timeout'`,
+   *  or `http:<status>`. */
+  deepseekBalanceError?: string | null
   /** Id of the currently armed (awaiting second tap) action, if any. */
   armedAction?: string | null
   /** Current task list (todos projection): status is pending | in_progress | completed. */
@@ -513,6 +560,28 @@ export interface WidgetStats {  turns: number
   /** This session's background jobs (the `jobsBySession` list mirror); `null`
    *  when the list is unavailable, `[]` when the session has none. */
   jobs?: JobInfo[] | null
+  /**
+   * How long the OPEN turn has been running (ms), or `null` when no turn is open.
+   *
+   * Derived by the collector from the live timeline (`useChat().timeline`), whose
+   * open turn carries its steps' `start.time`: the turn's own start is the EARLIEST
+   * of them, so a turn that is already on step 4 still measures from step 1. The
+   * projection's `sessionStats.llmMs`/`toolMs` cannot answer this — they are
+   * whole-session cumulative, so a card built on them would report "this turn" as
+   * the entire conversation.
+   */
+  liveTurnMs?: number | null
+  /** How long the open MODEL step has been running (ms), or `null` when the turn is
+   *  between steps (the model has answered and no step is in flight). */
+  liveStepMs?: number | null
+  /**
+   * The DSH scheduled-task subsystem, as the rail can see it (`ctx.remote.schedule`,
+   * see data/schedule.ts). `null`/absent = never read (no card on the rail reads it
+   * — the collector only subscribes while one does), `status: 'unavailable'` = this
+   * deployment has no schedule face, and cards must then DEGRADE (a plain month
+   * grid, a `—` countdown) rather than invent an empty agenda.
+   */
+  schedule?: ScheduleSnapshot | null
   /** Machine operational picture from the host `/api/host/overview` route
    *  (throughput / power / top processes / local services / proxy egress). */
   host?: HostOverview | null
@@ -831,9 +900,226 @@ export interface WidgetAction {
   confirmHint?: string
 }
 
-/** A freeform rich block (photo / quote / inspiration). */
+/**
+ * The payload of a `clock` rich block: WHICH zone the card reads and HOW it draws
+ * it. Every string in it (the zone caption, the day-period marks, the date line)
+ * is composed by the WIDGET — the renderer holds no dictionary
+ * (see render/rich/clock-face.tsx).
+ *
+ * No instant is carried on the live path on purpose: the renderer re-reads
+ * `Date.now()` on its own 1s tick, so the second hand moves without the rail
+ * having to re-render the card (the collector's own tick is 30s when idle, which
+ * would freeze a dial). `at` exists for the DETERMINISTIC surfaces — a preview
+ * pins the instant, so the face under review is always the same drawing.
+ */
+export interface ClockRich {
+  /** Pinned epoch-ms instant (previews / snapshot only); absent = live clock. */
+  at?: number
+  /** IANA zone (`Asia/Shanghai`) or `local`. Default `local`. */
+  tz?: string
+  /** Caption printed under the dial's centre (e.g. 北京). Absent = no caption. */
+  label?: string
+  /** 'analog' (default) draws the dial; 'digital' prints the reading. */
+  face?: 'analog' | 'digital'
+  /** Draw (and tick) the second hand / seconds field. Default true. */
+  seconds?: boolean
+  /** 24-hour digital reading. Default true (false = 12-hour, with the am/pm mark
+   *  carried by `dateLine` — the widget owns that word, the renderer has no
+   *  dictionary). */
+  h24?: boolean
+  /** The small line under a digital reading (e.g. `上午 · 北京 · 周三 10月14日`);
+   *  the widget composes it, so the renderer never formats a date or a day period
+   *  itself. */
+  dateLine?: string
+}
+
+/**
+ * The payload of a `calendar` rich block: the month's own GRID, already resolved.
+ *
+ * The widget derives the weeks (lib/clock-face.buildMonthWeeks) and the renderer
+ * only lays them out, which is what keeps "which day is it" in one place — and
+ * what lets the offline render snapshot (G4) verify the grid itself rather than a
+ * drawing of it. `weekdays` is in the GRID's column order (a Monday-first card
+ * ships 一…日, a Sunday-first one 日…六) and every label is already localized.
+ */
+export interface CalendarRich {
+  /** The month caption (e.g. `2026年10月`). */
+  label: string
+  /** The seven column headers, in display order. */
+  weekdays: string[]
+  /** The weeks top to bottom; `null` = a blank cell. */
+  weeks: Array<Array<CalendarCell | null>>
+  /** Hover text for the whole grid (provenance the tile has no room for, e.g.
+   *  「法定节假日表未覆盖 2027 年」). */
+  hint?: string
+  /**
+   * Day numbers of the SHOWN month that carry at least one active scheduled task.
+   *
+   * Day numbers, not cells, and only the marks — the widget decides WHICH days a
+   * scheduled task lands on (in the card's own configured zone, the same clock the
+   * today badge is read from), and the renderer only draws a corner dot on those
+   * cells. A day that is already the today badge keeps its badge and gets the dot
+   * in the badge's ink, which is the one combination a filled cell would otherwise
+   * swallow.
+   */
+  marks?: number[]
+  /** Caption above the 2×4 agenda column (e.g. 临近日程). */
+  agendaLabel?: string
+  /** The 2×4 agenda rows, SOONEST first, already localized by the widget. Empty
+   *  (or absent) draws `agendaEmpty` instead. */
+  agenda?: Array<{ when: string; title: string }>
+  /** The line the agenda column prints when nothing is upcoming. */
+  agendaEmpty?: string
+}
+
+/** One day cell of a `calendar` rich block (see lib/clock-face.CalendarCell). */
+export interface CalendarCell {
+  day: number
+  kind: 'normal' | 'accent' | 'today' | 'other'
+}
+
+/**
+ * One DSH scheduled task, normalized for the cards (see data/schedule.ts).
+ *
+ * The wire type is `ScheduleCatalogEntry` from the official package: a
+ * `ScheduleRecord` variant plus its session binding and an `active`/`inactive`
+ * flag. What the cards need is much smaller — when it next fires, what it is
+ * called, and how it repeats — so the fold happens ONCE, in `data/schedule.ts`,
+ * and every card reads these plain fields (a widget never imports the upstream
+ * package, exactly like the model/permission folds).
+ */
+export interface ScheduleEntryInfo {
+  id: string
+  /** The task's required stored name (upstream guarantees non-empty, ≤120 chars). */
+  title: string
+  /** Epoch ms of the next (or final) occurrence; the wire value is an RFC 3339
+   *  UTC string, so a card can compare it with `Date.now()` directly. */
+  at: number
+  /** Inactive tasks stay visible in the catalog but never fire again. */
+  status: 'active' | 'inactive'
+  /** `at`/`after` are one-shot; the rest repeat. */
+  kind: 'at' | 'after' | 'every' | 'daily' | 'weekly' | 'cron'
+  /** Fixed-rate interval in seconds (`every`). */
+  everySeconds?: number
+  /** Local `HH:mm:ss.SSS` (`daily` / `weekly`). */
+  time?: string
+  /** ISO weekdays, Monday 1 … Sunday 7 (`weekly`). */
+  weekdays?: number[]
+  /** Five-field Vixie expression (`cron`). */
+  expression?: string
+  /** The rule's own IANA zone, when it has one. */
+  timeZone?: string
+}
+
+/**
+ * The rail's view of the DSH scheduled-task subsystem.
+ *
+ * `status` is the DEGRADATION switch, and it is deliberately not derivable from
+ * `entries`: the schedule bundle is OPTIONAL in a DSH install (the official
+ * release Web composition does not include it), so "no upcoming tasks" and "this
+ * deployment cannot tell me about tasks at all" must not look the same on a card.
+ */
+export interface ScheduleSnapshot {
+  status: 'ready' | 'unavailable'
+  entries: ScheduleEntryInfo[]
+}
+
+/**
+ * One round control a `timer` block draws INSIDE its own body.
+ *
+ * The stopwatch's reference layout is a big reading over two discs (a secondary
+ * ring on the left, the main press on the right), which is not the card's
+ * `actions` row — that row is a pill strip on the card's floor and drawing it in
+ * the body would be a second, differently-behaving button set. The control is
+ * DATA like everything else in a render output (a glyph NAME, never a node), and
+ * its `id` is dispatched through the very same rail path `WidgetAction.id` uses —
+ * the closed `timer:*` vocabulary — so a widget still cannot write arbitrary keys.
+ */
+export interface TimerControl {
+  /** Action ID the rail dispatches (`timer:start` / `timer:pause` / `timer:reset`). */
+  id: string
+  /** The glyph the renderer draws (see the block's own SVG table). */
+  glyph: 'play' | 'pause' | 'ring' | 'reset'
+  /** Hover text, localized by the widget (the renderer holds no dictionary). */
+  label: string
+  /** `primary` = the filled disc; `warn`/`plain` = the outlined secondary one. */
+  tone?: 'primary' | 'warn' | 'plain'
+  /** Draw the glyph LARGER (the reference's main press holds a 20px triangle in a
+   *  52px disc). Default: the secondary size. */
+  big?: boolean
+}
+
+/**
+ * The payload of a `timer` rich block: a reading the RENDERER keeps in time.
+ *
+ * Both timer cards are one shape. A stopwatch counts up from `baseMs` (+ the live
+ * segment); a countdown counts down from `durationMs` over the same elapsed. A
+ * countdown to an ABSOLUTE instant (倒计时's 「最近的定时任务」 mode) is expressed by
+ * anchoring at the render instant: `startedAt = now`, `durationMs = target − now`,
+ * which is self-consistent however stale the render output is — the renderer
+ * recomputes `durationMs − (now − startedAt)` and lands on the target either way.
+ *
+ * No instant is carried on the live path on purpose (the clock's rule): the
+ * renderer re-reads `Date.now()` on its own tick, so the figure moves without the
+ * rail re-rendering the card (its idle tick is 30s). `at` pins the instant for the
+ * deterministic surfaces, so a screenshot under review is always one drawing.
+ */
+export interface TimerRich {
+  mode: 'stopwatch' | 'countdown'
+  /** Pinned epoch-ms instant (previews / snapshot only); absent = live tick. */
+  at?: number
+  /** Milliseconds accumulated before the current segment. */
+  baseMs: number
+  /** Epoch ms the current segment started; `null`/absent = paused (no tick). */
+  startedAt?: number | null
+  /** The countdown's total length in ms (`mode: 'countdown'`). */
+  durationMs?: number
+  /** Small grey line ABOVE the figure (the widget composes the words). */
+  caption?: string
+  /** Small grey line BELOW the figure. */
+  note?: string
+  /** Replaces `note` once a countdown has run out (e.g. 时间到). */
+  doneLabel?: string
+  /** Force the finished state (previews: the run-out layout without waiting). */
+  done?: boolean
+  /** Colour of the figure, in the product's own semantic vocabulary. */
+  tone?: 'business' | 'warn' | 'success' | 'danger' | 'muted'
+  /**
+   * Print hundredths (`00:00:56.29`) and tick at 100ms while running — the
+   * stopwatch's own reading (its reference layout). Absent = whole seconds
+   * (`M:SS` / `H:MM:SS`), which is what a countdown wants.
+   */
+  hundredths?: boolean
+  /** Round controls drawn under the figure (the reference stopwatch's two discs). */
+  controls?: TimerControl[]
+  /**
+   * Which body shape to draw — the RENDERER needs the height, and only the widget
+   * knows whether its card keeps a title:
+   *  - `plain` (default): 74px, the figure + note only. Sized for a T2 card that
+   *    keeps its title AND carries an `actions` row (12+16+74+6+26+12 = 146 ≤ 150);
+   *  - `dial`: 120px, the whole titleless tile (12+120+12 = 144 ≤ 150) — the
+   *    reference stopwatch's layout: a top-aligned reading over two round controls
+   *    sitting on the card's floor;
+   *  - `picker`: 106px under a title (12+16+106+12 = 146 ≤ 150) — a 2×2 grid of
+   *    duration capsules (the 倒计时 card's entry view);
+   *  - `dial-head`: the same 106px budget with the DIAL body under a title row, for a
+   *    card that runs a countdown and needs its back affordance (`headAction`).
+   */
+  layout?: 'plain' | 'dial' | 'dial-head' | 'picker'
+  /**
+   * Duration capsules for `layout: 'picker'`, in display order (2×2, four of them).
+   *
+   * Each press dispatches `timer:pick:<minutes>`, which sets the length and starts
+   * in ONE write (see lib/timer-state.ts) — the label is the big figure the capsule
+   * prints (e.g. `5`) and `sub` its small unit line (e.g. `分钟`), so the renderer
+   * never formats a duration itself.
+   */
+  capsules?: Array<{ id: string; minutes: number; label: string; sub: string }>
+}
+
+/** A freeform rich block (photo / quote / clock / month calendar / timer). */
 export interface WidgetRich {
-  type: 'quote' | 'image'
+  type: 'quote' | 'image' | 'clock' | 'calendar' | 'timer'
   text?: string
   src?: string
   /** Quote text alignment (per-card config). */
@@ -842,6 +1128,12 @@ export interface WidgetRich {
   valign?: 'top' | 'center' | 'bottom'
   /** Allow line wrapping. */
   wrap?: boolean
+  /** type 'clock' — the dial / digital reading (see ClockRich). */
+  clock?: ClockRich
+  /** type 'calendar' — the month grid (see CalendarRich). */
+  calendar?: CalendarRich
+  /** type 'timer' — the live countdown / stopwatch reading (see TimerRich). */
+  timer?: TimerRich
 }
 
 /** A corner action button (two-tap confirm: circle → armed capsule). */
@@ -923,8 +1215,50 @@ export interface WidgetRenderMeta {
  */
 export type SkeletonShape = 'text' | 'rings' | 'bars' | 'line' | 'heatmap' | 'figures' | 'quotas'
 
+/**
+ * The RUNTIME metadata a unit declares in its `manifest.json` and the shell reads
+ * from `WIDGET_RUNTIME` (generated) — see `docs/workflow/03-specification.md`.
+ *
+ * `source` is the id of a discovered data-source adapter
+ * (`src/client/families/<id>/adapter.ts`); the build fails when a manifest names
+ * one that does not exist (`scripts/gen-registry.mjs`), so a typo cannot ship a
+ * card that waits for ever. The adapter set is discovered, not hard-coded — that
+ * is what lets a new source be one family directory.
+ */
+export interface WidgetRuntimeMeta {
+  source?: string
+  skeleton?: { shape: SkeletonShape; count?: number; rows?: number }
+  /**
+   * Non-route data a unit reads, declared so the SHELL can spend it only when some
+   * installed card actually renders it.
+   *
+   * `source` covers host ROUTES (the adapter contract polls a URL). Some data has
+   * no route at all — the DSH scheduled-task subsystem is reached through the
+   * client Remote face (`ctx.remote.schedule`), which is a live subscription and
+   * not a fetchable endpoint. `reads: ['schedule']` is how such a unit says "I read
+   * this", so the collector subscribes while one is installed and stays silent
+   * otherwise (the same rule `activeAdapters` applies to routes). Unknown names are
+   * simply never asked for — a unit cannot make the shell do work by inventing one.
+   */
+  reads?: string[]
+}
+
 /** The card shape a widget render produces. */
 export interface WidgetRenderOut {
+  /**
+   * The card's title — the blue line at the tile's top-left.
+   *
+   * `''` means **NO TITLE ROW**: `CardBody` then drops the head row entirely (rather
+   * than printing a blank 16px strip) and hands the freed height to the body, which
+   * is why a title-less card must size its own content to the whole tile. The rule,
+   * the two conditions a card must meet (the body names itself AND fills the tile) and
+   * the audit of every shipped unit live in `docs/design/CARD-TITLE-STANDARD.md`:
+   *  - a DIAL or a MONTH GRID may drop it (they are the content and they fill the box);
+   *  - a one-figure / one-row card must keep it — the title row is that tile's top
+   *    weight, and removing it leaves a visibly empty card.
+   * A card with a `legend` / `headAfter` / `meter` / `headRight` / head accessory keeps
+   * THOSE rows; only the empty title line goes.
+   */
   title: string
   title2?: string
   /** Optional text shown at the right end of the title row (e.g. ~613K / 1M).
@@ -1049,6 +1383,17 @@ export interface WidgetRenderOut {
   rich?: WidgetRich
   /** Top-right corner capsule/round button (e.g. one-click Compact). */
   corner?: WidgetCorner
+  /**
+   * A LEADING chevron in the title row, with the whole row as its hit area.
+   *
+   * The 倒计时 card's run view needs a "back to the picker" affordance in the
+   * top-left, and `corner`/`actions` are both the wrong slot: the corner is
+   * top-RIGHT and an action is a pill on the card's floor. When this is present
+   * `CardBody` draws a small chevron before the title and dispatches `id` when the
+   * row is clicked (the row keeps its normal look otherwise — the title is still the
+   * title). `label` is the hover/aria text, localized by the widget.
+   */
+  headAction?: { id: string; label: string }
   /** Whole-card tap cycles this card through its pooled key views (usage widgets):
    *  total → Key 1 → Key 2 → … → total. Pressing plays a springy press-down.
    *  `store` names the cardConfigs field the selection persists to (default

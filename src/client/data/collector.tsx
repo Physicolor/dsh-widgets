@@ -4,8 +4,10 @@
  * Renders in the `conversation.composer.dock` slot (so the shell mounts it while a
  * session exists) and folds three kinds of input into the bridge:
  *   1. the live conversation projection (session stats + the 轨迹 beats);
- *   2. five host routes — OpenCode usage, Command Code usage, the two daily token
- *      maps, GitHub, and the hardware snapshot;
+ *   2. the LIVE DATA SOURCES — one `<SourcePoller>` per discovered adapter
+ *      (`data/sources.ts`), which owns every host route's cadence. Before v1.11
+ *      those five routes were five hand-written effects in this file; adding a
+ *      data source meant editing it. It does not any more;
  *   3. the installs WITHOUT dsh-usage-center, whose heatmap is self-accounted here
  *      and persisted across mounts.
  *
@@ -16,15 +18,13 @@
  */
 
 import * as React from 'react'
-import { WIDGET_RUNTIME } from '../generated.registry'
-import { parseInstanceKey } from '../lib/contract/helpers'
-import type { CommandCodeData, GitHubData, HostOverview, PriceTable, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
 import { DEFAULT_TZ, accumulateHeatmap, buildHeatmapGrid, dateKey, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from '../lib/heatmap-accounting'
-import { ccPayloadDegraded } from '../families/cc/data'
-import { ingestSysInfo, resolveInterval } from '../families/sys/data'
 import { type Stats, deriveCompaction, deriveStats, deriveTools, deriveTrajectory, normalizeGoal, normalizeJobs, normalizeModelSelection, normalizePermissions, normalizeSubagents } from './session-stats'
 import { type BridgeSnapshot, type BridgeState } from '../runtime/bridge'
 import { type Prefs } from '../runtime/prefs'
+import { activeAdapters, readsSchedule } from './sources'
+import { createSourcePoller } from './source-poller'
+import { readScheduleCatalog, subscribeScheduleChanged, type RemoteServiceLike, type ScheduleRemoteFace } from './schedule'
 
 /** What the collector needs from the composition root that owns the bridge. */
 export interface CollectorDeps {
@@ -36,29 +36,18 @@ export interface CollectorDeps {
   getState: () => BridgeState
   /** The LIVE prefs binding, for the same reason. */
   getPrefs: () => Prefs
+  /** The client Remote service, resolved per call (see the schedule effect). */
+  getRemote: () => RemoteServiceLike | undefined
 }
 
 /** Build the collector component bound to one bridge. */
-export function createCollector(deps: CollectorDeps): (props: any) => null {
+export function createCollector(deps: CollectorDeps): (props: any) => React.ReactElement | null {
   const { useBridge, setState } = deps
-  return ({ useSession, useProjection, useChat, useSessions }: any): null => {
-      /**
-       * Does an INSTALLED widget unit consume this data source?
-       *
-       * Every host route in this file exists to feed widgets that declare the
-       * matching `source` in their manifest (generated.registry.ts
-       * `WIDGET_RUNTIME`). Asking anyway was wrong in two ways (reported
-       * 2026-09-30): the OpenCode route answers 503 while its key is
-       * unconfigured, so a browser printed "Failed to load resource: 503" on
-       * every turn for a feature the user had never placed on the rail — and a
-       * route nobody renders is pure waste. Nothing is requested unless some
-       * installed unit can render it; installing one starts its feed on the next
-       * emit, because `prefs` is read live at the point of use.
-       */
-      const hasConsumer = (source: 'usage' | 'cc' | 'sys' | 'github'): boolean =>
-        deps.getPrefs().installed.some((key) => WIDGET_RUNTIME[parseInstanceKey(key).widgetId]?.source === source)
-      /** True when at least one of these sources has a consumer. */
-      const needsAny = (...sources: Array<'usage' | 'cc' | 'sys' | 'github'>): boolean => sources.some(hasConsumer)
+  // One scheduler component per source, built ONCE per registration: a factory
+  // re-created on every render would remount every poller (restarting its timers)
+  // on every bridge emit.
+  const SourcePoller = createSourcePoller({ setState, getState: deps.getState, getPrefs: deps.getPrefs })
+  return ({ useSession, useProjection, useChat, useSessions }: any): React.ReactElement | null => {
       // DSH 0.1.5 split the session snapshot: chat data (nodes, timeline and
       // running tool calls) moved to the new `useChat` hook while `useSession`
       // now carries lifecycle state only. Read whichever half the running build
@@ -124,318 +113,55 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
         setState({ hasSession: true })
         return () => { setState({ hasSession: false }) }
       }, [])
-      // OpenCode usage is account-wide but changes with every finished turn
-      // (each conversation draws from the same pool), so the collector pulls it
-      // on mount AND whenever a turn settles (`running` flips true −false).
-      // The `conversation.composer.dock` component is reused across sessions, so
-      // a mount-only fetch leaves the quota stale until a reload/new session.
-      // ---- Live pulls, shared by the turn-settle refresh and the slow polls ----
-      // Command Code account usage (whoami / summary / credits / plan).
-      // Error-aware: a 404 host route (dsh web not restarted) vs a 503 missing-key
-      // vs a network failure each produce a stable code the widgets render as
-      // an accurate hint - the key itself is auto-read host-side (env -
-      // .credentials.yaml -.env), never user-entered in this UI.
-      // Self-reference for the degraded-payload retry below: a useCallback body
-      // may not name its own const in the initializer, so the timer calls through
-      // this ref (reassigned on every render, so it is never stale).
-      const ccPullRef = React.useRef<() => void>(() => {})
-      const ccRetryPending = React.useRef(false)
-      const pullCommandCode = React.useCallback((): void => {
-        if (!hasConsumer('cc')) return
-        fetch('/api/commandcode-usage')
-          .then(async (r) => {
-            const data = (await r.json().catch(() => null)) as CommandCodeData | { error?: string } | null
-            if (!r.ok) {
-              // STALE-WHILE-ERROR: the error code is recorded, the last good
-              // payload is KEPT. A poll that fails must not blank a card that was
-              // already showing a number — `-` means "this account has no such
-              // figure", and a blip is not that. The skeleton still resolves on a
-              // first-load failure (commandCode is still null there).
-              const error = (data as { error?: string } | null)?.error
-              if (r.status === 404) setState({ commandCodeError: 'unloaded' })
-              else if (r.status === 503) setState({ commandCodeError: 'unconfigured' })
-              else setState({ commandCodeError: error ? `http:${r.status}:${error}` : `http:${r.status}` })
-              return
-            }
-            const next = data as CommandCodeData
-            // STALE-WHILE-DEGRADED. A 200 with a `null` slice (one upstream call
-            // dropped) is NOT a complete answer, and it is not harmless either:
-            // `monthlyWindow` returns null on purpose when a member's slices are
-            // missing — a partial sum would read LOW — so the monthly ring vanished
-            // and 「额度管理」 fell to `-%` until the next settle. Measured
-            // 2026-09-23: one poll in three answered exactly that way, and because
-            // the old collector only re-asked on mount/turn-settle, the degraded
-            // payload stayed on screen for the rest of the session. So: a degraded
-            // reply never REPLACES a complete one, it schedules one extra look 5 s
-            // out, and the 30 s poll covers a provider that stays down.
-            //
-            // The retry also fires when there is NO complete payload yet (2026-09-30):
-            // the host answers a cold call with the fast `credits` slice while the
-            // three slow ones are still in flight (they take 14–21 s upstream), so a
-            // fresh page load's FIRST answer is partial by design and the month would
-            // otherwise wait for the 30 s poll. One pending timer at a time, and each
-            // look is a cache read host-side while the slices are in flight — not an
-            // upstream call.
-            if (ccPayloadDegraded(next)) {
-              if (!ccRetryPending.current) {
-                ccRetryPending.current = true
-                window.setTimeout(() => { ccRetryPending.current = false; ccPullRef.current() }, 5000)
-              }
-              if (deps.getState().commandCode !== null && !ccPayloadDegraded(deps.getState().commandCode)) return
-            }
-            setState({ commandCode: next, commandCodeError: null })
-          })
-          .catch(() => setState({ commandCodeError: 'unavailable' }))
-      }, [])
-      ccPullRef.current = pullCommandCode
-      // Authoritative per-day token totals, in TWO scopes: the heatmap cards read
-      // the machine-wide map, 「额度管理」 reads the `commandcode`-scoped one (its
-      // credits and billing period describe that ONE plan, so a machine-wide
-      // figure charges it for every other provider the harness used that day).
-      // Both are dsh-usage-center's log fold re-served by the host route;
-      // `available: false` (missing service, empty index, dsh web not restarted)
-      // leaves the cards on their own live accounting. `refreshNow` (the
-      // turn-settle path) asks the host to fold the logs immediately instead of
-      // waiting for usage-center's next ~30 s pass, so the day's figure moves
-      // with the turn that just finished.
-      // The MACHINE-WIDE day map only. Cheap: it is the same map dsh-usage-center
-      // folds for its own heatmap, so it is normally warm (~30 ms measured). It
-      // feeds the heatmap cards; `refreshNow` is the turn-settle path, which asks
-      // the host to fold the logs now instead of waiting for its next ~30 s pass.
-      const pullUsageDaily = React.useCallback((refreshNow: boolean): void => {
-        // The machine-wide day map feeds the heatmap cards (no `source` of their
-        // own — they are self-accounted local history) and 额度管理's token side;
-        // with neither installed there is nothing to render it into.
-        if (!needsAny('usage', 'cc')) return
-        fetch(`/api/widgets-usage-daily${refreshNow ? '?refresh=1' : ''}`)
-          .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
-          .then((data: { available?: boolean; daily?: Record<string, number> } | null) => {
-            setState({ usageDaily: data?.available === true && data.daily !== null && data.daily !== undefined ? data.daily : null })
-          })
-          .catch(() => { /* keep the last authoritative map (or the fallback) */ })
-      }, [])
-      // The `commandcode`-SCOPED day map — 「额度管理」's token side (its credits and
-      // billing period describe that ONE plan, so a machine-wide figure would
-      // charge it for every other provider the harness used that day).
-      //
-      // Deliberately NOT on a timer. Measured 2026-09-23 on this machine: the
-      // scoped filter is a memo key nothing else asks for, so a cold call re-folds
-      // the session logs — 10.6 s and 21.2 s observed against 34 ms warm — and a
-      // 60 s poll of it would burn seconds of CPU every minute for a figure that
-      // can only move when THIS machine finishes a turn. So it runs on the
-      // turn-settle path and on mount, never in a poll loop.
-      const pullCommandCodeDaily = React.useCallback((refreshNow: boolean): void => {
-        if (!hasConsumer('cc')) return
-        fetch(`/api/widgets-usage-daily?provider=commandcode${refreshNow ? '&refresh=1' : ''}`)
-          .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
-          .then((data: { available?: boolean; daily?: Record<string, number> } | null) => {
-            const daily = data?.available === true && data.daily !== null && data.daily !== undefined ? data.daily : null
-            // Stale-while-error, same rule as the account payload: `available: false`
-            // (usage-center mid-rescan, host just restarted, service absent) leaves
-            // the last good map in place. Blanking it would print `-` for the 今日用量
-            // of a plan that plainly HAS a figure — the exact symptom (reported
-            // 2026-09-23) this scoped map was wired up to fix.
-            if (daily !== null) setState({ commandCodeDaily: daily })
-          })
-          .catch(() => { /* keep the last scoped map */ })
-      }, [])
-      const prevRunningRef = React.useRef(running)
-      /**
-       * OpenCode usage is OPTIONAL, and its single-key route answers 503 while
-       * `OPENCODE_GO_API_KEY` is unconfigured — which makes the browser print
-       * "Failed to load resource: 503 (Service Unavailable)" on every refetch, a
-       * console full of red for a feature the user never set up (reported
-       * 2026-09-30).
-       *
-       * The single-key route is therefore NOT called any more. The pool route is
-       * always 200 and already carries every key it resolved, each with the
-       * upstream payload under `data` — byte-identical to what the single-key
-       * route proxies. So the shared single-key figures are derived from the
-       * pool answer, keyed by `ref === 'OPENCODE_GO_API_KEY'`.
-       *
-       * Note the trap that made a "does any key exist?" check wrong: the pool can
-       * hold ONLY spare keys (`OPENCODE_GO_POOL_2`…), in which case the pool
-       * answer is non-empty while the primary the other route reads is still
-       * absent — and the 503 came right back. Match on the ref, not on length.
-       *
-       * (The host route still exists for external callers; it now answers 200 +
-       * `configured: false` instead of 503.)
-       */
-      const pullOpenCode = (): void => {
-        if (!hasConsumer('usage')) return
-        fetch('/api/opencode-usage-multi')
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data: (UsageMulti & { keys?: Array<{ ref?: string; data?: UsageData | null }> }) | null) => {
-            if (data === null) return
-            setState({ usageMulti: data })
-            const keys = Array.isArray(data.keys) ? data.keys : []
-            const primary = keys.find((k) => k?.ref === 'OPENCODE_GO_API_KEY')
-            if (primary?.data !== undefined && primary.data !== null) setState({ usageData: primary.data })
-          })
-          .catch(() => { /* pool endpoint optional: cards fall back to their own "—" */ })
-      }
+      // ---- Live data sources (the v1.11 adapter contract). ----
+      // One scheduler per discovered adapter that has a consumer, mounted here
+      // so it lives exactly as long as an active session does. Each poller owns
+      // its own cadence, dependencies and error rules — see source-poller.tsx.
+      // Adding a source means adding families/<id>/adapter.ts: this file does
+      // not name a single source id.
+      const pollers = activeAdapters(deps.getPrefs()).map((adapter) => React.createElement(SourcePoller, {
+        key: adapter.id,
+        adapter,
+        running,
+        railOpen: snap.open,
+      }))
+      // ---- The DSH scheduled tasks (日历 / 倒计时's second source). ----
+      // Deliberately NOT a `manifest.source` adapter: those poll a same-origin host
+      // route, while this subsystem is a client Remote FACE with its own change
+      // event (`schedule/changed`). The gate is the adapters' own rule anyway —
+      // nothing is asked for unless an installed card declares that it reads this
+      // (`manifest.reads: ['schedule']`), so a rail without a schedule-aware card
+      // never touches the subsystem and never holds a subscription.
+      const wantsSchedule = readsSchedule(deps.getPrefs())
       React.useEffect(() => {
-        const refresh = (): void => {
-          pullOpenCode()
-        // Command Code account usage + both authoritative day maps.
-        pullCommandCode()
-        pullUsageDaily(true)
-        pullCommandCodeDaily(true)
+        if (!wantsSchedule) return
+        // A NAMESPACE read can THROW on a shell that did not declare the dependency
+        // (`cannot get property "remote.schedule" without inject`) — and an effect
+        // that throws takes this whole dock slot, i.e. every card's data, with it.
+        // The child fiber in client/index.ts is what makes the read legal; this
+        // catch is the second line of defence, so the worst case is a card that
+        // says 定时任务不可用 rather than a rail with no cards at all.
+        // The warning is deliberate: this read is only illegal when the shell and the
+        // plugin disagree about the Remote faces (see client/index.ts), and a silent
+        // catch there once cost the whole dock slot.
+        let face: ScheduleRemoteFace | undefined
+        try {
+          face = deps.getRemote()?.schedule
+        } catch (error) {
+          console.warn('[dsh-widgets] remote.schedule is not readable in this shell:', error)
+          face = undefined
         }
-        // Pull on mount (both false −first render); afterwards only a
-        // completed turn (true −false) refetches, an in-flight turn does not.
-        if (running === prevRunningRef.current) refresh()
-        else if (!running) refresh()
-        prevRunningRef.current = running
-      }, [running])
-      // The authoritative day map needs a slow poll of its own: usage-center
-      // rescans every ~30 s, so a long idle page would otherwise show a frozen
-      // "today" cell. One tiny same-origin JSON per minute; a missing service or
-      // an unrestarted host simply keeps answering `available: false`.
-      React.useEffect(() => {
-        // Immediate pull too: the mount-time fetch above can land before
-        // usage-center has finished its first scan, and this converges the card
-        // within seconds instead of waiting for the next turn.
-        pullUsageDaily(false)
-        const id = window.setInterval(() => { if (!document.hidden) pullUsageDaily(false) }, 60_000)
-        return () => window.clearInterval(id)
-      }, [pullUsageDaily])
-      // Command Code account usage DRIFTS while this page sits idle: the 5h /
-      // weekly / monthly windows are ACCOUNT-wide, so another client spending
-      // against the same pool moves them with no turn HERE to hang a refetch on.
-      // A turn-settle-only fetch therefore left every cc-* card and 「额度管理」
-      // frozen on its mount-time numbers — reported 2026-09-23 as 今日用量 /
-      // 今日推荐 stuck on `-` and the monthly ring missing entirely.
-      const ccOnRail = snap.open && (snap.prefs.installed ?? []).some((key) => WIDGET_RUNTIME[parseInstanceKey(key).widgetId]?.source === 'cc')
-      React.useEffect(() => {
-        if (!ccOnRail) return
-        // Cost control (measured 2026-09-23): ONE tick is four upstream reads per
-        // pooled key — 8 reads, 1.6 s, 4.7 KB on this two-key pool — and it is the
-        // only upstream traffic this rail generates at all. Three rules keep it
-        // honest:
-        //   * only while the rail is ON SCREEN and a Command Code card is installed;
-        //   * never while the tab is HIDDEN — a background tab has no reader, and
-        //     Chrome throttles its timers anyway;
-        //   * 60 s, not 30 s: these are $14–$70 subscription windows, and nobody
-        //     can act on a 30 s difference. A turn settling here still refreshes
-        //     on its own path, and returning to the tab refreshes at once.
-        const tick = (): void => { if (!document.hidden) pullCommandCode() }
-        const onVisible = (): void => { if (!document.hidden) pullCommandCode() }
-        pullCommandCode()
-        const id = window.setInterval(tick, 60_000)
-        document.addEventListener('visibilitychange', onVisible)
-        return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
-      }, [ccOnRail, pullCommandCode])
-      // GitHub family: ONE request for every installed github-* card.
-      //
-      // The cards' own config fields decide the request — `user` (whose
-      // calendar) and `repos` (which pulses). Both empty means "whoever this
-      // machine is signed in as": the HOST resolves the login from the
-      // credential / `gh` CLI, which is what makes the family work on a fresh
-      // install with nothing typed. Several installed cards are ONE upstream
-      // pass: the logins and repo lists are merged here, so two cards never
-      // buy two rounds.
-      //
-      // Cadence: on mount, whenever the merged request changes (a config edit
-      // re-runs the effect), every 10 minutes while the tab is visible, and on
-      // return to the tab. Nothing here hangs off a turn — GitHub does not
-      // move when this conversation does.
-      const ghKeys = (snap.prefs.installed ?? []).filter((key) => WIDGET_RUNTIME[parseInstanceKey(key).widgetId]?.source === 'github')
-      const ghUser = ghKeys
-        .map((key) => (snap.prefs.cardConfigs?.[key]?.user as string | undefined) ?? '')
-        .map((s) => s.trim())
-        .find((s) => s !== '') ?? ''
-      const ghRepos = Array.from(new Set(ghKeys.flatMap((key) => String(snap.prefs.cardConfigs?.[key]?.repos ?? '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter((s) => /^[\w.-]+\/[\w.-]+$/.test(s)))))
-        .slice(0, 4)
-      const ghRequest = `${ghUser}|${ghRepos.join(',')}`
-      // Whether any installed card shows the review queue. Part of the effect's
-      // identity: installing 待我处理 must make the NEXT pull ask for `notif=1`,
-      // not wait for some other config edit.
-      const ghNotif = (snap.prefs.installed ?? []).some((key) => key === 'github-notify' || key.startsWith('github-notify@'))
-      React.useEffect(() => {
-        if (ghKeys.length === 0) return
-        const pull = (): void => {
-          const params = new URLSearchParams()
-          if (ghUser !== '') params.set('user', ghUser)
-          if (ghRepos.length > 0) params.set('repos', ghRepos.join(','))
-          // The review queue is only fetched when a card that shows it is
-          // installed: it is an authenticated-only call, and asking for it costs
-          // an upstream round trip (cheap on a 304, but still a round trip).
-          if (ghNotif) params.set('notif', '1')
-          const query = params.toString()
-          fetch(`/api/github${query === '' ? '' : `?${query}`}`)
-            .then(async (r) => {
-              const data = (await r.json().catch(() => null)) as GitHubData | { error?: string } | null
-              if (!r.ok) {
-                // STALE-WHILE-ERROR, exactly like the Command Code family: the
-                // last good payload stays on screen (a transport blip must not
-                // blank a card that was showing a number), and 404 means the
-                // HOST ROUTE is absent — `dsh web` was not restarted — which
-                // the cards say in words instead of pretending to load.
-                setState({ githubError: r.status === 404 ? 'unloaded' : `http:${r.status}` })
-                return
-              }
-              setState({ github: data as GitHubData, githubError: null })
-            })
-            .catch(() => setState({ githubError: 'unavailable' }))
-        }
-        pull()
-        const onVisible = (): void => { if (!document.hidden) pull() }
-        const id = window.setInterval(() => { if (!document.hidden) pull() }, 600_000)
-        document.addEventListener('visibilitychange', onVisible)
-        return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', onVisible) }
-      }, [ghRequest, ghKeys.length, ghNotif])
-      // Hardware snapshot (System widgets): the installed sys-* instances drive
-      // ONE shared poll loop —the effective cadence is the SHORTEST refresh
-      // interval among them (5/10/30/60 s presets + custom numeric, clamped
-      // 5..60, default 10). The host route caches ~1s, so every widget sharing
-      // the same tick still triggers a single nvidia-smi spawn.
-      React.useEffect(() => {
-        const sysIds = Object.keys(WIDGET_RUNTIME).filter((id) => WIDGET_RUNTIME[id]?.source === 'sys')
-        const sysKeys = (snap.prefs.installed ?? []).filter((key) => sysIds.some((id) => key === id || key.startsWith(id + '@')))
-        const secs = sysKeys.length === 0 ? 0 : Math.min(...sysKeys.map((key) => resolveInterval(snap.prefs.cardConfigs?.[key])))
-        if (!(secs > 0)) return
-        const refresh = (): void => {
-          fetch('/api/sysinfo')
-          .then((r) => r.json())
-          .then((data: SysInfo) => { setState({ sysinfo: data }); ingestSysInfo(data) })
-          .catch(() => { /* keep last known snapshot */ })
-          // The machine overview rides the same cadence: same subject (this
-          // machine), and the route answers from per-section caches after its
-          // first pass, so the extra request is a few milliseconds.
-          fetch('/api/host/overview')
-          .then(async (r) => {
-            if (!r.ok) { setState({ hostError: r.status === 404 ? 'unloaded' : `http:${r.status}` }); return }
-            const data = (await r.json().catch(() => null)) as HostOverview | null
-            if (data === null) { setState({ hostError: 'unavailable' }); return }
-            setState({ host: data, hostError: null })
-          })
-          .catch(() => { /* stale-while-error: keep the last overview */ })
-        }
-        refresh()
-        const id = window.setInterval(refresh, secs * 1000)
-        return () => window.clearInterval(id)
-      }, [snap.prefs.installed, snap.prefs.cardConfigs])
-      // Price table: only fetched while a card that prices this session is on the
-      // rail, and on a slow clock — the file changes when a human edits it, not
-      // when a turn finishes.
-      const wantsPricing = (snap.prefs.installed ?? []).some((key) => key === 'session-cost' || key.startsWith('session-cost@'))
-      React.useEffect(() => {
-        if (!wantsPricing) return
         let alive = true
-        const pull = (): void => {
-          fetch('/api/widgets-pricing')
-            .then(async (r) => (r.ok ? await r.json().catch(() => null) : null))
-            .then((data: PriceTable | null) => { if (alive && data !== null) setState({ pricing: data }) })
-            .catch(() => { /* keep the last table: a blip must not unpriced a card */ })
+        const load = (): void => {
+          // Never rejects (see data/schedule.ts): a failed read is `unavailable`,
+          // which the cards degrade on rather than a rejection that would take this
+          // effect — and every card's data with it — down.
+          void readScheduleCatalog(face).then((next) => { if (alive) setState({ schedule: next }) })
         }
-        pull()
-        const id = window.setInterval(pull, 600_000)
-        return () => { alive = false; window.clearInterval(id) }
-      }, [wantsPricing])
+        load()
+        const off = subscribeScheduleChanged(face, load)
+        return () => { alive = false; off() }
+      }, [wantsSchedule])
       // One-second tick while a turn is running, so the in-flight LLM and tool
       // durations advance between settle boundaries instead of freezing.
       const [now, setNow] = React.useState(() => Date.now())
@@ -578,6 +304,32 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
         for (const call of runningCalls) {
           toolMs += Math.max(0, now - call.time)
         }
+        // The OPEN TURN's own elapsed, and the open MODEL step's.
+        //
+        // `sessionStats.llmMs`/`toolMs` above are whole-session cumulative, so a card
+        // labelled "this turn" would report the entire conversation. The live
+        // timeline is the only place the turn's own start exists: an open turn's
+        // steps each carry `start.time`, and the EARLIEST of them is the turn's
+        // start (a turn already on step 4 still measures from step 1). Nothing is
+        // derived when no turn is open — `null` is the honest answer, and a card
+        // prints 空闲 rather than a frozen number from the last turn.
+        let liveTurnMs: number | null = null
+        let liveStepMs: number | null = null
+        if (timeline && typeof timeline.turns?.values === 'function') {
+          for (const turn of timeline.turns.values()) {
+            if (turn?.status !== 'open') continue
+            let earliest: number | null = null
+            for (const step of turn.steps ?? []) {
+              const start = step?.start?.time
+              if (typeof start !== 'number' || !Number.isFinite(start)) continue
+              if (earliest === null || start < earliest) earliest = start
+              if (step?.status !== 'open') continue
+              const ms = Math.max(0, now - start)
+              if (liveStepMs === null || ms > liveStepMs) liveStepMs = ms
+            }
+            if (earliest !== null) liveTurnMs = Math.max(0, now - earliest)
+          }
+        }
         // contextPressure projection is { contextWindow?, pressureTokens?, projectedTokens? }.
         // Ratio = projectedTokens / contextWindow.
         let contextPercent: number | null = null
@@ -632,8 +384,7 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
               : null,
             now,
           ),
-          jobs: normalizeJobs(
-            typeof jobsBySession === 'object' && jobsBySession !== null && typeof sessionId === 'string'
+          jobs: normalizeJobs(            typeof jobsBySession === 'object' && jobsBySession !== null && typeof sessionId === 'string'
               // The mirror omits a session that has no jobs, so an ABSENT key under a
               // live mirror means "no jobs" (`[]`, which the 后台作业 card renders as
               // 0 — the useful confirmation that the machine is idle), while a missing
@@ -642,9 +393,13 @@ export function createCollector(deps: CollectorDeps): (props: any) => null {
               ? ((jobsBySession as Record<string, unknown>)[sessionId] ?? [])
               : undefined,
           ),
+          // The two live-timing readings (see the fold above): `null` when nothing
+          // is in flight, so a card can tell "not running" from "0 ms so far".
+          liveTurnMs,
+          liveStepMs,
         }
         setState({ stats })
       }, [settled, projected, usage, contextPres, contextBrk, todosProj, modelSelProj, agentPresetProj, goalProj, permsProj, subagentProj, jobsBySession, sessionsById, sessionId, timeline, runningCalls, now, snap.usageDaily, deps.getPrefs().cardConfigs?.heatmap?.monthMode, deps.getPrefs().cardConfigs?.heatmap?.timeZone])
-      return null
+      return React.createElement(React.Fragment, null, pollers)
   }
 }
