@@ -17,7 +17,7 @@ import './styles/market.module.css'
 import './styles/primitives.module.css'
 import { WIDGET_LOCALES, subscribeRegistry } from './lib/registry'
 import type { CommandCodeData, DeepSeekBalance, GitHubData, HostOverview, PriceTable, SysInfo, UsageData, UsageMulti } from './lib/contract/types'
-import { loadHeatmapStore } from './lib/heatmap-accounting'
+import { flushSeen, loadHeatmapStore } from './lib/heatmap-accounting'
 import { createCollector } from './data/collector'
 import type { RemoteServiceLike } from './data/schedule'
 import { type BridgeSnapshot, type BridgeState } from './runtime/bridge'
@@ -174,11 +174,14 @@ export function apply(ctx: ClientContext): void {
   }
   const onVisibility = (): void => {
     if (document.visibilityState === 'visible') void syncWithHost()
+    // A hidden tab may never come back (window closed, phone app switched): persist
+    // the coalesced heatmap ledger now instead of waiting out its debounce.
+    else flushSeen()
   }
   // Flush a pending host-store write the moment the page starts unloading,
   // so desktop shells that close the window shortly after an edit do not
   // lose it (the debounced PUT would be cancelled with the page).
-  const onPageHide = (): void => flushPendingState()
+  const onPageHide = (): void => { flushSeen(); flushPendingState() }
   window.addEventListener('storage', onStorage)
   document.addEventListener('visibilitychange', onVisibility)
   window.addEventListener('pagehide', onPageHide)

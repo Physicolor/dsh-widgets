@@ -24,6 +24,7 @@ function loadHeatmap(): Record<string, number> {
   try { const raw = localStorage.getItem(HEATMAP_KEY); return raw ? JSON.parse(raw) as Record<string, number> : {} } catch { return {} }
 }
 function saveHeatmap(m: Record<string, number>): void {
+  heatmapStoreCache = m
   try { localStorage.setItem(HEATMAP_KEY, JSON.stringify(m)) } catch { /* storage unavailable */ }
 }
 /** Default heatmap accounting timezone: Beijing (UTC+8). Configurable per
@@ -117,6 +118,15 @@ export function buildHeatmapGrid(m: Record<string, number>, mode: 'rolling' | 'q
  * @returns the cleaned daily log.
  */
 const BAKED_DAYS_PURGE_KEY = 'harness-widgets.heatmap.baked-purge-v1'
+/**
+ * The daily log, read once per page and kept in step by `saveHeatmap`.
+ *
+ * `loadHeatmapStore()` sits on the LIVE fold: `runtime/live-stats.ts` falls back to it
+ * whenever the host's authoritative table is absent (the standalone install), and that
+ * fold runs once per card per bridge emit. It used to read `localStorage` every time,
+ * so a card rail with no usage-center re-read the whole log ~14× per emit.
+ */
+let heatmapStoreCache: Record<string, number> | null = null
 /** The exact days old builds fabricated values for (never measured). */
 const BAKED_DAYS = [
   '2026-08-14',
@@ -129,9 +139,13 @@ const BAKED_DAYS = [
   '2026-08-21',
 ]
 export function loadHeatmapStore(): Record<string, number> {
+  if (heatmapStoreCache !== null) return heatmapStoreCache
   const store = loadHeatmap()
   try {
-    if (localStorage.getItem(BAKED_DAYS_PURGE_KEY) !== null) return store
+    if (localStorage.getItem(BAKED_DAYS_PURGE_KEY) !== null) {
+      heatmapStoreCache = store
+      return store
+    }
     const next = { ...store }
     let dropped = false
     for (const day of BAKED_DAYS) {
@@ -142,8 +156,10 @@ export function loadHeatmapStore(): Record<string, number> {
     }
     localStorage.setItem(BAKED_DAYS_PURGE_KEY, '1')
     if (dropped) saveHeatmap(next)
+    heatmapStoreCache = next
     return next
   } catch {
+    heatmapStoreCache = store
     return store
   }
 }
@@ -187,21 +203,83 @@ export function mergeToday(authoritative: Record<string, number> | null | undefi
 const HEATMAP_SEEN = 'harness-widgets.heatmap.seen'
 const HEATMAP_SEEN_STRONGEST = 'harness-widgets.heatmap.strongest'
 const HEATMAP_ANCHOR = 'harness-widgets.heatmap.anchor'
+
+/**
+ * ── THE "ALREADY CREDITED" LEDGER, KEPT IN MEMORY ──
+ *
+ * The collector asks for this ledger on EVERY pass (`loadSeen` at
+ * data/collector.tsx), and a pass runs per emit — ~13/s while a turn streams, plus
+ * one per second and per turn settle. Each load used to read the whole key list out
+ * of `localStorage` and `JSON.parse` it; the list only grows (one key per credited
+ * assistant step, forever), so the cost of every pass grew with the session's
+ * history — a slow leak of main-thread time that ends in a visible stall.
+ *
+ * Now it is read ONCE per page and written back COALESCED (2 s, and synchronously on
+ * `pagehide` via `flushSeen`). The data itself is unchanged: same keys, same storage
+ * entries, same "credit each step once" rule.
+ *
+ * Cross-tab: a `storage` event from another tab MERGES its keys into the in-memory
+ * set, so two open tabs still converge instead of each re-crediting the other's
+ * steps (the previous behaviour came for free from re-reading storage every pass).
+ */
+const SEEN_FLUSH_MS = 2000
+let seenCache: { keys: Set<string>; strongest: number } | null = null
+let seenDirty = false
+let seenFlushTimer = 0
+let seenWatchInstalled = false
+
+function writeSeen(): void {
+  if (seenCache === null) return
+  try {
+    localStorage.setItem(HEATMAP_SEEN, JSON.stringify([...seenCache.keys]))
+    localStorage.setItem(HEATMAP_SEEN_STRONGEST, String(seenCache.strongest))
+  } catch { /* storage unavailable */ }
+  seenDirty = false
+}
+
+/** Persist a pending ledger write NOW (page unload / tab hidden). */
+export function flushSeen(): void {
+  if (seenFlushTimer !== 0) { window.clearTimeout(seenFlushTimer); seenFlushTimer = 0 }
+  if (seenDirty) writeSeen()
+}
+
+function installSeenWatch(): void {
+  if (seenWatchInstalled || typeof window === 'undefined') return
+  seenWatchInstalled = true
+  window.addEventListener('storage', (e: StorageEvent) => {
+    if (e.key !== HEATMAP_SEEN || seenCache === null || e.newValue === null) return
+    try {
+      for (const k of JSON.parse(e.newValue) as string[]) if (typeof k === 'string') seenCache.keys.add(k)
+    } catch { /* malformed concurrent write; the next save wins */ }
+  })
+}
+
 export function loadSeen(): { keys: Set<string>; strongest: number } {
+  if (seenCache !== null) return seenCache
+  installSeenWatch()
   try {
     const keys = new Set<string>()
     const raw = localStorage.getItem(HEATMAP_SEEN)
     if (raw) for (const k of JSON.parse(raw) as string[]) if (typeof k === 'string') keys.add(k)
     const sRaw = localStorage.getItem(HEATMAP_SEEN_STRONGEST)
     const strongest = Number.isFinite(+(sRaw ?? '')) ? +(sRaw ?? '') : 0
-    return { keys, strongest }
-  } catch { return { keys: new Set<string>(), strongest: 0 } }
+    seenCache = { keys, strongest }
+    return seenCache
+  } catch {
+    seenCache = { keys: new Set<string>(), strongest: 0 }
+    return seenCache
+  }
 }
+
+/** Hand the ledger back after crediting; the write is coalesced (see `flushSeen`). */
 export function saveSeen(keys: Set<string>, strongest: number): void {
-  try {
-    localStorage.setItem(HEATMAP_SEEN, JSON.stringify([...keys]))
-    localStorage.setItem(HEATMAP_SEEN_STRONGEST, String(strongest))
-  } catch { /* storage unavailable */ }
+  seenCache = { keys, strongest }
+  seenDirty = true
+  if (seenFlushTimer !== 0) return
+  seenFlushTimer = window.setTimeout(() => {
+    seenFlushTimer = 0
+    if (seenDirty) writeSeen()
+  }, SEEN_FLUSH_MS)
 }
 export function loadHeatmapAnchor(): number {
   try {

@@ -91,7 +91,7 @@ const RAIL_STEPS = 40
 
   // ── Instrumentation (installed once, toggled by phase) ──
   await page.evaluate(() => {
-    const state = { phase: 'idle', cardLayoutReads: 0, railGbcr: 0, railGcs: 0, otherGbcr: 0 }
+    const state = { phase: 'idle', cardLayoutReads: 0, railGbcr: 0, railGcs: 0, otherGbcr: 0, storageReads: 0 }
     window.__ec = state
     const isCard = (el) => el instanceof Element && el.classList.contains('dsx-stats-card')
     for (const prop of ['scrollHeight', 'clientHeight']) {
@@ -104,6 +104,14 @@ const RAIL_STEPS = 40
           return desc.get.call(this)
         },
       })
+    }
+    // `localStorage` reads of THIS plugin's heatmap ledger on the emit path: it used to
+    // be re-read (and JSON-parsed) once per collector pass. Filtered by key so other
+    // plugins' reads in the same window cannot pollute the number.
+    const getItem = Storage.prototype.getItem
+    Storage.prototype.getItem = function (...args) {
+      if (String(args[0] ?? '').startsWith('harness-widgets.heatmap')) state.storageReads += 1
+      return getItem.apply(this, args)
     }
     const railFrame = () => {
       const stack = new Error().stack || ''
@@ -142,6 +150,7 @@ const RAIL_STEPS = 40
     s.cardLayoutReads = 0
     s.railGbcr = 0
     s.railGcs = 0
+    s.storageReads = 0
     const t0 = performance.now()
     for (let i = 0; i < count; i++) {
       window.dispatchEvent(new StorageEvent('storage', { key, newValue: null, storageArea: window.localStorage }))
@@ -149,7 +158,7 @@ const RAIL_STEPS = 40
     }
     const ms = performance.now() - t0
     s.phase = 'idle'
-    return { ms, cardLayoutReads: s.cardLayoutReads, railGbcr: s.railGbcr, railGcs: s.railGcs, longTasks: s.longTasks, longTaskMs: s.longTaskMs }
+    return { ms, cardLayoutReads: s.cardLayoutReads, railGbcr: s.railGbcr, railGcs: s.railGcs, storageReads: s.storageReads, longTasks: s.longTasks, longTaskMs: s.longTaskMs }
   }, { key: STORAGE_KEY, count: EMITS, gap: EMIT_GAP_MS })
   await page.waitForTimeout(400)
 
@@ -189,6 +198,8 @@ const RAIL_STEPS = 40
       cardLayoutReads: emit.cardLayoutReads,
       cardLayoutReadsPerEmit: +((emit.cardLayoutReads / EMITS).toFixed(2)),
       railReads: emit.railGbcr + emit.railGcs,
+      storageReads: emit.storageReads,
+      storageReadsPerEmit: +((emit.storageReads / EMITS).toFixed(2)),
       longTasks: emit.longTasks,
       longTaskMs: Math.round(emit.longTaskMs),
       longTaskMsPerEmit: +((emit.longTaskMs / EMITS).toFixed(2)),
@@ -210,6 +221,7 @@ const RAIL_STEPS = 40
   console.log(`cards ${cards} · ${EMITS} emits over ${report.emit.windowMs}ms`)
   console.log(`  card bodies rebuilt   ${report.emit.cardLayoutReads} total (${report.emit.cardLayoutReadsPerEmit}/emit)`)
   console.log(`  long tasks            ${report.emit.longTasks} · ${report.emit.longTaskMs}ms (${report.emit.longTaskMsPerEmit}ms/emit)`)
+  console.log(`  localStorage reads    ${report.emit.storageReads} total (${report.emit.storageReadsPerEmit}/emit)`)
   console.log(`  pointer over transcript: ${report.pointer.transcriptRailReads} rail-owned layout reads (${TRANSCRIPT_STEPS} moves)`)
   console.log(`  pointer over rail:       ${report.pointer.railRailReads} rail-owned layout reads (${RAIL_STEPS} moves)`)
   console.log(`receipt: ${path.relative(process.cwd(), file)}`)

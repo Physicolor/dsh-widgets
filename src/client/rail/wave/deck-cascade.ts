@@ -129,6 +129,13 @@ export const CASCADE_TRAVEL_SHARE = 0.6
 let groupMsCache = -1
 /** Whether the invalidation watch has been installed (see {@link groupMsCache}). */
 let groupMsWatch = false
+/**
+ * The watch itself. Kept in a module binding rather than dropped on the floor: it
+ * lives for the page (a theme can flip at any time), but a handle is what lets a
+ * future unload path release it, and it documents that this is a singleton rather
+ * than a per-call observer.
+ */
+let groupMsObserver: MutationObserver | null = null
 /** The custom property the memo is about — the shell's own slow-transition token. */
 const GROUP_MS_TOKEN = '--ds-transition-duration-slow'
 
@@ -163,7 +170,7 @@ export function groupDurationMs(fallback: number = CASCADE_FALLBACK_TOTAL_MS): n
     // element and must not invalidate a constant.
     groupMsWatch = true
     if (typeof MutationObserver !== 'undefined') {
-      new MutationObserver((records) => {
+      groupMsObserver = new MutationObserver((records) => {
         for (const record of records) {
           if (record.attributeName !== 'style') { groupMsCache = -1; return }
           const next = document.documentElement.getAttribute('style') ?? ''
@@ -172,7 +179,8 @@ export function groupDurationMs(fallback: number = CASCADE_FALLBACK_TOTAL_MS): n
             return
           }
         }
-      }).observe(document.documentElement, {
+      })
+      groupMsObserver.observe(document.documentElement, {
         attributes: true,
         attributeOldValue: true,
         attributeFilter: ['class', 'style', 'data-theme'],
