@@ -64,9 +64,11 @@ const RAIL_RIGHT_VAR = 'var(--dsx-rail-right)'
  * The class that hides a card the rail's viewport would cut in half
  * (prefs.wholeCards — see `syncWholeCards` in the component). Declared here
  * because BOTH decks use it: the resting one through a DOM write, the magnify
- * overlay through its render.
+ * overlay through its render — and the deck's fold, which drops a card the moment
+ * this class lands on it (`rail-view`'s prune effect, so the fold stops writing
+ * transforms to a card nobody can see). Exported for that third reader.
  */
-const SLOT_CUT_CLASS = 'dsx-slot-cut'
+export const SLOT_CUT_CLASS = 'dsx-slot-cut'
 
 /**
  * The surfaces this plugin PAINTS the rail with, for the paint-ownership test in
@@ -226,6 +228,48 @@ export const RAIL_TOP_INSET = 4
 const readTopInset = (rail: HTMLDivElement): number => {
   const v = Number.parseFloat(getComputedStyle(rail).paddingTop)
   return Number.isFinite(v) ? v : RAIL_TOP_INSET
+}
+
+/**
+ * Everything the pointer oracle needs from the rail, read in ONE pass.
+ *
+ * ── WHY THIS EXISTS (2026-10-18) ──
+ * `moveRailFocus` and the `onCard` it calls each measured the rail on their own:
+ * `getBoundingClientRect()` twice, `getComputedStyle().paddingTop` twice (both
+ * forced style+layout reads, because the same frame has already written slot
+ * transforms) plus `scrollTop`/`clientHeight`. With the window `mousemove`
+ * listener AND both React `onMouseMove` handlers mounted, one pointer move ran
+ * that whole chain three times — instrumented on the owner's GUI, 15.4 s of
+ * hovering made ~12 layout reads per move and the Long Animation Frame observer
+ * attributed every long frame to `forcedStyleAndLayoutDuration` (1.2 s of forced
+ * layout over 39 long frames, p95 93 ms) — the reported 「鼠标指针悬浮过程和动画
+ * 效果均卡顿」.
+ *
+ * Measuring once per pointer event and handing the record down collapses that to
+ * a single pair of reads per move. It is the SAME numbers (`left`/`top` from the
+ * one rect, `clientWidth` rather than the rect's width — the oracle has always
+ * used the scrollbar-excluding `clientWidth`), so every hit test resolves exactly
+ * as before.
+ */
+interface RailMeasure {
+  left: number
+  top: number
+  clientWidth: number
+  clientHeight: number
+  scrollTop: number
+  inset: number
+}
+
+const measureRail = (rail: HTMLDivElement): RailMeasure => {
+  const box = rail.getBoundingClientRect()
+  return {
+    left: box.left,
+    top: box.top,
+    clientWidth: rail.clientWidth,
+    clientHeight: rail.clientHeight,
+    scrollTop: rail.scrollTop,
+    inset: readTopInset(rail),
+  }
 }
 
 /** Honour the OS "reduce motion" preference for the scroll animation too. */
@@ -523,7 +567,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
    * instead of the bare boxes. This is the oracle for "is the pointer still on the
    * widgets" once the wave is armed.
    */
-  const onCard = (clientX: number, clientY: number): boolean => {
+  const onCard = (clientX: number, clientY: number, measured?: RailMeasure): boolean => {
     // Nothing of the rail is on screen (retired / no room): every box below is a leftover.
     // This is also what makes the ARMED release path correct — `nearSurface` is `onCard`, so a
     // drawer retired while the wave was live releases it on the next pointer move.
@@ -538,13 +582,11 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     const overlaid = morph
     const layout = overlaid ? focusLayout : restLayout
     const add = overlaid ? focusedAdd : restAdd
-    const box = rail.getBoundingClientRect()
-    // The deck's origin, MEASURED (see `readTopInset`): a co-tenant's push moves the
-    // content, and the constant resolved a tile a whole row away from the pointer.
-    const inset = readTopInset(rail)
-    const contentW = rail.clientWidth - 2 * pad
-    const cx = clientX - box.left - pad
-    const cy = clientY - box.top - inset + rail.scrollTop
+    // ONE measurement per pointer event when the caller has one (see `measureRail`).
+    const m = measured ?? measureRail(rail)
+    const contentW = m.clientWidth - 2 * pad
+    const cx = clientX - m.left - pad
+    const cy = clientY - m.top - m.inset + m.scrollTop
     const t = TILE_TOLERANCE
     // A card the viewport cuts is not drawn (see `syncWholeCards`), so it must not
     // be hoverable either: its area is empty band, and treating it as a tile would
@@ -553,7 +595,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     // allowed to reach past the band, that is the wave itself. The band is the SAME
     // measured one `syncWholeCards` paints from (`inset`, read above), so a card the
     // rule hides is a card the oracle refuses to arm on — and vice versa.
-    const band = wholeCards ? bandOf(rail, inset) : null
+    const band = wholeCards ? { lo: m.scrollTop - m.inset, hi: m.scrollTop - m.inset + m.clientHeight } : null
     for (let i = 0; i < layout.length; i++) {
       const c = layout[i]
       const rest = restLayout[i]
@@ -583,8 +625,10 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
       if (armedRef.current || focusX !== null || focusY !== null) leaveRail()
       return
     }
-    const rect = el.getBoundingClientRect()
-    contentXRef.current = clientX - rect.left
+    // ONE measurement for the whole pointer event: the peak's coordinate frame and
+    // the `onCard` oracle below read the SAME record (see `measureRail`).
+    const m = measureRail(el)
+    contentXRef.current = clientX - m.left
     // The peak's own Y, in the SAME measured frame as `onCard` — with one difference: the
     // hit oracle works in SEAT space (`placeCards` seats a row at `RAIL_ROW_SEAT + row ·
     // pitch`), while `scaleFor` centres it on `row · pitch + side/2`, so the wave's
@@ -595,8 +639,8 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     // under a co-tenant's push it put the PEAK one whole row below the pointer — the bell
     // magnified a different card than the one the (fixed) oracle had just armed on. Both
     // halves of the mapping must come from the same measured inset.
-    contentYRef.current = clientY - rect.top - readTopInset(el) + el.scrollTop - RAIL_ROW_SEAT
-    if (onCard(clientX, clientY)) armedRef.current = true
+    contentYRef.current = clientY - m.top - m.inset + m.scrollTop - RAIL_ROW_SEAT
+    if (onCard(clientX, clientY, m)) armedRef.current = true
     if (!armedRef.current) return
     if (rafRef.current) return
     rafRef.current = requestAnimationFrame(() => {
@@ -900,11 +944,13 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
    * `push` px below the rail's real one and the bottom row was painted half cut (owner,
    * 2026-10-14, with dsh-pinned-summary docking above the deck). The cap's `lastRow` reads
    * the same number, so hiding that row never strands it.
+   *
+   * It is an EXPRESSION, not a helper, since 2026-10-18: `onCard` builds it from the
+   * `RailMeasure` record it was already handed (`{ lo: m.scrollTop − m.inset, hi: … +
+   * m.clientHeight }`), and a helper would have to re-read `scrollTop`/`clientHeight`
+   * off the rail — three more forced layout reads per pointer move for numbers that
+   * were just measured (see `measureRail`).
    */
-  const bandOf = (rail: HTMLDivElement, inset: number): { lo: number; hi: number } => {
-    const lo = rail.scrollTop - inset
-    return { lo, hi: lo + rail.clientHeight }
-  }
   /** Would the rail's viewport cut this resting box — top or bottom? */
   const cutBy = (band: { lo: number; hi: number }, box: { top: number; h: number }): boolean =>
     box.top < band.lo - 0.5 || box.top + box.h > band.hi + 0.5
@@ -1071,11 +1117,13 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
       ...(ANCHOR_FOLLOW
         ? { transition: `transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), width ${SLOT_SPRING}` }
         : { transition: `right var(--ds-transition-duration-slow) var(--ds-ease-in-out), transform var(--ds-transition-duration-slow) var(--ds-ease-in-out), width ${SLOT_SPRING}` }) },
-    // NO onMouseLeave here: the pointer surface is owned by the wrapper below
-    // (the rail and the overlay are siblings, so the rail's own leave fires the
-    // moment the pointer moves onto a magnified card —the bug the wrapper
-    // exists to remove).
-    onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => moveRailFocus(e.clientX, e.clientY, e.currentTarget as HTMLDivElement),
+    // NO onMouseMove and NO onMouseLeave here: the pointer surface is owned by the
+    // wrapper below (the rail and the overlay are siblings, so the rail's own leave
+    // fires the moment the pointer moves onto a magnified card —the bug the wrapper
+    // exists to remove), and the FOCUS is driven by the once-mounted window listener
+    // (see its note), which already runs `moveRailFocus` for every pointer move.
+    // A React handler here was a third identical call per move: three forced
+    // rect+computed-style reads where one is enough (see `measureRail`).
     onScroll: (e: React.UIEvent<HTMLDivElement>) => {
       // Write the overlay's scroll offset IMMEDIATELY (before React commits): the
       // magnified cards ride this variable, and a render-delayed write would make
@@ -1633,7 +1681,11 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
         // swallowing clicks meant for the official right panel.
         const slotStyle = { position: 'absolute' as const, top: `${rest.top.toFixed(2)}px`, right: `${rest.right.toFixed(2)}px`, width: `${baseW}px`, height: `${side}px`, transformOrigin: 'top right', transform: `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${c.s.toFixed(4)})`, transition: 'none', willChange: 'transform', zIndex: zTier(idx), pointerEvents: covered ? 'none' as const : morph ? 'auto' as const : 'none' as const }
         return React.createElement('div', {
-          key: it.w.id,
+          // The INSTANCE key (`widget@size`), never `it.w.id`: the rail may hold
+          // the same widget twice — 2x2 and 2x4 — and duplicate sibling keys make
+          // React lose track of one of the old fibers, leaving its node mounted at
+          // a stale seat. The resting deck carries the same fix (see rail-view).
+          key: it.key,
           className: 'dsx-stats-card-slot' + (focused ? ' dsx-slot-focused' : '') + (cut ? ` ${SLOT_CUT_CLASS}` : ''),
           style: slotStyle,
         },
@@ -1686,10 +1738,10 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     // wrapper's subtree. A covered rail is not hovering anything of ours.
     className: 'dsx-surface' + (!covered && (surfaceHover || morph) ? ' dsx-surface-hover' : ''),
     style: { display: 'contents' },
-    onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => {
-      const el = railElRef.current
-      if (el !== null) moveRailFocus(e.clientX, e.clientY, el)
-    },
+    // No onMouseMove: the once-mounted window listener drives `moveRailFocus` for
+    // EVERY pointer move — including over the portaled overlay, which is outside
+    // this subtree — so a React handler here only repeated the same measurement
+    // (see `measureRail`).
     onMouseEnter: () => setSurfaceHover(true),
     onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => { setSurfaceHover(false); leaveRail(e.clientX, e.clientY) },
   }, rail, createPortal(magnifyLayer, document.body))

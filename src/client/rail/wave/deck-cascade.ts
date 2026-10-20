@@ -212,6 +212,44 @@ export interface CascadeBox {
   top: number
   /** Distance from the deck's RIGHT edge (`placeCards`'s `right`). */
   right: number
+  /**
+   * The box's own height — read ONLY by the visible-band filter (see
+   * {@link CascadeBand}). Optional: a caller that hands the rank rule
+   * ({@link cascadeRanks}) a bare top/right pair does not need it, and with it
+   * omitted the band test degrades to "the box's TOP edge is inside the band",
+   * which is the conservative half of the rule.
+   */
+  h?: number
+}
+
+/**
+ * The band of the rail the fold is allowed to animate, in the deck's own
+ * coordinates — the scrollport, exactly as `RailWave`'s whole-card rule reads it
+ * (`[scrollTop − inset, … + clientHeight]`, and `cutBy` against each resting box).
+ *
+ * ── WHY THE FOLD IS BOUNDED BY IT (owner, 2026-10-18) ──
+ *
+ * The fold used to move EVERY card of the deck, including the rows the rail's
+ * viewport does not show. Measured on the owner's GUI (`scripts/.tmp-fold-band2.cjs`,
+ * 1400×720, an open drawer whose co-tenant push lands during the fold): the deck's
+ * rows below the band are `dsx-slot-cut` and unpainted, yet the fold still wrote a
+ * transform on them every frame — 16 movers where 9 rows are on screen. Worse, the
+ * co-tenant's push (`dsh-pinned-summary`'s tweened `padding-top`) arrives one beat
+ * AFTER the fold starts, so rows that were still inside the band on the fold's first
+ * frame were animated into view and only THEN cut and hidden: the reported
+ * 「动画结束后临时隐藏下方未显示的组件」, plus 7 wasted `transform` writes per frame.
+ *
+ * A card whose seat the band cuts cannot be seen at that seat, so animating it can
+ * only ever produce that flash; leaving it out is both the honest motion and less
+ * work per frame. The band is therefore read once per fold plan (the deck is at rest
+ * by definition then — see {@link DeckCascade.sync}) and the cards it cuts are NOT
+ * participants: no transform, no delay, and no audit stamp ({@link planCascade}).
+ */
+export interface CascadeBand {
+  /** First deck coordinate the rail's scrollport shows (`scrollTop − inset`). */
+  lo: number
+  /** …and the last one (`lo + clientHeight`). */
+  hi: number
 }
 
 /**
@@ -238,6 +276,22 @@ export interface CascadeTiming {
    * {@link cascadeTiming}.
    */
   duration: number
+  /** The POSITION curve (`prefs.animShiftCurve`) evaluated on [0,1]. */
+  easeShift: (x: number) => number
+  /** The ZOOM curve (`prefs.animCurve`) evaluated on [0,1]. */
+  easeZoom: (x: number) => number
+}
+
+/**
+ * What {@link planCascade} is handed: the GROUP's own transition, in ms, and the two
+ * curves. The per-rank step and one card's travel are split out of that total INSIDE
+ * the planner (`cascadeTiming`), because the split depends on how many cards are
+ * actually in the fold — which is the band's decision, not the caller's (see
+ * {@link CascadeBand}).
+ */
+export interface CascadePlanTiming {
+  /** The group's whole transition (`groupDurationMs`), ms. */
+  totalMs: number
   /** The POSITION curve (`prefs.animShiftCurve`) evaluated on [0,1]. */
   easeShift: (x: number) => number
   /** The ZOOM curve (`prefs.animCurve`) evaluated on [0,1]. */
@@ -282,6 +336,15 @@ export interface DeckCascade {
   play: (end: CascadeEnd) => void
   /** Put the clock at `end` WITHOUT animating. */
   jump: (end: CascadeEnd) => void
+  /**
+   * Drop the cards a predicate names from a RUNNING fold — the ones the whole-card
+   * rule has just hidden (`dsx-slot-cut`). Their transform is cleared and they are
+   * forgotten; every other card keeps its delay, its offsets and the same timeline,
+   * so nothing moves when this happens. A pure removal is safe mid-fold where a
+   * re-plan is not (see {@link DeckCascade.sync}): the remaining cards' geometry is
+   * untouched.
+   */
+  prune: (drop: (el: HTMLElement) => boolean) => void
   /** Stop and hand the cards back at their final layout position. */
   release: () => void
 }
@@ -320,45 +383,68 @@ export function cascadeDelay(rank: number, step: number): string {
 }
 
 /** Read a slot's stamped cascade delay off the element (see {@link cascadeDelay}). */
-function delayOf(el: HTMLElement): number {
-  const n = Number.parseFloat(el.style.getPropertyValue('--dsx-slot-delay'))
-  return Number.isFinite(n) && n > 0 ? n : 0
+function clearStamp(el: HTMLElement): void {
+  el.style.removeProperty('--dsx-slot-delay')
+  el.style.removeProperty('--dsx-slot-delay-out')
 }
 
 /**
- * Turn the deck's LAYOUT into the fold's start state: one entry per participant,
- * each carrying the vector from its own top-right corner to the shared anchor.
+ * ── THE RANK TABLE, AND WHERE IT LIVES ──
  *
- * The deck's live box is read here (never the cards'): the deck is drawn where the
- * layout puts it, whereas a card in the middle of a fold is exactly the thing whose
- * box is not its layout box. A plan is only ever adopted with the deck at rest (see
- * `sync`), so this read is a rest-state read by construction.
- *
- * `boxes` carries one entry per participant in DOM order (the cards, then the
- * settings tile) — the same order `querySelectorAll` walks, so an element and its
- * box line up by index.
+ * The order rule is {@link cascadeRanks} — one home, shared with the CSS stamps a
+ * probe audits. Since 2026-10-18 the DELAYS are assigned HERE rather than read back
+ * off the DOM: the participant set is the band's decision (see {@link CascadeBand}),
+ * so only the planner knows how many cards the ladder is spread over, and the split
+ * ("one card's travel + one step per remaining rank") must be made from that count —
+ * {@link cascadeTiming}. The old shape — rail-view stamping a full-deck ladder on
+ * every render, the planner reading it back per element — would have had to guess the
+ * same band at render time, where the rail's scroll offset is not (and must not be)
+ * an input. This function therefore PUBLISHES the ladder it uses: every participant
+ * gets `--dsx-slot-delay` / `--dsx-slot-delay-out`, every card the band leaves out
+ * gets both removed, so a probe reading the stamps is reading exactly the fold, and
+ * presence of a stamp IS participation.
  */
 export function planCascade(
   deck: HTMLElement,
   boxes: ReadonlyArray<CascadeBox>,
   anchor: CascadeAnchor,
-  timing: CascadeTiming,
+  timing: CascadePlanTiming,
+  band?: CascadeBand,
 ): CascadeSpec {
   const deckRect = deck.getBoundingClientRect()
   const nodes = Array.from(deck.querySelectorAll<HTMLElement>(CASCADE_SELECTOR))
-  const cards: CascadeCard[] = nodes.map((el, i) => {
+  // Pair node ↔ box by index first (the box list is in the same DOM order), then keep
+  // the pairs the band does not cut — `h` omitted degrades to the top edge's test.
+  const kept: Array<{ el: HTMLElement; box: CascadeBox }> = []
+  for (let i = 0; i < nodes.length; i++) {
+    const el = nodes[i]
     const box = boxes[i] ?? { top: 0, right: 0 }
+    if (band !== undefined && (box.top < band.lo - 0.5 || box.top + (box.h ?? 0) > band.hi + 0.5)) {
+      clearStamp(el)
+      continue
+    }
+    kept.push({ el, box })
+  }
+  const { order } = cascadeRanks(kept.map((k) => k.box))
+  const { duration, step } = cascadeTiming(timing.totalMs, kept.length)
+  const lastRank = Math.max(0, kept.length - 1)
+  const cards: CascadeCard[] = kept.map(({ el, box }, i) => {
+    // The parse is the round-trip through the stamp's own format, so the number the
+    // clock runs on and the number a probe reads cannot differ in the last digit.
+    const delay = Number.parseFloat(cascadeDelay(order[i], step))
+    el.style.setProperty('--dsx-slot-delay', cascadeDelay(order[i], step))
+    el.style.setProperty('--dsx-slot-delay-out', cascadeDelay(lastRank - order[i], step))
     // The card's own top-right corner in viewport coordinates: the boxes are
     // deck-relative, with `right` measured from the deck's right edge.
     return {
       el,
       vx: anchor.originX - (deckRect.left + (deckRect.width - box.right)),
       vy: anchor.originY - (deckRect.top + box.top),
-      delay: delayOf(el),
+      delay,
       ownStyle: el.classList.contains('dsx-stats-add'),
     }
   })
-  return { cards, anchor, ...timing }
+  return { cards, anchor, duration, easeShift: timing.easeShift, easeZoom: timing.easeZoom }
 }
 
 /**
@@ -527,6 +613,29 @@ export function createDeckCascade(onSettle: (end: CascadeEnd) => void): DeckCasc
       dir = 0
       t = end === 'open' ? total : 0
       clear()
+    },
+    prune: (drop) => {
+      if (spec.cards.length === 0) return
+      const kept = spec.cards.filter((c) => !drop(c.el))
+      if (kept.length === spec.cards.length) return
+      for (const c of spec.cards) {
+        if (kept.indexOf(c) !== -1) continue
+        // Hand the dropped card back to its own layout: it is `dsx-slot-cut` and
+        // unpainted, so clearing its offset cannot be seen, while leaving it would
+        // keep a transform on a hidden node (and a stale `painted` verdict if the
+        // whole fold is dropped).
+        if (c.el.style.transform !== '') c.el.style.transform = ''
+        if (c.ownStyle) {
+          if (c.el.style.transformOrigin !== '') c.el.style.transformOrigin = ''
+          if (c.el.style.transition !== '') c.el.style.transition = ''
+        }
+        clearStamp(c.el)
+      }
+      spec = { ...spec, cards: kept }
+      // The timeline is max delay + one travel, and only ever shrinks by a drop: the
+      // fold's end is unchanged for the cards that are left, and a fully-dropped fold
+      // still settles on its own clock (see `step`).
+      if (t > total) t = total
     },
     release: () => {
       stop()

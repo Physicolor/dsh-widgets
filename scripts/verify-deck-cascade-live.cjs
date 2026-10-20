@@ -272,19 +272,39 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
     requestAnimationFrame(read)
   }, ms)
   const readSamples = () => page.evaluate(() => window.__fold)
+  /**
+   * The deck's slots with their fold stamps. `inFold` is the stamp's PRESENCE:
+   * since 2026-10-18 the planner stamps only the cards the rail's visible band
+   * keeps (and removes the stamp from the rest), so presence IS participation and a
+   * `delay` of 0 belongs to a real rank-0 participant.
+   *
+   * `rail` is the scrollport the band is built from: a participant's RESTING box must
+   * sit inside `[rail.top, rail.top + clientHeight]` — the same band, in viewport
+   * coordinates (`planCascade`'s test in deck coordinates is affine to it).
+   */
   const participants = () => page.evaluate(() => {
     const wrap = document.querySelector('.dsx-wave-deck')
     const deck = wrap === null ? null : wrap.firstElementChild
-    if (deck === null) return []
-    return Array.from(deck.querySelectorAll('.dsx-stats-card-slot, .dsx-stats-add')).map((el) => {
+    const rail = document.querySelector('.dsx-stats-rail')
+    const rr = rail === null ? null : rail.getBoundingClientRect()
+    const nodes = deck === null ? [] : Array.from(deck.querySelectorAll('.dsx-stats-card-slot, .dsx-stats-add')).map((el, idx) => {
       const r = el.getBoundingClientRect()
+      const stamp = el.style.getPropertyValue('--dsx-slot-delay')
+      const out = el.style.getPropertyValue('--dsx-slot-delay-out')
       return {
+        idx,
         tile: el.classList.contains('dsx-stats-add'),
-        delay: Number.parseFloat(el.style.getPropertyValue('--dsx-slot-delay')) || 0,
-        delayOut: Number.parseFloat(el.style.getPropertyValue('--dsx-slot-delay-out')) || 0,
+        inFold: stamp !== '',
+        delay: stamp === '' ? null : (Number.parseFloat(stamp) || 0),
+        delayOut: out === '' ? null : (Number.parseFloat(out) || 0),
+        cut: el.classList.contains('dsx-slot-cut'),
         top: Math.round(r.top), right: Math.round(r.right), left: Math.round(r.left), bottom: Math.round(r.bottom),
       }
     })
+    return {
+      rail: rr === null ? null : { top: rr.top, bottom: rr.bottom, clientH: rail.clientHeight, inset: Number.parseFloat(getComputedStyle(rail).paddingTop) || 0 },
+      nodes,
+    }
   })
   /** Frames of one fold that still carry the deck. */
   /**
@@ -364,6 +384,11 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
           ids: nodes.map((el) => el.__rid),
           rects: nodes.map((el) => { const r = el.getBoundingClientRect(); return [r.left, r.top, r.width, r.height] }),
           scale: nodes.map((el) => { const m = /scale\(([\d.]+)\)/.exec(el.style.transform || ''); return m === null ? 1 : Number(m[1]) }),
+          // Who is IN this fold: the planner stamps exactly the cards the rail's band
+          // keeps and removes the stamp from the rest, so a non-participant's box here
+          // is its resting seat — comparing it against the fold's start map would read
+          // a card that never moved as 200px off. The path checks skip them.
+          fold: nodes.map((el) => el.style.getPropertyValue('--dsx-slot-delay') !== ''),
         })
       }
       if (now - t0 < ms) requestAnimationFrame(read)
@@ -508,8 +533,29 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
     // excursion numbers above can be read at the ceiling of the settings row as well as at
     // the value the profile happens to hold (the probe restores what it found either way).
     await applyPrefs({ openShape: 'stagger', ...(process.env.BOUNCE === undefined ? {} : { animBounce: Number(process.env.BOUNCE) }) }, true)
-    const people = await participants()
-    check(people.length > 0, 'the deck has participants to fold', String(people.length))
+    const seats = await participants()
+    const all = seats.nodes
+    const people = all.filter((p) => p.inFold)
+    check(people.length > 0, 'the deck has participants to fold', `${people.length} of ${all.length} cards in the rail’s band`)
+    // ── THE BAND DECIDES WHO FOLDS (owner, 2026-10-18) ──
+    // Every participant's resting box is inside the rail's scrollport, and every slot
+    // inside it participates: a card the band cuts cannot be animated into view and
+    // then hidden (the reported flash), and no visible card is left out.
+    if (seats.rail !== null) {
+      const inside = (p) => p.top >= seats.rail.top - 0.5 && p.bottom <= seats.rail.top + seats.rail.clientH + 0.5
+      const outsideFolded = people.filter((p) => !inside(p)).length
+      const insideSkipped = all.filter((p) => inside(p) && !p.inFold).length
+      check(outsideFolded === 0, 'no participant sits outside the rail’s visible band',
+        `${outsideFolded} of ${people.length} · port ${Math.round(seats.rail.top)}–${Math.round(seats.rail.top + seats.rail.clientH)}`)
+      check(insideSkipped === 0, 'and no card inside the band was left out of the fold',
+        `${insideSkipped} of ${all.filter(inside).length} in-band cards`)
+      if (all.some((p) => p.cut)) {
+        check(people.every((p) => !p.cut), 'a card the whole-card rule cuts is not a participant (the stamps agree)',
+          `${people.filter((p) => p.cut).length} cut participants`)
+      } else {
+        note('whole-card cut', 'no card of this deck is cut by the band at rest')
+      }
+    }
     const delays = people.map((p) => p.delay)
     check(new Set(delays).size === delays.length, 'every participant has its own delay (the rank cap is gone)',
       `${new Set(delays).size} distinct of ${delays.length}, max ${Math.max(...delays)}ms`)
@@ -527,9 +573,13 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
         `last ${sorted[sorted.length - 1]}ms + travel ${travelMs.toFixed(2)}ms = ${anchorCfg.groupMs}ms`)
     }
     const tileIdx = people.findIndex((p) => p.tile)
-    check(tileIdx !== -1 && people[tileIdx].delay === 0,
-      'the 设置 tile participates in the fold, and it is the first beat (it is the deepest cell)',
-      `tile delay ${tileIdx === -1 ? 'n/a' : people[tileIdx].delay}ms`)
+    // The 设置 tile is ranked by the same rule and is normally the first beat (it is
+    // the deepest cell) — but the band outranks it: a tile the rail's viewport does not
+    // show is not folded at all (see the band checks above), so its absence from
+    // `people` is the correct verdict there, not a failure.
+    check(tileIdx === -1 || people[tileIdx].delay === 0,
+      'the 设置 tile takes the first beat when the band shows it (and sits out when it does not)',
+      tileIdx === -1 ? 'out of the band — not a participant' : `tile delay ${people[tileIdx].delay}ms`)
     const cardsOnly = people.filter((p) => !p.tile)
     const bl = cardsOnly.reduce((a, b) => (b.top > a.top || (b.top === a.top && b.left < a.left) ? b : a))
     const tr = cardsOnly.reduce((a, b) => (b.top < a.top || (b.top === a.top && b.right > a.right) ? b : a))
@@ -563,8 +613,11 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
         const sc = SCALE(t)
         return sc === null ? null : (sc - anchorCfg.scale) / (1 - anchorCfg.scale)
       }
-      const byDelay = delays.map((d, i) => ({ d, i })).sort((a, b) => a.d - b.d)
-      const third = Math.max(1, Math.floor(delays.length / 3))
+      // `idx` is the card's position in the DECK's node order — the order the frame
+      // sampler's `cards`/`scale` arrays use, so a band-filtered participant list still
+      // lines up with the frames it is judged against.
+      const byDelay = people.map((p) => ({ d: p.delay, i: p.idx })).sort((a, b) => a.d - b.d)
+      const third = Math.max(1, Math.floor(people.length / 3))
       const lowIdx = byDelay.slice(0, third).map((x) => x.i)
       const highIdx = byDelay.slice(-third).map((x) => x.i)
       const meanOf = (xs) => (xs.length === 0 ? null : xs.reduce((a, b) => a + b, 0) / xs.length)
@@ -658,6 +711,7 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
       let startOutside = 0
       if (first !== undefined) {
         for (let k = 0; k < first.ids.length; k++) {
+          if (first.fold !== undefined && !first.fold[k]) continue
           const fin = byId.get(first.ids[k])
           if (fin === undefined) continue
           const ex = anchorCfg.originX + anchorCfg.scale * (fin[0] - anchorCfg.originX) + anchorCfg.travel
@@ -693,6 +747,7 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
         const invEz = invEase(ez)
         for (const f of frames) {
           for (let k = 0; k < f.ids.length; k++) {
+            if (f.fold !== undefined && !f.fold[k]) continue
             const fin = byId.get(f.ids[k])
             if (fin === undefined || fin[2] <= 0) continue
             const sc = f.rects[k][2] / fin[2]
@@ -806,8 +861,8 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
       if (firstMove >= 0) {
         // Same PROGRESS measure as the open, on the retract this time.
         const travelC = frames[0].cards.map((_, k) => Math.max(...frames.map((f) => MAG(f.cards[k]))))
-        const byDelayC = delays.map((d, i) => ({ d, i })).sort((a, b) => a.d - b.d)
-        const thirdC = Math.max(1, Math.floor(delays.length / 3))
+        const byDelayC = people.map((p) => ({ d: p.delay, i: p.idx })).sort((a, b) => a.d - b.d)
+        const thirdC = Math.max(1, Math.floor(people.length / 3))
         const lowC = byDelayC.slice(0, thirdC).map((x) => x.i)
         const highC = byDelayC.slice(-thirdC).map((x) => x.i)
         const meanC = (xs) => (xs.length === 0 ? null : xs.reduce((a, b) => a + b, 0) / xs.length)
@@ -1133,7 +1188,7 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
         await page.setViewportSize({ width: cols === 4 ? 1920 : 1578, height: 1000 })
         await page.waitForTimeout(500)
         await applyPrefs({ openShape: 'stagger', columns: cols }, true)
-        const group = await participants()
+        const group = (await participants()).nodes.filter((p) => p.inFold)
         const ds = group.map((p) => p.delay)
         const sortedG = ds.slice().sort((a, b) => a - b)
         const stepG = sortedG[1] - sortedG[0]

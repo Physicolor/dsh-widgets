@@ -34,11 +34,11 @@ import { WidgetsPage } from '../surfaces/Settings'
 import { COL_GAP, DETAIL_W, LIST_W } from '../surfaces/layout'
 import { t } from '../i18n'
 import { BASE_SIDE, RAIL_ROW_SEAT, applyRailRight, getNotedRailTop, resolveRailSpace, setRailVar } from './geometry'
-import { RAIL_TOP_INSET, RailWave } from './wave/RailWave'
+import { RAIL_TOP_INSET, RailWave, SLOT_CUT_CLASS } from './wave/RailWave'
 import { createWaveGeometry } from './wave/wave-geometry'
 import {
-  type CascadeAnchor, type CascadeBox, type CascadeEnd, type DeckCascade,
-  cascadeDelay, cascadeRanks, cascadeTiming, createDeckCascade, groupDurationMs, planCascade,
+  type CascadeAnchor, type CascadeBand, type CascadeBox, type CascadeEnd, type DeckCascade,
+  createDeckCascade, groupDurationMs, planCascade,
 } from './wave/deck-cascade'
 
 /** Map from interactive action id to the slash command it triggers. */
@@ -641,12 +641,29 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
        */
       const cascadeAnchorRef = React.useRef<{ travel: number; scale: number }>({ travel: 0, scale: 1 })
       /**
-       * The group's own timeline, split into one card's travel and the per-rank
-       * step. `(n − 1) · step + duration` IS that timeline, so the fold can never
-       * outlast the 'zoom' gesture it is a version of. Ref-held like the boxes: the
-       * effect runs before the layout that computes them is re-entered.
+       * The group's own timeline, in ms — the fold's whole length. The per-rank step
+       * and one card's travel are split out of it INSIDE the planner, from the count
+       * of cards that are actually in the fold (see the visible-band filter): the
+       * band's cut happens at fold-plan time, where the rail's scroll offset is
+       * readable, and never at render time, where it is not. Ref-held like the boxes:
+       * the effect runs before the layout that computes them is re-entered.
        */
-      const cascadeTimingRef = React.useRef<{ duration: number; step: number }>({ duration: 180, step: 9 })
+      const cascadeTotalMsRef = React.useRef(groupDurationMs())
+      /**
+       * The rail's MEASURED inset the LAST time the drawer was on screen.
+       *
+       * The fold's band has to anticipate the co-tenant's push: `dsh-pinned-summary`
+       * applies its tweened `padding-top` one beat AFTER the fold starts (measured
+       * 2026-10-18: the rail's inset is the authored 4px on the fold's first frame and
+       * 196px by the second), so the band built from the CURRENT inset is ~192px too
+       * tall and animates rows that are cut — and hidden — microseconds later (the
+       * reported flash). The previous open's inset is the only reading that exists
+       * before the tween, and it is the right one whenever the co-tenant docks the same
+       * way twice; erring HIGH costs those rows their fold, never a card that then
+       * vanishes. Overwritten on every open-state render, so a panel that stops
+       * pushing self-corrects on the next open.
+       */
+      const cascadeOpenInsetRef = React.useRef(RAIL_TOP_INSET)
       const drawerPhaseRef = React.useRef(drawerPhase)
       drawerPhaseRef.current = drawerPhase
       /** What the user last asked for, read by the fold's own settle handler. */
@@ -718,14 +735,33 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
           originX: Number.parseFloat(origin[0] ?? '') || 0,
           originY: Number.parseFloat(origin[1] ?? '') || 0,
         }
+        // ── THE FOLD ONLY ANIMATES THE ROWS THE RAIL SHOWS (owner, 2026-10-18) ──
+        // The band is `RailWave`'s own whole-card band in deck coordinates
+        // (`scrollTop − inset` … `+ clientHeight`, the same numbers its `cutBy` tests
+        // resting boxes against), read ONCE here — at fold-plan time, with the deck at
+        // rest by construction (see `cascade.sync`). Both the scroll offset and the
+        // usable pane are read, never state that arrives a frame late: `paneH` is the
+        // parent's own measure of that clientHeight and the element read is only its
+        // fallback for the one frame before the pane observer's first callback.
+        //
+        // The INSET is deliberately the PUSHED one (`cascadeOpenInsetRef`): the
+        // co-tenant's push lands one beat after the fold starts, so the un-pushed
+        // reading would put ~192px of rows in the fold that the push cuts — and hides
+        // — moments later.
+        const rail = railElRef.current
+        const pane = paneH > 0 ? paneH : (rail === null ? 0 : rail.clientHeight)
+        const bandInset = Math.max(railTopInset, cascadeOpenInsetRef.current)
+        const band: CascadeBand | undefined = rail !== null && pane > 0
+          ? { lo: rail.scrollTop - bandInset, hi: rail.scrollTop - bandInset + pane }
+          : undefined
         cascade.sync(planCascade(deck, cascadeBoxesRef.current, anchor, {
-          duration: cascadeTimingRef.current.duration,
+          totalMs: cascadeTotalMsRef.current,
           // The fold rides BOTH of the zoom shape's curves, one per channel: the
           // translation on the position curve, the scale on the zoom curve — which
           // is what makes each card's path the group's path rather than a lookalike.
           easeShift: curveToProgress(shiftCurve),
           easeZoom: curveToProgress(prefs.animCurve),
-        }))
+        }, band))
         const at = cascade.state()
         const want: CascadeEnd = shouldOpen ? 'open' : 'closed'
         if (at === (want === 'open' ? 'to-open' : 'to-closed')) return
@@ -752,6 +788,28 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         setDeckAnim(want === 'open' ? 'in' : 'out')
         cascade.play(want)
       }, [staggerShape, shouldOpen, drawerPhase, reduceMotion])
+      /**
+       * ── A CARD THE WHOLE-CARD RULE HIDES MID-FOLD LEAVES THE FOLD ──
+       *
+       * The band is planned at the fold's start; the rail's band can still shrink
+       * WHILE the fold runs (the co-tenant's push landing, a window resize, a widget
+       * count reflow). `RailWave` re-cuts the deck on every such change — this passes
+       * the fresh verdicts to the running clock so the cards it just hid stop being
+       * written to (7 of 16 writes per frame in the measured case, and a transform
+       * left on a hidden node). Removing a card cannot move another one: the plan's
+       * geometry, order and delays are untouched (`DeckCascade.prune`).
+       *
+       * Runs on every render, but does nothing unless a fold is in flight: two
+       * `classList` reads per card on the hover path are free, a `cancelAnimationFrame`
+       * that never happened is not.
+       */
+      React.useLayoutEffect(() => {
+        const cascade = cascadeRef.current
+        if (cascade === null) return
+        const at = cascade.state()
+        if (at !== 'to-open' && at !== 'to-closed') return
+        cascade.prune((el) => el.classList.contains(SLOT_CUT_CLASS))
+      })
       // Leave: unmount once the thing that carries the leave is done.
       React.useEffect(() => {
         if (drawerPhase !== 'leave') return
@@ -770,6 +828,11 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       }, [drawerPhase, reduceMotion, staggerShape])
       /** Retired right now (closed, but kept mounted — see the note at the top). */
       const retired = drawerPhase === 'closed'
+      // The converged OPEN inset, recorded for the NEXT fold's band (see
+      // `cascadeOpenInsetRef`): only while the drawer is on screen and the deck has
+      // stopped folding, i.e. once the co-tenant's push has actually landed. A
+      // ref-write during render, exactly like `drawerPhaseRef` above.
+      if (!retired && deckAnim === null) cascadeOpenInsetRef.current = railTopInset
       const keepMounted = retired && snap.hasSession && (everOpenRef.current || prewarm)
       if (!keepMounted) retiredElRef.current = null
       if (retired && !keepMounted) return null
@@ -1056,44 +1119,37 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       /** The tile's click: the product's settings window, or the local spare when armed. */
       const onTileClick = LOCAL_ADD_PANEL ? toggleAdd : openSettingsSection
       /**
-       * ── STAGGER ORDER for the open/close cascade (prefs.openShape) ──
+       * ── THE FOLD'S PARTICIPANTS AND THEIR TIMING ──
        *
-       * Each participant's position in the fold: the deck's BOTTOM-LEFT cell is
-       * rank 0 (it moves first) and its TOP-RIGHT one is last — the two corners
-       * act as the anchors of the motion, which is what makes the deck read as an
-       * accordion opening rather than a block that scales. The rule itself lives
-       * in rail/wave/deck-cascade.ts (one place, so the order the CSS custom
-       * properties expose and the order the fold actually plays cannot drift).
+       * The boxes (cards, then the 设置 tile) in DOM order, with each one's height so
+       * the planner can apply the visible-band filter against the rail's own band. The
+       * RANK TABLE and the delays are NOT built here any more: only the planner knows
+       * how many cards the band leaves in the fold, and the ladder's step is split out
+       * of the group's duration by that count (`cascadeTiming`) — it stamps
+       * `--dsx-slot-delay` / `--dsx-slot-delay-out` on exactly the cards it plans, and
+       * removes both from the cards the band cuts (see `planCascade`). A probe reading
+       * those stamps is therefore reading the fold, and the stamp's PRESENCE is
+       * participation.
        *
-       * The 设置 TILE participates: it is a cell of the same grid, and leaving it
-       * out would paint a static square in the middle of a folding deck every
-       * time the surface is hovered (the tile is revealed by hover). It is ranked
-       * by the same key, and since it is parked BELOW the last row (or in that
-       * row's free left cell) it is normally the first beat.
-       *
-       * The delays are stamped per slot as custom properties rather than kept in
-       * JS: `--dsx-slot-delay` is what the fold reads back off the elements (so
-       * the rank table has one home), and `--dsx-slot-delay-out` publishes the
-       * mirror an interruption falls into — the collapse is the same timeline
-       * played backwards, so that number is what a probe can audit the reverse
-       * order against without having to catch a fold in the act.
+       * The order itself is unchanged: the deck's BOTTOM-LEFT cell is rank 0 (it moves
+       * first) and its TOP-RIGHT one is last, so the deck reads as an accordion rather
+       * than a block that scales (`cascadeRanks`). The 设置 TILE is a cell of the same
+       * grid and is ranked by the same key — it is normally the first beat, being
+       * parked below the last row (or in that row's free left cell), and it drops out
+       * of the fold exactly when the band cuts it.
        *
        * ── AND THE WHOLE FOLD LASTS AS LONG AS THE GROUP'S OWN TRANSITION ──
-       * One card's travel and the per-rank step are SPLIT out of that duration
-       * rather than chosen independently (`cascadeTiming`): a cascade added on top
-       * of a full per-card travel is exactly what made the fold run twice as long
-       * as the 'zoom' shape it is a version of (measured 610ms against 300ms).
+       * One card's travel and the per-rank step are SPLIT out of that duration rather
+       * than chosen independently (`cascadeTiming`): a cascade added on top of a full
+       * per-card travel is exactly what made the fold run twice as long as the 'zoom'
+       * shape it is a version of (measured 610ms against 300ms).
        */
       const cascadeBoxes: readonly CascadeBox[] = [
-        ...staticLayout.map((c) => ({ top: c.top, right: c.right })),
-        { top: addTop, right: addRight },
+        ...staticLayout.map((c) => ({ top: c.top, right: c.right, h: c.h })),
+        { top: addTop, right: addRight, h: side },
       ]
       cascadeBoxesRef.current = cascadeBoxes
-      const { order: staggerIn, reverse: staggerOut } = cascadeRanks(cascadeBoxes)
-      const cascadeClock = cascadeTiming(groupDurationMs(), cascadeBoxes.length)
-      cascadeTimingRef.current = cascadeClock
-      /** The tile's own rank — it is the last entry of the box list above. */
-      const tileRank = staggerIn.length - 1
+      cascadeTotalMsRef.current = groupDurationMs()
       /**
        * Draw-in depth: the 'zoom' shape starts the WHOLE GROUP here, the 'stagger'
        * shape starts EVERY CARD here about the same corner (`prefs.animScale`, the
@@ -1108,15 +1164,26 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       const deck = React.createElement('div', { key: '__deck', ref: deckRef, 'data-deck-anim': deckAnim ?? undefined, style: { position: 'relative', height: `${deckH}px` } as React.CSSProperties },
         staticLayout.map((c, idx) => {
           const it = items[idx]
-          const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px`, '--dsx-slot-delay': cascadeDelay(staggerIn[idx], cascadeClock.step), '--dsx-slot-delay-out': cascadeDelay(staggerOut[idx], cascadeClock.step) } as React.CSSProperties
-          return React.createElement('div', { key: it.w.id, className: 'dsx-stats-card-slot', style: slotStyle },
+          // No cascade delay here (see the note above `cascadeBoxes`): the fold stamps
+          // `--dsx-slot-delay` / `--dsx-slot-delay-out` on the cards it plans, at plan
+          // time, so the ladder and the participant set have one home.
+          const slotStyle = { position: 'absolute' as const, top: `${c.top.toFixed(2)}px`, right: `${c.right.toFixed(2)}px`, width: `${c.w.toFixed(2)}px`, height: `${c.h.toFixed(2)}px` } as React.CSSProperties
+          // `it.key` (the INSTANCE key, `widget@size`), never `it.w.id`: the rail may
+          // hold the same widget twice (2x2 and 2x4 — e.g. `heatmap-bars@2x2` and
+          // `heatmap-bars@2x4` are both installed), and two siblings sharing a React
+          // key make reconciliation drop one of the two old fibers: the dropped
+          // node is never deleted, so it stays in the deck at its stale seat — an
+          // extra card painted on its own, above the others, that disappears only
+          // while the wave hides the whole resting deck. See the same note in
+          // RailWave's overlay.
+          return React.createElement('div', { key: it.key, className: 'dsx-stats-card-slot', style: slotStyle },
             ...cardBodyFor(it, c.w),
           )
         }),
         // Bottom add button, parked inside the deck so it shares the grid layout:
         // it fills the empty last-row cell on odd counts, or sits right-aligned
         // below the rows on even counts / single column.
-        React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), onClick: onTileClick, style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px`, '--dsx-slot-delay': cascadeDelay(staggerIn[tileRank], cascadeClock.step), '--dsx-slot-delay-out': cascadeDelay(staggerOut[tileRank], cascadeClock.step) } as React.CSSProperties },
+        React.createElement('button', { key: '__add', type: 'button', className: 'dsx-stats-add', 'aria-label': t('ui.rail.addAria'), onClick: onTileClick, style: { position: 'absolute', top: `${addTop.toFixed(2)}px`, right: `${addRight.toFixed(2)}px`, width: `${side}px`, height: `${side}px`, borderRadius: `${addRadius}px` } as React.CSSProperties },
           React.createElement('span', { className: 'dsx-stats-add-icon' }, settingsGearIcon(20)),
           React.createElement('span', { className: 'dsx-stats-add-label' }, t('ui.rail.addLabel')),
         ),

@@ -53,8 +53,13 @@ const tick = (dt = 16) => {
   for (const [, cb] of due) cb(now)
 }
 
-const el = (delay = -1) => ({
-  style: { transform: '', transition: '', transformOrigin: '', getPropertyValue: () => (delay < 0 ? '' : `${delay}ms`) },
+const el = (delay = -1, props = new Map()) => ({
+  style: {
+    transform: '', transition: '', transformOrigin: '',
+    getPropertyValue: (name) => (name === '--dsx-slot-delay' && delay >= 0 ? `${delay}ms` : (props.get(name) ?? '')),
+    setProperty: (name, value) => { props.set(name, value) },
+    removeProperty: (name) => { props.delete(name) },
+  },
   classList: { contains: () => false },
 })
 const mag = (t) => {
@@ -151,7 +156,7 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
   const boxes = [{ top: 2, right: 0 }, { top: 2, right: 280 }, { top: 142, right: 0 }, { top: 512, right: 280 }]
   const nodes = boxes.map((_, i) => el(i * cascadeTiming(TOTAL, boxes.length).step))
   const deck = { getBoundingClientRect: () => deckRect, querySelectorAll: () => nodes }
-  const planned = planCascade(deck, boxes, ANCHOR, { duration: cascadeTiming(TOTAL, boxes.length).duration, easeShift: linear, easeZoom: linear })
+  const planned = planCascade(deck, boxes, ANCHOR, { totalMs: TOTAL, easeShift: linear, easeZoom: linear })
   let worst = 0
   for (let i = 0; i < boxes.length; i++) {
     const c = planned.cards[i]
@@ -184,6 +189,53 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
   })
   check(starts.every((x) => x > 1578), 'at progress 0 every card sits beyond the right edge',
     starts.map((x) => Math.round(x)).join(' '))
+}
+
+// ── B2. the visible band decides WHO is in the fold (owner, 2026-10-18) ─────
+{
+  // A 5-row deck (rows at top 2/152/302/452/602, side 150 — `placeCards`'s pitch for
+  // side 140 + 10 pad) under a band that only shows the first three rows: the two
+  // bottom rows are cut and must not be participants at all.
+  const deckRect = { left: 1148, top: 48, width: 410, height: 842 }
+  const side = 140, pitch = 150
+  const boxes = []
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 2; c++) boxes.push({ top: 2 + r * pitch, right: c * 150, h: side })
+  boxes.push({ top: 2 + 5 * pitch, right: 0, h: side })          // the 设置 tile, below the last row
+  const nodes = boxes.map(() => el())
+  const deck = { getBoundingClientRect: () => deckRect, querySelectorAll: () => nodes }
+  const timing = { totalMs: TOTAL, easeShift: linear, easeZoom: linear }
+  const all = planCascade(deck, boxes, ANCHOR, timing)
+  check(all.cards.length === boxes.length, 'with no band every box is a participant',
+    `${all.cards.length}/${boxes.length}`)
+  const band = { lo: -4, hi: -4 + 3 * pitch }                     // rows 0..2 are whole
+  const cut = planCascade(deck, boxes, ANCHOR, timing, band)
+  const inBand = boxes.filter((b) => !(b.top < band.lo - 0.5 || b.top + b.h > band.hi + 0.5)).length
+  check(cut.cards.length === inBand && inBand === 6, 'the band decides the participants (cut rows are not folded)',
+    `${cut.cards.length} of ${boxes.length} · in band ${inBand}`)
+  check(cut.cards.every((c) => !nodes.slice(6, 11).includes(c.el)),
+    '…and the 设置 tile, parked below the last row, drops out with them')
+  const kept = cut.cards.map((c) => c.delay)
+  const sorted = kept.slice().sort((a, b) => a - b)
+  const step = sorted[1] - sorted[0]
+  check(sorted[0] === 0 && sorted.every((v, i) => Math.abs(v - i * step) < 0.03),
+    'the ladder is re-split over the cards that ARE in the fold (rank 0 still first)',
+    `${sorted.join(', ')}ms`)
+  const { duration } = cascadeTiming(TOTAL, cut.cards.length)
+  check(Math.abs(sorted[sorted.length - 1] + duration - TOTAL) < 0.03,
+    'and the shorter fold still lasts exactly the group’s own transition',
+    `${sorted[sorted.length - 1]}ms + ${duration}ms = ${TOTAL}ms`)
+  check(nodes.slice(6, 11).every((n) => n.style.getPropertyValue('--dsx-slot-delay') === ''),
+    'a cut card carries no audit stamp (presence of the stamp IS participation)',
+    nodes.slice(6, 11).map((n) => JSON.stringify(n.style.getPropertyValue('--dsx-slot-delay'))).join(' '))
+  check(nodes.slice(0, 6).every((n) => n.style.getPropertyValue('--dsx-slot-delay') !== ''),
+    'every participant is stamped with the delay the fold runs on',
+    nodes.slice(0, 6).map((n) => n.style.getPropertyValue('--dsx-slot-delay')).join(' '))
+  // The mirror stamp is the reverse rank, as before the band existed.
+  const maxDelay = sorted[sorted.length - 1]
+  check(nodes.slice(0, 6).every((n) => Math.abs(Number.parseFloat(n.style.getPropertyValue('--dsx-slot-delay'))
+    + Number.parseFloat(n.style.getPropertyValue('--dsx-slot-delay-out')) - maxDelay) < 0.03),
+    'the collapse stamp is the mirror of the fold stamp, over the participants only',
+    nodes.slice(0, 6).map((n) => `${n.style.getPropertyValue('--dsx-slot-delay')}/${n.style.getPropertyValue('--dsx-slot-delay-out')}`).join(' '))
 }
 
 // ── C. the forward fold ─────────────────────────────────────────────────────
