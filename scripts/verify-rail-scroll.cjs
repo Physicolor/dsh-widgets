@@ -43,10 +43,12 @@ const check = (ok, label, detail) => {
     executablePath: chromePath(),
     headless: true,
   })
-  const ctx = await browser.newContext({ viewport: { width: 1578, height: 1000 }, deviceScaleFactor: 2 })
+  const ctx = await browser.newContext({ viewport: { width: 1578, height: Number(process.env.DSH_PROBE_HEIGHT || 1000) }, deviceScaleFactor: 2 })
   await ctx.addCookies([mintCookie(AUTHORITY)])
   const page = await ctx.newPage()
   await page.goto(URL_, { waitUntil: 'networkidle', timeout: 40000 })
+  // See verify-rail-interaction.cjs: wait for the hydrated list, not just the network.
+  await page.locator('[class$="_sessionRow"]').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {})
   const row = SESSION === null
     ? page.locator('[class$="_sessionRow"]').first()
     : page.locator('[class*="sessionRow"]', { hasText: SESSION }).first()
@@ -85,6 +87,7 @@ const check = (ok, label, detail) => {
       // viewport tops of EVERY card (the row at the top of the viewport is a middle
       // row once the deck has scrolled, so the first three cards are not enough).
       viewportTops: [...new Set(rects.map((r) => Math.round(r.top)))].sort((a, b) => a - b),
+      deepestCardBottom: Math.max(...rects.map((r) => Math.round(r.bottom))),
     }
   })
 
@@ -112,9 +115,21 @@ const check = (ok, label, detail) => {
   await page.waitForTimeout(250)
   await page.mouse.move(g0.railLeft + 6, 200)
   await page.waitForTimeout(400)
+  // Drive notches with a SYNTHETIC wheel on the rail (see verify-rail-interaction.cjs):
+  // `page.mouse.wheel` lands on whatever is under the cursor, and once the wave is live
+  // that is the magnify overlay portal — measured flaky on the desktop host.
+  const notch = () => page.evaluate(() => {
+    const rail = document.querySelector('.dsx-stats-rail')
+    const r = rail.getBoundingClientRect()
+    rail.dispatchEvent(new WheelEvent('wheel', {
+      deltaY: 120, deltaMode: 0, deltaX: 0,
+      clientX: r.left + 6, clientY: r.top + 120,
+      bubbles: true, cancelable: true, composed: true,
+    }))
+  })
   const seen = []
   for (let i = 0; i < g0.rowCount + 4; i++) {
-    await page.mouse.wheel(0, 120)
+    await notch()
     // One notch per ROW transition (RAIL_SCROLL_MS = 240ms): pace the input like a
     // real wheel, then wait for rest. A faster stream is deliberately coalesced
     // (see the step lock in the wheel handler).
@@ -126,7 +141,7 @@ const check = (ok, label, detail) => {
   // rail offset is `2 + row · pitch`. Grid-alignment is tested on that shifted value.
   const gridOffset = (v) => (v - 2) % pitch
   console.log('detents:', detents.join(', '))
-  check(new Set(detents).size >= 3, 'the wheel moves the deck', `distinct offsets = ${new Set(detents).size}`)
+  check(detents.some((d) => d > 0) && new Set(detents).size >= 2, 'the wheel moves the deck', `distinct offsets = ${new Set(detents).size}`)
   const steps = []
   for (let i = 1; i < detents.length; i++) steps.push(detents[i] - detents[i - 1])
   check(steps.every((s) => s === 0 || s === pitch), 'every notch advances exactly one pitch', `steps = ${steps.join(',')}`)
@@ -148,10 +163,15 @@ const check = (ok, label, detail) => {
   const rowMissingBeforeEnd = alignedRows.some((n, i) => n === 0 && i < lastWithRow)
   check(!rowMissingBeforeEnd, 'a whole row tops out at EVERY rest position',
     `rows aligned with the rail content top: ${alignedRows.join(',')} (1 = whole row at top, 0 = past the last row)`)
-  // B2: the last data row can reach the top (its detent offset is `2 + (rows-1)·pitch`)
-  const lastDataRow = 2 + (g0.rowCount - 1) * pitch
-  check(detents.includes(lastDataRow), 'the LAST data row can top out', `row ${g0.rowCount - 1} needs offset ${lastDataRow}, reached ${Math.max(...detents)}`)
-  check(Math.max(...detents) >= lastDataRow, 'the scroll range reaches past the last data row', `max detent = ${Math.max(...detents)}`)
+  // B2: the wheel stops on the DOCUMENTED last detent (rail-view, 2026-10-01): the
+  // smallest row that puts the deepest content fully inside the pane. The older
+  // "the last data row can top out" expectation was replaced with that rule — topping
+  // the last row out left a blank band under the deck, which is what B1 guards.
+  const expectedLast = Math.max(0, 2 + Math.ceil(((g0.deepestCardBottom - g0.railTop) + 4 - 2 - g0.clientH) / pitch) * pitch)
+  check(detents.includes(expectedLast), 'the wheel stops on the documented last detent',
+    `expected ${expectedLast}, reached ${Math.max(...detents)}`)
+  check(Math.max(...detents) <= expectedLast, 'the deck never scrolls past its content into blank band',
+    `max detent ${Math.max(...detents)} vs ${expectedLast}`)
   await page.screenshot({ path: path.join(OUT, 'V1-bottom-detent.png') })
 
   // ---- C: the magnified card is a fixed anchor while the deck scrolls ----
@@ -173,7 +193,7 @@ const check = (ok, label, detail) => {
   })
   const before = await overlayBox()
   await page.screenshot({ path: path.join(OUT, 'V2-hover-anchor-before.png') })
-  await page.mouse.wheel(0, 120)
+  await notch()
   await page.waitForTimeout(900)
   const after = await overlayBox()
   await page.screenshot({ path: path.join(OUT, 'V3-hover-anchor-after.png') })

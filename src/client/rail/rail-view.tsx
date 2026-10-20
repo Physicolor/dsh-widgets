@@ -47,6 +47,35 @@ const ACTION_COMMANDS: Record<string, string> = {
 }
 
 /**
+ * Do two widget outputs describe the SAME card?
+ *
+ * `Widget.render()` returns a plain-data tree (see the contract's rule 2: no JSX,
+ * no DOM), so a structural walk is an exact description of what the card would
+ * paint. The rail uses this to keep the PREVIOUS object identity when nothing
+ * changed — which is what lets `cardElCache` hit and React bail out of the card's
+ * subtree (see `outCache` below). Identity, not truthiness: `null` (a hidden card)
+ * equals `null`, and functions/React elements are compared by identity and never
+ * walked (a widget that returns either would be a contract violation).
+ */
+function sameOut(a: unknown, b: unknown, depth = 0): boolean {
+  if (Object.is(a, b)) return true
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
+  // A React element (or any exotic object) is never "equal by structure": bail out
+  // so a contract violation can never be silently hidden by this cache.
+  if (depth > 8 || '$typeof' in (a as Record<string, unknown>) || '$typeof' in (b as Record<string, unknown>)) return false
+  const aArr = Array.isArray(a)
+  if (aArr !== Array.isArray(b)) return false
+  const aKeys = Object.keys(a as object)
+  const bKeys = Object.keys(b as object)
+  if (aKeys.length !== bKeys.length) return false
+  for (const key of aKeys) {
+    if (!Object.prototype.hasOwnProperty.call(b, key)) return false
+    if (!sameOut((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key], depth + 1)) return false
+  }
+  return true
+}
+
+/**
  * ── LOCAL-ONLY BACKUP: THE SELF-MADE 组件 CARD (owner decision, 2026-10-14) ──
  *
  * The rail's bottom tile used to open OUR OWN floating panel (`dsx-stats-addpanel`, the
@@ -484,22 +513,28 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
        */
       const cardElCache = React.useRef(new Map<string, { out: unknown; unit: number; width: number; squircle: boolean; corner: number; aria: string; nodes: React.ReactNode[] }>())
       /**
-       * ── ONE WIDGET RENDER PER (DATA, CHROME), NOT ONE PER RENDER ──
+       * ── ONE CARD ELEMENT PER (CONTENT, CHROME), NOT ONE PER RENDER ──
        *
-       * Building `items` below CALLS every installed widget's `render()` — 13 chart builders per
-       * call — and this component renders several times per open/close (drawer phase, emits,
-       * prefs). Nothing about that output depends on the phase, so re-running it per render was
-       * pure waste, and the FRESH object it returned also defeated `cardElCache` (nothing could
-       * compare equal). Keyed on the exact inputs an output depends on, an unchanged widget is
-       * free and hands back the SAME object, which is what lets `cardElCache` hit and React
-       * bail out of that card's subtree.
+       * Building `items` below CALLS every installed widget's `render()`, and this
+       * component re-renders on EVERY bridge emit (≈13/s while a turn streams), on
+       * open/close phases and on prefs. Keying the result on the snapshot's OBJECT
+       * identity (what this used to do) never hit after an emit, so every card body —
+       * and the magnify overlay's second copy of it — re-rendered, and `CardBody`'s
+       * overflow guard then forced a layout read per card per copy. Measured
+       * 2026-10-20 (`scripts/probe-emit-cost.cjs`): 62.4 card-box reads per emit for
+       * 14 installed cards.
        *
-       * Deliberately NOT paired with a "hold the snapshot while a fold is in flight" freeze: that
-       * was measured too (with the compositing hint already in place) and the 300ms data-adoption
-       * delay it costs did not buy a frame rate. This cache changes NO behaviour — data still
-       * lands in the commit it arrives in; it only stops redundant recomputation.
+       * So the cache compares the OUTPUT instead: when the newly built tree is
+       * structurally equal to the last one, the OLD object is handed back. `cardElCache`
+       * then hits and React bails out of both copies. This changes NO behaviour — the
+       * widget still renders on every emit, and data still lands in the commit it
+       * arrives in; only output that would paint the same is shared.
+       *
+       * Deliberately NOT paired with a "hold the snapshot while a fold is in flight"
+       * freeze: that was measured too and the 300ms data-adoption delay it costs did
+       * not buy a frame rate (see the note above `reduceMotion`).
        */
-      const widgetOutCache = React.useRef(new Map<string, { snap: unknown; prefs: unknown; armed: string | null; side: number; out: RailItem['out'] | null }>())
+      const outCache = React.useRef(new Map<string, WidgetRenderOut | null>())
       /**
        * ── WHERE THIS STANDS (2026-10-03, end of the perf pass) ──
        *
@@ -554,8 +589,9 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
        * callback) was worse than useless: the deck rendered a MIXED generation mid-fold and the
        * fold's first frame landed 203px off the group's shared path — a real defect, caught by
        * `verify-deck-cascade-live.cjs`. The per-widget output cache that came with that experiment
-       * IS in the tree (`widgetOutCache` above) because it changes no behaviour and the deck's card
-       * rebuilds drop from ~121 to ~13 per toggle; the SNAPSHOT FREEZE is what stayed out.
+       * IS in the tree (`outCache` above, content-compared since 2026-10-20) because it changes no
+       * behaviour and the deck's card rebuilds drop to zero when the data did not move; the
+       * SNAPSHOT FREEZE is what stayed out.
        */
       const reduceMotion = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && !!window.matchMedia('(prefers-reduced-motion: reduce)').matches
       // Boot restore must NOT play the enter glide. Prefs are read synchronously
@@ -892,36 +928,34 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
           // exception used to kill the entire shell.overlay slot entry, hiding
           // every widget until the next hard refresh. The bad card degrades to
           // a placeholder instead; the error stays visible in the console.
-          let out: ReturnType<typeof w.render>
+          let out: WidgetRenderOut | null
           const outKey = `${key}|${size}`
-          const cachedOut = widgetOutCache.current.get(outKey)
-          if (cachedOut !== undefined && cachedOut.snap === snap && cachedOut.prefs === prefs
-            && cachedOut.armed === armedAction && cachedOut.side === side) {
-            out = cachedOut.out
-          } else {
-            try {
-              out = w.render(buildLiveStats(snap, prefs, key, armedAction), { size })
-            } catch (error) {
-              console.error(`[dsh-widgets] widget ${widgetId}@${size} render crashed:`, error)
-              out = { title: widgetName(w), value: '—', legend: t('ui.renderError') }
-            }
-            // Loading skeleton: the widget's live source has not answered yet, so
-            // the card keeps its slot (and therefore the deck's shape) with
-            // placeholder pills instead of flashing an empty/0-valued body. The
-            // skeleton is a SHELL decision —see WIDGET_RUNTIME.
-            const source = WIDGET_RUNTIME[widgetId]?.source
-            if (source !== undefined && isSourcePending(source, snap)) {
-              const silhouette = WIDGET_RUNTIME[widgetId]?.skeleton
-              out = {
-                title: out?.title ?? widgetName(w),
-                skeleton: true,
-                skeletonRows: silhouette?.rows ?? 1,
-                ...(silhouette === undefined ? {} : { skeletonShape: silhouette.shape, skeletonCount: silhouette.count }),
-              }
-            }
-            widgetOutCache.current.set(outKey, { snap, prefs, armed: armedAction, side, out })
-            if (widgetOutCache.current.size > 64) widgetOutCache.current.clear()
+          try {
+            out = w.render(buildLiveStats(snap, prefs, key, armedAction), { size })
+          } catch (error) {
+            console.error(`[dsh-widgets] widget ${widgetId}@${size} render crashed:`, error)
+            out = { title: widgetName(w), value: '—', legend: t('ui.renderError') }
           }
+          // Loading skeleton: the widget's live source has not answered yet, so
+          // the card keeps its slot (and therefore the deck's shape) with
+          // placeholder pills instead of flashing an empty/0-valued body. The
+          // skeleton is a SHELL decision —see WIDGET_RUNTIME.
+          const source = WIDGET_RUNTIME[widgetId]?.source
+          if (source !== undefined && isSourcePending(source, snap)) {
+            const silhouette = WIDGET_RUNTIME[widgetId]?.skeleton
+            out = {
+              title: out?.title ?? widgetName(w),
+              skeleton: true,
+              skeletonRows: silhouette?.rows ?? 1,
+              ...(silhouette === undefined ? {} : { skeletonShape: silhouette.shape, skeletonCount: silhouette.count }),
+            }
+          }
+          // Same painting ⇒ same object (see `outCache`): this is what lets the
+          // element cache below AND React itself skip the card's whole subtree.
+          const prevOut = outCache.current.get(outKey)
+          if (prevOut !== undefined && sameOut(prevOut, out)) out = prevOut
+          outCache.current.set(outKey, out)
+          if (outCache.current.size > 64) outCache.current.clear()
           if (!out) return null
           // 2×4 is exactly two 2×2 widths plus one inter-card gap.
           const baseW = size === '2x4' ? 2 * side + pad : side

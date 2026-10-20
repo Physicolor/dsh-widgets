@@ -511,6 +511,36 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     return found
   }
   /**
+   * ── THE RAIL MEASUREMENT, KEPT BETWEEN POINTER EVENTS ──
+   *
+   * `measureRail` is a FORCED style+layout read: the frame has usually already
+   * written slot transforms, so every call after a write pays a synchronous
+   * re-layout. It used to run on EVERY pointer move — twice per move before the
+   * 2026-10-18 consolidation — whether or not the pointer was anywhere near the
+   * rail. Measured 2026-10-20 (`scripts/probe-emit-cost.cjs`): 2 rail-owned
+   * layout reads per move across the transcript, i.e. ~250/s on a 125 Hz mouse.
+   *
+   * The rail's box only moves when something TELLS it to, and every one of those
+   * signals is reachable from this component: its own scroll, a window resize, a
+   * transition on the rail/drawer (the drawer slide, the swallow, the co-tenant's
+   * padding push), a style/class flip on the rail, a ResizeObserver report, or a
+   * prop that re-seats the deck. `forgetRailMeasure` runs on each of them; a
+   * pointer move then costs arithmetic instead of layout.
+   *
+   * It is only READ where a fresh box could not change the answer: the peak and
+   * the paint test within one event (they always shared one record), and the
+   * idle-region rejection below. Nothing writes a decision from it while the
+   * geometry is in flight — a transition re-arms measurement for its whole run.
+   */
+  const railMeasureRef = React.useRef<RailMeasure | null>(null)
+  const railMeasure = (rail: HTMLDivElement): RailMeasure => {
+    const cached = railMeasureRef.current
+    if (cached !== null) return cached
+    const next = measureRail(rail)
+    railMeasureRef.current = next
+    return next
+  }
+  /**
    * Is the pointer on a card (or the add tile) right now? —the wave's
    * arm/disarm oracle, and the ONLY question that decides whether a pointer
    * position counts as "on the widgets".
@@ -583,7 +613,7 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     const layout = overlaid ? focusLayout : restLayout
     const add = overlaid ? focusedAdd : restAdd
     // ONE measurement per pointer event when the caller has one (see `measureRail`).
-    const m = measured ?? measureRail(rail)
+    const m = measured ?? railMeasure(rail)
     const contentW = m.clientWidth - 2 * pad
     const cx = clientX - m.left - pad
     const cy = clientY - m.top - m.inset + m.scrollTop
@@ -627,7 +657,21 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     }
     // ONE measurement for the whole pointer event: the peak's coordinate frame and
     // the `onCard` oracle below read the SAME record (see `measureRail`).
-    const m = measureRail(el)
+    const m = railMeasure(el)
+    // ── THE IDLE WAVE IS NOT ARMED BY A POINTER THAT IS NOWHERE NEAR THE RAIL ──
+    // To arm, the pointer has to be over a resting tile, and every resting tile
+    // lives inside the rail's box (the magnified overhang only exists while the
+    // wave is already live). So a pointer outside the box + `TILE_TOLERANCE` can
+    // only ever answer "no card" — and answering it with arithmetic instead of
+    // the per-card oracle is what keeps an idle rail off the pointer path.
+    // Deliberately NOT applied while armed, while a focus is live, or while the
+    // spring is still returning: in those states the painted tiles are the MAGNIFIED
+    // ones, which can reach past this box (the overlay's left overhang).
+    if (!armedRef.current && focusX === null && focusY === null && morphP <= 0.0005
+      && (clientX < m.left - TILE_TOLERANCE - 1 || clientX > m.left + m.clientWidth + TILE_TOLERANCE + 1
+        || clientY < m.top - TILE_TOLERANCE - 1 || clientY > m.top + m.clientHeight + TILE_TOLERANCE + 1)) {
+      return
+    }
     contentXRef.current = clientX - m.left
     // The peak's own Y, in the SAME measured frame as `onCard` — with one difference: the
     // hit oracle works in SEAT space (`placeCards` seats a row at `RAIL_ROW_SEAT + row ·
@@ -752,20 +796,67 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
    * transform-based slot style exists to avoid.
    */
   React.useEffect(() => {
-    const onLayout = (): void => { revalidateRef.current() }
-    const onTransitionEnd = (e: TransitionEvent): void => {
+    const onLayout = (): void => {
+      // The rail's box moved under a stationary pointer: the cached record is void
+      // (see `railMeasure`), and the armed wave must answer for the NEW geometry.
+      railMeasureRef.current = null
+      revalidateRef.current()
+    }
+    const onTransition = (e: TransitionEvent): void => {
       const el = e.target
       if (!(el instanceof Element)) return
       if (el.closest('.dsx-stats-rail, .dsx-stats-drawer') === null) return
+      // Only a transition of the boxes that CARRY the rail moves its measured
+      // rectangle (the drawer slide, the swallow's `right`, the zoom half). Hover
+      // transitions on descendants — cards, the add tile — are inside that box and
+      // run constantly while the wave is live; invalidating for them re-introduced
+      // the per-move measurement this cache exists to remove (measured 2026-10-20:
+      // 127 fresh records in one scrub). `revalidate` still runs for all of them,
+      // because a descendant moving IS a reason to re-check the armed tile.
+      if (el.matches('.dsx-stats-rail, .dsx-stats-drawer, .dsx-stats-drawer-zoom')) railMeasureRef.current = null
       revalidateRef.current()
     }
     window.addEventListener('resize', onLayout, { passive: true })
-    window.addEventListener('transitionend', onTransitionEnd, true)
-    window.addEventListener('transitioncancel', onTransitionEnd, true)
+    window.addEventListener('transitionrun', onTransition, true)
+    window.addEventListener('transitionend', onTransition, true)
+    window.addEventListener('transitioncancel', onTransition, true)
     return () => {
       window.removeEventListener('resize', onLayout)
-      window.removeEventListener('transitionend', onTransitionEnd, true)
-      window.removeEventListener('transitioncancel', onTransitionEnd, true)
+      window.removeEventListener('transitionrun', onTransition, true)
+      window.removeEventListener('transitionend', onTransition, true)
+      window.removeEventListener('transitioncancel', onTransition, true)
+    }
+  }, [])
+  /**
+   * Every prop that re-seats the deck or moves the rail invalidates the cached
+   * measurement. `topInset` is in the list because a co-tenant's padding push moves
+   * the CONTENT without changing the rail's client box, so no observer below sees it.
+   */
+  React.useEffect(() => {
+    railMeasureRef.current = null
+  }, [side, pad, columns, railW, shiftX, topInset])
+  /**
+   * The rail's own box can also change with no event of its own: the shell swaps the
+   * header, the right column opens, a stylesheet flips. A ResizeObserver on the rail
+   * plus a MutationObserver on its style/class covers both without polling.
+   */
+  React.useEffect(() => {
+    const rail = railElement()
+    if (rail === null) return
+    const forget = (): void => { railMeasureRef.current = null }
+    let ro: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(forget)
+      ro.observe(rail)
+    }
+    let mo: MutationObserver | null = null
+    if (typeof MutationObserver !== 'undefined') {
+      mo = new MutationObserver(forget)
+      mo.observe(rail, { attributes: true, attributeFilter: ['style', 'class'] })
+    }
+    return () => {
+      if (ro !== null) ro.disconnect()
+      if (mo !== null) mo.disconnect()
     }
   }, [])
   // ---- Wave geometry (pure, recomputed per frame). ----
@@ -1362,6 +1453,9 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
      */
     let guardTimer = 0
     const onScrollGuard = (): void => {
+      // The scroll offset is part of every hit test (`scrollTop`) and of the
+      // whole-card band: a cached record from before this event is stale.
+      railMeasureRef.current = null
       const rail = railElement()
       if (rail === null) return
       if (tween !== 0 || stepping) return

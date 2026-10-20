@@ -41,10 +41,14 @@ const check = (ok, label, detail) => {
     executablePath: chromePath(),
     headless: true,
   })
-  const ctx = await browser.newContext({ viewport: { width: 1578, height: 1000 }, deviceScaleFactor: 2 })
+  const ctx = await browser.newContext({ viewport: { width: 1578, height: Number(process.env.DSH_PROBE_HEIGHT || 1000) }, deviceScaleFactor: 2 })
   await ctx.addCookies([mintCookie(AUTHORITY)])
   const page = await ctx.newPage()
   await page.goto(URL_, { waitUntil: 'networkidle', timeout: 40000 })
+  // The sidebar list is rendered by the shell AFTER hydration, so `networkidle`
+  // alone can win the race on a host whose session list arrives later (the desktop
+  // app, as opposed to `dsh web`). Wait for a row before looking for one by name.
+  await page.locator('[class$="_sessionRow"]').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {})
   const row = SESSION === null
     ? page.locator('[class$="_sessionRow"]').first()
     : page.locator('[class*="sessionRow"]', { hasText: SESSION }).first()
@@ -112,8 +116,23 @@ const check = (ok, label, detail) => {
   await page.mouse.move(g0.railLeft + 6, g0.railTop + 150)
   await page.waitForTimeout(300)
   const detents = []
+  // Drive the notch with a SYNTHETIC wheel on the rail itself, like
+  // verify-rail-wheel-matrix.cjs does: `page.mouse.wheel` is delivered to whatever
+  // is under the cursor, and once the wave is live that is the magnify overlay (a
+  // portal at z-26) — so a CDP-driven notch depends on hit-testing timing and was
+  // measured flaky on the desktop host (0 detents in one run, 262 in the next for
+  // the same page and coordinates). The handler under test is the same one either way.
+  const notch = () => page.evaluate(() => {
+    const rail = document.querySelector('.dsx-stats-rail')
+    const r = rail.getBoundingClientRect()
+    rail.dispatchEvent(new WheelEvent('wheel', {
+      deltaY: 120, deltaMode: 0, deltaX: 0,
+      clientX: r.left + 6, clientY: r.top + 120,
+      bubbles: true, cancelable: true, composed: true,
+    }))
+  })
   for (let i = 0; i < g0.rowsTopList.length + 4; i++) {
-    await page.mouse.wheel(0, 120)
+    await notch()
     await page.waitForTimeout(320)
     detents.push((await settle()).scrollTop)
   }
@@ -125,14 +144,22 @@ const check = (ok, label, detail) => {
   check(steps.every((s) => s === 0 || s === pitch), 'each notch advances exactly one row', `steps = ${steps.join(',')}`)
   check(detents.every((d) => (d - 2) % pitch === 0), 'every rest position is a whole row', `offsets = ${detents.join(',')}`)
   const lastDetent = Math.max(...uniq)
-  check(lastDetent === 2 + (g0.rowsTopList.length - 1) * pitch, 'the LAST row can top out',
-    `last detent ${lastDetent}, expected ${2 + (g0.rowsTopList.length - 1) * pitch}`)
+  // The documented stop (rail-view, 2026-10-01) is the SMALLEST row that puts the
+  // deepest content fully inside the pane — "the last row tops out" was replaced
+  // because it left a blank band under the deck. Same formula as
+  // verify-rail-wheel-matrix.cjs; `deepestCardBottom` is in page coordinates, so the
+  // rail's own top is subtracted to get the deck-space bottom.
+  const expectedLast = Math.max(0, 2 + Math.ceil(((g0.deepestCardBottom - g0.railTop) + 4 - 2 - g0.clientH) / pitch) * pitch)
+  check(lastDetent === expectedLast, 'the wheel stops on the documented last detent',
+    `last detent ${lastDetent}, expected ${expectedLast}`)
   // At the bottom the deepest card must be inside the viewport, and the DECK must not
   // have more detents than there are card rows (extra detents == scrolling into blank).
   const bottom = await geom()
-  check(bottom.scrollTop + bottom.clientH >= bottom.deepestCardBottom - 1,
+  // Page coordinates on both sides: the pane's viewport bottom is railTop + clientH,
+  // and the settle offset has to be added — compare in DECK space, not viewport space.
+  check(bottom.scrollTop + bottom.clientH >= bottom.deepestCardBottom - bottom.railTop - 1,
     'at the bottom detent every card is fully inside the viewport',
-    `viewport bottom ${bottom.scrollTop + bottom.clientH} vs deepest card bottom ${bottom.deepestCardBottom}`)
+    `viewport bottom ${bottom.scrollTop + bottom.clientH} vs deepest card bottom ${bottom.deepestCardBottom - bottom.railTop}`)
   check(uniq.length <= g0.rowsTopList.length,
     'no blank detents: the deck stops at the last card row',
     `${uniq.length} detents for ${g0.rowsTopList.length} rows (${uniq.join(',')})`)

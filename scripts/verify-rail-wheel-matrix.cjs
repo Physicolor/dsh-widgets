@@ -42,10 +42,11 @@ const check = (ok, label, detail) => {
     executablePath: chromePath(),
     headless: true,
   })
-  const ctx = await browser.newContext({ viewport: { width: 1578, height: 1000 } })
+  const ctx = await browser.newContext({ viewport: { width: 1578, height: Number(process.env.DSH_PROBE_HEIGHT || 1000) } })
   await ctx.addCookies([mintCookie(AUTHORITY)])
   const page = await ctx.newPage()
   await page.goto(URL_, { waitUntil: 'networkidle', timeout: 40000 })
+  await page.locator('[class$="_sessionRow"]').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {})
   const row = SESSION === null
     ? page.locator('[class$="_sessionRow"]').first()
     : page.locator('[class*="sessionRow"]', { hasText: SESSION }).first()
@@ -83,10 +84,17 @@ const check = (ok, label, detail) => {
       clientH: rail.clientHeight,
     }
   })
-  // Detents are 2 + row·pitch, so the deepest CARD bottom sits in row
-  // `round((contentBottom − 2) / pitch)` — that row is the last one that may top out.
-  const contentRows = Math.max(1, Math.round((deepestCardBottom - 2) / pitch))
-  const lastDetent = 2 + (contentRows - 1) * pitch
+  // ── THE DOCUMENTED SCROLL STOP (rail-view, 2026-10-01) ──
+  // The wheel may only rest on the SMALLEST row that puts the deepest content fully
+  // inside the pane — not on the row that tops the last card out (that rule was
+  // replaced: it left up to `paneH − rows·pitch` of blank band below the deck).
+  //   detent = SEAT + ceil((contentBottom + inset − SEAT − clientH) / pitch) · pitch
+  // with SEAT = RAIL_ROW_SEAT = 2 and the authored 4px inset. The old expectation
+  // ("the last row tops out") therefore failed on every healthy deck.
+  const SEAT = 2
+  const INSET = 4
+  const contentRows = Math.max(1, Math.round((deepestCardBottom - SEAT) / pitch))
+  const lastDetent = Math.max(0, SEAT + Math.ceil((deepestCardBottom + INSET - SEAT - clientH) / pitch) * pitch)
   console.log(`pitch=${pitch} max=${max} contentBottom=${deepestCardBottom} clientH=${clientH} rows=${contentRows} lastDetent=${lastDetent}`)
 
   const reset = async () => { await page.evaluate(() => { document.querySelector('.dsx-stats-rail').scrollTop = 0 }); await page.waitForTimeout(500) }
