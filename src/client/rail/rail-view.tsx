@@ -18,7 +18,6 @@
  */
 
 import * as React from 'react'
-import { createPortal } from 'react-dom'
 import { WIDGETS, WIDGET_RUNTIME } from '../lib/registry'
 import { hasSource } from '../data/sources'
 import { parseInstanceKey, sizesOf, widgetName } from '../lib/contract/helpers'
@@ -28,10 +27,7 @@ import { type BridgeSnapshot } from '../runtime/bridge'
 import { curveToEasing, curveToProgress, overshootCurve, type Prefs } from '../runtime/prefs'
 import { CardBody } from '../render/CardBody'
 import { settingsGearIcon } from '../render/icons'
-import { cardRadius } from '../render/card-geometry'
 import { applyTimerOp, timerOpOf } from '../lib/timer-state'
-import { WidgetsPage } from '../surfaces/Settings'
-import { COL_GAP, DETAIL_W, LIST_W } from '../surfaces/layout'
 import { t } from '../i18n'
 import { BASE_SIDE, RAIL_ROW_SEAT, applyRailRight, getNotedRailTop, resolveRailSpace, setRailVar } from './geometry'
 import { RAIL_TOP_INSET, RailWave, SLOT_CUT_CLASS } from './wave/RailWave'
@@ -76,26 +72,13 @@ function sameOut(a: unknown, b: unknown, depth = 0): boolean {
 }
 
 /**
- * ── LOCAL-ONLY BACKUP: THE SELF-MADE 组件 CARD (owner decision, 2026-10-14) ──
+ * ── THE 设置 TILE OPENS THE OFFICIAL SETTINGS WINDOW (owner, 2026-10-20) ──
  *
- * The rail's bottom tile used to open OUR OWN floating panel (`dsx-stats-addpanel`, the
- * 组件配置 / 组件市场 / 高级设置 tabs). It now opens the PRODUCT'S settings window on our
- * 组件 section instead — one place to configure widgets, the same one the sidebar foot
- * reaches — and the panel is kept here as a local spare rather than deleted:
- *
- *   localStorage.setItem('dsx-addpanel-local', '1')     ← re-arm it on this machine
- *
- * It is deliberately NOT part of what ships: the plugin no longer pushes this path, and the
- * flag lives in `localStorage`, so a fresh checkout behaves like the released build. Read
- * once at module load: an escape hatch is a developer gesture, not a runtime preference, and
- * a value read per render would put `localStorage` on the hot path of a hover frame.
- */
-const LOCAL_ADD_PANEL = ((): boolean => {
-  try { return window.localStorage.getItem('dsx-addpanel-local') === '1' } catch { return false }
-})()
-
-/**
- * ── THE 设置 TILE OPENS THE OFFICIAL SETTINGS WINDOW (owner, 2026-10-14) ──
+ * BOTH tiles do: the resting deck's and the magnify overlay's (the overlay carries
+ * the real click handler while the wave is live, so it used to open the self-made
+ * panel instead — a single tile that opened two different surfaces depending on
+ * whether it was hovered). There is no longer a second door: the self-made panel is
+ * sealed in `surfaces/add-panel.tsx` (not imported, not shipped in behaviour).
  *
  * There is no service for this: the settings window is the sidebar-foot seat
  * (`sidebar.settings` → `settings.section`), and the shell exposes no “open settings on
@@ -123,12 +106,45 @@ const findSettingsTrigger = (): HTMLElement | null => {
   const scoped = area === null ? null : area.querySelector<HTMLElement>('button')
   if (scoped !== null) return scoped
   // Fallback for a shell whose foot row is not wrapped in a `_settingsArea`: the trigger IS
-  // the product's Settings button, and its accessible name is the product's own label.
-  for (const label of ['设置', 'Settings']) {
+  // the product's own settings button (or its account menu — DSH 0.2.x moved 设置 inside it).
+  for (const label of ['设置', 'Settings', '账号菜单', 'Account menu']) {
     const hit = document.querySelector<HTMLElement>(`button[aria-label="${label}"]`)
     if (hit !== null) return hit
   }
   return null
+}
+
+/**
+ * 设置 inside the ACCOUNT MENU (DSH 0.2.x desktop).
+ *
+ * The shell no longer has a bare settings button in the sidebar foot: `_settingsArea`
+ * holds the account trigger, and 设置 (shortcut Ctrl+Alt+,) is a MENU ITEM inside it.
+ * Measured on the 0.2.1-rc.2 desktop build 2026-10-20: clicking `_settingsArea button`
+ * opens that menu; the item's text is "设置Ctrl+Alt+,". The previous code clicked the
+ * trigger and then polled for OUR nav row, which never appears without the menu item —
+ * so the tile was a silent no-op there.
+ */
+const findSettingsMenuItem = (): HTMLElement | null => {
+  const items = document.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menu"] button, [role="menu"] a')
+  for (const item of items) {
+    const text = (item.textContent ?? '').trim()
+    if (text === '') continue
+    if (/退出|sign\s*out|log\s*out/i.test(text)) continue
+    if (text.startsWith('设置') || /^settings/i.test(text)) return item
+  }
+  return null
+}
+
+/** Click the first element a finder produces, polling a bounded number of frames. */
+const clickWhenFound = (find: () => HTMLElement | null, frames = 42): void => {
+  let n = 0
+  const step = (): void => {
+    const el = find()
+    if (el !== null) { el.click(); return }
+    if (++n > frames) return
+    window.requestAnimationFrame(step)
+  }
+  window.requestAnimationFrame(step)
 }
 
 /** What the rail view needs from the composition root that owns the bridge. */
@@ -207,7 +223,6 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
     const shiftCurve = overshootCurve(prefs.animShiftCurve, prefs.animBounce)
       // Hooks MUST be declared unconditionally, before the early return, or the
       // hook count changes when `open`/`hasSession` flip (React error #310).
-      const [addOpen, setAddOpen] = React.useState(false)
       // Action-cards: an armed action id waits for a second click before firing,
       // so destructive/expensive actions (e.g. Compact) need two taps to run.
       const [armedAction, setArmedAction] = React.useState<string | null>(null)
@@ -288,41 +303,6 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
           body: JSON.stringify({ action: 'prefer', ref: next === 'total' ? '' : (entry?.ref ?? '') }),
         }).catch(() => { /* pool endpoint optional: display only */ })
       }
-      // The add panel belongs to a live session: drop it when the session does.
-      // (The wave's own focus state is dropped by RailWave on the same signal.)
-      React.useEffect(() => {
-        if (!snap.open || !snap.hasSession) setAddOpen(false)
-      }, [snap.open, snap.hasSession])
-      // 组件配置's detail drawer adds width to the panel — but only up to a
-      // MINIMUM, never blindly `pw + 440`: a panel the user has already dragged
-      // wide has room for the drawer, and inflating it anyway left a dead band on
-      // the right (measured 2026-09-25: a 914px row = 190 list + 440 drawer + 284
-      // empty). The drawer is flexible, so any extra width goes to the preview and
-      // to the metric columns instead of to nothing. NOT reset when the panel
-      // closes: closing and reopening the card must come back the way it was.
-      const [detailOpen, setDetailOpen] = React.useState(false)
-      // Click anywhere OUTSIDE the panel and it closes — the gesture every
-      // popover in this product answers to. The rail's own surfaces are excluded
-      // (its cards, the magnify layer, the 组件 capsule and the 添加 button
-      // itself, which toggles the panel on its own click), because those are not
-      // "empty space": clicking a card is a deliberate act on the rail.
-      React.useEffect(() => {
-        if (!addOpen) return
-        const onDown = (e: PointerEvent): void => {
-          const target = e.target instanceof Element ? e.target : null
-          if (target === null) return
-          if (target.closest('.dsx-stats-addpanel') !== null) return
-          if (target.closest('.dsx-stats-rail') !== null) return
-          if (target.closest('.dsx-magnify-layer') !== null) return
-          if (target.closest('.dsx-stats-add') !== null) return
-          if (target.closest('.dsx-stats-capsule') !== null) return
-          setAddOpen(false)
-        }
-        // Capture phase: a click on a shell control that stops propagation still
-        // closes the panel, and the panel's own descendants are filtered above.
-        document.addEventListener('pointerdown', onDown, true)
-        return () => document.removeEventListener('pointerdown', onDown, true)
-      }, [addOpen])
       /**
        * The rail's measured viewport height (clientHeight), tracked with a
        * ResizeObserver. It is the one input the scroll geometry cannot derive: the
@@ -987,10 +967,6 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       // room, bottom keeps the last card off the viewport floor.
       const scale = side / BASE_SIDE
       const addRadius = Math.round(16 * scale)
-      const closeIcon = React.createElement('svg', { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', xmlns: 'http://www.w3.org/2000/svg', 'aria-hidden': true },
-        React.createElement('path', { d: 'M14.1168 13.197L13.197 14.1167L1.8833 2.80303L2.80309 1.88324L14.1168 13.197Z', fill: 'currentColor' }),
-        React.createElement('path', { d: 'M13.197 1.88326L14.1168 2.80305L2.80309 14.1168L1.8833 13.197L13.197 1.88326Z', fill: 'currentColor' }),
-      )
       // Wave placement geometry (scale field / reflow / add-button slot) lives in its
       // own module: see rail/wave/wave-geometry.ts.
       const {
@@ -1112,7 +1088,6 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       // lives in RailWave), so a follow frame re-uses these element objects and
       // React bails out of every card subtree.
       const overlayCardBodies = items.map((it) => cardBodyFor(it, it.baseW))
-      const toggleAdd = (): void => setAddOpen((v) => !v)
       /**
        * The 设置 tile's action: bring up the official settings window on OUR section.
        *
@@ -1125,33 +1100,32 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
        * than throwing inside a pointer handler.
        */
       const openSettingsSection = (): void => {
-        // The local spare and the product's window must never be on screen together, and the
-        // outside-click rule below does not fire for a click on the tile itself.
-        setAddOpen(false)
+        // 1. The window is already on screen on ANY section: the row is one click away.
         const row = findSettingsSectionRow()
-        if (row !== null) {
-          row.click()
+        if (row !== null) { row.click(); return }
+        // 2. Open the product's settings window, then navigate to our section.
+        //    DSH 0.2.x nests 设置 in the account menu, so there are two beats to poll
+        //    for: the menu item, then our nav row (see `findSettingsMenuItem`).
+        const trigger = findSettingsTrigger()
+        if (trigger !== null) {
+          trigger.click()
+          clickWhenFound(findSettingsMenuItem)
+          clickWhenFound(findSettingsSectionRow, 90)
           return
         }
-        const trigger = findSettingsTrigger()
-        if (trigger === null) return
-        trigger.click()
-        let frames = 0
-        const waitForRow = (): void => {
-          const found = findSettingsSectionRow()
-          if (found !== null) {
-            found.click()
-            return
-          }
-          // ~0.7s at 60Hz: long enough for the window's own open transition, short enough
-          // that a shell which cannot be navigated leaves no timer behind.
-          if (++frames > 42) return
-          window.requestAnimationFrame(waitForRow)
-        }
-        window.requestAnimationFrame(waitForRow)
+        // 3. Last resort: the product's own shortcut (the item advertises Ctrl+Alt+,).
+        //    Only a shell that has neither the foot trigger nor the menu item gets here.
+        document.dispatchEvent(new KeyboardEvent('keydown', {
+          key: ',', code: 'Comma', ctrlKey: true, altKey: true, bubbles: true, cancelable: true,
+        }))
+        clickWhenFound(findSettingsSectionRow, 90)
       }
-      /** The tile's click: the product's settings window, or the local spare when armed. */
-      const onTileClick = LOCAL_ADD_PANEL ? toggleAdd : openSettingsSection
+      /**
+       * The 设置 tile's click — ONE action for BOTH copies of the tile (the resting
+       * deck's button and the magnify overlay's, which is the one the pointer reaches
+       * while the wave is live). See the note on `openSettingsSection`.
+       */
+      const onTileClick = openSettingsSection
       /**
        * ── THE FOLD'S PARTICIPANTS AND THEIR TIMING ──
        *
@@ -1223,7 +1197,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         ),
       )
       const rail = React.createElement(RailWave, {
-        key: '__wave', deck, cardBodies: overlayCardBodies, railElRef, onAddClick: toggleAdd, items, side, pad, railW, stackHeight, rows, deckH, paneH, lastRow, addRadius, active,
+        key: '__wave', deck, cardBodies: overlayCardBodies, railElRef, onAddClick: openSettingsSection, items, side, pad, railW, stackHeight, rows, deckH, paneH, lastRow, addRadius, active,
         // Nothing of the rail is visible while it is retired or has no room, and the wave's hover
         // oracle is geometric (it reads the tile boxes, which a retired drawer still has) — so the
         // rail must be told, or hovering the collapsed rail's band lights it up over the
@@ -1245,83 +1219,14 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         // down for as long as the cards' `transform` belongs to the fold.
         deckPhase: staggerShape ? deckAnim : null,
       })
-      // Temporary right-side add panel: reuses the component-config + component-market settings pages
-      // (WidgetsPage) wholesale, floats over content, never affects layout.
-      // Width is configurable (prefs.panelWidth) and draggable via the left edge.
-      const pw = prefs.panelWidth
-      const startResize = (e: React.PointerEvent): void => {
-        e.preventDefault(); e.stopPropagation()
-        const x0 = e.clientX, w0 = pw
-        const move = (ev: PointerEvent) => setPrefs({ panelWidth: Math.max(260, Math.min(760, Math.round(w0 + (x0 - ev.clientX)))) })
-        const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
-        window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
-      }
-      // The add panel is PORTALED to <body> —deliberately OUT of the drawer.
-      //
-      // Why (measured 2026-09-18, 1578×1022 and 1280×760): the drawer lives in
-      // `conversation.input.overlay`, whose stacking ancestor chain is the
-      // composer seat (z-index 7). Within that context the panel's own z-index 30
-      // is meaningless: the official composer's input row / send button and the
-      // right sidebar's `wSkVaW_widthHandle` (full-height, z-index 8) painted
-      // ABOVE the popup card —a 16px hit-test grid over the panel box reported
-      // only 92.7% / 89% coverage, with the panel's bottom-left corner and a
-      // full-height vertical strip belonging to other layers. Portaled to body
-      // the panel competes at the root stacking context (z-index 30 > composer 7,
-      // width handle 8, right sidebar 10, shell overlay 20), so it is once again
-      // the top surface. It also stops fading when the rail yields.
-      //
-      // The panel keeps every anchor it needs: --dsx-rail-top / --dsx-input-bottom
-      // / --dsx-rightbar-w / --dsx-rail-pad are written on documentElement, so a
-      // body-level child still resolves them.
-      const addPanel = createPortal(React.createElement('div', {
-        className: 'dsx-stats-addpanel' + (addOpen ? ' open' : '') + (prefs.squircle ? ' dsx-squircle' : ''),
-        style: {
-          top: 'var(--dsx-rail-top,0px)',
-          // Enough for list + drawer, and never more than that on the drawer's
-          // behalf: an already-wide panel keeps its width (the drawer grows into
-          // it) instead of sprouting a dead band on the right. 26 = the panel's own
-          // 2px of borders + the body's 24px of padding, so DETAIL_W is the
-          // drawer's REAL width (the inner then keeps its 2px mask slack).
-          width: `${detailOpen ? Math.max(pw, LIST_W + COL_GAP + DETAIL_W + 26) : pw}px`,
-          // Continuous curvature, bound to the 设置 gear: same `corner-shape`
-          // switch the cards use, and the same corner percentage, measured
-          // against a 100px reference so a panel-sized surface gets a
-          // panel-sized radius instead of 16% of its own 700px side.
-          borderRadius: `${cardRadius(100, prefs.cornerPercent)}px`,
-        },
-      },
-        React.createElement('span', { className: 'dsx-stats-addpanel-resize', 'aria-label': t('ui.addPanel.resizeAria'), onPointerDown: startResize }),
-        React.createElement('div', { className: 'dsx-stats-addpanel-header' },
-          React.createElement('div', { className: 'dsx-stats-addpanel-title' }, t('ui.addPanel.title')),
-          React.createElement('button', { type: 'button', className: 'dsx-stats-addpanel-close', 'aria-label': t('ui.addPanel.closeAria'), onClick: () => setAddOpen(false) }, closeIcon),
-        ),
-        React.createElement('div', { className: 'dsx-stats-addpanel-body' },
-          // The drawer's FINAL width: with it the preview is laid out at its final
-          // size from the first frame, and the drawer reveals it by widening — no
-          // small-to-large zoom while the panel animates.
-          React.createElement(WidgetsPage, { controller: {
-            prefs,
-            setPrefs,
-            onDetailToggle: setDetailOpen,
-            // 26 = the body's 12+12 padding PLUS the panel's own 1px border on each
-            // side (box-sizing: border-box). Deriving it from the width alone left
-            // the inner 2px wider than the mask, and that is exactly where a row's
-            // 1px edge line got cut (reported 2026-09-26).
-            detailWidth: Math.max(DETAIL_W, pw - 26 - LIST_W - COL_GAP),
-            railSide: side,
-            // The previews inside this panel render from the same fold the cards
-            // above do, instance config included — so the stage is the real card
-            // (with real data where a session provides it), not a mock layout.
-            liveStats: (key: string) => buildLiveStats(snap, prefs, key, armedAction),
-          }, hideHeader: true }),
-        ),
-      ), document.body)
-      // Always render the panel too so closing slides it out (`.open` toggles
-      // visibility/transform); when closed it is hidden (visibility + opacity)
-      // and never intercepts pointer events over the rail.
+      // The self-made add panel that used to live HERE (portal + drag-width + close
+      // head, wrapping `WidgetsPage`) is sealed in `surfaces/add-panel.tsx`: from
+      // 2026-10-20 the tile opens the official settings window on our section, and
+      // the spare is not mounted (so it costs nothing per render and cannot reappear
+      // by accident). The drawer below no longer carries a panel child.
       //
       // Drawer wrapper: the ONE surface that slides. position:fixed inset:0
-      // keeps every fixed child (rail / magnify overlay / add panel) positioned
+      // keeps every fixed child (rail / magnify overlay) positioned
       // exactly as before —a transformed fixed ancestor becomes their
       // containing block, but this wrapper spans the viewport so the
       // coordinates are identical —while the wrapper's own translateX carries
@@ -1419,7 +1324,6 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         React.createElement('div', { key: '__zoom', className: 'dsx-stats-drawer-zoom', style: { position: 'fixed', inset: 0, pointerEvents: 'none', transformOrigin: foldOrigin, transform: drawerZoom, transition: zoomEasing } },
           rail,
         ),
-        addPanel,
       )
       if (!retired) return drawerEl
       // RETIRED: build once, then hand back the SAME element object on every later render.
