@@ -36,17 +36,28 @@ const PROXY_TTL = 60_000
 /** TCP probe timeout — a listening port answers in ~1 ms on loopback. */
 const PROBE_TIMEOUT = 400
 
-/** The local endpoints worth watching, in display order.
+/** The local endpoints worth watching, in display order — EXCEPT the proxy, which
+ *  is detected per sample (see {@link PROXY_CANDIDATES}).
  *  A port that is simply not installed reads `down`; that is the point. */
 const SERVICE_TARGETS: Array<{ key: string; label: string; host: string; port: number }> = [
   { key: 'dsh', label: 'DSH web', host: '127.0.0.1', port: 3080 },
   { key: 'ollama', label: 'Ollama', host: '127.0.0.1', port: 11434 },
   { key: 'lmstudio', label: 'LM Studio', host: '127.0.0.1', port: 1234 },
-  { key: 'proxy', label: 'Proxy', host: '127.0.0.1', port: 10808 },
 ]
 
-/** The proxy this machine's git/gh/web fetches already depend on. */
-const PROXY = { host: '127.0.0.1', port: 10808 }
+/**
+ * Local proxy endpoints, tried in order — Clash, then v2rayN.
+ *
+ * The plugin used to hard-code v2rayN's 10808, so the moment the machine switched to
+ * Clash (7897) the 代理 card reported `port-closed` and the egress verdict with it,
+ * while every fetch in the product went through the working proxy. The proxy is a
+ * moving local constant, not a product decision: probe both loopback ports (a closed
+ * one refuses in well under a millisecond) and use whichever is listening.
+ */
+const PROXY_CANDIDATES: ReadonlyArray<{ host: string; port: number }> = [
+  { host: '127.0.0.1', port: 7897 },
+  { host: '127.0.0.1', port: 10808 },
+]
 /** A 204 endpoint: tiny, cacheless, and reachable through the proxy. */
 const EGRESS_URL = 'http://www.gstatic.com/generate_204'
 
@@ -256,11 +267,11 @@ export function createOverviewSampler(): { sample: () => Promise<HostOverview> }
    * makes the proxy resolve the target and carry the bytes, so a status line
    * coming back is proof the egress worked.
    */
-  const readEgress = async (tcpMs: number): Promise<HostProxyHealth> => {
+  const readEgress = async (tcpMs: number, endpoint: { host: string; port: number }): Promise<HostProxyHealth> => {
     const target = new URL(EGRESS_URL)
     const started = Date.now()
     const status = await new Promise<number | string>((resolve) => {
-      const socket = connect({ host: PROXY.host, port: PROXY.port })
+      const socket = connect({ host: endpoint.host, port: endpoint.port })
       let buffer = ''
       const fail = (code: string): void => { socket.destroy(); resolve(code) }
       socket.setTimeout(5000)
@@ -291,11 +302,11 @@ export function createOverviewSampler(): { sample: () => Promise<HostOverview> }
       socket.once('error', (error) => fail((error as NodeJS.ErrnoException).code === 'ECONNREFUSED' ? 'port-closed' : 'unreachable'))
     })
     if (typeof status === 'string') {
-      return { host: PROXY.host, port: PROXY.port, tcpMs, egressMs: null, ok: false, error: status }
+      return { host: endpoint.host, port: endpoint.port, tcpMs, egressMs: null, ok: false, error: status }
     }
     return {
-      host: PROXY.host,
-      port: PROXY.port,
+      host: endpoint.host,
+      port: endpoint.port,
       tcpMs,
       egressMs: Date.now() - started,
       // 204 is what generate_204 answers; a redirect chain still proves egress,
@@ -314,6 +325,16 @@ export function createOverviewSampler(): { sample: () => Promise<HostOverview> }
         const ms = await probeTcp(target.host, target.port)
         return { ...target, up: ms !== null, ms }
       }))
+      // The proxy is DETECTED, not assumed: first listening candidate wins (Clash,
+      // then v2rayN). A closed loopback port refuses immediately, so this costs
+      // nothing on the common path.
+      let proxyEndpoint = PROXY_CANDIDATES[0]
+      let proxyTcpMs: number | null = null
+      for (const candidate of PROXY_CANDIDATES) {
+        const ms = await probeTcp(candidate.host, candidate.port)
+        if (ms !== null) { proxyEndpoint = candidate; proxyTcpMs = ms; break }
+      }
+      services.push({ key: 'proxy', label: 'Proxy', host: proxyEndpoint.host, port: proxyEndpoint.port, up: proxyTcpMs !== null, ms: proxyTcpMs })
 
       const raw = snapshot !== null && now - snapshot.ts <= SNAPSHOT_TTL * 3 ? snapshot.value : null
       refreshSnapshot(now)
@@ -321,15 +342,17 @@ export function createOverviewSampler(): { sample: () => Promise<HostOverview> }
       // Stale-while-revalidate: serve the last verdict and refresh behind the
       // request. The first call has nothing to serve — the card stays a skeleton
       // (the route reports `null`, which is exactly "not measured yet").
-      const proxyTcpMs = services.find((s) => s.key === 'proxy')?.ms ?? null
-      if (proxy === null || now - proxy.ts > PROXY_TTL) {
+      // A verdict is only reused for the SAME endpoint: switching proxies must not
+      // keep serving the old port's answer forever.
+      const verdictIsStale = proxy === null || now - proxy.ts > PROXY_TTL || proxy.value.port !== proxyEndpoint.port
+      if (verdictIsStale) {
         if (!proxyPending) {
           proxyPending = true
           if (proxyTcpMs === null) {
-            proxy = { ts: now, value: { host: PROXY.host, port: PROXY.port, tcpMs: null, egressMs: null, ok: false, error: 'port-closed' } }
+            proxy = { ts: now, value: { host: proxyEndpoint.host, port: proxyEndpoint.port, tcpMs: null, egressMs: null, ok: false, error: 'port-closed' } }
             proxyPending = false
           } else {
-            void readEgress(proxyTcpMs).then((value) => {
+            void readEgress(proxyTcpMs, proxyEndpoint).then((value) => {
               proxy = { ts: Date.now(), value }
               proxyPending = false
             })
