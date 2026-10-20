@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-20",
+  "authority": "127.0.0.1:59890 (desktop app, dsh-widgets loaded from the linked repo)",
+  "installedCards": 14,
+  "probes": {
+    "emitCost": {
+      "command": "DSH_HOME=D:\\dsh-home node scripts/probe-emit-cost.cjs 127.0.0.1:59890",
+      "receipt": ".probe-emit-cost/report.json",
+      "before": {
+        "cardLayoutReadsPerEmit": 62.4,
+        "longTaskMsPerEmit": 3.55,
+        "heatmapKeyReadsPerEmit": 4.1,
+        "pointerTranscriptRailReadsFor60Moves": 120,
+        "pointerRailRailReadsFor40Moves": 86
+      },
+      "after": {
+        "cardLayoutReadsPerEmit": 6.0,
+        "longTaskMsPerEmit": "4.0-5.1 (noise: one long task per 20-emit burst)",
+        "heatmapKeyReadsPerEmit": 1.3,
+        "heatmapKeyReadsSteadyState": 0,
+        "pointerTranscriptRailReadsFor60Moves": 8,
+        "pointerRailRailReadsFor40Moves": 8
+      },
+      "note": "The remaining 6 card rebuilds per emit are cards whose text is time-derived (clock / timer / relative time). The remaining 8 layout reads per pointer batch are the legitimate re-measure after a drawer/layer transition."
+    },
+    "hoverLayoutReads": {
+      "command": "DSH_HOME=D:\\dsh-home node scripts/probe-hover-layout-reads.cjs 127.0.0.1:59890",
+      "receipt": ".probe-hover-layout-reads/reads.json",
+      "before": { "waveWindowMs": 13323, "railOwnedReadsDuringWave": 718 },
+      "after": { "waveWindowMs": 10199, "railOwnedPointerReadsDuringWave": 0, "measureRailTopReads": 44 }
+    }
+  },
+  "gates": {
+    "command": "pnpm check && pnpm build && pnpm test",
+    "result": "G1-G12 pass; G4 344 render outputs byte-identical; G5 stylesheet byte-identical; G3 0 type errors"
+  },
+  "knownPreExisting": [
+    "verify-rail-scroll: the magnified card drifts 3px across a wheel notch (threshold 2px) - reproduced on the unmodified HEAD build, not introduced here",
+    "a 6-row deck in a 956px pane overflows by 114px and the stop rule resolves to detent 0, leaving the last row clipped by 22px - boundary of the 2026-10-01 rule",
+    "verify-rail-interaction reports overlay opacity 1 for the covered-surface scenario on this host, while the suite still passes"
+  ]
+}

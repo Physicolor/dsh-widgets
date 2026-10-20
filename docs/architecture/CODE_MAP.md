@@ -19,6 +19,7 @@
 .
 |-- .github/
 |   `-- workflows/
+|       |-- ci.yml
 |       |-- pages.yml    # deploys website/ to GitHub Pages
 |       `-- publish.yml    # npm Trusted Publishing (OIDC) on a v* tag
 |-- docs/
@@ -29,22 +30,289 @@
 |   |   |   |-- render-snapshot.json
 |   |   |   `-- tsc.json
 |   |   |-- ARCHITECTURE_REFACTOR_REPORT.md    # the report (round 1 = s1-15, round 2 = s16)
+|   |   |-- AUDIT-2026-10-20.md
+|   |   |-- CODE_MAP.md    # THIS FILE — where everything is implemented
 |   |   |-- CURRENT_ARCHITECTURE.md    # Phase 0 audit (pre-refactor snapshot)
+|   |   |-- perf-baseline.json
 |   |   `-- REFACTOR_PLAN.md    # the plan, with execution status inline
+|   |-- batch3-live/
+|   |   |-- page.png
+|   |   |-- rail-only.png
+|   |   `-- rail.png
+|   |-- design/
+|   |   |-- CARD-BODY-POSTURE.md
+|   |   `-- CARD-TITLE-STANDARD.md
 |   |-- icon/
+|   |   |-- app-icon-dark.svg
+|   |   |-- app-icon-light.svg
 |   |   |-- avatar-512.png
 |   |   |-- avatar.svg
 |   |   |-- icon-512.png
 |   |   |-- icon.svg
+|   |   |-- preview-plugin-list.png
 |   |   `-- social-preview.png
 |   |-- lib/
 |   |   `-- widgets-state.cjs
+|   |-- preview/
+|   |   |-- cards/
+|   |   |   |-- _fixture-timer-dial@285-dark.png
+|   |   |   |-- _fixture-timer-dial@285.png
+|   |   |   |-- _fixture-timer-picker@285-dark.png
+|   |   |   |-- _fixture-timer-picker@285.png
+|   |   |   |-- _fixture-timer-stopwatch@285-dark.png
+|   |   |   |-- _fixture-timer-stopwatch@285.png
+|   |   |   |-- _sheet-dark.png
+|   |   |   |-- _sheet.png
+|   |   |   |-- cache@2x2.png
+|   |   |   |-- calendar@2x2-dark.png
+|   |   |   |-- calendar@2x2-s1-dark.png
+|   |   |   |-- calendar@2x2-s1.png
+|   |   |   |-- calendar@2x2-s2-dark.png
+|   |   |   |-- calendar@2x2-s2.png
+|   |   |   |-- calendar@2x2-s3-dark.png
+|   |   |   |-- calendar@2x2-s3.png
+|   |   |   |-- calendar@2x2-s4-dark.png
+|   |   |   |-- calendar@2x2-s4.png
+|   |   |   |-- calendar@2x2.png
+|   |   |   |-- calendar@2x4-dark.png
+|   |   |   |-- calendar@2x4-s1-dark.png
+|   |   |   |-- calendar@2x4-s1.png
+|   |   |   |-- calendar@2x4-s2-dark.png
+|   |   |   |-- calendar@2x4-s2.png
+|   |   |   |-- calendar@2x4-s3-dark.png
+|   |   |   |-- calendar@2x4-s3.png
+|   |   |   |-- calendar@2x4-s4-dark.png
+|   |   |   |-- calendar@2x4-s4.png
+|   |   |   |-- calendar@2x4.png
+|   |   |   |-- cc-credits@2x2.png
+|   |   |   |-- cc-subscription@2x2-s1.png
+|   |   |   |-- cc-subscription@2x2-s2.png
+|   |   |   |-- cc-subscription@2x2-s3.png
+|   |   |   |-- cc-subscription@2x2-s4.png
+|   |   |   |-- cc-subscription@2x2-s5.png
+|   |   |   |-- cc-subscription@2x2-s6.png
+|   |   |   |-- cc-subscription@2x2.png
+|   |   |   |-- cc-usage@2x2.png
+|   |   |   |-- cc-whoami@2x2.png
+|   |   |   |-- cc-window-5h@2x2.png
+|   |   |   |-- cc-window-monthly@2x2.png
+|   |   |   |-- cc-window-weekly@2x2.png
+|   |   |   |-- cc-windows@2x2.png
+|   |   |   |-- clock@2x2-dark.png
+|   |   |   |-- clock@2x2-s1-dark.png
+|   |   |   |-- clock@2x2-s1.png
+|   |   |   |-- clock@2x2-s2-dark.png
+|   |   |   |-- clock@2x2-s2.png
+|   |   |   |-- clock@2x2.png
+|   |   |   |-- context-water@2x2.png
+|   |   |   |-- context-water@2x4.png
+|   |   |   |-- context@2x2.png
+|   |   |   |-- countdown@2x2-dark.png
+|   |   |   |-- countdown@2x2-s1-dark.png
+|   |   |   |-- countdown@2x2-s1.png
+|   |   |   |-- countdown@2x2-s2-dark.png
+|   |   |   |-- countdown@2x2-s2.png
+|   |   |   |-- countdown@2x2-s3-dark.png
+|   |   |   |-- countdown@2x2-s3.png
+|   |   |   |-- countdown@2x2-s4-dark.png
+|   |   |   |-- countdown@2x2-s4.png
+|   |   |   |-- countdown@2x2-s5-dark.png
+|   |   |   |-- countdown@2x2-s5.png
+|   |   |   |-- countdown@2x2-s6-dark.png
+|   |   |   |-- countdown@2x2-s6.png
+|   |   |   |-- countdown@2x2.png
+|   |   |   |-- counts@2x2.png
+|   |   |   |-- github-board@2x4.png
+|   |   |   |-- github-contrib@2x2.png
+|   |   |   |-- github-contrib@2x4.png
+|   |   |   |-- github-issues@2x2.png
+|   |   |   |-- github-notify@2x2-dark.png
+|   |   |   |-- github-notify@2x2-s1-dark.png
+|   |   |   |-- github-notify@2x2-s1.png
+|   |   |   |-- github-notify@2x2-s2-dark.png
+|   |   |   |-- github-notify@2x2-s2.png
+|   |   |   |-- github-notify@2x2-s3-dark.png
+|   |   |   |-- github-notify@2x2-s3.png
+|   |   |   |-- github-notify@2x2-s4-dark.png
+|   |   |   |-- github-notify@2x2-s4.png
+|   |   |   |-- github-notify@2x2-s5-dark.png
+|   |   |   |-- github-notify@2x2-s5.png
+|   |   |   |-- github-notify@2x2.png
+|   |   |   |-- github-push@2x2.png
+|   |   |   |-- github-stars@2x2.png
+|   |   |   |-- goal-progress@2x2-dark.png
+|   |   |   |-- goal-progress@2x2-s1-dark.png
+|   |   |   |-- goal-progress@2x2-s1.png
+|   |   |   |-- goal-progress@2x2-s2-dark.png
+|   |   |   |-- goal-progress@2x2-s2.png
+|   |   |   |-- goal-progress@2x2-s3-dark.png
+|   |   |   |-- goal-progress@2x2-s3.png
+|   |   |   |-- goal-progress@2x2-s4-dark.png
+|   |   |   |-- goal-progress@2x2-s4.png
+|   |   |   |-- goal-progress@2x2.png
+|   |   |   |-- guard@2x2-dark.png
+|   |   |   |-- guard@2x2-s1-dark.png
+|   |   |   |-- guard@2x2-s1.png
+|   |   |   |-- guard@2x2-s2-dark.png
+|   |   |   |-- guard@2x2-s2.png
+|   |   |   |-- guard@2x2-s3-dark.png
+|   |   |   |-- guard@2x2-s3.png
+|   |   |   |-- guard@2x2.png
+|   |   |   |-- harness-board@2x4.png
+|   |   |   |-- heatmap-bars@2x2-s1.png
+|   |   |   |-- heatmap-bars@2x2.png
+|   |   |   |-- heatmap-bars@2x4-s1.png
+|   |   |   |-- heatmap-bars@2x4.png
+|   |   |   |-- heatmap@2x2.png
+|   |   |   |-- heatmap@2x4.png
+|   |   |   |-- jobs@2x2-dark.png
+|   |   |   |-- jobs@2x2-s1-dark.png
+|   |   |   |-- jobs@2x2-s1.png
+|   |   |   |-- jobs@2x2-s2-dark.png
+|   |   |   |-- jobs@2x2-s2.png
+|   |   |   |-- jobs@2x2.png
+|   |   |   |-- llm@2x2.png
+|   |   |   |-- model-config@2x2-dark.png
+|   |   |   |-- model-config@2x2-s1-dark.png
+|   |   |   |-- model-config@2x2-s1.png
+|   |   |   |-- model-config@2x2-s2-dark.png
+|   |   |   |-- model-config@2x2-s2.png
+|   |   |   |-- model-config@2x2.png
+|   |   |   |-- peak-pricing-board@2x4-s1.png
+|   |   |   |-- peak-pricing-board@2x4-s2.png
+|   |   |   |-- peak-pricing-board@2x4-s3.png
+|   |   |   |-- peak-pricing-board@2x4.png
+|   |   |   |-- peak-pricing@2x2-s1.png
+|   |   |   |-- peak-pricing@2x2-s2.png
+|   |   |   |-- peak-pricing@2x2-s3.png
+|   |   |   |-- peak-pricing@2x2.png
+|   |   |   |-- quota-manage@2x2-s1.png
+|   |   |   |-- quota-manage@2x2.png
+|   |   |   |-- quote@2x2.png
+|   |   |   |-- session-cost@2x2-dark.png
+|   |   |   |-- session-cost@2x2-s1-dark.png
+|   |   |   |-- session-cost@2x2-s1.png
+|   |   |   |-- session-cost@2x2-s2-dark.png
+|   |   |   |-- session-cost@2x2-s2.png
+|   |   |   |-- session-cost@2x2.png
+|   |   |   |-- stopwatch@2x2-dark.png
+|   |   |   |-- stopwatch@2x2-s1-dark.png
+|   |   |   |-- stopwatch@2x2-s1.png
+|   |   |   |-- stopwatch@2x2-s2-dark.png
+|   |   |   |-- stopwatch@2x2-s2.png
+|   |   |   |-- stopwatch@2x2.png
+|   |   |   |-- subagent@2x2-dark.png
+|   |   |   |-- subagent@2x2-en.png
+|   |   |   |-- subagent@2x2-s1-dark.png
+|   |   |   |-- subagent@2x2-s1-en.png
+|   |   |   |-- subagent@2x2-s1.png
+|   |   |   |-- subagent@2x2.png
+|   |   |   |-- sys-board@2x4.png
+|   |   |   |-- sys-cpu@2x2.png
+|   |   |   |-- sys-disk@2x4-dark.png
+|   |   |   |-- sys-disk@2x4-s1-dark.png
+|   |   |   |-- sys-disk@2x4-s1.png
+|   |   |   |-- sys-disk@2x4.png
+|   |   |   |-- sys-gpu-line@2x2.png
+|   |   |   |-- sys-gpu@2x2.png
+|   |   |   |-- sys-net@2x2-dark.png
+|   |   |   |-- sys-net@2x2-en.png
+|   |   |   |-- sys-net@2x2-s1-dark.png
+|   |   |   |-- sys-net@2x2-s1.png
+|   |   |   |-- sys-net@2x2-s2-dark.png
+|   |   |   |-- sys-net@2x2-s2.png
+|   |   |   |-- sys-net@2x2.png
+|   |   |   |-- sys-power@2x2-dark.png
+|   |   |   |-- sys-power@2x2-s1-dark.png
+|   |   |   |-- sys-power@2x2-s1.png
+|   |   |   |-- sys-power@2x2-s2-dark.png
+|   |   |   |-- sys-power@2x2-s2.png
+|   |   |   |-- sys-power@2x2-s3-dark.png
+|   |   |   |-- sys-power@2x2-s3.png
+|   |   |   |-- sys-power@2x2-s4-dark.png
+|   |   |   |-- sys-power@2x2-s4.png
+|   |   |   |-- sys-power@2x2.png
+|   |   |   |-- sys-procs@2x2-dark.png
+|   |   |   |-- sys-procs@2x2-s1-dark.png
+|   |   |   |-- sys-procs@2x2-s1.png
+|   |   |   |-- sys-procs@2x2.png
+|   |   |   |-- sys-rings@2x2.png
+|   |   |   |-- sys-services@2x2-dark.png
+|   |   |   |-- sys-services@2x2-s1-dark.png
+|   |   |   |-- sys-services@2x2-s1.png
+|   |   |   |-- sys-services@2x2-s2-dark.png
+|   |   |   |-- sys-services@2x2-s2.png
+|   |   |   |-- sys-services@2x2-s3-dark.png
+|   |   |   |-- sys-services@2x2-s3.png
+|   |   |   |-- sys-services@2x2-s4-dark.png
+|   |   |   |-- sys-services@2x2-s4.png
+|   |   |   |-- sys-services@2x2-s5-dark.png
+|   |   |   |-- sys-services@2x2-s5.png
+|   |   |   |-- sys-services@2x2.png
+|   |   |   |-- task-timer@2x2-dark.png
+|   |   |   |-- task-timer@2x2-s1-dark.png
+|   |   |   |-- task-timer@2x2-s1.png
+|   |   |   |-- task-timer@2x2-s2-dark.png
+|   |   |   |-- task-timer@2x2-s2.png
+|   |   |   |-- task-timer@2x2.png
+|   |   |   |-- task-timer@2x4-dark.png
+|   |   |   |-- task-timer@2x4-s1-dark.png
+|   |   |   |-- task-timer@2x4-s1.png
+|   |   |   |-- task-timer@2x4-s2-dark.png
+|   |   |   |-- task-timer@2x4-s2.png
+|   |   |   |-- task-timer@2x4.png
+|   |   |   |-- task@2x2-s1.png
+|   |   |   |-- task@2x2.png
+|   |   |   |-- task@2x4-s1.png
+|   |   |   |-- task@2x4.png
+|   |   |   |-- tokens@2x2.png
+|   |   |   |-- tool@2x2.png
+|   |   |   |-- tps@2x2.png
+|   |   |   |-- trajectory-stats@2x2-s1.png
+|   |   |   |-- trajectory-stats@2x2.png
+|   |   |   |-- trajectory@2x2.png
+|   |   |   |-- ttft@2x2.png
+|   |   |   |-- usage-bars@2x2.png
+|   |   |   |-- usage-mix@2x2.png
+|   |   |   |-- usage-monthly@2x2.png
+|   |   |   |-- usage-rings@2x2.png
+|   |   |   |-- usage-rolling@2x2.png
+|   |   |   |-- usage-weekly@2x2.png
+|   |   |   |-- window-forecast@2x2-dark.png
+|   |   |   |-- window-forecast@2x2-s1-dark.png
+|   |   |   |-- window-forecast@2x2-s1.png
+|   |   |   |-- window-forecast@2x2-s2-dark.png
+|   |   |   |-- window-forecast@2x2-s2.png
+|   |   |   `-- window-forecast@2x2.png
+|   |   `-- theme-tokens.css
+|   |-- research/
+|   |   |-- AGENT-BRIEF.md
+|   |   |-- BATCH-3-AUDIT.md
+|   |   |-- BATCH-3-REPORT.md
+|   |   |-- BATCH-3-SPECS-W2.md
+|   |   |-- BATCH-3-SPECS.md
+|   |   |-- COMPONENT-GAPS-V2.md
+|   |   |-- EXTENSION-MAP.md
+|   |   |-- EXTERNAL-SOURCES-AUDIT.md
+|   |   |-- HOST-DEVICE-AUDIT.md
+|   |   |-- MOTION-RETURN-PATH.md
+|   |   |-- PROJECTIONS-AUDIT.md
+|   |   |-- TIME-CARDS-INTEGRATION.md
+|   |   |-- WORKER-BRIEF-V2.md
+|   |   `-- WORKER-BRIEF-V3.md
 |   |-- screenshots/
 |   |   |-- add-panel.png
 |   |   |-- cover.png
+|   |   |-- cover.zh-CN.png
+|   |   |-- desktop-market.png
+|   |   |-- desktop-rail-rest.png
+|   |   |-- desktop-rail.png
 |   |   |-- dock-magnify.png
 |   |   |-- grid-hover-2col.png
 |   |   |-- grid-rest-2col.png
+|   |   |-- rail-demo-still.png
+|   |   |-- rail-demo.gif
+|   |   |-- rail-demo.mp4
 |   |   |-- rail-drawer-open-mid.png
 |   |   |-- rail-widgets.png
 |   |   |-- README.md
@@ -62,9 +330,15 @@
 |   |   |   |-- verify-wave-behaviour.cjs
 |   |   |   `-- verify-wave.cjs
 |   |   |-- after-newconv.json
+|   |   |-- DIAG-2026-10-04-rightbar-column-transition.md
+|   |   |-- DIAG-2026-10-04-why-rail-smooth-rightbar-janky.md
 |   |   |-- FIX-2026-09-17.md
+|   |   |-- FIX-2026-10-03.md
+|   |   |-- FIX-2026-10-04-workspace-switch-leak.md
+|   |   |-- FIX-2026-10-08-hover-row-offset.md
 |   |   |-- fix-verification.json
 |   |   |-- geometry-1920x1080.json
+|   |   |-- HANDOFF-2026-10-03-2230.md
 |   |   |-- layer-addpanel.png
 |   |   |-- layer-base.png
 |   |   |-- layer-overlay.png
@@ -73,9 +347,24 @@
 |   |   |-- newconv-flake.json
 |   |   |-- panel-hover.png
 |   |   |-- panel-parked.png
+|   |   |-- perf-before-after.json
 |   |   |-- rail-1600-nav-visible.png
+|   |   |-- stacking-fixed-full.png
+|   |   |-- stacking-fixed-header.png
+|   |   |-- stacking-fixed-nav.png
+|   |   |-- stacking-legacy-header.png
+|   |   |-- stacking-legacy-nav.png
 |   |   |-- stacking.txt
-|   |   `-- stuck-chain.json
+|   |   |-- stuck-chain.json
+|   |   |-- swallow-after.png
+|   |   |-- swallow-before.png
+|   |   |-- swallow-close-after.png
+|   |   |-- swallow-open-after.png
+|   |   |-- swallow-open-before.png
+|   |   |-- yield-beat-r1-before.png
+|   |   |-- yield-beat-r2-before.png
+|   |   |-- yield-beat-r3-before.png
+|   |   `-- yield-beat-r4-before.png
 |   |-- verify-skeleton-shapes/
 |   |   |-- card-usage-bars.png
 |   |   |-- rail-cc-degraded.png
@@ -90,6 +379,10 @@
 |   |   |-- records/
 |   |   |   |-- 2026-08-30-context-water-wf-validation.json
 |   |   |   |-- 2026-08-30-heart-rate-iteration-test.json
+|   |   |   |-- 2026-10-14-calendar-schedule.json
+|   |   |   |-- 2026-10-14-countdown.json
+|   |   |   |-- 2026-10-14-stopwatch.json
+|   |   |   |-- 2026-10-14-task-timer.json
 |   |   |   `-- README.md
 |   |   |-- 01-requirement-form.md
 |   |   |-- 02-technical-analysis.md
@@ -100,6 +393,7 @@
 |   |   |-- 07-stop-escalation.md
 |   |   |-- 08-production-record.md
 |   |   |-- 09-future-input-adapters.md
+|   |   |-- 10-third-party-units.md
 |   |   |-- README.md
 |   |   `-- record.schema.json
 |   |-- _state-cleanup.cjs
@@ -107,22 +401,27 @@
 |   |-- diag-gpu-clip-market.png
 |   |-- diag-gpu-clip-rail.png
 |   |-- diag-transition.cjs
+|   |-- FIX-2026-10-09-header-anchor.md
 |   |-- gpu-height-evidence.txt
 |   |-- heatmap-recovery.js
 |   |-- interact-widgets.cjs
 |   |-- market-test.cjs
 |   |-- preview.png
 |   |-- probe-addpanel-occlusion.cjs
+|   |-- probe-batch3-live.cjs
 |   |-- probe-card-head.cjs
 |   |-- probe-cc-cards-preview.cjs
 |   |-- probe-cc-plan-preview.cjs
 |   |-- probe-cc-pool.mjs
 |   |-- probe-cc-render.cjs
+|   |-- probe-cc-slices.mjs
+|   |-- probe-desktop.cjs
 |   |-- probe-github.mjs
 |   |-- probe-gpu-height.cjs
 |   |-- probe-gpu-line-stability.cjs
 |   |-- probe-gpu-line-values.cjs
 |   |-- probe-gpu-settings.cjs
+|   |-- probe-head-ladder.cjs
 |   |-- probe-localstorage.mjs
 |   |-- probe-quota-manage.mjs
 |   |-- probe-statsline.cjs
@@ -164,57 +463,133 @@
 |   |-- client.js
 |   |-- client.js.map
 |   `-- index.js
+|-- locale/
+|   |-- en.json
+|   `-- zh.json
 |-- scripts/    # offline gates, build helpers, local probes
+|   |-- contract/
+|   |   `-- sources-harness.ts
+|   |-- demo/
+|   |   |-- desktop-shots.cjs
+|   |   `-- rail-demo.cjs
 |   |-- lib/
-|   |   `-- chrome.cjs    # resolves the newest installed playwright chromium
+|   |   |-- chrome.cjs    # resolves the newest installed playwright chromium
+|   |   |-- glow-scan.py
+|   |   |-- playwright-core.cjs
+|   |   |-- probe-harness.cjs
+|   |   `-- sources.mjs
+|   |-- preview/
+|   |   |-- _probe-tokens.cjs
+|   |   |-- dump-theme-tokens.cjs
+|   |   `-- gallery.mjs
 |   |-- snapshot/
 |   |   |-- render-harness.ts    # G4 harness: calls every render offline
 |   |   `-- run.cjs
+|   |-- analyze-onset.cjs
 |   |-- audit-move-only.mjs    # G6: added vs removed lines for a pure-move commit
 |   |-- build-types.mjs    # emits lib/types + the css-modules shim the entries reference
 |   |-- crop-lanes-shot.cjs
 |   |-- extract-css.mjs    # G5: compiled-CSS concatenation vs the baseline
+|   |-- final-report.cjs
+|   |-- final-report2.cjs
+|   |-- gates.mjs
 |   |-- gen-registry.mjs    # G1: scans src/widgets/ and emits generated.registry.ts
+|   |-- icon-preview.mjs
+|   |-- onset-exact.cjs
+|   |-- print-tree.mjs    # prints this tree
+|   |-- probe-emit-cost.cjs
+|   |-- probe-genui-card-host.cjs
+|   |-- probe-geometry.cjs
+|   |-- probe-hover-layout-reads.cjs
+|   |-- probe-panel-onset.cjs
+|   |-- probe-rail-drift.cjs
+|   |-- probe-sync-anchor.cjs
 |   |-- snapshot-host-routes.mjs    # G7: 14 host route cases with stubs, no live server
 |   |-- snapshot-render.mjs    # G4: 110 render outputs vs the recorded baseline
+|   |-- trace-onset.cjs
+|   |-- tsconfig.contract.json
+|   |-- tsconfig.preview.json
 |   |-- tsconfig.snapshot.json
+|   |-- validate-external-unit.mjs
 |   |-- validate-widget-unit.mjs    # G2: per-unit contract + locale completeness
+|   |-- verify-anim-curve-unit.mjs
+|   |-- verify-clock-calendar-live.cjs
+|   |-- verify-closed-switch-leak.cjs
+|   |-- verify-deck-cascade-live.cjs
+|   |-- verify-deck-cascade-unit.mjs
+|   |-- verify-deepseek-balance.mjs
+|   |-- verify-preview-merge.mjs
 |   |-- verify-published-types.mjs    # G8: a throwaway consumer resolves both entry types
+|   |-- verify-rail-anchor-guard.cjs
+|   |-- verify-rail-covered-hover.cjs
+|   |-- verify-rail-glow-clip.cjs
+|   |-- verify-rail-hover-alignment.cjs
+|   |-- verify-rail-hover-when-retired.cjs
 |   |-- verify-rail-interaction.cjs
+|   |-- verify-rail-rework.cjs
 |   |-- verify-rail-scroll.cjs
+|   |-- verify-rail-stacking-20.cjs
 |   |-- verify-rail-wheel-matrix.cjs
 |   |-- verify-release-smoke.cjs
+|   |-- verify-render-delta.mjs
 |   |-- verify-sidebar-anim.cjs
-|   `-- verify-tsc-baseline.mjs    # G3: typecheck (baseline is empty = zero errors required)
+|   |-- verify-source-contract.mjs
+|   |-- verify-source-resolution.mjs
+|   |-- verify-swallow-20.cjs
+|   |-- verify-time-cards-live.cjs
+|   |-- verify-tsc-baseline.mjs    # G3: typecheck (baseline is empty = zero errors required)
+|   `-- verify-whole-cards-co-tenant.cjs
 |-- src/
 |   |-- client/    # browser half
 |   |   |-- data/    # turning external input into the bridge
 |   |   |   |-- collector.tsx    # the dock component that polls/routes every source
-|   |   |   `-- session-stats.ts    # the live conversation projection -> Stats
+|   |   |   |-- schedule.ts
+|   |   |   |-- session-stats.ts    # the live conversation projection -> Stats
+|   |   |   |-- source-contract.ts
+|   |   |   |-- source-poller.tsx
+|   |   |   `-- sources.ts
 |   |   |-- families/    # per-source payload parsing + card renderers
 |   |   |   |-- cc/
+|   |   |   |   |-- adapter.ts
+|   |   |   |   |-- data.ts
+|   |   |   |   `-- renders.ts
+|   |   |   |-- deepseek/
+|   |   |   |   |-- adapter.ts
 |   |   |   |   |-- data.ts
 |   |   |   |   `-- renders.ts
 |   |   |   |-- github/
+|   |   |   |   |-- adapter.ts
 |   |   |   |   |-- data.ts
 |   |   |   |   `-- renders.ts
+|   |   |   |-- pricing/
+|   |   |   |   `-- adapter.ts
 |   |   |   |-- sys/
+|   |   |   |   |-- adapter.ts
 |   |   |   |   |-- data.ts
 |   |   |   |   `-- renders.ts
 |   |   |   `-- usage/
+|   |   |       |-- adapter.ts
 |   |   |       |-- data.ts
 |   |   |       `-- renders.ts
 |   |   |-- lib/    # framework-agnostic helpers
 |   |   |   |-- contract/    # the widget contract
+|   |   |   |   |-- external.ts
 |   |   |   |   |-- helpers.ts    # defineWidget, label resolvers, instance keys, sizesOf
 |   |   |   |   `-- types.ts    # every shape a unit/renderer/shell exchanges (zero imports)
-|   |   |   |-- anim-curve.ts    # the open/close easing + the spring settle folded into it
+|   |   |   |-- anim-curve.ts
+|   |   |   |-- arc.ts
+|   |   |   |-- clock-face.ts
 |   |   |   |-- format.ts    # number / duration / percent formatting
 |   |   |   |-- heatmap-accounting.ts    # the fallback daily-token log (no usage-center)
 |   |   |   |-- morph-spring.ts    # the spring curve the wave animates with
-|   |   |   `-- quota-math.ts    # credit -> token-rate maths
+|   |   |   |-- peak-holidays.ts
+|   |   |   |-- peak-schedule.ts
+|   |   |   |-- quota-math.ts    # credit -> token-rate maths
+|   |   |   |-- registry.ts
+|   |   |   `-- timer-state.ts
 |   |   |-- rail/    # the right-hand rail
 |   |   |   |-- wave/
+|   |   |   |   |-- deck-cascade.ts
 |   |   |   |   |-- RailWave.tsx    # the magnification wave component (rAF loops, hit tests)
 |   |   |   |   `-- wave-geometry.ts    # wave layout: rows, scales, nearest slot, reflow
 |   |   |   |-- geometry.ts    # rail space/budget maths (pure reads + solving)
@@ -224,10 +599,13 @@
 |   |   |   |-- charts/    # one file per chart kind + the registry
 |   |   |   |   |-- bars.tsx
 |   |   |   |   |-- barsV.tsx
+|   |   |   |   |-- breakdown.tsx
+|   |   |   |   |-- donut.tsx
 |   |   |   |   |-- figures.tsx
 |   |   |   |   |-- heatmap.tsx
 |   |   |   |   |-- lanes.tsx
 |   |   |   |   |-- line.tsx
+|   |   |   |   |-- quota-fit.ts
 |   |   |   |   |-- quotas.tsx
 |   |   |   |   |-- registry.ts    # kind -> renderer: add a chart = add a file + one line
 |   |   |   |   |-- ring.tsx
@@ -237,16 +615,25 @@
 |   |   |   |   `-- types.ts
 |   |   |   |-- preview/    # the settings previews reuse these (no live data)
 |   |   |   |   |-- example-out.ts
+|   |   |   |   |-- gallery.tsx
 |   |   |   |   |-- preview-stats.ts
 |   |   |   |   `-- sim.ts
+|   |   |   |-- rich/
+|   |   |   |   |-- clock-face.tsx
+|   |   |   |   |-- month-grid.tsx
+|   |   |   |   `-- timer-face.tsx
 |   |   |   |-- card-geometry.ts    # corner radius / inner padding maths
 |   |   |   |-- CardBody.tsx    # the card shell: title, body, chart dispatch, skeleton
-|   |   |   `-- icons.tsx    # the svg glyphs the surfaces use
+|   |   |   |-- curve.tsx
+|   |   |   |-- icons.tsx    # the svg glyphs the surfaces use
+|   |   |   |-- select.tsx
+|   |   |   `-- stepper.tsx
 |   |   |-- runtime/    # framework plumbing that is not React
 |   |   |   |-- bridge.ts    # the snapshot type every surface reads
 |   |   |   |-- controller.ts    # the controller interface the settings pages take
 |   |   |   |-- host-sync.ts    # the /api/widgets-state client (debounced PUT)
-|   |   |   `-- prefs.ts    # prefs shape + normalize + localStorage load/save（缓动数学已移到 lib/anim-curve.ts 并从这里再导出）
+|   |   |   |-- live-stats.ts
+|   |   |   `-- prefs.ts    # prefs shape + normalize + localStorage load/save
 |   |   |-- styles/    # tokens + five layers; the import order in client/index.ts is the cascade
 |   |   |   |-- card.module.css
 |   |   |   |-- market.module.css
@@ -259,6 +646,7 @@
 |   |   |   |   `-- ConfigTab.tsx    # component config: order list + fields + preview
 |   |   |   |-- market/
 |   |   |   |   `-- MarketTab.tsx    # component market: gallery, stage, ghost, install
+|   |   |   |-- add-panel.tsx
 |   |   |   |-- layout.ts    # the three layout constants the pages share
 |   |   |   |-- settings-nav-glyph.ts    # the settings nav icon shim (official hardcodes)
 |   |   |   `-- Settings.tsx    # the tabbed components page (list + detail)
@@ -269,10 +657,14 @@
 |   |-- host/    # host half: one module per upstream channel
 |   |   |-- commandcode.ts    # /api/commandcode-usage: 4 endpoints x pool keys + memo
 |   |   |-- context.ts    # the ctx contract (webServer / credentials / get / effect)
+|   |   |-- deepseek.ts
 |   |   |-- exec.ts    # the one promisified execFile two channels share
 |   |   |-- github.ts    # /api/github: credential ladder + five slice caches
 |   |   |-- http.ts    # memoTtl, readJsonBody, route-cache policy
+|   |   |-- machine.ts
 |   |   |-- opencode.ts    # /api/opencode-usage + /api/opencode-usage-multi
+|   |   |-- overview.ts
+|   |   |-- pricing.ts
 |   |   |-- routes.ts    # the route registry: add a channel = add a module + one line
 |   |   |-- state-file.ts    # /api/widgets-state: atomic tmp+rename write
 |   |   |-- sysinfo.ts    # /api/sysinfo: CPU delta / memory / nvidia-smi + ring buffer
@@ -280,51 +672,211 @@
 |   |-- widgets/    # the 40 widget UNITS — one folder per widget
 |   |   |-- _shared/    # dictionary keys several units share
 |   |   |   `-- locales.json
-|   |   |-- cache/    # index.ts + manifest.json
-|   |   |-- cc-credits/    # index.ts + manifest.json
-|   |   |-- cc-subscription/    # index.ts + manifest.json
-|   |   |-- cc-usage/    # index.ts + manifest.json
-|   |   |-- cc-whoami/    # index.ts + manifest.json
-|   |   |-- cc-window-5h/    # index.ts + manifest.json
-|   |   |-- cc-window-monthly/    # index.ts + manifest.json
-|   |   |-- cc-window-weekly/    # index.ts + manifest.json
-|   |   |-- cc-windows/    # index.ts + manifest.json
-|   |   |-- context/    # index.ts + manifest.json
-|   |   |-- context-water/    # index.ts + manifest.json
-|   |   |-- counts/    # index.ts + manifest.json
-|   |   |-- github-board/    # index.ts + manifest.json
-|   |   |-- github-contrib/    # index.ts + manifest.json
-|   |   |-- github-issues/    # index.ts + manifest.json
-|   |   |-- github-push/    # index.ts + manifest.json
-|   |   |-- github-stars/    # index.ts + manifest.json
-|   |   |-- harness-board/    # index.ts + manifest.json
-|   |   |-- heatmap/    # index.ts + manifest.json
-|   |   |-- heatmap-bars/    # index.ts + manifest.json
-|   |   |-- llm/    # index.ts + manifest.json
-|   |   |-- peak-pricing/    # holidays.ts + index.ts + manifest.json
-|   |   |-- quota-manage/    # index.ts + manifest.json
-|   |   |-- quote/    # index.ts + manifest.json
-|   |   |-- sys-board/    # index.ts + manifest.json
-|   |   |-- sys-cpu/    # index.ts + manifest.json
-|   |   |-- sys-gpu/    # index.ts + manifest.json
-|   |   |-- sys-gpu-line/    # index.ts + manifest.json
-|   |   |-- sys-rings/    # index.ts + manifest.json
-|   |   |-- task/    # index.ts + manifest.json
-|   |   |-- tokens/    # index.ts + manifest.json
-|   |   |-- tool/    # index.ts + manifest.json
-|   |   |-- tps/    # index.ts + manifest.json
-|   |   |-- trajectory/    # index.ts + manifest.json
-|   |   |-- ttft/    # index.ts + manifest.json
-|   |   |-- usage-bars/    # index.ts + manifest.json
-|   |   |-- usage-monthly/    # index.ts + manifest.json
-|   |   |-- usage-rings/    # index.ts + manifest.json
-|   |   |-- usage-rolling/    # index.ts + manifest.json
-|   |   `-- usage-weekly/    # index.ts + manifest.json
+|   |   |-- cache/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- calendar/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- cc-credits/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- cc-subscription/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- cc-usage/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- cc-whoami/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- cc-window-5h/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- cc-window-monthly/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- cc-window-weekly/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- cc-windows/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- clock/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- context/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- context-water/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- countdown/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- counts/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- deepseek-balance/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   `-- README.md
+|   |   |-- github-board/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- github-contrib/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- github-issues/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- github-notify/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   `-- README.md
+|   |   |-- github-push/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- github-stars/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- goal-progress/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   `-- README.md
+|   |   |-- guard/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   `-- README.md
+|   |   |-- harness-board/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- heatmap/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- heatmap-bars/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- jobs/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   `-- README.md
+|   |   |-- llm/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- peak-pricing/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- peak-pricing-board/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   |-- README.md
+|   |   |   `-- schedule.ts
+|   |   |-- quota-manage/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- quote/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- session-cost/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   |-- pricing.ts
+|   |   |   `-- README.md
+|   |   |-- stopwatch/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- subagent/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   `-- README.md
+|   |   |-- sys-board/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- sys-cpu/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- sys-disk/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   `-- README.md
+|   |   |-- sys-gpu/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- sys-gpu-line/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- sys-net/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   `-- README.md
+|   |   |-- sys-power/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   `-- README.md
+|   |   |-- sys-procs/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   `-- README.md
+|   |   |-- sys-rings/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- sys-services/
+|   |   |   |-- index.ts
+|   |   |   |-- manifest.json
+|   |   |   `-- README.md
+|   |   |-- task/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- task-timer/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- tokens/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- tool/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- tps/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- trajectory/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- trajectory-stats/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- ttft/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- usage-bars/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- usage-mix/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- usage-monthly/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- usage-rings/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- usage-rolling/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   |-- usage-weekly/
+|   |   |   |-- index.ts
+|   |   |   `-- manifest.json
+|   |   `-- window-forecast/
+|   |       |-- index.ts
+|   |       |-- manifest.json
+|   |       `-- README.md
 |   |-- widgets-template/    # copy-me unit + the authoring README
 |   |   |-- template/
 |   |   |   |-- index.ts
 |   |   |   `-- manifest.json
 |   |   `-- README.md
+|   |-- client-ui-primitives.d.ts
 |   |-- css-modules.d.ts
 |   `-- index.ts    # host entry: compose only (inject + loop over HOST_ROUTES)
 |-- website/    # the plugin site (generated pages + verify.mjs)
@@ -360,9 +912,11 @@
 |   |-- sitemap.xml
 |   `-- verify.mjs
 |-- .gitignore
+|-- AGENTS.md
 |-- CHANGELOG.md
 |-- CHANGELOG.zh-CN.md
 |-- cordis.patch.yml
+|-- icon.svg
 |-- LICENSE
 |-- package.json
 |-- pnpm-lock.yaml
@@ -370,7 +924,8 @@
 |-- README.zh-CN.md
 |-- screenshots.json
 |-- tsconfig.json
-`-- tsdown.config.ts
+|-- tsdown.config.ts
+`-- tsdown.gallery.config.ts
 ```
 <!-- TREE_END -->
 
@@ -766,15 +1321,17 @@ headful 用 scripts/lib/chrome.cjs 解析浏览器（不再硬编码修订号）
 14. **配额图的格子是正方形，格数由宽度推出**（`charts/quota-fit.ts` 的 `quotaGeometry`）：官方那行格子是 28×26 的矩形，所以「横向 24 格」这条不能写死——在 132px 宽的行上它变成 3.6×12 的长条（用户两次指出）。现在的做法是：先取「竖着塞得下的最大方格」，再由宽度除出格数，剩下的高度自然成为大数字与第一行之间的留白。要改观感（格子大小、间距、留白）都改 `quota-fit.ts` 的常量，不要在渲染器里写死像素。
 15. **改名要连带看两处显示**（`scripts/diag-text-fit.cjs` + `diag-card-fit.cjs` 两个探针）：① 组件的显示名往往**就是卡片标题**（tps / cache / quota-manage / sys-* / github.* 都是），所以名字必须能在卡片里印全——5 个汉字的「缓存命中率」在带 52px 环的头上就变成「缓存命...」（实测 2026-09-29，用户：**这不对！不能省略号**）；② 每张卡都必须装进 `unit × unit`——`segments` 这类有固定高度预算的图表（见 `charts/segments.tsx` 的 76px 预算）一旦多出一行 `legend` 就会溢出（轨迹占比：161px in 150px）。**改名字/加一行文案之前先跑这两个探针**。
 16. **会超额的圆环用 `headRing.overshoot`**（`Donut`）：>100% 时第一圈闭合、超出部分画成第二段 dash（同样的起点）。「套了一圈」的正确读法是**同色 + 尾部圆角自身的阴影**：阴影是一枚**模糊的圆盘**，画在带子**下面**、并沿切线方向往前推一点——被带子盖住的部分看不见，剩下的就是贴在圆角前缘的一道月牙（`scripts/diag-quota-ring.cjs` 断言它的圆心正好落在圆角 + 前推处、且绘制顺序在带子之前）。三个被否掉的版本都留在注释里：同色无阴影＝完全看不出；整条带子加 `drop-shadow`＝两侧各糊一层；把阴影画成**沿轨道的短弧**＝一坨深红、把圆角本身糊掉（用户原话「看不出来这个圆角的样子，只看到一坨深红」）。`ratio ≤ 1` 的其它环一律夹紧，不受影响。
+17. **widget 的输出「变没变」按内容判定，返回的对象不许原地改**（2026-10-20）：`rail/rail-view.tsx` 用 `sameOut()` 深比较每次 `render()` 的结果，内容相同就复用**旧对象身份**，让 `cardElCache` 与 React 一起跳过整棵卡片（否则每次 bridge emit 都会重建 2×N 张卡，实测 62 次布局读取/emit）。因此：`render()` 必须返回纯数据（不变量 #2），且**不得原地修改它返回的对象、或它引用的 `stats` 里的数组/对象**——原地改会让下一轮被判成「没变」，卡片停在旧画面上，而 G4 快照（纯函数逐次渲染）抓不到这种时序缺陷。要改内容就返回新对象。
 
 ---
 
 ## 13. 仍然可选的拆分（都不是缺陷）
 
-| 文件 | 行数 | 现状与建议 |
+| 文件 | 行数（2026-10-20） | 现状与建议 |
 |---|---|---|
-| `rail/wave/RailWave.tsx` | ~1,045 | 单一交互组件：6 个内部几何函数 + 25 个 props + 4 个 rAF 循环。可再拆出「放大层」子组件，收益中等 |
-| `surfaces/config/ConfigTab.tsx` | ~686 | 三个子职责同文件（排序列表 / 字段控件 / 预览抽屉），可拆 3 个文件 |
-| `data/collector.tsx` | ~502 | 可按数据源拆成 5 个 `pull()`；需要先定显式接口 |
-| `lib/contract/types.ts` | ~665 | 纯类型，尺寸本来就该大；不建议再拆 |
-| `host/github.ts` | ~449 | 凭据阶梯 / GraphQL / HTML 抓取 / 仓库脉冲四段，可选 |
+| `rail/wave/RailWave.tsx` | ~1,840（68% 是注释，真代码约 560） | 单一交互组件：指针 oracle + 放大层 + 滚轮补间 + 4 个 rAF 循环，25 个 props。可拆「pointer-oracle / magnify-layer / rail-scroll」；纯移动工作，需先有逐帧回归网 |
+| `rail/rail-view.tsx` | ~1,336（62% 注释） | 抽屉编排 + 卡座网格 + 输出缓存 + 设置入口。2026-10-20 已把旧设置面板封存出去（`surfaces/add-panel.tsx`），可再拆「rail-items / card-deck / drawer」 |
+| `surfaces/config/ConfigTab.tsx` | ~694 | 三个子职责同文件（排序列表 / 字段控件 / 预览抽屉），可拆 3 个文件 |
+| `data/collector.tsx` | ~404 | 可按数据源拆成 5 个 `pull()`；需要先定显式接口 |
+| `lib/contract/types.ts` | ~1,521 | 纯类型，尺寸本来就该大；不建议再拆 |
+| `host/github.ts` | ~554 | 凭据阶梯 / GraphQL / HTML 抓取 / 仓库脉冲四段，可选 |
