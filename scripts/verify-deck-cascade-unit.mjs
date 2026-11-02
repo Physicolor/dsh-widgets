@@ -30,8 +30,9 @@
  */
 import {
   CASCADE_FALLBACK_TOTAL_MS, CASCADE_TRAVEL_SHARE,
-  cascadeDelay, cascadeRanks, cascadeTiming, createDeckCascade, planCascade,
+  cascadeDelay, cascadeRanks, cascadeTiming, createDeckCascade, foldKeyframes, foldTransformAt, planCascade,
 } from '../src/client/rail/wave/deck-cascade.ts'
+import { curveToProgress } from '../src/client/lib/anim-curve.ts'
 
 const fails = []
 const check = (ok, label, detail) => {
@@ -40,17 +41,23 @@ const check = (ok, label, detail) => {
 }
 
 // ── the manual clock ────────────────────────────────────────────────────────
+// The engine no longer runs on rAF: each card's motion is a Web Animation, so the
+// test clock advances the running animations' currentTime and fires `onfinish`
+// exactly the way the browser does. (`live` is declared with the fake animator
+// below; every call to `tick` happens after that initialisation.)
 let now = 0
-let nextId = 1
-const frames = new Map()
-globalThis.requestAnimationFrame = (cb) => { const id = nextId++; frames.set(id, cb); return id }
-globalThis.cancelAnimationFrame = (id) => { frames.delete(id) }
-const pending = () => frames.size
 const tick = (dt = 16) => {
   now += dt
-  const due = [...frames.entries()]
-  frames.clear()
-  for (const [, cb] of due) cb(now)
+  for (const a of [...live]) {
+    if (a.playState !== 'running') continue
+    a.currentTime += dt
+    if (a.currentTime >= a.opts.duration) {
+      a.currentTime = a.opts.duration
+      a.playState = 'finished'
+      live.delete(a)
+      if (typeof a.onfinish === 'function') a.onfinish()
+    }
+  }
 }
 
 const el = (delay = -1, props = new Map()) => ({
@@ -238,20 +245,79 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
     nodes.slice(0, 6).map((n) => `${n.style.getPropertyValue('--dsx-slot-delay')}/${n.style.getPropertyValue('--dsx-slot-delay-out')}`).join(' '))
 }
 
+// ── the fake animator: a deterministic WAAPI with the compositor's own maths ──
+/**
+ * `createDeckCascade` now hands every card to `Element.animate()`. The engine is
+ * therefore exercised against this stub: it records the keyframes, advances
+ * `currentTime` with the test's clock, and answers "what transform is on screen
+ * right now" by interpolating the keyframes exactly the way the compositor does
+ * (linear between offsets, matching `translate(...) scale(...)` components).
+ *
+ * `animator()` is passed to `createDeckCascade` — production passes nothing and
+ * gets `browserAnimator`.
+ */
+const live = new Set()
+const lerpTransform = (a, b, u) => {
+  const parse = (t) => {
+    const m = /translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([-\d.]+)\)/.exec(t || '')
+    return m === null ? null : { x: +m[1], y: +m[2], s: +m[3] }
+  }
+  const p = parse(a)
+  const q = parse(b)
+  if (p === null || q === null) return u < 0.5 ? a : b
+  const x = p.x + (q.x - p.x) * u
+  const y = p.y + (q.y - p.y) * u
+  const s = p.s + (q.s - p.s) * u
+  return `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scale(${s.toFixed(4)})`
+}
+const animator = {
+  animate(el, keyframes, opts) {
+    const a = {
+      el, keyframes, opts,
+      currentTime: 0,
+      playState: 'running',
+      onfinish: null,
+      cancel() { a.playState = 'idle'; live.delete(a) },
+      transformNow() {
+        const d = opts.duration
+        const p = d > 0 ? Math.min(1, Math.max(0, a.currentTime / d)) : 1
+        for (let i = 1; i < keyframes.length; i++) {
+          if (p <= keyframes[i].offset) {
+            const k0 = keyframes[i - 1]
+            const k1 = keyframes[i]
+            const span = k1.offset - k0.offset
+            const u = span <= 0 ? 0 : (p - k0.offset) / span
+            return lerpTransform(k0.transform, k1.transform, u)
+          }
+        }
+        return keyframes[keyframes.length - 1].transform
+      },
+    }
+    live.add(a)
+    return a
+  },
+}
+/** What is on screen for this card: the running animation, else the parked inline style. */
+const visual = (c) => {
+  for (const a of live) if (a.el === c.el) return a.transformNow()
+  return c.el.style.transform || ''
+}
+
 // ── C. the forward fold ─────────────────────────────────────────────────────
 {
   const cs = cards(5)
   const settled = []
-  const cascade = createDeckCascade((end) => settled.push(end))
+  const cascade = createDeckCascade((end) => settled.push(end), animator)
   cascade.sync(spec(cs))
   const total = cascade.total
   check(total === TOTAL, 'the timeline is (n−1)·step + one travel — the group’s own duration',
     `${total}ms for 5 cards`)
 
   cascade.play('open')
-  check(mag(cs[0].el.style.transform) > 80, 'the start offsets are painted BEFORE the clock runs (no first-frame flash)',
-    `${mag(cs[0].el.style.transform).toFixed(1)}px`)
-  check(cs.every((c) => mag(c.el.style.transform) > 80), 'every card starts on its own offset')
+  check(mag(visual(cs[0])) > 80, 'the first painted frame already sits on the start offset (no flash of the rest grid)',
+    `${mag(visual(cs[0])).toFixed(1)}px`)
+  check(cs.every((c) => mag(visual(c)) > 80), 'every card starts on its own offset')
+  check(live.size === cs.length, 'one composited animation per participant', `${live.size} animations`)
 
   let elapsed = 0
   for (let i = 0; i < 200 && settled.length === 0; i++) { tick(); elapsed += 16 }
@@ -259,20 +325,20 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
   check(Math.abs(elapsed - total) <= 32, 'it takes the computed timeline to settle', `${elapsed}ms vs ${total}ms`)
   check(cs.every((c) => c.el.style.transform === ''), 'a settled fold leaves NO transform behind',
     cs.map((c) => c.el.style.transform).join('|'))
-  check(pending() === 0, 'no frame is left pending after settling', String(pending()))
+  check(live.size === 0, 'and no animation is left running', String(live.size))
 
   // Rank order: after one travel the first rank is home, while the last rank
   // (delay 120ms) is still on its way — the fold is a sequence, not one block.
   const cs2 = cards(5)
-  const c2 = createDeckCascade(() => {})
+  const c2 = createDeckCascade(() => {}, animator)
   c2.sync(spec(cs2))
   c2.play('open')
   for (let i = 0; i < 16; i++) tick()          // ~256ms
-  check(cs2[0].el.style.transform === '', 'after one travel the first rank is home',
-    String(cs2[0].el.style.transform))
-  check(mag(cs2[4].el.style.transform) > 5, 'later ranks are still moving', `${mag(cs2[4].el.style.transform).toFixed(1)}px`)
-  check(mag(cs2[0].el.style.transform) < mag(cs2[4].el.style.transform) + 0.01, 'later ranks lag behind earlier ones',
-    `rank0 ${mag(cs2[0].el.style.transform).toFixed(0)} < rank4 ${mag(cs2[4].el.style.transform).toFixed(0)}`)
+  check(mag(visual(cs2[0])) < 0.5, 'after one travel the first rank is home',
+    `${mag(visual(cs2[0])).toFixed(2)}px`)
+  check(mag(visual(cs2[4])) > 5, 'later ranks are still moving', `${mag(visual(cs2[4])).toFixed(1)}px`)
+  check(mag(visual(cs2[0])) < mag(visual(cs2[4])) + 0.01, 'later ranks lag behind earlier ones',
+    `rank0 ${mag(visual(cs2[0])).toFixed(0)} < rank4 ${mag(visual(cs2[4])).toFixed(0)}`)
   c2.release()
 }
 
@@ -280,18 +346,18 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
 {
   const cs = cards(5)
   const settled = []
-  const cascade = createDeckCascade((end) => settled.push(end))
+  const cascade = createDeckCascade((end) => settled.push(end), animator)
   cascade.sync(spec(cs))
   cascade.play('open')
   for (let i = 0; i < 200 && settled.length === 0; i++) tick()
   settled.length = 0
   cascade.play('closed')
-  tick()                                       // the reversal's own re-basing frame
-  tick()                                       // …and the first frame that moves
-  check(mag(cs[4].el.style.transform) > 5, 'the collapse starts with the LAST rank',
-    `rank4 ${mag(cs[4].el.style.transform).toFixed(1)}px`)
-  check(cs[0].el.style.transform === '', '…while the first rank has not moved yet',
-    String(cs[0].el.style.transform))
+  tick()                                       // the first frame of the reverse segment
+  tick()                                       // …and the second
+  check(mag(visual(cs[4])) > 5, 'the collapse starts with the LAST rank',
+    `rank4 ${mag(visual(cs[4])).toFixed(1)}px`)
+  check(mag(visual(cs[0])) < 0.5, '…while the first rank has not moved yet',
+    `${mag(visual(cs[0])).toFixed(2)}px`)
   for (let i = 0; i < 200 && settled.length === 0; i++) tick()
   check(settled.join() === 'closed', 'the collapse reports one settle, at the closed end', settled.join())
   check(cs.every((c) => c.el.style.transform !== ''), 'the retracted fold is LEFT at its start offsets (the deck is retired on this report)',
@@ -304,29 +370,29 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
 {
   const cs = cards(6)
   const settled = []
-  const cascade = createDeckCascade((end) => settled.push(end))
+  const cascade = createDeckCascade((end) => settled.push(end), animator)
   cascade.sync(spec(cs))
   cascade.play('open')
   for (let i = 0; i < 8; i++) tick()           // ~128ms in, mid-fold
   // The start state is the GROUP's map, so a card's total travel is dominated by
   // `travel` (454px here), not by its own offset from the anchor.
   const startMag = (c) => Math.hypot((1 - ANCHOR.scale) * c.vx + ANCHOR.travel, (1 - ANCHOR.scale) * c.vy)
-  const before = cs.map((c, i) => mag(c.el.style.transform) - startMag(c))
+  const before = cs.map((c, i) => mag(visual(c)) - startMag(c))
   check(before.some((d) => d < -5), 'the fold is genuinely mid-flight when it is reversed',
     before.map((d) => d.toFixed(0)).join(' '))
 
   cascade.play('closed')                       // THE interruption (a close during an open)
-  // One frame of the reversal: `run` re-bases the clock, so the first frame must
-  // not move at all, and no later frame may step further than one travel's worth.
+  // The reversal re-bases `t` off the running animation's `currentTime`, so the first
+  // frame must not jump, and no later frame may step further than one travel's worth.
   let worst = 0
-  let last = cs.map((c) => mag(c.el.style.transform))
+  let last = cs.map((c) => mag(visual(c)))
   for (let i = 0; i < 300 && settled.length === 0; i++) {
     tick()
-    const nowMags = cs.map((c) => mag(c.el.style.transform))
+    const nowMags = cs.map((c) => mag(visual(c)))
     nowMags.forEach((m, k) => { worst = Math.max(worst, Math.abs(m - last[k])) })
     last = nowMags
   }
-  const stepCap = Math.max(...cs.map(startMag)) * (16 / cascadeTiming(TOTAL, cs.length).duration) + 4
+  const stepCap = Math.max(...cs.map(startMag)) * (16 / cascadeTiming(TOTAL, cs.length).duration) + 6
   check(worst <= stepCap, 'no card JUMPS across the reversal (bounded per-frame step)',
     `worst ${worst.toFixed(1)}px ≤ ${stepCap.toFixed(1)}px`)
   check(settled.join() === 'closed', 'the reversed fold still reaches the closed end', settled.join())
@@ -346,27 +412,27 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
 // ── F. a re-plan must never move a fold that is on screen ───────────────────
 {
   const cs = cards(4)
-  const cascade = createDeckCascade(() => {})
+  const cascade = createDeckCascade(() => {}, animator)
   cascade.sync(spec(cs))
   cascade.play('open')
   for (let i = 0; i < 6; i++) tick()
-  const before = cs.map((c) => c.el.style.transform)
+  const before = cs.map((c) => visual(c))
   // The drawer's FIRST committed frame resolves the grid before the rail has been
   // measured, so a corrected plan arrives ~2 frames into the open — with different
   // delays and a different anchor. Adopting it would move every card to a new place
-  // under a running clock (measured live: 168px → 71px in one frame).
+  // under a running fold (measured live: 168px → 71px in one frame).
   const replan = cs.map((c, i) => ({ ...c, vx: 40 - i * 10, vy: 40 + i * 10, delay: Math.round((cs.length - 1 - i) * cascadeTiming(TOTAL, cs.length).step * 100) / 100 }))
   cascade.sync(spec(replan))
-  check(cs.every((c, i) => c.el.style.transform === before[i]),
+  check(cs.every((c, i) => visual(c) === before[i]),
     'a plan that arrives mid-fold is REFUSED (the cards keep their motion)',
-    cs.map((c, i) => (c.el.style.transform === before[i] ? '·' : 'X')).join(''))
+    cs.map((c, i) => (visual(c) === before[i] ? '·' : 'X')).join(''))
   for (let i = 0; i < 200; i++) tick()
   check(cs.every((c) => c.el.style.transform === ''), 'and the fold still settles clean')
 
   // The other half of the rule: the CLOSED end deliberately leaves its offsets
-  // parked, so "the clock is at an end" is not "the cards are at rest" — a plan
+  // parked, so "the timeline is at an end" is not "the cards are at rest" — a plan
   // arriving there must be refused too, or the whole retracted stack would move.
-  const held = createDeckCascade(() => {})
+  const held = createDeckCascade(() => {}, animator)
   const parked = cards(3)
   held.sync(spec(parked))
   held.play('open')
@@ -390,27 +456,25 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
 // ── G. release and jump (what a shape switch and reduced motion do) ─────────
 {
   const cs = cards(4)
-  const cascade = createDeckCascade(() => {})
+  const cascade = createDeckCascade(() => {}, animator)
   cascade.sync(spec(cs))
   cascade.play('open')
   for (let i = 0; i < 6; i++) tick()
-  check(cs.some((c) => c.el.style.transform !== ''), 'a fold in flight really is writing transforms')
+  check(cs.some((c) => visual(c) !== ''), 'a fold in flight really is animating')
   cascade.release()
   check(cs.every((c) => c.el.style.transform === ''), 'release() hands every card back at rest')
-  check(pending() === 0, 'release() stops the clock (no orphan frame)')
-  check(cascade.state() === 'closed', 'release() parks the clock at the closed end', cascade.state())
+  check(live.size === 0, 'release() stops every animation (no orphan frame)')
+  check(cascade.state() === 'closed', 'release() parks the timeline at the closed end', cascade.state())
 
-  // release() must also survive the frame that was already queued: a cancellation
-  // that only stopped the NEXT request would still run one stale paint.
   for (let i = 0; i < 3; i++) tick()
   check(cs.every((c) => c.el.style.transform === ''), 'a released fold never repaints')
 
   cascade.jump('open')
   check(cascade.state() === 'open' && cs.every((c) => c.el.style.transform === ''), 'jump() settles without animating')
-  check(pending() === 0, 'jump() leaves no frame pending')
+  check(live.size === 0, 'jump() leaves no animation running')
   // A no-op command must still report: the drawer unmounts on that report.
   const reported = []
-  const c2 = createDeckCascade((end) => reported.push(end))
+  const c2 = createDeckCascade((end) => reported.push(end), animator)
   c2.sync(spec(cards(2)))
   c2.play('closed')
   check(reported.join() === 'closed', 'a fold already at the requested end still reports the settle', reported.join())
@@ -419,7 +483,7 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
 // ── H. the tile's own origin/transition are lent and given back ─────────────
 {
   const tile = { style: { transform: '', transition: '', transformOrigin: '' }, classList: { contains: () => true } }
-  const cascade = createDeckCascade(() => {})
+  const cascade = createDeckCascade(() => {}, animator)
   cascade.sync({ cards: [{ el: tile, vx: 100, vy: -100, delay: 0, ownStyle: true }], anchor: ANCHOR, duration: cascadeTiming(TOTAL, 1).duration, easeShift: linear, easeZoom: linear })
   cascade.play('open')
   tick()
@@ -430,6 +494,51 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol
   check(tile.style.transform === '' && tile.style.transformOrigin === '' && tile.style.transition === '',
     'and handed its own origin, transition and transform back afterwards',
     `${tile.style.transform} / ${tile.style.transformOrigin} / ${tile.style.transition}`)
+}
+
+// ── I. the sampled keyframes ARE the continuous map ────────────────────────
+{
+  // What the compositor interpolates linearly between two keyframes must be within
+  // a quarter pixel of `foldTransformAt` at every instant — otherwise the motion a
+  // live probe samples would drift off the group's map the zoom shape defines.
+  const parse = (t) => {
+    const m = /translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([-\d.]+)\)/.exec(t || '')
+    return m === null ? null : { x: +m[1], y: +m[2], s: +m[3] }
+  }
+  const ctx = { duration: cascadeTiming(TOTAL, 6).duration, anchor: ANCHOR, easeShift: curveToProgress({ x1: 0.31, y1: 0.66, x2: 0.51, y2: 1 }), easeZoom: curveToProgress({ x1: 0.31, y1: 0.66, x2: 0.51, y2: 1 }) }
+  const cs = cards(6)
+  let worst = 0
+  let worstAt = 0
+  for (const c of cs) {
+    const kfs = foldKeyframes(c, ctx, 0, TOTAL)
+    check(kfs.length >= 3 && kfs[0].offset === 0 && kfs[kfs.length - 1].offset === 1,
+      `card delay ${c.delay}ms: the keyframes span the whole segment`,
+      `${kfs.length} keyframes`)
+    check(kfs.every((k, i) => i === 0 || k.offset > kfs[i - 1].offset), '…with strictly increasing offsets')
+    check(kfs.every((k) => k.easing === 'linear'), '…and one linear segment each (the curves are in the values)')
+    for (let t = 0; t <= TOTAL; t += 3.7) {
+      let got = kfs[kfs.length - 1].transform
+      for (let i = 1; i < kfs.length; i++) {
+        if (t <= kfs[i].offset * TOTAL) {
+          const k0 = kfs[i - 1]
+          const k1 = kfs[i]
+          const span = k1.offset - k0.offset
+          const u = span <= 0 ? 0 : (t / TOTAL - k0.offset) / span
+          got = lerpTransform(k0.transform, k1.transform, u)
+          break
+        }
+      }
+      const want = foldTransformAt(c, ctx, t)
+      const a = parse(got)
+      const b = parse(want)
+      const err = Math.hypot(a.x - b.x, a.y - b.y) + Math.abs(a.s - b.s) * 300
+      if (err > worst) { worst = err; worstAt = t }
+    }
+  }
+  check(worst < 0.25, 'sampled keyframes stay within a quarter pixel of the continuous map',
+    `worst ${worst.toFixed(3)}px (equiv.) at t=${worstAt.toFixed(0)}ms`)
+  const end = foldTransformAt(cs[0], ctx, TOTAL)
+  check(/translate\(0\.00px, 0\.00px\) scale\(1\.0000\)/.test(end), 'the open end is exactly identity', end)
 }
 
 console.log(`\n${fails.length === 0 ? 'ALL PASS' : fails.length + ' FAILURE(S)'}`)

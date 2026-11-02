@@ -99,6 +99,29 @@ html.dsx-syncing .dsx-stats-rail {
   transition: none !important;
 }
 
+/* ── The transcript's inset during a fold (rail/fold-inset.ts) ──
+ *
+ * The reading column's `padding-right` is the fold's only LAYOUT property. On the
+ * shell's shared curve (card.module.css, `transition: padding-right …`) that means
+ * the whole conversation re-wraps ~18 times per fold, and every co-tenant that
+ * measures the page reads that layout again inside its own callback. Measured
+ * 2026-10-27 (1707×1067 @DSF1.5, 2807-node transcript, 26 cards): p95 frame
+ * interval in the fold window 56ms close / 36ms open with the tween, 20 / 20
+ * without it; the long frames were the ones carrying the transcript reflow.
+ *
+ * So the inset lands in ONE step: `dsx-fold-inset` removes the curve (armed before
+ * the class that moves the value, or the transition would already be running —
+ * running transitions outrank inline declarations, which is why this cannot be an
+ * inline write). The move the eye follows is rebuilt as a COMPOSITOR transform on
+ * the transcript pane (`rail/fold-inset.ts` pans it by half the inset delta), so
+ * the gesture keeps its motion at one layout instead of eighteen. The class is
+ * owned by JS and absent at rest, so a right-panel open/close and a width-handle
+ * drag keep their curve.
+ */
+html.dsx-fold-inset [data-conversation-scroll] {
+  transition: none !important;
+}
+
 body.dsx-stats-active [data-conversation-scroll] {
   /* The claim is computed in JS from the product's own transcript measure
      (column − measure, published by ui-conversation as
@@ -308,37 +331,30 @@ html:not([style*='--dsx-rail-top']) .dsx-stats-addpanel {
     height 0.26s cubic-bezier(0.34, 1.36, 0.52, 1),
     opacity 0.18s var(--ds-ease-in-out),
     visibility 0s linear 0s;
-  /* NO base `will-change` here: two decks × N cards would hold a permanent compositing
-     layer each. The hint IS given while the drawer is on screen — see the gated rule just
-     below, which is where the frame rate is actually won. */
+  /* NO `will-change` here, and none below either any more: the fold's per-card motion is
+     a composited Web Animation (rail/wave/deck-cascade.ts), and Chromium promotes an
+     element that is being transform-animated for exactly as long as the animation runs.
+     The old rule held a layer per card for the whole time the drawer was open (the
+     2026-10-03 measurement below is what it was for); WAAPI gets the same promotion,
+     scoped by the animation itself, and a closed OR open idle deck now holds no layer
+     at all. */
 }
 /**
- * ── ONE COMPOSITED LAYER PER CARD, ONLY WHILE THE DRAWER IS ON SCREEN ──
+ * ── WHY THE 2026-10-03 LAYER HINT IS GONE (2026-10-21) ──
  *
- * Measured 2026-10-03 on the owner's stage (1707×1067 CSS @ DSF 1.5, 60Hz), on the harsh
- * harness — 12 toggles per cycle, 320ms apart, 4 cycles
- * (`docs`-local: `scripts/diag-fold-gbcr.cjs --reps=6 --gap=320 --cycles=4`, headful):
+ * The rule that lived here promoted every card of an open drawer
+ * (`.dsx-stats-drawer:not([data-retired]) … { will-change: transform }`) because the
+ * fold of that day wrote an inline `transform` from a `requestAnimationFrame` clock,
+ * and Chromium was promoting/releasing a layer per card on the way in and out
+ * (measured then: 23.9–31.3fps without the hint, 50.7–55.8fps with it).
  *
- *   no hint            23.9–31.3fps · p95 53–105ms · 66–73 frames over 26ms per cycle
- *   this hint          50.7–55.8fps · p95 18.5–36ms ·  2–20 frames over 26ms
- *
- * The fold writes `transform` on every card each frame; without the hint Chromium promotes
- * and releases a layer per card on the way in and again on the way out, and that churn was
- * costing about half the frames. The hint must be in place BEFORE the fold starts, which is
- * exactly what `:not([data-retired])` gives: a closed drawer is retired (see rail-view.tsx)
- * and holds no layers at all, while an opening/leaving one is not retired yet and is already
- * promoted.
- *
- * `contain: layout style` on its own changed nothing (22.6–32.5fps — same as no hint) and on
- * top of this hint the difference (2–9 vs 7–20 frames over 26ms) did not survive a re-measure,
- * while it makes each slot a containing block and a stacking context — a semantic change to
- * the deck's layout for a frame-count difference inside the noise. Left OUT deliberately:
- * `will-change` alone is the whole win (50.8–55.8fps over 4 cycles).
+ * The fold is now a composited Web Animation (`rail/wave/deck-cascade.ts`), so the
+ * promotion comes from the animation itself and disappears with it — no permanent
+ * layers while the drawer sits open, and none of the close/re-open churn the hint was
+ * buying back. A `will-change` in CSS would now only ADD memory and hold the layers
+ * for the whole open state. The 2026-10-03 numbers stay in the record because they
+ * are why the fold never went back to per-frame inline writes without a layer.
  */
-.dsx-stats-drawer:not([data-retired]) .dsx-wave-deck .dsx-stats-card-slot,
-.dsx-stats-drawer:not([data-retired]) .dsx-wave-deck .dsx-stats-add {
-  will-change: transform;
-}
 .dsx-stats-card-slot .dsx-stats-card {
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }

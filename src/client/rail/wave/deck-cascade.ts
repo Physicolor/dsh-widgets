@@ -43,7 +43,7 @@
  * them across the edge, which is exactly what "each component arrives on its own
  * beat from outside the screen" looks like.
  *
- * ── WHY A JS CLOCK, NOT A CSS TRANSITION ──
+ * ── THE TIMELINE IS OURS; THE INTERPOLATION IS THE COMPOSITOR'S ──
  *
  * The cascade must survive a rapid reversal (a close interrupting an open, and
  * back) by CONTINUING FROM THE CURRENT PROGRESS. A CSS transition cannot do it:
@@ -51,17 +51,40 @@
  * the cards that are already part-way in — the ones with the SMALLEST forward
  * delay, i.e. exactly the ones a mirror order schedules LAST — freeze in place for
  * their new delay (measured shape of the bug: the bottom-left card holds a fully
- * open position for ~570ms before it starts back). One shared clock, advanced
+ * open position for ~570ms before it starts back). One shared timeline, advanced
  * forwards or backwards, makes both directions ONE timeline: the reverse cascade
  * is the same timeline read backwards, so the mirror order falls out of the rank
- * table for free, and an interruption is only a change of the clock's sign — no
- * jump, no freeze, no restart. `prefers-reduced-motion` never reaches this module:
- * rail-view jumps the drawer instead of playing it. A plan is never swapped under
- * a running clock, either (see `sync`).
+ * table for free, and an interruption is only a change of the timeline's sign —
+ * no jump, no freeze, no restart. `prefers-reduced-motion` never reaches this
+ * module: rail-view jumps the drawer instead of playing it. A plan is never
+ * swapped under a running fold, either (see `sync`).
  *
- * Per-frame writes are inline `transform` only (no layout property, no React
- * render): the card list is read once per command and the clock touches nothing
- * else.
+ * So the TIMELINE lives here (one `t` in ms), and every card is animated with a
+ * Web Animation whose keyframes are SAMPLES of this module's own map between
+ * `t` and the target. Two things follow:
+ *
+ *   - the per-frame work is zero. The previous implementation wrote an inline
+ *     `transform` on every card from a `requestAnimationFrame` clock; that is
+ *     cheap per frame (~0.5ms for a deck), but it STOPS with the main thread. On
+ *     the owner's stage a long transcript keeps the main thread at 25-45fps for
+ *     the whole gesture, and a fold driven there inherits that rate. A
+ *     transform-only WAAPI animation is composited, so the cards keep moving at
+ *     the display's rate while the main thread is busy — which is exactly what
+ *     makes it read like the single CSS-transition card the owner compared it to
+ *     (`dsh-pinned-summary`).
+ *   - an interruption is still exact. `play()` reads the running animation's
+ *     `currentTime` back into `t`, cancels, and starts a new animation FROM that
+ *     state toward the target. Continuous by construction, and the end states are
+ *     the same two the old clock had: open = no transform at all, closed = every
+ *     card parked on its start offset until the deck is retired.
+ *
+ * WHY SAMPLED KEYFRAMES AND NOT ONE SEGMENT WITH A `cubic-bezier`: one transform
+ * carries TWO curves (the translation rides the position curve, the scale the
+ * zoom curve) and a keyframe segment can carry only one easing. Sampling the
+ * composed map uniformly in each card's PROGRESS reproduces both to well under a
+ * pixel (`verify-deck-cascade-unit.mjs` measures it against the continuous
+ * formula), and linear interpolation between samples is what the compositor does
+ * with them.
  */
 
 /**
@@ -456,14 +479,125 @@ export function planCascade(
 }
 
 /**
+ * What a keyframe needs from a plan: the two curves, one card's travel, both offsets.
+ */
+export interface CascadeCtx {
+  duration: number
+  anchor: CascadeAnchor
+  easeShift: (x: number) => number
+  easeZoom: (x: number) => number
+}
+
+/** The smallest thing the map needs from a card (see {@link foldTransformAt}). */
+export interface FoldCard {
+  readonly vx: number
+  readonly vy: number
+  readonly delay: number
+}
+
+/**
+ * One card's transform at timeline time `t` — the fold's ENTIRE math, in one place.
+ *
+ * `p` is the card's own progress: its rank delay is part of `t`, its travel is
+ * `duration`. The map is the 'zoom' shape's own (see the module header): the scale
+ * rides the zoom curve, the translation is the offset needed to carry the card's
+ * top-right corner to the shared anchor at that scale, plus whatever part of the
+ * travel the position curve has not given back yet.
+ *
+ * Exported because two consumers must agree bit for bit: the keyframe builder here
+ * and the closed end's parked inline transform. Also because it makes the unit
+ * test able to compare sampled keyframes against the continuous curve.
+ */
+export function foldTransformAt(card: FoldCard, ctx: CascadeCtx, t: number): string {
+  const raw = ctx.duration > 0 ? (t - card.delay) / ctx.duration : (t >= card.delay ? 1 : 0)
+  const p = raw <= 0 ? 0 : raw >= 1 ? 1 : raw
+  const s = ctx.anchor.scale + (1 - ctx.anchor.scale) * ctx.easeZoom(p)
+  const k = 1 - s
+  const x = k * card.vx + ctx.anchor.travel * (1 - ctx.easeShift(p))
+  const y = k * card.vy
+  return `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scale(${s.toFixed(4)})`
+}
+
+/**
+ * The keyframes for one card's part in the segment `from → to` (either direction).
+ *
+ * The samples are uniform in the card's own PROGRESS `p`, not in time. That is what
+ * keeps the chord between two samples on the curve: both easing curves are steep at
+ * their take-off, so a uniform TIME grid spends its samples exactly where `p` moves
+ * fastest and leaves the visible take-off under-sampled (measured on the live map
+ * check: 5ms time sampling read ~30px off at p≈0.25, because a 0.002 error in scale
+ * inverts to a 0.02 error in p there). Uniform `p` puts the samples where the map's
+ * curvature is, and the offsets are then the TIMES of those progress points.
+ *
+ * Only the active window gets samples; the holds before and after are the segment's
+ * own endpoints. Duplicate offsets (a card already at rest for the whole segment)
+ * collapse.
+ */
+export function foldKeyframes(card: FoldCard, ctx: CascadeCtx, from: number, to: number, perTravel = 48): Keyframe[] {
+  const span = Math.abs(to - from)
+  if (!(span > 0)) {
+    const only = foldTransformAt(card, ctx, to)
+    return [{ offset: 0, transform: only, easing: 'linear' }, { offset: 1, transform: only, easing: 'linear' }]
+  }
+  const progressAt = (time: number): number => {
+    const raw = ctx.duration > 0 ? (time - card.delay) / ctx.duration : (time >= card.delay ? 1 : 0)
+    return raw <= 0 ? 0 : raw >= 1 ? 1 : raw
+  }
+  const pFrom = progressAt(from)
+  const pTo = progressAt(to)
+  const hasTravel = Math.abs(pTo - pFrom) > 1e-6
+  const steps = hasTravel ? Math.max(8, Math.min(64, Math.ceil(Math.abs(pTo - pFrom) * perTravel))) : 1
+  const times: number[] = [from, to]
+  if (hasTravel) {
+    for (let i = 0; i <= steps; i++) times.push(card.delay + ctx.duration * (pFrom + (pTo - pFrom) * (i / steps)))
+  }
+  // Playback offset: 0 at `from`, 1 at `to`, whichever way the segment runs.
+  const offsetOf = (time: number): number => (time - from) / (to - from)
+  const seen = new Set<string>()
+  const out: Keyframe[] = []
+  for (const time of times) {
+    const offset = Math.min(1, Math.max(0, offsetOf(time)))
+    const key = offset.toFixed(6)
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push({ offset, transform: foldTransformAt(card, ctx, time), easing: 'linear' })
+  }
+  out.sort((a, b) => (a.offset as number) - (b.offset as number))
+  // The last sample IS the end state; pin it to 1 so a rounding step cannot leave
+  // a sliver of the previous keyframe on screen after the segment finishes.
+  out[out.length - 1].offset = 1
+  return out
+}
+
+/** The minimum a driver needs from an animation — the DOM's `Animation` satisfies it. */
+export interface CascadeAnimation {
+  currentTime: number | null
+  onfinish: ((this: Animation, ev: AnimationPlaybackEvent) => unknown) | null
+  cancel: () => void
+}
+
+/** How the driver starts an animation. Injected so the engine is testable without a browser. */
+export interface CascadeAnimator {
+  animate: (el: HTMLElement, keyframes: Keyframe[], options: KeyframeAnimationOptions) => CascadeAnimation
+}
+
+/** The browser's own implementation — the only one production ever uses. */
+export const browserAnimator: CascadeAnimator = {
+  animate: (el, keyframes, options) => el.animate(keyframes, options) as unknown as CascadeAnimation,
+}
+
+/**
  * Build the deck's cascade driver.
  *
  * `onSettle` fires exactly once per fold that reaches an end — including the no-op
- * case where the clock is already there — which is what lets the drawer unmount on
- * the real end of the leave instead of on a timer that the next phase change can
+ * case where the timeline is already there — which is what lets the drawer unmount
+ * on the real end of the leave instead of on a timer that the next phase change can
  * cancel.
+ *
+ * `animator` is injectable for `scripts/verify-deck-cascade-unit.mjs`; production
+ * passes nothing and gets {@link browserAnimator}.
  */
-export function createDeckCascade(onSettle: (end: CascadeEnd) => void): DeckCascade {
+export function createDeckCascade(onSettle: (end: CascadeEnd) => void, animator: CascadeAnimator = browserAnimator): DeckCascade {
   let spec: CascadeSpec = {
     cards: [],
     duration: Math.round(CASCADE_FALLBACK_TOTAL_MS * CASCADE_TRAVEL_SHARE),
@@ -472,14 +606,21 @@ export function createDeckCascade(onSettle: (end: CascadeEnd) => void): DeckCasc
     anchor: { travel: 0, scale: 1, originX: 0, originY: 0 },
   }
   let total = 0
+  /** Where the timeline stands, in ms. Advanced by the animations, read back on an interruption. */
   let t = 0
   let dir: 0 | 1 | -1 = 0
-  let raf = 0
-  let last = 0
+  /** The segment being played: `t` moves from {@link segFrom} to {@link segTo} over {@link segMs}. */
+  let segFrom = 0
+  let segTo = 0
+  let segMs = 0
+  let segWallStart = 0
+  let generation = 0
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let anims = new Map<HTMLElement, CascadeAnimation>()
   /**
    * Does the deck currently CARRY a fold state (at least one card parked on its
    * start offset)? The retracted end of a fold deliberately leaves those offsets in
-   * place until the deck is retired, so "the clock is at an end" is NOT the same
+   * place until the deck is retired, so "the timeline is at an end" is NOT the same
    * question as "the cards are at rest" — see {@link DeckCascade.sync}.
    */
   let painted = false
@@ -490,10 +631,16 @@ export function createDeckCascade(onSettle: (end: CascadeEnd) => void): DeckCasc
     return maxDelay + Math.max(0, spec.duration)
   }
 
-  const stop = (): void => {
-    if (raf !== 0) cancelAnimationFrame(raf)
-    raf = 0
-    last = 0
+  const clearTimer = (): void => {
+    if (timer !== null) { clearTimeout(timer); timer = null }
+  }
+
+  const stopAnims = (): void => {
+    const running = [...anims.values()]
+    anims = new Map()
+    for (const a of running) {
+      try { a.cancel() } catch { /* already gone with its element */ }
+    }
   }
 
   /** Put every card back at its final layout position (no transform, no override). */
@@ -508,76 +655,60 @@ export function createDeckCascade(onSettle: (end: CascadeEnd) => void): DeckCasc
     }
   }
 
-  /**
-   * The zoom shape's own map, on this card's progress: `s` rides the zoom curve and
-   * `travel` the position curve, and the translation is the one that carries the
-   * card's top-right corner to the shared anchor at that scale.
-   */
-  const write = (c: CascadeCard, p: number): void => {
-    if (p >= 1) {
-      if (c.el.style.transform !== '') c.el.style.transform = ''
-      if (c.ownStyle) {
-        if (c.el.style.transformOrigin !== '') c.el.style.transformOrigin = ''
-        if (c.el.style.transition !== '') c.el.style.transition = ''
-      }
-      return
-    }
-    if (c.ownStyle) {
-      if (c.el.style.transformOrigin !== 'top right') c.el.style.transformOrigin = 'top right'
-      if (c.el.style.transition !== 'none') c.el.style.transition = 'none'
-    }
-    const s = spec.anchor.scale + (1 - spec.anchor.scale) * spec.easeZoom(p)
-    const k = 1 - s
-    const x = k * c.vx + spec.anchor.travel * (1 - spec.easeShift(p))
-    const y = k * c.vy
-    c.el.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scale(${s.toFixed(4)})`
-  }
-
-  const paint = (): void => {
-    let parked = false
+  /** Park every card on its start offset, as a plain inline transform (the closed end). */
+  const park = (): void => {
+    painted = spec.cards.length > 0
     for (const c of spec.cards) {
-      const raw = spec.duration > 0 ? (t - c.delay) / spec.duration : (t >= c.delay ? 1 : 0)
-      const p = raw <= 0 ? 0 : raw >= 1 ? 1 : raw
-      write(c, p)
-      if (p < 1) parked = true
+      if (c.ownStyle) {
+        if (c.el.style.transformOrigin !== 'top right') c.el.style.transformOrigin = 'top right'
+        if (c.el.style.transition !== 'none') c.el.style.transition = 'none'
+      }
+      c.el.style.transform = foldTransformAt(c, spec, 0)
     }
-    painted = parked
   }
 
-  const settle = (end: CascadeEnd): void => {
-    dir = 0
-    stop()
-    // The OPEN end IS the layout rest state (progress 1 = no transform), so the
-    // paint above has already cleared every card. The CLOSED end is the fold's start
-    // offsets, and they must STAY painted: the drawer is retired on this very
-    // report, and clearing here would snap every card from its offset to its final
-    // cell if the browser painted between this callback and React's commit. Callers
-    // that keep the deck on screen release it instead (see rail-view's settle
-    // handler), which is the one path that needs the transforms gone.
+  /** The 设置 tile lends its origin and transition to the fold while the fold drives it. */
+  const pin = (c: CascadeCard): void => {
+    if (!c.ownStyle) return
+    if (c.el.style.transformOrigin !== 'top right') c.el.style.transformOrigin = 'top right'
+    if (c.el.style.transition !== 'none') c.el.style.transition = 'none'
+  }
+
+  /**
+   * The timeline's real position, read back off the running animations.
+   *
+   * A reversal must start from the state ON SCREEN, not from the state at the last
+   * completed command: `currentTime` is the compositor-synced answer, and the map
+   * from it back to `t` is the segment's own linear one.
+   */
+  const readT = (): number => {
+    if (dir === 0) return t
+    if (anims.size === 0) {
+      // A segment with no participants (the whole band was cut): the timeline still
+      // elapses. Wall time is the only clock that exists for it.
+      if (segMs <= 0) return segTo
+      const elapsed = typeof performance !== 'undefined' ? performance.now() - segWallStart : segMs
+      return segFrom + (segTo - segFrom) * Math.min(1, Math.max(0, elapsed / segMs))
+    }
+    const first = anims.values().next()
+    const a = first.done ? null : first.value
+    const ct = a === null ? segMs : (typeof a.currentTime === 'number' ? a.currentTime : segMs)
+    const p = segMs > 0 ? Math.min(1, Math.max(0, ct / segMs)) : 1
+    return segFrom + (segTo - segFrom) * p
+  }
+
+  const settleAt = (end: CascadeEnd, target: number): void => {
+    generation++
+    clearTimer()
+    // Write the end state BEFORE the animations are cancelled: on the closed end
+    // the parked offsets are what must stay painted while the drawer is retired,
+    // and cancelling first would flash the resting grid for one frame.
     if (end === 'open') clear()
+    else park()
+    stopAnims()
+    t = target
+    dir = 0
     onSettle(end)
-  }
-
-  const step = (now: number): void => {
-    raf = 0
-    // A long frame (a data fold, a layout pass) must not teleport the fold: the
-    // clock advances by measured time, bounded so a stalled tab lands near the end
-    // instead of past it. The bound is generous on purpose — it only has to catch a
-    // genuinely stalled frame, and every millisecond it clips is a millisecond the
-    // fold runs long.
-    const dt = last === 0 ? 0 : Math.min(96, Math.max(0, now - last))
-    last = now
-    t = Math.max(0, Math.min(total, t + dir * dt))
-    paint()
-    if (dir > 0 && t >= total) { settle('open'); return }
-    if (dir < 0 && t <= 0) { settle('closed'); return }
-    raf = requestAnimationFrame(step)
-  }
-
-  const run = (sign: 1 | -1): void => {
-    dir = sign
-    last = 0
-    if (raf === 0) raf = requestAnimationFrame(step)
   }
 
   return {
@@ -587,7 +718,7 @@ export function createDeckCascade(onSettle: (end: CascadeEnd) => void): DeckCasc
       // A plan may only replace the current one when the deck is genuinely AT REST
       // — no fold in flight, and no retracted stack still parked on screen.
       //
-      // Both halves are load-bearing. Adopting a new grid under a running clock
+      // Both halves are load-bearing. Adopting a new grid under a running fold
       // teleports every card whose delay or anchor changed (measured live: a 168px
       // → 71px step in one frame, because the drawer's first committed frame
       // resolves the grid before the rail has been measured and the corrected one
@@ -607,17 +738,50 @@ export function createDeckCascade(onSettle: (end: CascadeEnd) => void): DeckCasc
     play: (end: CascadeEnd) => {
       const forward = end === 'open'
       if (forward ? dir > 0 : dir < 0) return
-      if (forward ? t >= total : t <= 0) { settle(end); return }
-      // Paint the CURRENT position before the clock starts: a fold beginning at
-      // `t = 0` must have its cards on their start offsets in the same commit that
-      // started it, or the first painted frame shows the settled deck and the next
-      // one snaps it back (the command runs from a layout effect, i.e. still before
-      // the browser paints).
-      paint()
-      run(forward ? 1 : -1)
+      const target = forward ? total : 0
+      // The interruption point: where the CURRENT animation has actually got to.
+      t = readT()
+      if (Math.abs(target - t) <= 0.01) { settleAt(end, target); return }
+      stopAnims()
+      generation++
+      const g = generation
+      dir = forward ? 1 : -1
+      segFrom = t
+      segTo = target
+      segMs = Math.abs(target - t)
+      segWallStart = typeof performance !== 'undefined' ? performance.now() : 0
+      // A fold with nothing to animate (every participant was cut by the band) still
+      // has a length: the drawer is retired on this report.
+      if (spec.cards.length === 0) {
+        timer = setTimeout(() => { if (g === generation) settleAt(end, target) }, Math.max(8, segMs) + 4)
+        return
+      }
+      // Browsers without WAAPI, and an element that was replaced under the fold:
+      // `animate()` is missing or throws. The drawer must still settle — jump.
+      let started = 0
+      for (const c of spec.cards) {
+        try {
+          pin(c)
+          // The segment's first keyframe is the card's CURRENT state and the last is
+          // the target's, so an interrupted fold continues from what is on screen.
+          const frames = foldKeyframes(c, spec, t, target)
+          const a = animator.animate(c.el, frames, { duration: Math.max(1, segMs), easing: 'linear', fill: 'both' })
+          a.onfinish = () => { if (g === generation) settleAt(end, target) }
+          anims.set(c.el, a)
+          started++
+        } catch {
+          /* this card cannot animate; the others still do */
+        }
+      }
+      if (started === 0) { settleAt(end, target); return }
+      // Safety net for an animation that is cancelled without ever finishing (its
+      // element was replaced under it): the drawer must still retire.
+      timer = setTimeout(() => { if (g === generation) settleAt(end, target) }, segMs + 160)
     },
     jump: (end: CascadeEnd) => {
-      stop()
+      generation++
+      clearTimer()
+      stopAnims()
       dir = 0
       t = end === 'open' ? total : 0
       clear()
@@ -632,6 +796,11 @@ export function createDeckCascade(onSettle: (end: CascadeEnd) => void): DeckCasc
         // unpainted, so clearing its offset cannot be seen, while leaving it would
         // keep a transform on a hidden node (and a stale `painted` verdict if the
         // whole fold is dropped).
+        const a = anims.get(c.el)
+        if (a !== undefined) {
+          anims.delete(c.el)
+          try { a.cancel() } catch { /* already gone */ }
+        }
         if (c.el.style.transform !== '') c.el.style.transform = ''
         if (c.ownStyle) {
           if (c.el.style.transformOrigin !== '') c.el.style.transformOrigin = ''
@@ -642,11 +811,13 @@ export function createDeckCascade(onSettle: (end: CascadeEnd) => void): DeckCasc
       spec = { ...spec, cards: kept }
       // The timeline is max delay + one travel, and only ever shrinks by a drop: the
       // fold's end is unchanged for the cards that are left, and a fully-dropped fold
-      // still settles on its own clock (see `step`).
+      // still settles on its own timer (see `play`).
       if (t > total) t = total
     },
     release: () => {
-      stop()
+      generation++
+      clearTimer()
+      stopAnims()
       dir = 0
       t = 0
       clear()

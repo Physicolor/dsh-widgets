@@ -420,17 +420,10 @@ interface RailWaveProps {
    * clip of the band.
    */
   wholeCards: boolean
-  /**
-   * The drawer's own phase, forwarded from the parent, or `null` when the deck
-   * must not cascade (`openShape: 'zoom'`). It drives the OPEN/CLOSE cascade: the
-   * deck's cards fold in one after another — from the bottom-left card to the
-   * top-right one — on top of the whole-group slide+zoom.
-   */
-  deckPhase: 'in' | 'out' | null
 }
 
 export function RailWave(props: RailWaveProps): React.ReactElement {
-  const { deck, cardBodies, railElRef, onAddClick, items, side, pad, railW, stackHeight, rows, deckH, paneH, topInset, lastRow, addRadius, active, placeCards, scaleFor, nearest, stepScale, xPts, yPts, addSlotFor, restLayout, restAdd, live, onScreen, covered, shiftX, columns, wholeCards, deckPhase } = props
+  const { deck, cardBodies, railElRef, onAddClick, items, side, pad, railW, stackHeight, rows, deckH, paneH, topInset, lastRow, addRadius, active, placeCards, scaleFor, nearest, stepScale, xPts, yPts, addSlotFor, restLayout, restAdd, live, onScreen, covered, shiftX, columns, wholeCards } = props
   const n = items.length
   /**
    * The rail's scroll content = the deck + the TAIL (see the tail element's note).
@@ -1148,15 +1141,36 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
   // `scale(0.93 −1.035)` jelly moved the entire rail as one block, which is
   // exactly what was rejected.
   //
-  // STAND DOWN WHILE A DECK CASCADE IS LIVE (`deckPhase !== null`, the 'stagger'
-  // shape's open/close fold): the bob is a CSS ANIMATION on `transform`, and an
-  // animation outranks the inline `transform` the fold writes every frame — the
-  // two would fight over the same property and the fold would freeze for the
-  // bob's whole life. A column change during an open is the NORMAL case (the rail
+  // STAND DOWN WHILE A DECK CASCADE IS LIVE (`data-deck-anim` on the deck, the
+  // 'stagger' shape's open/close fold): the bob is a CSS ANIMATION on `transform`,
+  // and an animation outranks the composited transform the fold runs — the two
+  // would fight over the same property and the fold would freeze for the bob's
+  // whole life. A column change during an open is the NORMAL case (the rail
   // mounts before the pane observer has measured it), so this is not a corner.
+  //
+  // The marker is read OFF THE DOM rather than passed down as a prop: publishing it
+  // through React state cost TWO extra renders of the whole rail per fold (see the
+  // note on `markDeck` in rail-view.tsx). A MutationObserver is enough — the one
+  // consumer here only needs to notice, not to render.
   const lastColumnsRef = React.useRef(columns)
-  const deckPhaseRef = React.useRef(deckPhase)
-  deckPhaseRef.current = deckPhase
+  const deckPhaseRef = React.useRef<'in' | 'out' | null>(null)
+  React.useEffect(() => {
+    const wrap = deckWrapRef.current
+    const deckEl = wrap === null ? null : (wrap.firstElementChild as HTMLElement | null)
+    if (wrap === null || deckEl === null) return
+    const read = (): void => {
+      const v = deckEl.getAttribute('data-deck-anim')
+      deckPhaseRef.current = v === 'in' || v === 'out' ? v : null
+      // A fold that STARTS while the bob is still armed takes the property over:
+      // drop the class now instead of letting the bob's tail overwrite the first
+      // frames.
+      if (deckPhaseRef.current !== null) wrap.classList.remove('dsx-wave-run')
+    }
+    read()
+    const mo = new MutationObserver(read)
+    mo.observe(deckEl, { attributes: true, attributeFilter: ['data-deck-anim'] })
+    return () => mo.disconnect()
+  }, [])
   React.useEffect(() => {
     if (lastColumnsRef.current === columns) return
     lastColumnsRef.current = columns
@@ -1170,13 +1184,6 @@ export function RailWave(props: RailWaveProps): React.ReactElement {
     const timer = window.setTimeout(() => el.classList.remove('dsx-wave-run'), 900)
     return () => window.clearTimeout(timer)
   }, [columns])
-  // A fold that STARTS while the bob is still armed takes the property over: drop
-  // the class now instead of letting the bob's tail overwrite the first frames.
-  React.useEffect(() => {
-    if (deckPhase === null) return
-    const el = deckWrapRef.current
-    if (el !== null) el.classList.remove('dsx-wave-run')
-  }, [deckPhase])
   /**
    * The overlay slots carry NO transition: every frame of the morph is written
    * from `scaleArr` (spring progress × live target). `none` is also load-bearing

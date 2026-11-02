@@ -1,6 +1,6 @@
 # dsh-widgets — the quality gates, on every push and PR.
 #
-# The plugin has ten offline gates (`node scripts/gates.mjs --list`), and before
+# The plugin's offline gates (`node scripts/gates.mjs --list`), and before
 # this workflow they ran only on the owner's machine: a pull request could merge
 # with a stale registry, a drifting render or a new type error, because the only
 # workflows here were `pages` (docs) and `publish` (release tags).

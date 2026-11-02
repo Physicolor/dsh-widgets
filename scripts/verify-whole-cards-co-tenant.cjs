@@ -7,8 +7,9 @@
  *      bottom row half off screen (the owner's screenshot).
  *   B. THAT ROW MUST STILL BE REACHABLE. The wheel's cap (`lastRow`) reads the same measured
  *      inset, so the deepest component ends up fully inside the pane at the stop.
- *   C. THE 设置 TILE OPENS THE PRODUCT'S SETTINGS WINDOW on our 组件 section — not the
- *      self-made panel (which stays as a local spare behind `dsx-addpanel-local`).
+ *   C. THE 设置 TILE OPENS THE PRODUCT'S SETTINGS WINDOW on our 组件 section — the
+ *      self-made panel was sealed on 2026-10-20 and has no mount path at all
+ *      (the old D2 block that armed it with `dsx-addpanel-local` is gone with it).
  *
  * Live-only: without an answering authority the run reports SKIPPED and exits 0.
  *
@@ -213,43 +214,7 @@ const NOTCHES = async (n) => {
   r.check(!after.addPanelOpen, 'the click does NOT open the self-made panel', JSON.stringify(after))
   r.check(after.navList && after.ourRow, 'the official settings window opens', JSON.stringify(after))
   r.check(after.ourRowActive && after.ourPage, 'the 组件 section is the one selected', JSON.stringify(after))
-
-  // ── D2. the local spare still works when armed by hand ──────────────────────
-  const ctx2 = await browser().then((b) => b.newContext({ viewport: { width: 1600, height: 1000 } }))
-  await ctx2.addCookies([require('./diag-auth-lib.cjs').mintCookie(AUTH)])
-  const page2 = await ctx2.newPage()
-  await page2.addInitScript(() => { try { window.localStorage.setItem('dsx-addpanel-local', '1') } catch { /* ignore */ } })
-  await page2.goto('http://' + AUTH, { waitUntil: 'domcontentloaded', timeout: 30000 })
-  await page2.waitForTimeout(2500)
-  const row2 = page2.locator('[class$="_sessionRow"]').first()
-  await row2.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
-  if (await row2.count()) { await row2.click().catch(() => {}); await page2.waitForTimeout(4000) }
-  const cap2 = page2.locator('button.dsx-stats-capsule').first()
-  const railOpen2 = () => page2.evaluate(() =>
-    document.querySelector('.dsx-stats-rail') !== null && document.querySelector('.dsx-stats-drawer[data-retired]') === null)
-  for (let i = 0; i < 4; i++) {
-    if (await railOpen2()) break
-    if (!(await cap2.count())) break
-    await cap2.click().catch(() => {})
-    await page2.waitForTimeout(700)
-  }
-  await page2.waitForTimeout(600)
-  const spare = await page2.evaluate(async () => {
-    const rail = document.querySelector('.dsx-stats-rail')
-    if (rail === null) return { error: 'no rail' }
-    for (let i = 0; i < 20; i++) {
-      rail.dispatchEvent(new WheelEvent('wheel', { deltaY: 400, deltaMode: 0, bubbles: true, cancelable: true }))
-      await new Promise((r) => setTimeout(r, 120))
-    }
-    const t = rail.querySelector('.dsx-stats-add')
-    const b = t.getBoundingClientRect()
-    t.click()
-    await new Promise((r) => setTimeout(r, 700))
-    const panel = document.querySelector('.dsx-stats-addpanel')
-    return { x: Math.round(b.left), y: Math.round(b.top), cut: t.classList.contains('dsx-slot-cut'), open: panel !== null && panel.classList.contains('open') }
-  })
-  r.check(spare.open === true, 'with dsx-addpanel-local=1 the self-made panel is still reachable (local spare)', JSON.stringify(spare))
-  await ctx2.close()
+  await ctx.close()
 
   await close()
   process.exit(r.exitCode())

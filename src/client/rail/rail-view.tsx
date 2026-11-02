@@ -32,6 +32,7 @@ import { t } from '../i18n'
 import { BASE_SIDE, RAIL_ROW_SEAT, applyRailRight, getNotedRailTop, resolveRailSpace, setRailVar } from './geometry'
 import { RAIL_TOP_INSET, RailWave, SLOT_CUT_CLASS } from './wave/RailWave'
 import { createWaveGeometry } from './wave/wave-geometry'
+import { settleFoldInset } from './fold-inset'
 import {
   type CascadeAnchor, type CascadeBand, type CascadeBox, type CascadeEnd, type DeckCascade,
   createDeckCascade, groupDurationMs, planCascade,
@@ -643,7 +644,6 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
        * are all no-ops, while an interrupted fold (close during open) is just the
        * other command — the shared clock reverses from where it stands.
        */
-      const deckRef = React.useRef<HTMLDivElement | null>(null)
       /**
        * The deck's participant boxes (cards, then the 设置 tile), resolved further
        * down by the layout. Held in a ref so the effect above can read the CURRENT
@@ -685,8 +685,35 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       /** What the user last asked for, read by the fold's own settle handler. */
       const openWantedRef = React.useRef(shouldOpen)
       openWantedRef.current = shouldOpen
-      /** The fold's own state, for the marker and the reflow-wave gate. */
-      const [deckAnim, setDeckAnim] = React.useState<'in' | 'out' | null>(null)
+      /**
+       * The fold's own state, for the marker and the reflow-wave gate.
+       *
+       * A REF, not React state, and the attribute is written straight onto the deck.
+       * It used to be `useState`: every fold then cost TWO extra renders of this
+       * whole component — one to publish `data-deck-anim`, one to clear it — and a
+       * render here calls every installed widget's `render()` and reconciles the
+       * deck. Measured on the owner's stage (2026-10-21, 1707×1067 @DSF1.5): the
+       * click → first moving frame latency was 50–85ms, and that extra render was
+       * most of it. The marker is now visible in the same commit the fold starts,
+       * and the wave below reads it off the DOM (`RailWave`'s observer), which is
+       * the one consumer that needed a re-render to notice.
+       */
+      const deckFoldRef = React.useRef<'in' | 'out' | null>(null)
+      const markDeck = React.useCallback((next: 'in' | 'out' | null): void => {
+        deckFoldRef.current = next
+        // The fold's only LAYOUT property is the transcript's inset (see
+        // rail/fold-inset.ts): it was armed at the state flip in index.ts, lands in
+        // one step there, and the visible move rides a compositor pan. The
+        // suppressor is released HERE, on the fold's own report, so a right-panel
+        // open/close and a width drag get the shell's curve back exactly when the
+        // cards stop moving instead of on a guessed timer.
+        if (next === null) settleFoldInset()
+        const el = deckRef.current
+        if (el === null) return
+        if (next === null) el.removeAttribute('data-deck-anim')
+        else el.setAttribute('data-deck-anim', next)
+      }, [])
+      const deckRef = React.useRef<HTMLDivElement | null>(null)
       /**
        * Boot restore must not play the fold (see `bootRestorePending`): if the
        * rail was already WANTED at the first render, the first time the deck
@@ -698,7 +725,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       const cascadeRef = React.useRef<DeckCascade | null>(null)
       if (cascadeRef.current === null) {
         cascadeRef.current = createDeckCascade((end: CascadeEnd) => {
-          setDeckAnim(null)
+          markDeck(null)
           const phase = drawerPhaseRef.current
           if (end === 'closed') {
             // A re-open can land in the very frame the fold bottoms out (open →
@@ -736,7 +763,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         // nothing left written on them.
         if (!staggerShape || deck === null) {
           cascade.release()
-          setDeckAnim(null)
+          markDeck(null)
           return
         }
         // The corner both shapes start from, and the group's two start values.
@@ -793,15 +820,15 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
           cascadeRestore.current = false
           if (restore || reduceMotion) {
             cascade.jump(want)
-            setDeckAnim(null)
+            markDeck(null)
             return
           }
         } else if (reduceMotion) {
           cascade.jump(want)
-          setDeckAnim(null)
+          markDeck(null)
           return
         }
-        setDeckAnim(want === 'open' ? 'in' : 'out')
+        markDeck(want === 'open' ? 'in' : 'out')
         cascade.play(want)
       }, [staggerShape, shouldOpen, drawerPhase, reduceMotion])
       /**
@@ -848,7 +875,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       // `cascadeOpenInsetRef`): only while the drawer is on screen and the deck has
       // stopped folding, i.e. once the co-tenant's push has actually landed. A
       // ref-write during render, exactly like `drawerPhaseRef` above.
-      if (!retired && deckAnim === null) cascadeOpenInsetRef.current = railTopInset
+      if (!retired && deckFoldRef.current === null) cascadeOpenInsetRef.current = railTopInset
       const keepMounted = retired && snap.hasSession && (everOpenRef.current || prewarm)
       if (!keepMounted) retiredElRef.current = null
       if (retired && !keepMounted) return null
@@ -1169,7 +1196,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       // re-renders per hover frame, and React bails out of this whole subtree
       // because the element object it receives never changes. The engage fade is
       // the `.dsx-wave-deck` class the wave puts on its wrapper (no re-render).
-      const deck = React.createElement('div', { key: '__deck', ref: deckRef, 'data-deck-anim': deckAnim ?? undefined, style: { position: 'relative', height: `${deckH}px` } as React.CSSProperties },
+      const deck = React.createElement('div', { key: '__deck', ref: deckRef, style: { position: 'relative', height: `${deckH}px` } as React.CSSProperties },
         staticLayout.map((c, idx) => {
           const it = items[idx]
           // No cascade delay here (see the note above `cascadeBoxes`): the fold stamps
@@ -1217,7 +1244,6 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         // The fold only exists in the 'stagger' shape; 'zoom' passes null, and a
         // non-null value also tells the wave to stand its own reflow animation
         // down for as long as the cards' `transform` belongs to the fold.
-        deckPhase: staggerShape ? deckAnim : null,
       })
       // The self-made add panel that used to live HERE (portal + drag-width + close
       // head, wrapping `WidgetsPage`) is sealed in `surfaces/add-panel.tsx`: from

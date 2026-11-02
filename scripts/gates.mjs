@@ -36,6 +36,8 @@ const GATES = [
   { id: 'G10', name: 'external-review', what: 'the third-party submission gate rejects builtin claims, unknown sources and missing market strings', args: ['scripts/validate-external-unit.mjs', '--self-test'] },
   { id: 'G8', name: 'host-routes', what: 'every host route keeps its status and shape', args: ['scripts/snapshot-host-routes.mjs'] },
   { id: 'G12', name: 'balance-fold', what: 'the DeepSeek balance channel\'s derived day\'s spend (the ledger fold) and every one of its error codes, offline against the built bundle', args: ['scripts/verify-deepseek-balance.mjs'] },
+  { id: 'G13', name: 'fold-math', what: 'the open/close fold\'s sampled keyframes stay on the continuous map, and an interruption continues from the current progress (deterministic, no browser)', args: ['scripts/verify-fold-math.mjs'] },
+  { id: 'G14', name: 'market-search', what: 'the market filters by the group label AND every member, not just the group\'s representative (pure predicate, no browser)', args: ['--experimental-strip-types', 'scripts/verify-market-search.mjs'] },
   { id: 'G3', name: 'types', what: 'no NEW type error against the recorded baseline', args: ['scripts/verify-tsc-baseline.mjs'] },
   { id: 'G4', name: 'render', what: 'every widget renders byte-identically to the recorded snapshot (zh + en)', args: ['scripts/snapshot-render.mjs', '--check'] },
   { id: 'G11', name: 'source-resolution', what: 'which sources a given install polls, which instances feed them, and at what cadence (pure rules, executed)', args: ['scripts/verify-source-resolution.mjs'] },

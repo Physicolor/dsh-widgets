@@ -16,7 +16,7 @@ import './styles/panel.module.css'
 import './styles/market.module.css'
 import './styles/primitives.module.css'
 import { WIDGET_LOCALES, subscribeRegistry } from './lib/registry'
-import type { CommandCodeData, DeepSeekBalance, GitHubData, HostOverview, PriceTable, SysInfo, UsageData, UsageMulti } from './lib/contract/types'
+import type { CacheTurns, CommandCodeData, DeepSeekBalance, GitHubData, HostOverview, PriceTable, SysInfo, UsageData, UsageMulti } from './lib/contract/types'
 import { flushSeen, loadHeatmapStore } from './lib/heatmap-accounting'
 import { createCollector } from './data/collector'
 import type { RemoteServiceLike } from './data/schedule'
@@ -32,6 +32,7 @@ import { widgetsToggleIcon } from './render/icons'
 import { readMaxCardSide, readMinCardSide, resolveRailLayout } from './rail/geometry'
 import { createRailMeasure } from './rail/measure'
 import { createRailView } from './rail/rail-view'
+import { armFoldInset, releaseFoldInset, syncFoldInset } from './rail/fold-inset'
 
 /** Required services: the slot registry (React is a platform module). */
 export const inject = ['slots']
@@ -85,7 +86,7 @@ export function apply(ctx: ClientContext): void {
   // loads —and it must never touch live-accumulated days.
   try { loadHeatmapStore() } catch { /* best-effort */ }
   let prefs = loadState()
-  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, commandCodeDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null, host: null as HostOverview | null, hostError: null as string | null, pricing: null as PriceTable | null, github: null as GitHubData | null, githubError: null as string | null, deepseekBalance: null as DeepSeekBalance | null, deepseekBalanceError: null as string | null, schedule: null as BridgeState['schedule'], sources: {} as BridgeState['sources'] }
+  let state = { open: prefs.railOpen, hasSession: false, stats: null as Stats | null, usageData: null as UsageData | null, usageMulti: null as UsageMulti | null, commandCode: null as CommandCodeData | null, commandCodeError: null as string | null, usageDaily: null as Record<string, number> | null, commandCodeDaily: null as Record<string, number> | null, sysinfo: null as SysInfo | null, host: null as HostOverview | null, hostError: null as string | null, pricing: null as PriceTable | null, sessionId: null as string | null, cacheTurns: null as CacheTurns | null, github: null as GitHubData | null, githubError: null as string | null, deepseekBalance: null as DeepSeekBalance | null, deepseekBalanceError: null as string | null, schedule: null as BridgeState['schedule'], sources: {} as BridgeState['sources'] }
 
   const listeners = new Set<() => void>()
   /**
@@ -376,8 +377,41 @@ export function apply(ctx: ClientContext): void {
 
   // ---- Rail width + stats-line toggle. ----
   ctx.effect(() => {
+    let wasActive = false
+    /**
+     * Arm the fold's transcript inset BEFORE the class that moves it.
+     *
+     * The inset is the fold's only layout property, and a CSS transition on it
+     * re-wraps the whole conversation once per frame — every co-tenant that
+     * measures the page then pays for that layout again (measured 2026-10-27:
+     * p95 frame interval in the fold window 56ms with the tween, 20ms without).
+     * `rail/fold-inset.ts` lands it in one step and rebuilds the visible move as a
+     * compositor pan of the transcript; the arming has to happen in THIS task,
+     * ahead of the class toggle below, because a transition that has already
+     * started outranks anything written afterwards.
+     *
+     * Only when a fold will really run: the `zoom` shape moves the rail's box and
+     * never reports a fold, and reduced-motion jumps the drawer — both keep the
+     * shell's own curve.
+     */
+    const armInset = (): void => {
+      const reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (reduceMotion || prefs.openShape !== 'stagger' || !state.hasSession) return
+      armFoldInset()
+    }
     const apply = (): void => {
-      document.body.classList.toggle('dsx-stats-active', state.open && state.hasSession)
+      const active = state.open && state.hasSession
+      if (active !== wasActive) {
+        wasActive = active
+        armInset()
+      }
+      document.body.classList.toggle('dsx-stats-active', active)
+      // The inset lands on THIS line (the class above). Read it and start the pan in
+      // the same task, before any frame can paint the new layout without the offset:
+      // one rAF later was a one-frame flash back to the old position at the start of
+      // every fold (measured 2026-10-28). A co-tenant's later write is caught by the
+      // module's own ResizeObserver, before the frame that paints it.
+      syncFoldInset()
       // Session hand-off kill switch. The rail is a set of `position: fixed`
       // layers, so an entry that misses the session-loss emit keeps painting (and
       // capturing pointer events) over the fresh-conversation page —the React
@@ -393,6 +427,7 @@ export function apply(ctx: ClientContext): void {
     apply()
     return () => {
       sub()
+      releaseFoldInset()
       document.body.classList.remove('dsx-stats-active')
       document.body.classList.remove('dsx-stats-no-session')
     }

@@ -28,6 +28,44 @@
       "receipt": ".probe-hover-layout-reads/reads.json",
       "before": { "waveWindowMs": 13323, "railOwnedReadsDuringWave": 718 },
       "after": { "waveWindowMs": 10199, "railOwnedPointerReadsDuringWave": 0, "measureRailTopReads": 44 }
+    },
+    "foldStress": {
+      "date": "2026-10-21",
+      "authority": "127.0.0.1:49326 (desktop app, dsh-widgets loaded from the linked repo)",
+      "note": "The owner's display is 240Hz in these runs (idle 150-160fps, p50 ~5.9ms), and 14 cards on the longest session (11654 nodes). Old = the pre-change lib/client.js, new = the composited fold. Same probe, same session, alternating runs.",
+      "command": "DSH_HOME=D:\\dsh-home DSH_PORT=49326 node scripts/probe-fold-stress.cjs --label <label> --scenario <open|close|all|rapid|idle> --cycles N --headful 1 [--throttle 4] [--gpu software] [--cards all]",
+      "receipts": ".probe-fold-stress/<label>/report.json",
+      "open": {
+        "onsetMs": { "old": [62.4, 63.1, 70.0, 85.3], "new": [22.8, 25.3, 25.5, 25.7] },
+        "wallMs": { "old": "287-306", "new": "280-332" },
+        "windowFps": { "old": "21-44", "new": "20-31" }
+      },
+      "close": {
+        "onsetMs": { "old": [19.2, 20.0, 21.1, 22.8], "new": [22.0, 23.4, 23.7, 29.0] },
+        "wallMs": { "old": "321-335", "new": "352-382" }
+      },
+      "cpuThrottle4x": {
+        "onsetMs": { "old": [330.6, 330.9, 446.5], "new": [104.1, 121.7, 190.0] },
+        "wallMs": { "old": [711.1, 788.3, 985.5], "new": [293.1, 342.3, 347.5] },
+        "mainThreadFps": { "old": "4.0-5.7", "new": "2.3-4.5" }
+      },
+      "softwareGpu": {
+        "onsetMs": { "old": [67.3, 71.5, 128.2], "new": [26.1, 26.6, 30.0] },
+        "wallMs": { "old": [307.9, 343.2, 357.5], "new": [296.3, 347.8, 353.7] }
+      },
+      "allCards": {
+        "installed": 68,
+        "slots": 66,
+        "new": { "onsetMs": [37.4, 38.7], "wallMs": [384, 547.4], "windowFps": "6-7.3" },
+        "note": "the main thread is saturated by painting 66 cards; the fold's wall time still stays in the 300-550ms band"
+      },
+      "idleCeiling": { "old": "150-160fps", "new": "150-160fps", "p50": "5.8-5.9ms" },
+      "unit": {
+        "command": "node --experimental-strip-types scripts/verify-deck-cascade-unit.mjs",
+        "keyframeFidelityPx": 0.133,
+        "note": "max deviation of the sampled keyframes from the continuous map, uniform-in-progress sampling, 48 samples per travel"
+      },
+      "knownHostCondition": "verify-deck-cascade-live B2 detects a 98px deck move at the fold start (dsh-pinned-summary's push) and reports the two absolute-map assertions instead of asserting them; the pre-change build reads the same 49.00px / 46.10px at the same spot."
     }
   },
   "gates": {
