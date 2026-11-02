@@ -943,6 +943,7 @@
 | 改右栏整体布局（几列、多宽、让不让位） | `src/client/rail/geometry.ts` | 纯计算：读官方布局 → 解出列数/宽度/是否 yield |
 | 改右栏什么时候测量、让位时机 | `src/client/rail/measure.ts` | ResizeObserver / 每帧宽度跟踪 / yield beat 都在这里 |
 | 改右栏画什么（网格、加号、抽屉） | `src/client/rail/rail-view.tsx` | `createRailView(deps)` 工厂 |
+| 改展开/收起时对话区让位的时机与动画（一次落地 + 文字/输入框平移 vs 逐帧重排） | `src/client/rail/fold-inset.ts` + `styles/rail.module.css` 的 `html.dsx-fold-inset` | 折叠期间 inset 只落地一次，可见位移由窗格 `translateX` 与输入框卡片相对 `left` 的 WAAPI 承担；见 `docs/architecture/FOLD-2026-10-28-pan.md`（前因见 `FOLD-2026-10-27-inset.md`） |
 | **改悬浮放大的动画手感** | `src/client/lib/morph-spring.ts`（曲线参数 `WAVE_SPRING`） | 见 §6 |
 | **改展开/收起的手感（曲线、回弹幅度、起始缩放）** | `src/client/lib/anim-curve.ts`（`AnimCurve` / `overshootCurve`） | 设置页写 `prefs.animCurve` / `animShiftCurve` / `animBounce` / `animScale`；两种展开方式共用同一条曲线对象 |
 | 改放大波的几何（哪个卡片被放大、放大到多少、谁和谁换位） | `src/client/rail/wave/wave-geometry.ts` | |
@@ -950,7 +951,7 @@
 | 改波/放大层的样式 | `src/client/styles/rail.module.css`（`.dsx-magnify-layer` 等） | |
 | 改组件配置页（排序、字段控件、预览） | `src/client/surfaces/config/ConfigTab.tsx` | |
 | 改组件市场（画廊、安装、卸载） | `src/client/surfaces/market/MarketTab.tsx` | |
-| 改设置页的外壳（两个 tab） | `src/client/surfaces/Settings.tsx`（`WidgetsPage`） | |
+| 改设置页的外壳（三个 tab：已装组件 / 组件市场 / 外观与布局） | `src/client/surfaces/Settings.tsx`（`WidgetsPage`） | |
 | 改设置页在左侧导航的图标 | `src/client/surfaces/settings-nav-glyph.ts` + `styles/tokens.module.css` 的 `--dsx-nav-glyph` | 官方把图标按 section id 硬编码，第三方只能打 shim |
 | 改某个数据源的抓取/解析 | host 侧 `src/host/<channel>.ts`；前端解析在 `src/client/families/<family>/data.ts` | |
 | 加一条 host 路由 | `src/host/<name>.ts` + `src/host/routes.ts` 一行 | 记得在 `scripts/snapshot-host-routes.mjs` 加案例，否则 G7 直接红 |
@@ -1132,8 +1133,8 @@ host 路由 ──► data/collector.tsx ──► bridge 快照（runtime/bridg
 | 按钮 / 可点区域 | 实现位置 | 行为 |
 |---|---|---|
 | 顶部「组件」胶囊 | `client/index.ts` 的 header 槽位 | 开/关右栏（`prefs.railOpen`）；窄到放不下时置灰 |
-| 卡片下方的「+」 | `rail/rail-view.tsx`（`.dsx-stats-add`） | 打开加号面板 |
-| 加号面板的关闭 / 左边缘拖宽 | `rail/rail-view.tsx`（`.dsx-stats-addpanel-close` / `-resize`） | 宽度写 `prefs.panelWidth` |
+| 卡片下方的设置齿轮（`.dsx-stats-add`） | `rail/rail-view.tsx`（`openSettingsSection`） | 打开官方 **设置 → 组件**（替用户点两次）；自造浮层已无挂载路径 |
+| 自造浮层的关闭 / 左边缘拖宽 | `surfaces/add-panel.tsx`（**未挂载**，仅源码参考） | 宽度读 `prefs.panelWidth`；设置页已不再暴露该行 |
 | 整个卡片（可循环的卡片） | `CardBody` 的 `onCycle` ← `rail-view.tsx` 的 `cyclePool` | 点击在多个视图/多个池 key 之间循环，并持久化 |
 | 卡片左下角的缩放把手 | `rail/rail-view.tsx`（`.dsx-stats-resize`，CSS 定在 `left/bottom: 0`） | 拖拽改 `prefs.cardSide`（卡片尺寸） |
 | 卡片上的动作按钮（如「压缩上下文」） | `CardBody` 的 `ActionsBlock`，回调 = `rail-view.tsx` 的 `handleAction` | **两下确认**：第一下变成待确认胶囊，第二下才真的执行命令 |
@@ -1267,21 +1268,31 @@ styles/primitives.module.css   按钮 / 开关 / 下拉 / 分隔线等基础件
 
 ---
 
-## 11. 闸门与验证：8 个离线 + 一组 live
+## 11. 闸门与验证：12 个离线 + 一组 live
 
-| 闸门 | 命令 | 覆盖什么 | 故意破坏验证 |
-|---|---|---|---|
-| G1 | `node scripts/gen-registry.mjs --check` | 注册表与 40 个 manifest 不漂移 | ✅（改一个 widget 值即红） |
-| G2 | `node scripts/validate-widget-unit.mjs` | 每个单元的契约 + 文案完整 | ✅ |
-| G3 | `node scripts/verify-tsc-baseline.mjs` | 类型检查（基线已空 = **必须 0 错**） | —（0 错即硬门） |
-| G4 | `node scripts/snapshot-render.mjs` | **110 份渲染输出**逐字段比对 | ✅ |
-| G5 | `node scripts/extract-css.mjs` | 编译后 CSS 的拼接 | ✅ |
-| G6 | `node scripts/audit-move-only.mjs` | 纯搬移提交的增删行抵消 | 人工复核辅助 |
-| G7 | `node scripts/snapshot-host-routes.mjs` | **14 个 host 路由案例**的结构指纹 | ✅（405→404 被逐条指出） |
-| G8 | `node scripts/verify-published-types.mjs` | 一个真实消费方能解析两个入口的 `.d.ts` | ✅（第一次跑就抓到 reference 路径错） |
-| — | `node docs/verify-sysinfo.mjs` | sysinfo 深度契约（也在 CI 里跑） | — |
-| — | `node --experimental-strip-types docs/verify-i18n.mjs` | 字典完整性 | — |
-一条命令跑完常用的：`pnpm check`（G1 + G3）；发布前 `pnpm run build`（含 G8 需要用的类型产物）。
+`node scripts/gates.mjs` 是唯一入口（`pnpm test`）；下表是当前 roster，按价格从低到高。
+
+| 闸门 | 命令 | 覆盖什么 |
+|---|---|---|
+| G1 | `scripts/gen-registry.mjs --check` | 注册表与 61 个 manifest 不漂移 |
+| G9 | `scripts/verify-source-contract.mjs --prove` | 数据源契约 + 单元声明的源可解析 |
+| G2 | `scripts/validate-widget-unit.mjs` | 每个单元的契约 + 文案完整 |
+| G10 | `scripts/validate-external-unit.mjs --self-test` | 第三方提交的评审门 |
+| G8 | `scripts/snapshot-host-routes.mjs` | host 路由的结构指纹 |
+| G12 | `scripts/verify-deepseek-balance.mjs` | 余额通道的账本折叠与错误码 |
+| G13 | `scripts/verify-fold-math.mjs` | **折叠数学**：采样关键帧对连续映射的误差 + 中断连续性（无浏览器） |
+| G14 | `scripts/verify-market-search.mjs` | **市场搜索**：组标签 + 组内每个成员都参与匹配，空查询返回全部（纯谓词，无浏览器） |
+| G3 | `scripts/verify-tsc-baseline.mjs` | 类型检查（0 错是硬门） |
+| G4 | `scripts/snapshot-render.mjs --check` | 全部单元的渲染输出逐字节一致 |
+| G11 | `scripts/verify-source-resolution.mjs` | 每个安装实际轮询哪些源、什么节奏 |
+| G5 | `scripts/extract-css.mjs` | 编译后 CSS 的拼接（改 CSS 时必须显式刷新基线） |
+| G6 | `scripts/audit-move-only.mjs` | 纯搬移提交的增删行抵消 |
+| G7 | `scripts/verify-published-types.mjs` | 两个入口的 `.d.ts` 可被真实消费方解析 |
+
+`pnpm check`（G1 + G3）之外，发布前跑 `pnpm run build`（G5/G7 需要构建产物）再 `pnpm test`。
+**G13 是折叠的唯一离线回归网**：它把 `deck-cascade.ts` 的纯数学（时间轴、rank、band、
+采样误差、反转连续性、两个终点）固定住；实机行为由 `verify-deck-cascade-live.cjs` 的 A–H 段检查。
+折叠的性能与极限条件见 [FOLD-2026-10-21.md](FOLD-2026-10-21.md)。
 
 live 探针（需要 `dsh web` 在 3080 上跑着；重建后**等几秒**再跑，否则会撞上客户端 HMR 重打包）：
 

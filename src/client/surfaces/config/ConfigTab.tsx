@@ -411,7 +411,7 @@ function MetricsFieldControl({ field, value, onChange }: { field: ConfigField; v
   )
 }
 
-export function ConfigTab({ controller }: { controller: WidgetsController }): React.ReactElement {
+export function ConfigTab({ controller, onGoMarket }: { controller: WidgetsController; onGoMarket?: () => void }): React.ReactElement {
   const { prefs, setPrefs } = controller
   // Same reason as the market: a unit registered after mount must appear in the
   // installed list and resolve in the form below.
@@ -551,6 +551,15 @@ export function ConfigTab({ controller }: { controller: WidgetsController }): Re
         title: t('config.addedCount', { added: installed.length, max: maxPlaceable }),
         style: { flex: 'none', fontSize: 12, color: 'var(--dsw-alias-label-tertiary)', marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
       }, hasSel ? `${installed.length}/${maxPlaceable}` : t('config.addedCount', { added: installed.length, max: maxPlaceable })),
+      // Empty state: the list is the page's whole content, so an empty one was a
+      // dead end — no hint that the cards live in the next tab. The block only
+      // exists at zero installed, so a configured rail renders the same DOM.
+      installed.length === 0 && onGoMarket
+        ? React.createElement('div', { style: { padding: '18px 8px', textAlign: 'center', fontSize: 13, lineHeight: '20px', color: 'var(--dsw-alias-label-tertiary)' } },
+          React.createElement('div', null, t('config.empty')),
+          React.createElement('button', { type: 'button', className: 'dsx-btn dsx-btn-primary', style: { marginTop: 10 }, onClick: onGoMarket }, t('config.emptyCta')),
+        )
+        : null,
       React.createElement(OrderList, {
         items: installed,
         onMove: (next) => setPrefs({ order: next }),

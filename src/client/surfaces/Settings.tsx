@@ -7,7 +7,7 @@
 
 import * as React from 'react'
 import { CORNER_GEARS } from '../render/card-geometry'
-import { DEFAULT_CORNER_PERCENT, MAX_ROWS_RANGE, effectiveMaxWidgets } from '../runtime/prefs'
+import { DEFAULT_CORNER_PERCENT, MAX_ROWS_RANGE, effectiveMaxWidgets, settingsResetPatch } from '../runtime/prefs'
 import type { WidgetsController } from '../runtime/controller'
 import { ConfigTab } from './config/ConfigTab'
 import { MarketTab } from './market/MarketTab'
@@ -41,7 +41,7 @@ export function WidgetsPage({ controller, hideHeader }: { controller: WidgetsCon
     // The active tab owns the remaining height and its own scroll (`minHeight: 0`
     // is what lets it shrink below its content instead of growing the panel).
     React.createElement('div', { style: { flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' } },
-      tab === 'config' ? React.createElement(ConfigTab, { controller })
+      tab === 'config' ? React.createElement(ConfigTab, { controller, onGoMarket: () => setTab('market') })
         : tab === 'market' ? React.createElement(MarketTab, { controller, usageData: null })
         : React.createElement(SettingsPanel, { controller }),
     ),
@@ -61,7 +61,7 @@ export function WidgetsPage({ controller, hideHeader }: { controller: WidgetsCon
  * AUDIT 2026-10-01 (owner report): the page had drifted into one flat list
  * ordered by when each row was ADDED, and two rows that belong together asked
  * for the same KIND of value with two different widgets — 最多列数 was a Select
- * while 可显示的最多行数 (added a day later, after `Stepper` existed) was a
+ * while 最多行数 (added a day later, after `Stepper` existed) was a
  * Stepper. Both are fixed: every count/size on this page is a Stepper, and the
  * rows are grouped by the SURFACE they configure, with 列/行/组件数 adjacent
  * because the third is literally the product of the first two.
@@ -87,11 +87,14 @@ function Group({ title, desc, children }: { title: string; desc: string; childre
   )
 }
 
-function Row({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }): React.ReactElement {
+function Row({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }): React.ReactElement {
   return React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, padding: '14px 0', borderBottom: '1px solid var(--dsw-alias-border-l2)' } },
     React.createElement('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4, paddingRight: 32 } },
       React.createElement('div', { style: { fontSize: 14, lineHeight: '22px', color: 'var(--dsw-alias-label-primary)' } }, title),
-      React.createElement('div', { style: { fontSize: 12, lineHeight: '18px', color: 'var(--dsw-alias-label-tertiary)' } }, desc),
+      // The second line is OPTIONAL: a row whose title already says everything
+      // gets no grey copy at all (the page had a desc on every one of its rows,
+      // which is most of what made it read as a wall of small grey text).
+      desc === undefined || desc === '' ? null : React.createElement('div', { style: { fontSize: 12, lineHeight: '18px', color: 'var(--dsw-alias-label-tertiary)' } }, desc),
     ),
     React.createElement('div', { style: { flex: 'none', minWidth: 0 } }, children),
   )
@@ -151,6 +154,21 @@ function CurveRow({ titleKey, descKey, value, onChange }: { titleKey: string; de
 
 export function SettingsPanel({ controller }: { controller: WidgetsController }): React.ReactElement {
   const { prefs, setPrefs } = controller
+  // Two-click reset: the first click only ARMS it (the label changes), the
+  // second within three seconds applies. No modal primitive is available to
+  // this plugin, and a silent one-click reset of the whole page is the kind of
+  // destructive affordance that needs a confirmation.
+  const [confirmReset, setConfirmReset] = React.useState(false)
+  React.useEffect(() => {
+    if (!confirmReset) return
+    const timer = window.setTimeout(() => setConfirmReset(false), 3000)
+    return () => window.clearTimeout(timer)
+  }, [confirmReset])
+  const resetSettings = (): void => {
+    if (!confirmReset) { setConfirmReset(true); return }
+    setConfirmReset(false)
+    setPrefs(settingsResetPatch())
+  }
   const colValue = [1, 2, 3, 4].indexOf(prefs.columns) !== -1 ? prefs.columns : 2
   // A stored value outside the gear table (hand-edited prefs) must still show a
   // selected option, so fall back to the default gear.
@@ -171,7 +189,7 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
         children: React.createElement(Stepper, { min: 1, max: 4, step: 1, value: colValue, unit: t('settings.columns.unit'), onChange: (v) => setPrefs({ columns: v }) }),
       }),
       React.createElement(Row, {
-        title: t('settings.maxRows.title'), desc: t('settings.maxRows.desc'),
+        title: t('settings.maxRows.title'),
         children: React.createElement(Stepper, { min: MAX_ROWS_RANGE[0], max: MAX_ROWS_RANGE[1], step: 1, value: prefs.maxRows, unit: t('settings.maxRows.unit'), onChange: (v) => setPrefs({ maxRows: v }) }),
       }),
       React.createElement(Row, {
@@ -217,7 +235,7 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
         title: t('settings.realtime.title'), desc: t('settings.realtime.desc'),
         children: React.createElement(Toggle, { title: t('settings.realtime.title'), checked: prefs.realTime, onChange: (next) => setPrefs({ realTime: next }) }),
       }),
-      React.createElement(Row, { title: t('settings.magnify.title'), desc: t('settings.magnify.desc'), children: React.createElement(Stepper, { min: 1, max: 1.4, step: 0.05, value: prefs.magnify, unit: 'x', format: (v) => String(Math.round(v * 100) / 100), onChange: (v) => setPrefs({ magnify: v }) }) }),
+      React.createElement(Row, { title: t('settings.magnify.title'), children: React.createElement(Stepper, { min: 1, max: 1.4, step: 0.05, value: prefs.magnify, unit: 'x', format: (v) => String(Math.round(v * 100) / 100), onChange: (v) => setPrefs({ magnify: v }) }) }),
     ),
     // ── 打开与收起动画 ────────────────────────────────────────────────────────
     // The rail's open/close used to be a plain slide; it now grows out of its
@@ -255,16 +273,26 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
       }),
       React.createElement(CurveRow, { titleKey: 'settings.animCurve.title', descKey: 'settings.animCurve.desc', value: prefs.animCurve, onChange: (next) => setPrefs({ animCurve: next }) }),
     ),
-    // ── 组件设置面板 ──────────────────────────────────────────────────────────
-    React.createElement(Group, { title: t('settings.group.panel.title'), desc: t('settings.group.panel.desc') },
-      React.createElement(Row, { title: t('settings.panelWidth.title'), desc: t('settings.panelWidth.desc'), children: React.createElement(Stepper, { min: 260, max: 760, step: 10, value: prefs.panelWidth, unit: 'px', onChange: (v) => setPrefs({ panelWidth: v }) }) }),
-    ),
-    // ── 对话区 ────────────────────────────────────────────────────────────────
+    // ── 与宿主界面 ────────────────────────────────────────────────────────────
+    // This group holds what the rail changes OUTSIDE itself (the composer's
+    // stats line), which is why it is named after the host surface rather than
+    // after "the conversation". The old「组件设置面板」group is gone with the
+    // self-made panel: `prefs.panelWidth` is read only by the sealed
+    // `surfaces/add-panel.tsx`, so a row for it here configured nothing.
     React.createElement(Group, { title: t('settings.group.chat.title'), desc: t('settings.group.chat.desc') },
       React.createElement(Row, {
         title: t('settings.hideStatsLine.title'), desc: t('settings.hideStatsLine.desc'),
         children: React.createElement(Toggle, { title: t('settings.hideStatsLine.title'), checked: prefs.hideStatsLine, onChange: (next) => setPrefs({ hideStatsLine: next }) }),
       }),
+    ),
+    // The page's own floor: a two-click way back to the shipped appearance.
+    // Scope is `settingsResetPatch()` — the rows above, not the installed cards.
+    React.createElement('div', { style: { flex: 'none', display: 'flex', justifyContent: 'flex-end', padding: '14px 0 4px' } },
+      React.createElement('button', {
+        type: 'button',
+        className: 'dsx-btn' + (confirmReset ? ' dsx-btn-primary' : ''),
+        onClick: resetSettings,
+      }, confirmReset ? t('settings.reset.confirm') : t('settings.reset.title')),
     ),
   )
 }

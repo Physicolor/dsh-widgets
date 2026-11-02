@@ -18,7 +18,8 @@
  *
  * 恢复时要一并恢复的三件事：
  *   1. 瓦片动作：`onTileClick` 与 `RailWave` 的 `onAddClick` 都改回 `toggleAdd`；
- *   2. `side === 1` 列的隐藏规则不变，面板宽度读 `prefs.panelWidth`；
+ *   2. `side === 1` 列的隐藏规则不变，面板宽度读 `prefs.panelWidth`
+ *      （2026-10-22：设置页已移除该行——它只被这里读取——字段仍保留）；
  *   3. `localStorage` 开关或构建期开关二选一（旧实现是 `dsx-addpanel-local`）。
  */
 import * as React from 'react'

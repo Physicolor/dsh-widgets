@@ -152,6 +152,41 @@ export function effectiveMaxWidgets(p: Pick<Prefs, 'maxWidgets' | 'columns' | 'm
  *  gets exactly the corner the default preference would give it. */
 export const DEFAULT_CORNER_PERCENT = 16
 
+/**
+ * The defaults owned by the 组件设置 page — 「恢复默认设置」 resets EXACTLY these.
+ *
+ * It is deliberately a SUBSET of {@link Prefs}: the page configures how the rail
+ * LOOKS and lays out, not which cards the user installed. A reset that also
+ * dropped `installed` / `order` / `cardConfigs` would wipe a hand-tuned rail
+ * behind a two-click confirmation, which is not what the label promises. The
+ * host-facing switches (`railOpen`, `marketView`) and `apiKey` / `panelWidth`
+ * are left alone for the same reason.
+ */
+export function settingsResetPatch(): Pick<Prefs,
+  'columns' | 'maxRows' | 'maxWidgets' | 'cardSide' | 'panelPadding' | 'wholeCards'
+  | 'squircle' | 'cornerPercent' | 'realTime' | 'magnify'
+  | 'openShape' | 'animScale' | 'animCurve' | 'animShiftCurve' | 'animBounce' | 'hideStatsLine'> {
+  const d = DEFAULTS
+  return {
+    columns: d.columns,
+    maxRows: d.maxRows,
+    maxWidgets: d.maxWidgets,
+    cardSide: d.cardSide,
+    panelPadding: d.panelPadding,
+    wholeCards: d.wholeCards,
+    squircle: d.squircle,
+    cornerPercent: d.cornerPercent,
+    realTime: d.realTime,
+    magnify: d.magnify,
+    openShape: d.openShape,
+    animScale: d.animScale,
+    animCurve: { ...d.animCurve },
+    animShiftCurve: { ...d.animShiftCurve },
+    animBounce: d.animBounce,
+    hideStatsLine: d.hideStatsLine,
+  }
+}
+
 /** localStorage key holding the whole prefs object. */
 export const STORAGE_KEY = 'harness-widgets.state'
 /** Local mirror of the last saved-at timestamp, compared against the host file

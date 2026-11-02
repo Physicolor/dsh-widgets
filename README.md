@@ -18,6 +18,7 @@ description: "A live widget rail on the right: session, machine, quota and cost 
 
 <p align="center">
   <img src="https://img.shields.io/npm/v/dsh-widgets?style=flat&label=latest%20release&color=4D6BFE" alt="Latest release">
+  <a href="https://github.com/Physicolor/dsh-widgets/releases"><img src="https://img.shields.io/github/v/release/Physicolor/dsh-widgets?style=flat&label=GitHub%20release&color=08C" alt="GitHub release"></a>
   <img src="https://img.shields.io/npm/dt/dsh-widgets?style=flat&label=total%20downloads&color=4D6BFE" alt="Total downloads">
   <a href="https://github.com/Physicolor/dsh-widgets/stargazers"><img src="https://img.shields.io/github/stars/Physicolor/dsh-widgets?style=flat&label=%E2%98%85&color=08C" alt="GitHub stars"></a>
   <img src="https://img.shields.io/badge/license-MIT-2EA44F?style=flat" alt="MIT License">
@@ -90,7 +91,7 @@ The rail's **top edge** sits on the session header's bottom edge (`--dsx-rail-to
 
 ### Continuous Magnification
 
-macOS-Dock-style hover magnification with two follow modes (toggle in **Settings → Widgets → Settings → Hover Magnify → Realtime follow**):
+macOS-Dock-style hover magnification with two follow modes (toggle in **Settings → Widgets → Look & Layout → Hover Magnify → Continuous Magnify**):
 
 - **Stepless (continuous follow)**: truly stepless — every card's scale is driven by its own continuous Euclidean distance to the pointer, so the peak glides smoothly between cards on any pointer movement. It snaps to its steady right-anchored geometry every frame (`transition: none`), so a card's right edge stays flush with the rail even mid-motion — no width/right desync while the pointer moves.
 - **Discrete (default)**: reuses the same continuous geometry but snaps the pointer onto a quantized grid (row/column centres + the midpoints between adjacent ones: 2·rows−1 Y points, 2·cols−1 X points), with the same spring gliding the peak between grid points.
@@ -119,17 +120,19 @@ Both controls live in **Settings → Widgets → Config**: the switch (default *
 
 ### How the settings page is organised
 
-The general tab groups its rows by the **surface each one configures** instead of
-listing them in the order they were added:
+The **Look & Layout** tab groups its rows by the **surface each one configures**
+instead of listing them in the order they were added:
 
 | Group | Contents |
 | --- | --- |
 | Grid & Size | Max columns / Max rows / Max widgets / Base card size / Card gap / Whole cards only |
 | Card Look | Continuous corner curvature / Corner gear |
 | Hover Magnify | Continuous magnify / Hover magnify |
-| Open / Close Animation | Open shape / Open start scale / Position curve / Zoom curve |
-| Settings Panel | Panel width |
-| Conversation | Hide the stats line under the input box |
+| Open / Close Animation | Open shape / Open start scale / Position curve / Spring settle / Zoom curve |
+| Host UI | Hide the stats line under the input box |
+
+A footer button restores these defaults — two clicks, and it never touches the
+installed cards, their order or their per-card config.
 
 Max columns, Max rows and Max widgets sit next to each other and are all numeric,
 because the third is literally the product of the first two (when it is clamped,
@@ -150,7 +153,7 @@ there is no "append at the end".
 
 ### Open/close animation, and whole cards only
 
-The **Whole-group zoom** shape grows the rail out of a **top-right anchor**: it slides in (the shell's own 0.3s transition, same as the official right panel) *and* scales up from a start value. Those two halves are **two elements on two curves**: an outer `translateX(travel)` driven by the **position curve**, an inner `scale(s0)` driven by the **zoom curve** (one `transform` cannot carry two timing functions; both boxes are `inset: 0` fixed, so the rail's coordinates are unchanged under either), each with `transform-origin: top right` — the viewport's own top-right corner, off the right edge of the screen. The parameters live in **Settings → Widgets → Settings** (the page's third tab) under **Open / Close Animation**:
+The **Whole-group zoom** shape grows the rail out of a **top-right anchor**: it slides in (the shell's own 0.3s transition, same as the official right panel) *and* scales up from a start value. Those two halves are **two elements on two curves**: an outer `translateX(travel)` driven by the **position curve**, an inner `scale(s0)` driven by the **zoom curve** (one `transform` cannot carry two timing functions; both boxes are `inset: 0` fixed, so the rail's coordinates are unchanged under either), each with `transform-origin: top right` — the viewport's own top-right corner, off the right edge of the screen. The parameters live in **Settings → Widgets → Look & Layout** (the page's third tab) under **Open / Close Animation**:
 
 - **Open shape** (default “Stagger (accordion)”): the rail's own box **neither moves nor scales** — and every card travels along **exactly the path the whole group takes in Whole-group zoom**: same off-screen anchor, same start scale, same travel, same two curves. Only the per-card **timing** differs, and the fold's **whole timeline is that same duration** — one card's travel and the per-rank step are split OUT of it (`60% / 40%`), so a 14-cell deck lands on 9.23ms beats and the last card arrives exactly when the group would have: the cascade starts at the deck's **bottom-left** cell and hands over to the **top-right** one, and the collapse retracts in the mirror order — the same timeline played backwards, which is what lets a fast reversal (a close interrupting an open) resume from wherever the fold stands instead of restarting or freezing. Every cell gets its own delay (no cap). So the cards fly in from beyond the rail's right edge (the rail clips its own subtree, so a card is hidden until its turn brings it across), one beat after another, instead of the block arriving in one piece. Pure `transform` throughout, with **no opacity change at all**, and the bottom **Settings** tile is a cell of that same grid, so it folds with the rest. “Whole-group zoom” is the opposite trade: one group-wide slide + scale, everything together.
 - **Open start scale** (50–100%, default 88%): the scale the open starts from — the whole group in “Whole-group zoom”, **each card** in “Stagger”. 100% = pure slide.
@@ -164,7 +167,7 @@ Each curve *is* its `cubic-bezier()`: one line, two draggable control points (ar
 
 What that rule judges is the rail's **real scrollport**: both the verdict and the wheel's end detent read the rail's MEASURED `padding-top` instead of the authored 4px (2026-10-14). The right column now has a co-tenant — the pinned-summary card pushes the widgets down with an `!important` `padding-top` (79–131px measured), and the rail's `clientHeight` does not move at all: on the authored constant the band's floor sat a whole push BELOW the real one, so a card the bottom edge had already sliced was judged whole and painted with the slice on screen (the owner's screenshot, bottom row). The same measured inset feeds the scroll cap's `lastRow`, so a card the rule hides is still one the wheel can scroll to — the two halves have to change together, or correcting the verdict alone would hide that card for good. The push also lands while it is being TWEENED (~260ms of per-frame style writes): a `style`-attribute MutationObserver on the rail re-measures on the next frame, rAF-coalesced, and an unchanged value bails out through `Object.is`.
 
-The bottom **Settings** gear obeys the same rule (a half tile is not drawn), and it is additionally a **hover-only** affordance: never painted at rest, fading in when the pointer enters the rail (or the magnify overlay). Its cell stays in the layout — otherwise every hover would change the rail's height and its scroll end, shifting the deck — only the paint is gated. It now **opens the product's own settings window**, landing on **Settings → Widgets** (2026-10-14): that page is the app's one place to configure widgets, so the plugin no longer grows a second surface of its own. It does so by performing the two clicks a user would — the sidebar-foot Settings trigger, then our `Widgets` nav row, located through the very `_settingsArea` / `_navList` / `data-dsx-nav` conventions `settings-nav-glyph` already relies on — and waits for the row when the window has to open first. The plugin's own floating panel (the Config / Market / Settings tabs, drag-resizable) is **kept in the code but no longer on that path**: it takes the gear back only on a machine that sets `localStorage['dsx-addpanel-local'] = '1'` (a local spare, not part of what ships).
+The bottom **Settings** gear obeys the same rule (a half tile is not drawn), and it is additionally a **hover-only** affordance: never painted at rest, fading in when the pointer enters the rail (or the magnify overlay). Its cell stays in the layout — otherwise every hover would change the rail's height and its scroll end, shifting the deck — only the paint is gated. It now **opens the product's own settings window**, landing on **Settings → Widgets** (2026-10-14): that page is the app's one place to configure widgets, so the plugin no longer grows a second surface of its own. It does so by performing the two clicks a user would — the sidebar-foot Settings trigger, then our `Widgets` nav row, located through the very `_settingsArea` / `_navList` / `data-dsx-nav` conventions `settings-nav-glyph` already relies on — and waits for the row when the window has to open first. The plugin's own floating panel (the Installed / Market / Look & Layout tabs, drag-resizable) is **kept in the source as a reference, with no path that mounts it** — there is no build switch or localStorage flag that brings it back.
 
 **Where the scroll ends** (2026-10-01): the wheel stops at the smallest detent that shows the deepest component whole, instead of pulling the last row up to the top. With the row detents keeping the top whole and this rule keeping the bottom whole, scrolling further would only lift the last row and leave a viewport of blank band under it; the pane now ends within one card gap of the last component, and the browser's own scroll range is trimmed to the same stop so trackpad inertia cannot overshoot it.
 
@@ -324,7 +327,7 @@ pnpm check:registry  # discovery guard only
 node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (Worker self-check / review)
 ```
 
-> **The project typechecks clean**, so `pnpm check` is a hard gate, and eight offline gates guard a change: G1 registry staleness, G2 per-unit contract + locale completeness, G3 typecheck, G4 the **110 render outputs** of every widget × size × preview state (pure data — no browser, no React), G5 the compiled-CSS concatenation, G6 the move-only line audit, G7 **14 host-route cases** driven against the built bundle with stubbed credentials and no running service, G8 the published declarations resolved by a real consumer. [`docs/architecture/CODE_MAP.md`](docs/architecture/CODE_MAP.md) is the map of where everything lives, and [`docs/architecture/ARCHITECTURE_REFACTOR_REPORT.md`](docs/architecture/ARCHITECTURE_REFACTOR_REPORT.md) records what each restructure step was verified against.
+> **The project typechecks clean**, so `pnpm check` is a hard gate, and `node scripts/gates.mjs` runs the offline gates (G1–G14) with no browser, no network and no running service; the roster names what each one proves. [`docs/architecture/CODE_MAP.md`](docs/architecture/CODE_MAP.md) is the map of where everything lives, and [`docs/architecture/ARCHITECTURE_REFACTOR_REPORT.md`](docs/architecture/ARCHITECTURE_REFACTOR_REPORT.md) records what each restructure step was verified against.
 
 - `peerDependencies`: `@deepseek-ai/cordis`, `@deepseek-ai/dsh-client-ui-slots` (both provided by the DSH web profile; `@deepseek-ai/dsh-client-runtime` was retired in DSH 0.1.5);
 - `cordis.patch.yml` inserts one `widgets` row; the host half and browser half are loaded by the loader and client-modules respectively.
@@ -347,9 +350,9 @@ Every release, entry by entry — including the measurement behind each change �
 - **DeepSeek balance** — the official account balance with the ledger-derived day's spend beside it, reading a host route of its own (`/api/deepseek-balance`), with the fold covered by a new offline gate;
 - **A declared data-source contract** — a unit says what it reads (`reads`, `source`, its skeleton) and one generic poller answers for all of them; the build now fails when a declaration drifts from the unit;
 - **Four defects gone** — the hover wave no longer arms a whole row below the pointer on a rail another plugin has pushed down (45 checks: 25 FAIL → 45/45 PASS); the session-header anchor stops freezing when the shell swaps its node; the whole-card rule and the wheel's end detent read the same measured inset — and `paneH` is measured at all, which it never had been; nvidia-smi's MiB are no longer passed through as bytes;
-- **The 设置 gear opens Settings → Widgets** — the app's own page, rather than a second panel of our own (that panel stays in the code as a local spare, re-armed by `localStorage['dsx-addpanel-local'] = '1'`);
+- **The 设置 gear opens Settings → Widgets** — the app's own page, rather than a second panel of our own (that panel stays in the source as a reference, with nothing mounting it);
 - **Two card standards with teeth** — `docs/design/CARD-BODY-POSTURE.md` and `CARD-TITLE-STANDARD.md`, both written from incidents that had already passed every gate, and both machine-asserted in `scripts/probe-geometry.cjs`;
-- **CI, and the offline gates to run in it** — `node scripts/gates.mjs` (G1–G12) and `.github/workflows/ci.yml` running `pnpm run build` + `pnpm test` on every push and pull request.
+- **CI, and the offline gates to run in it** — `node scripts/gates.mjs` (G1–G14) and `.github/workflows/ci.yml` running `pnpm run build` + `pnpm test` on every push and pull request.
 
 Each of these, with the measurement behind it, is written up in the [CHANGELOG](CHANGELOG.md).
 

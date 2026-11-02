@@ -27,7 +27,7 @@ on:
 
 permissions:
   id-token: write # Required for OIDC trusted publishing
-  contents: read
+  contents: write # Required to create the GitHub Release for the pushed tag
 
 jobs:
   publish:
@@ -58,3 +58,23 @@ jobs:
 
       - name: Publish to npm (OIDC trusted publishing)
         run: npm publish --access public
+
+      # Every tagged release becomes a GitHub Release too: it shows up in the
+      # repo's Releases feed and in watchers' timelines, and it gives anything we
+      # link to (README, market listing, a post) a stable page per version.
+      # `--generate-notes` builds the body from merged PRs / commits since the
+      # previous tag; the still is attached so the release page has a preview.
+      # The `view` guard makes a re-run of the workflow idempotent.
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists — nothing to do"
+            exit 0
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            docs/screenshots/rail-demo-still.png
