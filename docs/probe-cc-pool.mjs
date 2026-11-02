@@ -6,7 +6,11 @@
  * 这不是静态检查，而是把**两侧真实产物**接起来跑一遍:
  *  1. 用假 ctx (webServer.register 抓路由 + 真凭据 seam) 加载 host 产物
  *     `lib/index.js`, 调用真的 `/api/commandcode-usage` handler, 拿到真实上游
- *     的多池载荷 (COMMANDCODE_API_KEY + COMMANDCODE_API_KEY_2);
+ *     的多池载荷。池子有两条来源, 两条都要过:
+ *       - **模型配置**: 假 ctx 注入 `settings.describe()`, 里面是 GOAT / GOATⅡ
+ *         两个指向 api.commandcode.ai 的 provider + 一个别的端点 (不得混进来);
+ *       - **env 兜底**: 不注入 settings, 走 `COMMANDCODE_API_KEY` / `…_2 …`;
+ *         这里那把废弃的 `…_API_KEY_2` (401) 必须被认出来并排除在池外。
  *  2. 用 tsc 把 `src/client/lib/cc-view.ts` 现编成 CJS, 装入真字典, 用真渲染
  *     工厂在【AllUser / 每个账户 / 单池回退】三种视图下渲染全部 Command Code
  *     卡片, 断言:
@@ -69,13 +73,16 @@ function resolveRef(ref) {
  *  (ROUTE_CACHE_MS, 20 s) has expired, exactly like the browser's degraded-payload
  *  retry does. It stops as soon as the payload is complete, and reports how long that
  *  took. */
-async function hostPayload() {
+async function hostPayload(options = {}) {
   const mod = await import(new URL('../lib/index.js', import.meta.url).href)
   const routes = new Map()
   const ctx = {
     webServer: { register: (route) => { routes.set(route.path, route); return () => {} } },
     credentials: { resolve: async (ref) => resolveRef(ref) },
-    get: () => undefined,
+    // The model configuration, when this scenario supplies one: the route reads
+    // `settings.describe()` and takes every provider whose baseURL points at
+    // api.commandcode.ai. `undefined` = the env fallback path.
+    get: (name) => (name === 'settings' ? options.settings : undefined),
     effect: (setup) => { setup() },
   }
   mod.apply(ctx)
@@ -91,11 +98,11 @@ async function hostPayload() {
     await route.handler({ method: 'GET', url: '/api/commandcode-usage' }, res)
     return { status: res.status, payload: res.body ? JSON.parse(res.body) : null }
   }
-  const complete = (payload) => {
+  const complete = options.complete ?? ((payload) => {
     if (payload === null || !Array.isArray(payload.keys) || payload.keys.length === 0) return false
     return payload.keys.every((k) => k.data !== null && k.data !== undefined
       && k.data.whoami != null && k.data.usage != null && k.data.credits != null && k.data.subscription != null)
-  }
+  })
   const started = Date.now()
   let answer = await call()
   // Up to a minute: a cold slice can miss its first attempt (the upstream answered
@@ -141,6 +148,24 @@ function installLocales(i18n) {
 
 const near = (a, b, eps = 0.051) => Math.abs(a - b) <= eps
 
+/** The model configuration this profile really carries, as the settings service
+ *  projects it: two Command Code providers (GOAT / GOATⅡ) naming their own keys,
+ *  plus one provider on another endpoint that must never contribute a credential.
+ *  Declared here instead of parsed out of `cordis.patch.yml` so the probe stays
+ *  YAML-free; the route matches on `baseURL`, which is what this fixture pins. */
+const CONFIGURED_PROVIDERS = {
+  describe: () => [{
+    ns: 'llm-pi-ai',
+    value: {
+      providers: {
+        commandcode: { displayName: 'GOAT', api: 'openai-responses', apiKeyEnv: 'COMMANDCODE_API_KEY', baseURL: 'https://api.commandcode.ai/provider/v1' },
+        commandcode2: { displayName: 'GOATⅡ', api: 'openai-responses', apiKeyEnv: 'COMMANDCODE2_API_KEY', baseURL: 'https://api.commandcode.ai/provider/v1' },
+        openrouter: { displayName: 'OpenRouter', api: 'openai-completions', apiKeyEnv: 'OPENROUTER_API_KEY', baseURL: 'https://openrouter.ai/api/v1' },
+      },
+    },
+  }],
+}
+
 ;(async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-pool-'))
   let view
@@ -161,12 +186,19 @@ const near = (a, b, eps = 0.051) => Math.abs(a - b) <= eps
   installLocales(i18n)
 
   // ---- 1) real host payload -------------------------------------------------
-  const { status, payload, waitedMs, complete } = await hostPayload()
+  const { status, payload, waitedMs, complete } = await hostPayload({ settings: CONFIGURED_PROVIDERS })
   check('host route answers 200 with a COMPLETE pool (all four slices per member)', status === 200 && complete,
     `status ${status}, complete=${complete}, waited ${waitedMs}ms (the slow slices land out of band)`)
   const keys = Array.isArray(payload?.keys) ? payload.keys : []
   console.log(`keys: ${keys.map((k) => `${k.ref}=${k.label}(…${k.tail})`).join(', ')}`)
   check('payload carries one entry per configured pool key', keys.length >= 2, `keys=${keys.length}`)
+  // The pool is what the MODEL CONFIGURATION names: the two Command Code providers
+  // (GOAT / GOATⅡ), and NOT the unrelated provider on another endpoint.
+  check('the pool is exactly the model configuration\'s Command Code providers',
+    keys.map((k) => k.ref).join('|') === 'COMMANDCODE_API_KEY|COMMANDCODE2_API_KEY',
+    keys.map((k) => k.ref).join('|'))
+  check('a provider on another endpoint never contributes a credential',
+    !keys.some((k) => k.ref === 'OPENROUTER_API_KEY'), keys.map((k) => k.ref).join('|'))
   check('every member carries all four slices', keys.every((k) => k.data && 'whoami' in k.data && 'usage' in k.data && 'credits' in k.data && 'subscription' in k.data),
     keys.map((k) => Object.keys(k.data || {}).join('+')).join(' | '))
   check('labels come from each key\'s own whoami name', keys.every((k) => typeof k.label === 'string' && k.label.length > 0 && !/^Key \d$/.test(k.label)) || keys.length < 2,
@@ -176,6 +208,35 @@ const near = (a, b, eps = 0.051) => Math.abs(a - b) <= eps
     JSON.stringify(payload?.whoami?.user ?? null) === JSON.stringify(keys[0]?.data?.whoami?.user ?? null),
     `${payload?.whoami?.user?.name} vs ${keys[0]?.data?.whoami?.user?.name}`)
   check('tails are 4 chars, never the full secret', keys.every((k) => /^.{4}$/.test(String(k.tail))), keys.map((k) => k.tail).join(','))
+  // The 2026-10-29 defect: a stale spare (…_API_KEY_2) answered 401 on all four
+  // endpoints, stayed in the pool as a blank `Key N`, and — because AllUser's month
+  // is the SUM of its members' months — blanked the pool's monthly window. A member
+  // that answered NOTHING must never reach `keys`; the host reports it in `dropped`.
+  const sliceNames = ['whoami', 'usage', 'credits', 'subscription']
+  check('no pool member is a dead credential (every entry answered at least one slice)',
+    keys.every((k) => k.data !== null && k.data !== undefined && sliceNames.some((s) => k.data[s] != null)),
+    keys.map((k) => `${k.label}:${k.data ? sliceNames.filter((s) => k.data[s] != null).join('+') || 'none' : 'null'}`).join(' | '))
+  const droppedRefs = (Array.isArray(payload?.dropped) ? payload.dropped : []).map((d) => d.ref)
+  check('rejected credentials are reported in `dropped`, never in `keys`',
+    droppedRefs.every((r) => !keys.some((k) => k.ref === r)),
+    `dropped=[${droppedRefs.join(',')}] keys=[${keys.map((k) => k.ref).join(',')}]`)
+
+  // ---- 1b) the env fallback, for a host without the settings service ----------
+  // The pool used to be the env-name convention alone. It must still work, and it
+  // must still refuse the stale `…_API_KEY_2` (401) instead of showing a blank
+  // `Key N` — the completion test here is "the rejection is detected", because the
+  // dead member can never fill in.
+  const fallback = await hostPayload({
+    complete: (p) => p !== null && Array.isArray(p.dropped) && p.dropped.length > 0,
+  })
+  const fallbackKeys = Array.isArray(fallback.payload?.keys) ? fallback.payload.keys : []
+  const fallbackDropped = (Array.isArray(fallback.payload?.dropped) ? fallback.payload.dropped : []).map((d) => d.ref)
+  check('env fallback: the same two accounts are found without a settings service',
+    fallbackKeys.map((k) => k.ref).join('|') === keys.map((k) => k.ref).join('|'),
+    fallbackKeys.map((k) => `${k.ref}=${k.label}`).join(', '))
+  check('env fallback: the stale spare is detected and kept OUT of the pool',
+    fallbackDropped.length > 0 && fallbackDropped.every((r) => !fallbackKeys.some((k) => k.ref === r)),
+    `dropped=[${fallbackDropped.join(',')}] keys=[${fallbackKeys.map((k) => k.ref).join(',')}]`)
 
   const account = keys[0].label
   const pool = keys.map((k) => k.label)
@@ -457,6 +518,9 @@ const near = (a, b, eps = 0.051) => Math.abs(a - b) <= eps
   fs.writeFileSync(OUT_FILE, JSON.stringify({
     generatedAt: new Date().toISOString(),
     pool: keys.map((k) => ({ ref: k.ref, label: k.label, tail: k.tail })),
+    dropped: droppedRefs,
+    fallbackPool: fallbackKeys.map((k) => ({ ref: k.ref, label: k.label })),
+    fallbackDropped,
     allUserMonthly: allMonth,
     results,
     fails,
