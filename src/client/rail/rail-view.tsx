@@ -34,8 +34,8 @@ import { RAIL_TOP_INSET, RailWave, SLOT_CUT_CLASS } from './wave/RailWave'
 import { createWaveGeometry } from './wave/wave-geometry'
 import { settleFoldInset } from './fold-inset'
 import {
-  type CascadeAnchor, type CascadeBand, type CascadeBox, type CascadeEnd, type DeckCascade,
-  createDeckCascade, groupDurationMs, planCascade,
+  type CascadeAnchor, type CascadeBand, type CascadeBox, type CascadeEnd, type CascadePath,
+  type DeckCascade, createDeckCascade, groupDurationMs, planCascade,
 } from './wave/deck-cascade'
 
 /** Map from interactive action id to the slash command it triggers. */
@@ -617,7 +617,12 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         })
         return () => { cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2) }
       }, [drawerPhase])
-      const staggerShape = prefs.openShape === 'stagger'
+      /**
+       * Does this shape fold the CARDS (one beat each) rather than the whole group?
+       * 'stagger' and 'slide' both do — they differ only in the path each card takes
+       * (`deck-cascade.ts`'s `path`) — while 'zoom' moves the rail's box instead.
+       */
+      const cardShape = prefs.openShape !== 'zoom'
       /**
        * ── OPEN/CLOSE CASCADE (prefs.openShape === 'stagger') ──
        *
@@ -761,16 +766,18 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         // 'zoom' owns a whole-group transform and an unmounted deck has nothing to
         // fold: either way the cards go back to their final layout position with
         // nothing left written on them.
-        if (!staggerShape || deck === null) {
+        if (!cardShape || deck === null) {
           cascade.release()
           markDeck(null)
           return
         }
         // The corner both shapes start from, and the group's two start values.
-        // `transform-origin` is READ off the live wrapper (it resolves to the
-        // viewport's top-right, `1578px 0px` at a 1578px window) rather than
-        // assumed, so a shell that re-anchors the drawer moves both shapes together.
-        const drawer = document.querySelector('.dsx-stats-drawer')
+        // `transform-origin` is READ off the live wrapper — it resolves to the RAIL's
+        // own top-right corner (`right var(--dsx-rail-top, 0px)`), not the viewport's
+        // — rather than assumed, so a shell that re-anchors the drawer moves both
+        // shapes together. Only the 'drop' path is anchored: 'slide' has no origin.
+        const path: CascadePath = prefs.openShape === 'stagger' ? 'drop' : 'slide'
+        const drawer = path === 'drop' ? document.querySelector('.dsx-stats-drawer') : null
         const origin = drawer === null ? [] : getComputedStyle(drawer).transformOrigin.split(' ')
         const anchor: CascadeAnchor = {
           travel: cascadeAnchorRef.current.travel,
@@ -799,11 +806,13 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
           : undefined
         cascade.sync(planCascade(deck, cascadeBoxesRef.current, anchor, {
           totalMs: cascadeTotalMsRef.current,
-          // The fold rides BOTH of the zoom shape's curves, one per channel: the
+          // 'drop' rides BOTH of the zoom shape's curves, one per channel: the
           // translation on the position curve, the scale on the zoom curve — which
           // is what makes each card's path the group's path rather than a lookalike.
+          // 'slide' has one channel and reads only the first.
           easeShift: curveToProgress(shiftCurve),
           easeZoom: curveToProgress(prefs.animCurve),
+          path,
         }, band))
         const at = cascade.state()
         const want: CascadeEnd = shouldOpen ? 'open' : 'closed'
@@ -830,7 +839,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         }
         markDeck(want === 'open' ? 'in' : 'out')
         cascade.play(want)
-      }, [staggerShape, shouldOpen, drawerPhase, reduceMotion])
+      }, [cardShape, shouldOpen, drawerPhase, reduceMotion])
       /**
        * ── A CARD THE WHOLE-CARD RULE HIDES MID-FOLD LEAVES THE FOLD ──
        *
@@ -857,7 +866,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
       React.useEffect(() => {
         if (drawerPhase !== 'leave') return
         if (reduceMotion) { setDrawerPhase('closed'); return }
-        if (staggerShape) {
+        if (cardShape) {
           // Safety net only, for a fold that can never report back (a deck that
           // could not be measured). The real close is the cascade's own callback.
           const cap = window.setTimeout(
@@ -868,7 +877,7 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
         }
         const slide = window.setTimeout(() => setDrawerPhase((p) => (p === 'leave' ? 'closed' : p)), DRAWER_LEAVE_MS)
         return () => window.clearTimeout(slide)
-      }, [drawerPhase, reduceMotion, staggerShape])
+      }, [drawerPhase, reduceMotion, cardShape])
       /** Retired right now (closed, but kept mounted — see the note at the top). */
       const retired = drawerPhase === 'closed'
       // The converged OPEN inset, recorded for the NEXT fold's band (see

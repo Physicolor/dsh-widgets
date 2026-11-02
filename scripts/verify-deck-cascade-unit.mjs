@@ -541,5 +541,81 @@ const visual = (c) => {
   check(/translate\(0\.00px, 0\.00px\) scale\(1\.0000\)/.test(end), 'the open end is exactly identity', end)
 }
 
+// ── J. 'slide' is ONE channel: no scale, no vertical, no anchor ────────────
+{
+  // The whole point of the path: a card's start height must not depend on where it
+  // sits in the window. Every assertion below is about a quantity that is either
+  // exactly zero or exactly the travel, for every card, at every instant.
+  const bez = curveToProgress({ x1: 0.31, y1: 0.66, x2: 0.51, y2: 1 })
+  const ctx = {
+    duration: cascadeTiming(TOTAL, 6).duration,
+    anchor: { travel: 454, scale: 0.5, originX: 1578, originY: 44 },
+    easeShift: bez, easeZoom: bez, path: 'slide',
+  }
+  const cs = cards(6)
+  const at = (c, t) => {
+    const raw = foldTransformAt(c, ctx, t)
+    const m = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(raw || '')
+    return m === null ? { x: NaN, y: NaN, scaled: true } : { x: +m[1], y: +m[2], scaled: /scale\(/.test(raw) }
+  }
+  check(cs.every((c) => near(at(c, 0).x, 454, 0.01)),
+    'every card starts exactly one travel to the right, whatever its box',
+    cs.map((c) => at(c, 0).x).join(','))
+  check(cs.every((c) => { for (let t = 0; t <= TOTAL; t += 2.3) if (at(c, t).y !== 0) return false; return true }),
+    'and never leaves Y = 0 — the vertical offset that made the anchor read as window-absolute is gone')
+  let scaled = false
+  for (const c of cs) for (let t = 0; t <= TOTAL; t += 2.3) scaled = scaled || at(c, t).scaled
+  check(!scaled, 'no sample carries a scale (so no raster-scale change on a text card)')
+  check(cs.every((c) => near(at(c, TOTAL).x, 0, 0.01)), 'the open end is x = 0 for every card',
+    cs.map((c) => at(c, TOTAL).x).join(','))
+  // Monotone on the way in: the bezier is monotone, so a card may never travel back.
+  let wentBack = false
+  for (const c of cs) {
+    let prev = Infinity
+    for (let t = 0; t <= TOTAL; t += 1.7) {
+      const x = at(c, t).x
+      if (x > prev + 0.01) wentBack = true
+      prev = x
+    }
+  }
+  check(!wentBack, 'x is monotone across the whole segment')
+  // The two-channel map is untouched: the same card on 'drop' still moves in Y.
+  const dropCtx = { ...ctx, path: 'drop', easeZoom: bez }
+  const movedY = Math.abs(at(cs[0], 0).y) === 0 && Math.abs((() => {
+    const raw = foldTransformAt(cs[0], dropCtx, 0)
+    const m = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(raw)
+    return Number(m[2])
+  })()) > 0
+  check(movedY, 'the drop path still carries its vertical component (the two shapes are separate)')
+  // The 16-sample budget the slide path plans with must still track the curve.
+  // Its keyframes carry no scale, so the shared `lerpTransform` (written for the
+  // two-channel form) cannot interpolate them — a local X-only lerp is the honest
+  // comparison here.
+  const parseX = (t) => Number((/translate\(([-\d.]+)px/.exec(t || '') || [0, 0])[1])
+  const lerpX = (a, b, u) => parseX(a) + (parseX(b) - parseX(a)) * u
+  let worst = 0
+  let worstAt = 0
+  for (const c of cs) {
+    const kfs = foldKeyframes(c, ctx, 0, TOTAL)
+    for (let t = 0; t <= TOTAL; t += 3.1) {
+      let got = parseX(kfs[kfs.length - 1].transform)
+      for (let i = 1; i < kfs.length; i++) {
+        if (t <= kfs[i].offset * TOTAL) {
+          const k0 = kfs[i - 1]
+          const k1 = kfs[i]
+          const span = k1.offset - k0.offset
+          const u = span <= 0 ? 0 : (t / TOTAL - k0.offset) / span
+          got = lerpX(k0.transform, k1.transform, u)
+          break
+        }
+      }
+      const err = Math.abs(got - at(c, t).x)
+      if (err > worst) { worst = err; worstAt = t }
+    }
+  }
+  check(worst < 0.25, 'the slide keyframes stay within a quarter pixel of the curve',
+    `worst ${worst.toFixed(3)}px at t=${worstAt.toFixed(0)}ms`)
+}
+
 console.log(`\n${fails.length === 0 ? 'ALL PASS' : fails.length + ' FAILURE(S)'}`)
 process.exit(fails.length === 0 ? 0 : 1)

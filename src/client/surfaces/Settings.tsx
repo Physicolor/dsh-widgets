@@ -252,10 +252,11 @@ export function SettingsPanel({ controller }: { controller: WidgetsController })
         children: React.createElement(Select, {
           value: prefs.openShape,
           options: [
+            { value: 'slide', label: t('settings.openShape.slide') },
             { value: 'stagger', label: t('settings.openShape.stagger') },
             { value: 'zoom', label: t('settings.openShape.zoom') },
           ],
-          onChange: (next) => setPrefs({ openShape: next === 'zoom' ? 'zoom' : 'stagger' }),
+          onChange: (next) => setPrefs({ openShape: next === 'zoom' ? 'zoom' : next === 'stagger' ? 'stagger' : 'slide' }),
           title: t('settings.openShape.title'),
         }),
       }),

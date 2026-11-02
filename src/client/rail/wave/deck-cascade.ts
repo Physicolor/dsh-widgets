@@ -9,8 +9,9 @@
  * ── THE PATH IS THE ZOOM SHAPE'S, PER CARD ──
  *
  * 'zoom' puts two transforms on two nested `inset: 0` boxes, both anchored at the
- * WRAPPER's top-right corner `O` — the viewport's own top-right, measured live as
- * `transform-origin: 1578px 0px` at a 1578px window:
+ * wrapper's `transform-origin` `O` — `right var(--dsx-rail-top, 0px)`, i.e. the
+ * viewport's right edge at the RAIL's own top (~44px live), just outside the
+ * strip the cards occupy:
  *
  *     outer wrapper   translateX(travel)     on the position curve
  *     inner layer     scale(s0)              on the zoom curve
@@ -36,6 +37,30 @@
  * i.e. the group's own. No translation is smuggled in: at any (s, travel) the
  * card's four edges land exactly where the zoom shape would have put them, which
  * is what the live probe checks pixel by pixel.
+ *
+ * ── WHY THERE IS A THIRD PATH WITH NO VERTICAL AT ALL ('slide') ──
+ *
+ * Copying the group's map per card is what makes the fold read as a DROP: the
+ * vertical start offset is `(1 − s0) · vy`, and `vy` is the card's distance from
+ * the rail's top, so with the shipped `animScale = 0.88` a card 700px down the
+ * deck starts 84px ABOVE its cell while one at the top barely moves. That is a
+ * faithful copy of the group map and still the wrong motion for a deck — owner
+ * report 2026-11-02: the anchor reads as 「整个桌面端窗口的某一绝对值」 rather than
+ * something belonging to the component area, which is exactly what a per-card
+ * offset proportional to its absolute distance from `O` looks like.
+ *
+ * 'slide' therefore keeps everything the stagger owns (one shared timeline, the
+ * rank ladder, the reversal, the band filter) and drops the second channel: the
+ * card travels on X only, no scale, no origin. What that buys, beyond the motion
+ * itself:
+ *
+ *   - no forced layout read: the plan no longer needs `deck.getBoundingClientRect()`
+ *     (the offsets it produced are exactly the ones 'slide' does not use);
+ *   - no per-card `transform-origin` write, and none of the 设置 tile's origin
+ *     lending — a pure translation is origin-agnostic;
+ *   - no raster-scale changes. A scale animation makes the compositor re-raster
+ *     the card's text as the factor grows; a translate-only animation never does,
+ *     which is the cheap path on a deck of text cards.
  *
  * THE RAIL'S CLIP IS FINE, and is the effect: the rail clips its own subtree, so
  * a card pushed past its right edge is simply not painted. The cards enter the
@@ -299,6 +324,17 @@ export interface CascadeAnchor {
   originY: number
 }
 
+/**
+ * Which path one card travels in the fold — the shape's map, not its timing.
+ *
+ *  - `'drop'` — the group map PER CARD (see the module header): translation on the
+ *    position curve, scale on the zoom curve, both about the shared anchor. This is
+ *    what `openShape: 'stagger'` plays, and what it has always played.
+ *  - `'slide'` — horizontal only: `translateX(travel · (1 − easeShift(p)))`, no
+ *    scale, no origin, no vertical component. `openShape: 'slide'`.
+ */
+export type CascadePath = 'drop' | 'slide'
+
 /** Timing the deck is animated with — the same two curves the group rides. */
 export interface CascadeTiming {
   /**
@@ -327,12 +363,17 @@ export interface CascadePlanTiming {
   easeShift: (x: number) => number
   /** The ZOOM curve (`prefs.animCurve`) evaluated on [0,1]. */
   easeZoom: (x: number) => number
+  /**
+   * Which per-card path to plan. Omitted means `'drop'`, which keeps every existing
+   * caller and test on the shape it was written against.
+   */
+  path?: CascadePath
 }
 
 /** One element's part in the fold. */
 export interface CascadeCard {
   el: HTMLElement
-  /** `O − Oc` (px): the card's top-right corner to the shared anchor. */
+  /** `O − Oc` (px): the card's top-right corner to the shared anchor. Unused by 'slide'. */
   vx: number
   vy: number
   /** Cascade delay (ms): the card's rank in the fold × the step in `cascadeTiming`. */
@@ -350,6 +391,8 @@ export interface CascadeCard {
 export interface CascadeSpec extends CascadeTiming {
   cards: readonly CascadeCard[]
   anchor: CascadeAnchor
+  /** The path these cards travel (see {@link CascadePath}); never omitted on a plan. */
+  path: CascadePath
 }
 
 /** Which end of the timeline a command is aiming at. */
@@ -442,7 +485,11 @@ export function planCascade(
   timing: CascadePlanTiming,
   band?: CascadeBand,
 ): CascadeSpec {
-  const deckRect = deck.getBoundingClientRect()
+  const path: CascadePath = timing.path ?? 'drop'
+  // 'slide' does not use the offsets below, so it must not pay for them: this read
+  // is a forced layout, and the whole point of the path is that it needs no
+  // geometry beyond the boxes it was already handed.
+  const deckRect = path === 'drop' ? deck.getBoundingClientRect() : null
   const nodes = Array.from(deck.querySelectorAll<HTMLElement>(CASCADE_SELECTOR))
   // Pair node ↔ box by index first (the box list is in the same DOM order), then keep
   // the pairs the band does not cut — `h` omitted degrades to the top edge's test.
@@ -466,26 +513,31 @@ export function planCascade(
     el.style.setProperty('--dsx-slot-delay', cascadeDelay(order[i], step))
     el.style.setProperty('--dsx-slot-delay-out', cascadeDelay(lastRank - order[i], step))
     // The card's own top-right corner in viewport coordinates: the boxes are
-    // deck-relative, with `right` measured from the deck's right edge.
+    // deck-relative, with `right` measured from the deck's right edge. 'slide'
+    // leaves both at zero — it has no use for them, and computing them is what
+    // forced the layout read above.
     return {
       el,
-      vx: anchor.originX - (deckRect.left + (deckRect.width - box.right)),
-      vy: anchor.originY - (deckRect.top + box.top),
+      vx: deckRect === null ? 0 : anchor.originX - (deckRect.left + (deckRect.width - box.right)),
+      vy: deckRect === null ? 0 : anchor.originY - (deckRect.top + box.top),
       delay,
       ownStyle: el.classList.contains('dsx-stats-add'),
     }
   })
-  return { cards, anchor, duration, easeShift: timing.easeShift, easeZoom: timing.easeZoom }
+  return { cards, anchor, path, duration, easeShift: timing.easeShift, easeZoom: timing.easeZoom }
 }
 
 /**
- * What a keyframe needs from a plan: the two curves, one card's travel, both offsets.
+ * What a keyframe needs from a plan: the path, the two curves, one card's travel,
+ * both offsets.
  */
 export interface CascadeCtx {
   duration: number
   anchor: CascadeAnchor
   easeShift: (x: number) => number
   easeZoom: (x: number) => number
+  /** Omitted means `'drop'` (see {@link CascadePath}). */
+  path?: CascadePath
 }
 
 /** The smallest thing the map needs from a card (see {@link foldTransformAt}). */
@@ -499,10 +551,15 @@ export interface FoldCard {
  * One card's transform at timeline time `t` — the fold's ENTIRE math, in one place.
  *
  * `p` is the card's own progress: its rank delay is part of `t`, its travel is
- * `duration`. The map is the 'zoom' shape's own (see the module header): the scale
- * rides the zoom curve, the translation is the offset needed to carry the card's
- * top-right corner to the shared anchor at that scale, plus whatever part of the
- * travel the position curve has not given back yet.
+ * `duration`. On the `'drop'` path the map is the 'zoom' shape's own (see the module
+ * header): the scale rides the zoom curve, the translation is the offset needed to
+ * carry the card's top-right corner to the shared anchor at that scale, plus
+ * whatever part of the travel the position curve has not given back yet.
+ *
+ * On `'slide'` there is one channel and no anchor: the card is exactly
+ * `travel · (1 − easeShift(p))` to the right of its cell, so it enters and leaves
+ * across the rail's right edge and never moves vertically. `vx`/`vy` are ignored —
+ * which is why the planner does not compute them for this path.
  *
  * Exported because two consumers must agree bit for bit: the keyframe builder here
  * and the closed end's parked inline transform. Also because it makes the unit
@@ -511,6 +568,10 @@ export interface FoldCard {
 export function foldTransformAt(card: FoldCard, ctx: CascadeCtx, t: number): string {
   const raw = ctx.duration > 0 ? (t - card.delay) / ctx.duration : (t >= card.delay ? 1 : 0)
   const p = raw <= 0 ? 0 : raw >= 1 ? 1 : raw
+  if (ctx.path === 'slide') {
+    const sx = ctx.anchor.travel * (1 - ctx.easeShift(p))
+    return `translate(${sx.toFixed(2)}px, 0.00px)`
+  }
   const s = ctx.anchor.scale + (1 - ctx.anchor.scale) * ctx.easeZoom(p)
   const k = 1 - s
   const x = k * card.vx + ctx.anchor.travel * (1 - ctx.easeShift(p))
@@ -546,7 +607,14 @@ export function foldKeyframes(card: FoldCard, ctx: CascadeCtx, from: number, to:
   const pFrom = progressAt(from)
   const pTo = progressAt(to)
   const hasTravel = Math.abs(pTo - pFrom) > 1e-6
-  const steps = hasTravel ? Math.max(8, Math.min(64, Math.ceil(Math.abs(pTo - pFrom) * perTravel))) : 1
+  // 'slide' moves on ONE monotone channel, so its chord error is a third of the
+  // two-channel map's for the same grid: 32 samples hold it under a quarter pixel
+  // over a 454px travel (0.18px measured by `verify-deck-cascade-unit.mjs`, which
+  // asserts the same bound for both paths) where 48 were needed for 0.13px before.
+  // It stays at 32 rather than lower because the error scales with the travel, i.e.
+  // with the rail's width on a wide window.
+  const budget = ctx.path === 'slide' ? 32 : perTravel
+  const steps = hasTravel ? Math.max(8, Math.min(64, Math.ceil(Math.abs(pTo - pFrom) * budget))) : 1
   const times: number[] = [from, to]
   if (hasTravel) {
     for (let i = 0; i <= steps; i++) times.push(card.delay + ctx.duration * (pFrom + (pTo - pFrom) * (i / steps)))
@@ -604,6 +672,7 @@ export function createDeckCascade(onSettle: (end: CascadeEnd) => void, animator:
     easeShift: (x) => x,
     easeZoom: (x) => x,
     anchor: { travel: 0, scale: 1, originX: 0, originY: 0 },
+    path: 'drop',
   }
   let total = 0
   /** Where the timeline stands, in ms. Advanced by the animations, read back on an interruption. */
@@ -660,17 +729,21 @@ export function createDeckCascade(onSettle: (end: CascadeEnd) => void, animator:
     painted = spec.cards.length > 0
     for (const c of spec.cards) {
       if (c.ownStyle) {
-        if (c.el.style.transformOrigin !== 'top right') c.el.style.transformOrigin = 'top right'
+        if (spec.path === 'drop' && c.el.style.transformOrigin !== 'top right') c.el.style.transformOrigin = 'top right'
         if (c.el.style.transition !== 'none') c.el.style.transition = 'none'
       }
       c.el.style.transform = foldTransformAt(c, spec, 0)
     }
   }
 
-  /** The 设置 tile lends its origin and transition to the fold while the fold drives it. */
+  /**
+   * The 设置 tile lends its transition (and, on the 'drop' path, its origin) to the
+   * fold while the fold drives it. 'slide' is origin-agnostic, so it leaves the
+   * tile's own centred origin alone.
+   */
   const pin = (c: CascadeCard): void => {
     if (!c.ownStyle) return
-    if (c.el.style.transformOrigin !== 'top right') c.el.style.transformOrigin = 'top right'
+    if (spec.path === 'drop' && c.el.style.transformOrigin !== 'top right') c.el.style.transformOrigin = 'top right'
     if (c.el.style.transition !== 'none') c.el.style.transition = 'none'
   }
 
@@ -731,7 +804,9 @@ export function createDeckCascade(onSettle: (end: CascadeEnd) => void, animator:
       // settled card carries no transform, so the end state is always the live
       // grid). The cards' own re-seat transition still glides them meanwhile.
       if (dir !== 0 || painted) return
-      spec = next
+      // A spec handed in without a path (they were written before this field
+      // existed) keeps the original two-channel map.
+      spec = next.path === undefined ? { ...next, path: 'drop' } : next
       total = length()
       if (t > total) t = total
     },

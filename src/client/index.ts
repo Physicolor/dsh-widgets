@@ -396,7 +396,7 @@ export function apply(ctx: ClientContext): void {
      */
     const armInset = (): void => {
       const reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      if (reduceMotion || prefs.openShape !== 'stagger' || !state.hasSession) return
+      if (reduceMotion || prefs.openShape === 'zoom' || !state.hasSession) return
       armFoldInset()
     }
     const apply = (): void => {

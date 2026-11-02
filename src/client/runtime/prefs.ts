@@ -102,21 +102,23 @@ export interface Prefs {
   /**
    * How the rail EXPANDS and COLLAPSES (owner request 2026-10-02).
    *
-   *  - `'stagger'` (default): the rail itself does NOT move or scale — it is
-   *    already in its final place, and its CARDS travel along the zoom shape's OWN
-   *    path, each on its own beat. Same anchor (the wrapper's top-right corner,
-   *    which is off the right edge of the screen), same `animScale`, same travel,
-   *    same two curves as 'zoom'; only the per-card progress differs, offset by
-   *    rank. The cascade starts at the deck's BOTTOM-LEFT cell and ends at the
-   *    top-right one — the two corners act as the anchors of the fold, like an
-   *    accordion opening — and collapsing plays the same fold backwards, so the
-   *    top-right card leaves first. The 设置 tile is part of the deck's grid and
-   *    folds with it.
+   *  - `'slide'` (default): the same per-card stagger and the same rank ladder, but
+   *    ONE channel — each card is translated on X only, entering and leaving across
+   *    the rail's right edge. No scale and no shared origin, so a card never moves
+   *    vertically, and it never starts from a height proportional to its distance
+   *    from the top of the rail (which is what the group map below does, and what
+   *    made the fold read as an anchor on the whole window).
+   *  - `'stagger'`: the per-card path IS the 'zoom' shape's group path — same anchor
+   *    (the rail's top-right corner, off the right edge of the screen), same
+   *    `animScale`, same travel, same two curves; only the per-card progress
+   *    differs, offset by rank. The cascade starts at the deck's BOTTOM-LEFT cell
+   *    and ends at the top-right one, and collapsing plays the same fold backwards.
+   *    The 设置 tile is part of the deck's grid and folds with it.
    *  - `'zoom'`: the whole group slides in from the right and scales out of its
    *    top-right corner (`animScale`) on the zoom curve, as it shipped before this
    *    option existed.
    */
-  openShape: 'zoom' | 'stagger'
+  openShape: 'zoom' | 'stagger' | 'slide'
   /** Hide cards the rail's viewport would cut in half (the rail shows WHOLE
    *  cards only). Default ON: the deck's own row-snap scrolling guarantees the
    *  TOP row is never cut, so the bottom cut is the only one left to remove. */
@@ -219,7 +221,7 @@ const DEFAULTS: Prefs = {
   animCurve: { ...DEFAULT_ANIM_CURVE },
   animShiftCurve: { ...DEFAULT_ANIM_CURVE },
   animBounce: DEFAULT_ANIM_BOUNCE,
-  openShape: 'stagger',
+  openShape: 'slide',
   wholeCards: true,
   // 2 columns × 5 rows = the default 10 widgets, so the shipped defaults agree
   // with each other instead of clamping on first run.
@@ -270,7 +272,7 @@ export function normalizePrefs(p: Partial<Prefs>): Prefs {
   s.animCurve = normalizeCurve(s.animCurve)
   s.animShiftCurve = normalizeCurve(s.animShiftCurve)
   s.animBounce = Number.isFinite(s.animBounce) ? Math.min(MAX_ANIM_BOUNCE, Math.max(0, s.animBounce)) : DEFAULTS.animBounce
-  if (s.openShape !== 'zoom' && s.openShape !== 'stagger') s.openShape = DEFAULTS.openShape
+  if (s.openShape !== 'zoom' && s.openShape !== 'stagger' && s.openShape !== 'slide') s.openShape = DEFAULTS.openShape
   if (typeof s.wholeCards !== 'boolean') s.wholeCards = DEFAULTS.wholeCards
   if (!Number.isFinite(s.maxRows) || s.maxRows < MAX_ROWS_RANGE[0] || s.maxRows > MAX_ROWS_RANGE[1]) s.maxRows = DEFAULTS.maxRows
   return s

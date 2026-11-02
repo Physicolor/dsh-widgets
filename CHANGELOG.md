@@ -13,6 +13,27 @@ Where each kind of detail lives:
 
 Every entry is written in the language of the file it lives in: English here, Chinese in `CHANGELOG.zh-CN.md`. A term that names a piece of the UI is quoted the way the UI itself says it in that language.
 
+## v1.9.0 — a third open shape that only slides, and the anchor's absolute-coordinate feel fixed
+
+> "Stagger (accordion)" reads as if it were **anchored to some absolute point on the whole window**, because it copies the group's scale map onto every card: a card's vertical start offset is `(1 − start scale) × the card's distance from the anchor`, i.e. **12%** at the shipped 88% — a card 700px down the deck falls from **84px above** its cell, and the further down it is the higher it starts. That is a faithful copy of the group map and the wrong kind of faithful for a deck. The third path, `'slide'`, keeps everything the cascade owns (one shared timeline, the rank ladder, the reversal, the visible-band filter) and keeps one channel: `translateX` only, no scale, no anchor read, a vertical offset that is identically zero.
+
+### Added — `openShape: 'slide'` (the new default)
+
+- `deck-cascade.ts` gains `CascadePath` (`'drop'` = the original two channels, `'slide'` = translation only). `planCascade` takes a `path`, and on `'slide'` it **skips `deck.getBoundingClientRect()`** — a forced layout whose only product was the `vx`/`vy` this path does not use. `foldTransformAt` returns `translate(x, 0)` with no `scale()` on that path.
+- Settings → Widgets → Look & Layout → **Open shape** is now a three-way choice, defaulting to "Horizontal slide". A stored preference is honoured (`normalizePrefs` keeps a valid old value), so anyone who prefers the old feel switches that one row back to "Stagger (accordion)".
+- The 设置 tile no longer lends its `transform-origin` on this path (a pure translation is origin-agnostic); it still lends its transition.
+- Keyframe budget: one monotone channel plans with **32** samples, tracking the curve to **0.187px**, while the two-channel path keeps 48 samples at **0.133px**. Neither bound was traded away — both sit inside a quarter pixel.
+
+### Fixed — where the anchor actually is (the docs had it wrong)
+
+The header of `deck-cascade.ts` and both READMEs still claimed the anchor was "the viewport's own top-right corner, 1578px 0px". Since 2026-10-08 `rail-view.tsx` has written `transform-origin: right var(--dsx-rail-top, 0px)`, i.e. **the rail's own top-right corner** (~44px below the window's top). All three places are corrected, and the per-card vertical formula is now written down in the module — **that formula, not a mis-read anchor, is what makes the fold look window-anchored**.
+
+### Gate — G13 now covers the third path
+
+`scripts/verify-deck-cascade-unit.mjs` gained a J block: every card starts exactly one travel out, `y` is identically zero at every instant, no sample carries a `scale()`, the open end is `x = 0`, `x` is monotone, the `'drop'` path still carries its vertical component (the two paths really are separate), and the 32-sample curve error.
+
+**Not done yet**: no live A/B (same session, same gesture, `'slide'` vs `'drop'`, rAF frame interval + Long Animation Frame) has been run, so this release claims the **structural** win — one forced layout removed, one `transform-origin` write per card removed, no scale-driven re-rasterization — and does not quote a measured frame-rate number.
+
 ## v1.8.6 — the fold moves to the compositor, and starts sooner
 
 > The rail's open/close fold was the last animation this plugin drove frame by frame from `requestAnimationFrame`. It is now a set of **Web Animations the compositor runs**, so the cards keep moving at the display's rate while the main thread is busy — and the extra whole-rail React render that publishing the fold marker used to cost is gone. Measured on the owner's stage (240Hz panel, 1707×1067 @DSF 1.5, the longest session: 11,654 nodes, 14 cards): open onset **62–85ms → 23–26ms**; under a **4× CPU slowdown** the fold's wall time was **711–985ms** and is now **293–347ms** against the design value of 300ms. Nothing visible changed: same curves, same rank order, same two end states, and the live pixel-path suite still asserts the cards ride the group's map. The details and the full stress matrix are in [`docs/architecture/FOLD-2026-10-21.md`](docs/architecture/FOLD-2026-10-21.md).
