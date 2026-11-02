@@ -12,6 +12,7 @@ import { WIDGETS, useWidgetRegistry } from '../../lib/registry'
 import { groupOf, instanceKey, sizesOf, widgetDesc, widgetName, widgetSimToggle } from '../../lib/contract/helpers'
 import type { UsageData, WidgetRenderOut, WidgetSize, WidgetStats } from '../../lib/contract/types'
 import { nextSim } from '../../render/preview/sim'
+import { marketGroupMatches } from './search'
 import { CardBody } from '../../render/CardBody'
 import { buildPreviewStats, exampleOut } from '../../render/preview/example-out'
 import { ChevronLeftIcon, ChevronRightIcon, gridViewIcon, listViewIcon, searchIcon } from '../../render/icons'
@@ -173,11 +174,6 @@ export function MarketTab({ controller, usageData }: { controller: WidgetsContro
   // preview card flips it, so both states can be reviewed live.
   const [previewSim, setPreviewSim] = React.useState<Record<string, unknown> | null>(null)
   React.useEffect(() => { setPreviewSim(null) }, [previewGroup, previewIdx])
-  // The market lists EVERY widget (system + external), deduped by group so a
-  // group card (e.g. "context" → 一键压缩 + 上下文水位) is one entry in the rail.
-  const seen = new Set<string>()
-  const marketCards = WIDGETS.filter((w) => { const g = groupOf(w); if (seen.has(g)) return false; seen.add(g); return true })
-  const list = marketCards.filter((w) => `${widgetName(w)} ${widgetDesc(w)} ${w.id}`.toLowerCase().indexOf(q.toLowerCase()) !== -1)
   // Group labels come from the dictionaries (`group.<group-id>`); a group
   // without a label falls back to the first widget's name. Widget units can
   // ship their own group label lazily via their manifest locale.
@@ -186,6 +182,28 @@ export function MarketTab({ controller, usageData }: { controller: WidgetsContro
     const label = t(key)
     return label === key ? widgetName(w) : label
   }
+  // The market lists EVERY widget (system + external), deduped by group so a
+  // group card (e.g. "context" → 一键压缩 + 上下文水位) is one entry in the rail.
+  // The map keeps EVERY member, not just the first: filtering by the
+  // representative alone made a query that named another member (「GPU」 when
+  // the first is 轮次·步数) or the group label (「系统」) match nothing. See
+  // `./search.ts` and gate G14.
+  const groups = new Map<string, { representative: (typeof WIDGETS)[number]; members: (typeof WIDGETS)[number][] }>()
+  for (const w of WIDGETS) {
+    const g = groupOf(w)
+    const entry = groups.get(g)
+    if (entry) entry.members.push(w)
+    else groups.set(g, { representative: w, members: [w] })
+  }
+  const marketGroups = Array.from(groups.values()).map(({ representative, members }) => ({
+    widget: representative,
+    entry: {
+      id: groupOf(representative),
+      label: groupLabel(representative),
+      members: members.map((m) => ({ id: m.id, name: widgetName(m), desc: widgetDesc(m) })),
+    },
+  }))
+  const list = marketGroups.filter((g) => marketGroupMatches(g.entry, q)).map((g) => g.widget)
   /** Open a group's preview, seeding the zoom from the clicked card/tile. */
   const openGroup = (w: (typeof WIDGETS)[number], from: 'list' | 'grid'): void => {
     const sizes = sizesOf(w)
