@@ -72,6 +72,9 @@ export function buildLiveStats(snap: BridgeSnapshot, prefs: Prefs, key: string, 
     host: snap.host,
     hostError: snap.hostError,
     pricing: snap.pricing,
+    // The WHOLE session's per-turn cache reading (host route). Copied ahead of
+    // `snap.stats`'s own loaded-window fold, which the card only falls back to.
+    cacheTurns: snap.cacheTurns,
     github: snap.github,
     githubError: snap.githubError,
     deepseekBalance: snap.deepseekBalance,

@@ -18,6 +18,7 @@ import w_tool from '../widgets/tool'
 import w_ttft from '../widgets/ttft'
 import w_tps from '../widgets/tps'
 import w_cache from '../widgets/cache'
+import w_cache_trend from '../widgets/cache-trend'
 import w_tokens from '../widgets/tokens'
 import w_context from '../widgets/context'
 import w_context_water from '../widgets/context-water'
@@ -77,6 +78,7 @@ import * as src_cc from './families/cc/adapter'
 import * as src_deepseek from './families/deepseek/adapter'
 import * as src_github from './families/github/adapter'
 import * as src_pricing from './families/pricing/adapter'
+import * as src_session from './families/session/adapter'
 import * as src_sys from './families/sys/adapter'
 import * as src_usage from './families/usage/adapter'
 import { isSourceAdapter } from './data/source-contract'
@@ -89,6 +91,7 @@ export const WIDGETS: import('./lib/contract/types').Widget[] = [
   w_ttft,
   w_tps,
   w_cache,
+  w_cache_trend,
   w_tokens,
   w_context,
   w_context_water,
@@ -159,6 +162,7 @@ export const SOURCE_ADAPTERS: import('./data/source-contract').SourceAdapter[] =
   src_deepseek,
   src_github,
   src_pricing,
+  src_session,
   src_sys,
   src_usage,
 ]
@@ -184,6 +188,7 @@ export const SOURCE_ADAPTERS: import('./data/source-contract').SourceAdapter[] =
  * when a manifest drifts from the generated file.
  */
 export const WIDGET_RUNTIME: Record<string, import('./lib/contract/types').WidgetRuntimeMeta> = {
+  "cache-trend": { source: "cache-turns", skeleton: { shape: "line" } },
   "calendar": { reads: ["schedule"] },
   "countdown": { reads: ["schedule"] },
   "quota-manage": { source: "cc", skeleton: { shape: "figures", count: 2 } },
@@ -230,6 +235,7 @@ export const ALL_IDS: string[] = [
   'ttft',
   'tps',
   'cache',
+  'cache-trend',
   'tokens',
   'context',
   'context-water',
@@ -295,6 +301,7 @@ export const ALL_INSTANCES: string[] = [
   `ttft@2x2`,
   `tps@2x2`,
   `cache@2x2`,
+  `cache-trend@2x2`,
   `tokens@2x2`,
   `context@2x2`,
   `context-water@2x2`,
@@ -444,11 +451,11 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "group.github": "GitHub",
     "config.github.user": "GitHub 用户名",
     "config.github.repos": "监控仓库（owner/name，逗号分隔，最多 4 个）",
-    "config.github.hint": "留空 = 用本机已登录的 GitHub 账号（凭据 / gh CLI）",
+    "config.github.hint": "留空 = 用本机已登录的 GitHub 账号（凭据 / gh CLI）；token 可放环境变量或 $DSH_HOME/.credentials.yaml",
     "github.staleHost": "host 路由未加载 — 重启 dsh web 后自动生效",
     "github.unavailable": "GitHub 暂不可用",
-    "github.noUser": "未登录 GitHub — 配置用户名或 token 后可用",
-    "github.noRepo": "未取到仓库 — 配置 owner/name 或登录 GitHub",
+    "github.noUser": "未登录 GitHub — 配 GITHUB_TOKEN 或运行 gh auth login 后可用",
+    "github.noRepo": "未取到仓库 — 配 owner/name，或配 GITHUB_TOKEN 后登录 GitHub",
     "github.cycle": "单击切换仓库：{chain}",
     "github.stars": "Stars",
     "github.forks": "Forks",
@@ -494,6 +501,11 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "card.cache.uncached": "未缓存输入",
     "card.cache.read": "缓存读取",
     "card.cache.output": "输出",
+    "widget.cache-trend.name": "缓存趋势",
+    "widget.cache-trend.desc": "每轮对话的缓存命中率折线（整段会话），横轴是轮次",
+    "card.cache-trend.overall": "整体",
+    "card.cache-trend.waiting": "等待更多轮次",
+    "card.cache-trend.points": "显示轮次",
     "widget.tokens.name": "会话 Token",
     "widget.tokens.desc": "本次会话的 token 总量与输入 / 输出构成（会话内口径，不是逐日跨会话的用量）",
     "card.tokens.input": "输入",
@@ -1061,11 +1073,11 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "group.github": "GitHub",
     "config.github.user": "GitHub user",
     "config.github.repos": "Repos to watch (owner/name, comma separated, max 4)",
-    "config.github.hint": "Empty = use this machine's own GitHub login (credentials / gh CLI)",
+    "config.github.hint": "Empty = use this machine's own GitHub login (credentials / gh CLI); the token can live in the environment or $DSH_HOME/.credentials.yaml",
     "github.staleHost": "host route not loaded — restart dsh web",
     "github.unavailable": "GitHub unavailable",
-    "github.noUser": "Not signed in to GitHub — set a user or a token",
-    "github.noRepo": "No repo — set owner/name or sign in to GitHub",
+    "github.noUser": "Not signed in to GitHub — set GITHUB_TOKEN or run gh auth login",
+    "github.noRepo": "No repo — set owner/name, or set GITHUB_TOKEN and sign in to GitHub",
     "github.cycle": "Click to switch repo: {chain}",
     "github.stars": "Stars",
     "github.forks": "Forks",
@@ -1111,6 +1123,11 @@ export const WIDGET_LOCALES: { zh: Record<string, string>; en: Record<string, st
     "card.cache.uncached": "Uncached input",
     "card.cache.read": "Cache read",
     "card.cache.output": "Output",
+    "widget.cache-trend.name": "Cache trend",
+    "widget.cache-trend.desc": "Cache hit rate per conversation turn (whole session), turn numbers on the X axis",
+    "card.cache-trend.overall": "Overall",
+    "card.cache-trend.waiting": "Waiting for turns",
+    "card.cache-trend.points": "Turns shown",
     "widget.tokens.name": "Session Tokens",
     "widget.tokens.desc": "This session's token total with its input / output split (session scope, not the per-day cross-session usage)",
     "card.tokens.input": "Input",

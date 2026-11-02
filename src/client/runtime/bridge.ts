@@ -11,7 +11,7 @@
  * without importing back into their own caller (which would be a cycle).
  */
 
-import type { CommandCodeData, DeepSeekBalance, GitHubData, HostOverview, PriceTable, ScheduleSnapshot, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
+import type { CacheTurns, CommandCodeData, DeepSeekBalance, GitHubData, HostOverview, PriceTable, ScheduleSnapshot, SysInfo, UsageData, UsageMulti } from '../lib/contract/types'
 import type { Stats } from '../data/session-stats'
 import type { Prefs } from './prefs'
 
@@ -44,6 +44,16 @@ export interface BridgeSnapshot {
    *  only when a card that prices this session is installed; `null` = not read
    *  yet, `available: false` = no table (cards then print tokens, not money). */
   pricing: PriceTable | null
+  /**
+   * The OPEN session's id, published by the collector so a source adapter can ask
+   * a session-scoped host route about it (`?session=<id>`). `null` before the
+   * collector's first pass, or when the deployment exposes no session id.
+   */
+  sessionId: string | null
+  /** The WHOLE session's per-turn cache reading, from
+   *  `/api/widgets-cache-turns` (see {@link CacheTurns}). Preferred over the
+   *  loaded-window fold: the transcript is paginated, the host's log is not. */
+  cacheTurns: CacheTurns | null
   /** GitHub family payload (contribution calendar + repo pulses) from the
    *  host `/api/github` route. */
   github: GitHubData | null

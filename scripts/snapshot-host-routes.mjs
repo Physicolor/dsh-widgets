@@ -118,6 +118,22 @@ const ctx = {
     },
   },
   get(name) {
+    // The per-turn cache route reads the LIVE session store; one fixed session
+    // exercises the real fold (two requests in turn 1, one that missed in turn 2).
+    if (name === 'sessions') {
+      return {
+        get(id) {
+          if (id !== 'session-fixture') return undefined
+          return {
+            events: [
+              { type: 'assistant/message', data: { turn: 1, usage: { inputTokens: 1000, outputTokens: 10, cacheReadTokens: 9000, cacheWriteTokens: 0 } } },
+              { type: 'assistant/message', data: { turn: 1, usage: { inputTokens: 500, outputTokens: 10, cacheReadTokens: 5000, cacheWriteTokens: 0 } } },
+              { type: 'assistant/message', data: { turn: 2, usage: { inputTokens: 9000, outputTokens: 10, cacheReadTokens: 500, cacheWriteTokens: 0 } } },
+            ],
+          }
+        },
+      }
+    }
     if (name !== 'usageCenter') return undefined
     return {
       getActivity(provider) {
@@ -174,6 +190,10 @@ const CASES = [
   // "no table" contract deterministically (available:false, empty rules). The
   // REAL table's shape is asserted by the module's own run against the live home.
   ['/api/widgets-pricing (no table)', { method: 'GET', url: '/api/widgets-pricing' }],
+  // The per-turn cache channel: one held session (real fold) and one this process
+  // does not hold (the honest "fall back to the loaded window" answer).
+  ['/api/widgets-cache-turns?session=session-fixture', { method: 'GET', url: '/api/widgets-cache-turns?session=session-fixture' }],
+  ['/api/widgets-cache-turns?session=unknown', { method: 'GET', url: '/api/widgets-cache-turns?session=unknown' }],
 ]
 
 /** Routes whose readings come from THIS machine, so only their top-level keys are

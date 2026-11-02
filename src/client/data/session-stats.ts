@@ -23,6 +23,10 @@ export interface Stats {
   decodeMs: number
   decodeTokens: number
   usage: { inputTokens: number; cacheReadTokens: number; outputTokens: number } | null
+  /** Per-request cache hit rates, oldest first, 0..1 (see deriveCacheSeries). */
+  cacheSeries?: number[]
+  /** One `HH:MM` mark per rate (same length); '' where the sample had no time. */
+  cacheSeriesMarks?: string[]
   contextPercent?: number | null
   contextWindow?: number | null
   contextTokens?: number | null
@@ -352,6 +356,97 @@ export function deriveCompaction(settled: ReadonlyArray<any>): CompactionSummary
   }
   events.sort((a, b) => b.at - a.at)
   return { count, reclaimed, items, recent: events.slice(0, COMPACTION_HISTORY) }
+}
+
+/** How many TURNS the 缓存趋势 sparkline keeps (one point per conversation turn). */
+export const CACHE_SERIES_LIMIT = 30
+
+/** One turn's cache reading, folded for the trend card. */
+export interface CacheSeriesFold {
+  /** Hit rates oldest → newest, each 0..1. */
+  rates: number[]
+  /** One `HH:MM` mark per rate; '' where that turn carried no usable time. */
+  marks: string[]
+}
+
+const twoDigits = (n: number): string => (n < 10 ? `0${n}` : String(n))
+
+/** Browser-local `HH:MM` (the same clock the other sparkline cards label with). */
+function clockLabel(ms: number): string {
+  const d = new Date(ms)
+  return `${twoDigits(d.getHours())}:${twoDigits(d.getMinutes())}`
+}
+
+/**
+ * Fold the conversation's settled assistant steps into the 缓存趋势 line — ONE
+ * POINT PER TURN (轮次), not per request.
+ *
+ * WHY per turn (owner, 2026-10-26): a single turn can be 40 model steps, so a
+ * per-request line spends its whole 20-point window inside one turn and reads as
+ * a flat line while the turn that actually missed (Thesis session, turn 7: two
+ * requests, 232,831 tokens, 50.7% hit) is somewhere off the left edge. The owner
+ * reads the card as 「这一轮偏低」, which is the turn's own 本轮用量 figure — so the
+ * point must be that number: ΣcacheRead / Σ(uncached+cacheRead+cacheWrite) over
+ * ALL of the turn's steps.
+ *
+ * WHY not the usage ledger: the cumulative `tokenUsage` projection answers "how
+ * much of this session was cached" but hides the shape. Each settled assistant
+ * node carries its own `usage` (the same per-step samples the heatmap accounting
+ * credits), so this costs one pass over the array the collector already walks.
+ *
+ * A cache WRITE is billed at the miss rate by the provider, so it belongs to the
+ * uncached side of the share; the buckets are still summed, not re-labelled.
+ *
+ * @param settled - Conversation nodes (`useChat().legacy.nodes`).
+ * @param limit - Turns to keep, newest last (default {@link CACHE_SERIES_LIMIT}).
+ */
+export function deriveCacheSeries(
+  settled: ReadonlyArray<any>,
+  limit: number = CACHE_SERIES_LIMIT,
+): CacheSeriesFold {
+  const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+  const order: number[] = []
+  const turns = new Map<number, { hit: number; prompt: number; at: number | null }>()
+  for (const node of settled ?? []) {
+    if (node?.kind !== 'assistant' || node?.usage == null) continue
+    const u = node.usage as Record<string, unknown>
+    // WHICH KEY CARRIES THE MISS — the one trap in this fold. A conversation
+    // NODE's usage is the provider record (`inputTokens` = prompt minus cached;
+    // the harness's buckets are disjoint, see dsh-llm-deepseek's translate), while
+    // the `tokenUsage` PROJECTION renames the same number to
+    // `uncachedInputTokens`. Reading only the projection spelling on nodes yields
+    // uncached = 0 for every request → rate = cacheRead / cacheRead = 100% → one
+    // flat line at the top on every card (the owner's report, 2026-10-26:
+    // 「每个对话的折线图都是一条横线和 100%」). Accept both spellings.
+    const miss = Number.isFinite(u.uncachedInputTokens) ? num(u.uncachedInputTokens) : num(u.inputTokens)
+    const prompt = miss + num(u.cacheReadTokens) + num(u.cacheWriteTokens)
+    if (prompt <= 0) continue
+    const key = typeof node.turn === 'number' && Number.isFinite(node.turn) ? node.turn : -1
+    let acc = turns.get(key)
+    if (acc === undefined) {
+      acc = { hit: 0, prompt: 0, at: null }
+      turns.set(key, acc)
+      order.push(key)
+    }
+    acc.hit += num(u.cacheReadTokens)
+    acc.prompt += prompt
+    if (acc.at === null) {
+      const start = node.timing?.stepStartTime
+      const at = typeof start === 'number' && Number.isFinite(start)
+        ? start
+        : (typeof node.time === 'number' && Number.isFinite(node.time) ? node.time : null)
+      acc.at = at
+    }
+  }
+  const points = order.map((key) => {
+    const acc = turns.get(key)!
+    return { rate: acc.prompt > 0 ? Math.min(1, Math.max(0, acc.hit / acc.prompt)) : 0, at: acc.at }
+  })
+  const kept = points.slice(-Math.max(1, limit))
+  return {
+    rates: kept.map(p => p.rate),
+    marks: kept.map(p => (p.at === null ? '' : clockLabel(p.at))),
+  }
 }
 
 /** Fold assistant/tool-result nodes into the same window-scoped stats as the shipped StatsLine fallback. */

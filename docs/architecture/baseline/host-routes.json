@@ -304,5 +304,28 @@
    "rules": [],
    "version": null
   }
+ },
+ "/api/widgets-cache-turns?session=session-fixture": {
+  "status": 200,
+  "shape": {
+   "available": true,
+   "source": "s",
+   "turns": [
+    {
+     "cacheRead": 0,
+     "prompt": 0,
+     "rate": 0,
+     "steps": 0,
+     "turn": 0
+    }
+   ]
+  }
+ },
+ "/api/widgets-cache-turns?session=unknown": {
+  "status": 200,
+  "shape": {
+   "available": false,
+   "reason": "s"
+  }
  }
 }

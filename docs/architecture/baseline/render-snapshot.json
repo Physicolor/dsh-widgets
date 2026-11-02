@@ -104,6 +104,40 @@
    }
   },
   {
+   "id": "cache-trend",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "top",
+    "chart": {
+     "kind": "line",
+     "line": {
+      "labels": [
+       "1",
+       "9"
+      ],
+      "max": 100,
+      "values": [
+       96.1,
+       99.3,
+       99,
+       98.5,
+       98.2,
+       99,
+       50.7,
+       96.3,
+       98.9
+      ]
+     }
+    },
+    "headAfter": {
+     "big": "99%",
+     "small": "整体 96%"
+    },
+    "title": "缓存趋势"
+   }
+  },
+  {
    "id": "tokens",
    "size": "2x2",
    "sim": null,
@@ -10558,6 +10592,40 @@
     },
     "legend": "18.7M tok",
     "title": "Cache Hit"
+   }
+  },
+  {
+   "id": "cache-trend",
+   "size": "2x2",
+   "sim": null,
+   "out": {
+    "bodyAnchor": "top",
+    "chart": {
+     "kind": "line",
+     "line": {
+      "labels": [
+       "1",
+       "9"
+      ],
+      "max": 100,
+      "values": [
+       96.1,
+       99.3,
+       99,
+       98.5,
+       98.2,
+       99,
+       50.7,
+       96.3,
+       98.9
+      ]
+     }
+    },
+    "headAfter": {
+     "big": "99%",
+     "small": "Overall 96%"
+    },
+    "title": "Cache trend"
    }
   },
   {

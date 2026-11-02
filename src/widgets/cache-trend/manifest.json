@@ -1,0 +1,26 @@
+{
+  "id": "cache-trend",
+  "order": 16,
+  "group": "system",
+  "builtin": true,
+  "sizes": ["2x2"],
+  "defaultInstalled": false,
+  "source": "cache-turns",
+  "skeleton": { "shape": "line" },
+  "locale": {
+    "zh": {
+      "widget.cache-trend.name": "缓存趋势",
+      "widget.cache-trend.desc": "每轮对话的缓存命中率折线（整段会话），横轴是轮次",
+      "card.cache-trend.overall": "整体",
+      "card.cache-trend.waiting": "等待更多轮次",
+      "card.cache-trend.points": "显示轮次"
+    },
+    "en": {
+      "widget.cache-trend.name": "Cache trend",
+      "widget.cache-trend.desc": "Cache hit rate per conversation turn (whole session), turn numbers on the X axis",
+      "card.cache-trend.overall": "Overall",
+      "card.cache-trend.waiting": "Waiting for turns",
+      "card.cache-trend.points": "Turns shown"
+    }
+  }
+}

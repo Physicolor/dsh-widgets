@@ -13,6 +13,7 @@ import { registerWidgetsState } from './state-file'
 import { registerSysinfo } from './sysinfo'
 import { registerHostOverview } from './overview'
 import { registerWidgetsPricing } from './pricing'
+import { registerSessionCache } from './session-cache'
 import { type HostContext } from './context'
 
 /** Every host route this plugin owns, in registration order. */
@@ -26,4 +27,5 @@ export const HOST_ROUTES: ReadonlyArray<(ctx: HostContext) => () => void> = [
   registerSysinfo,
   registerHostOverview,
   registerWidgetsPricing,
+  registerSessionCache,
 ]

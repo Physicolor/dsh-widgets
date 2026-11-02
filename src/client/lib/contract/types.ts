@@ -159,6 +159,12 @@ export interface CommandCodeKeyEntry {
  *  monthly-allowance table lives in `cc-view`). */
 export interface CommandCodeData extends CommandCodeAccount {
   keys?: CommandCodeKeyEntry[]
+  /** Credentials the provider rejected outright (401/403 on every slice that
+   *  answered), kept OUT of `keys` on purpose: a member that can never answer
+   *  would add a blank view to the switcher and — since AllUser's month is the
+   *  sum of its members' — blank the pool's monthly window entirely. Listed here
+   *  only so a stale ref is diagnosable instead of silently vanishing. */
+  dropped?: Array<{ ref: string; tail?: string; reason: 'unauthorized' }>
 }
 
 /** How the host authenticated to GitHub for one payload: a credential from the
@@ -253,6 +259,41 @@ export interface PriceTable {
   /** Where the table was read from (diagnostics; not for display). */
   path: string
   modifiedAt: number | null
+}
+
+/** One conversation TURN's cache reading, as the 缓存趋势 card consumes it. */
+export interface CacheTurn {
+  /** The turn's own number in the session (1-based, contiguous per session). */
+  turn: number
+  /** `ΣcacheRead / Σ(uncached+cacheRead+cacheWrite)` over that turn's requests. */
+  rate: number
+  /** Raw buckets, kept so a card can print the token split without re-folding. */
+  cacheRead: number
+  prompt: number
+  /** How many model requests the turn made. */
+  steps: number
+}
+
+/**
+ * The `/api/widgets-cache-turns?session=<id>` payload: the WHOLE session's cache
+ * hit rate per turn, folded on the HOST from the live session store's event log.
+ *
+ * WHY IT EXISTS: the client's transcript window is paginated (加载更多), and the
+ * fold over `useChat().legacy.nodes` only sees the pages the reader has loaded —
+ * so a long session shows a truncated history with no hint that earlier turns are
+ * missing. The host holds the full log, so one answer here is complete.
+ *
+ * `available: false` is a legitimate answer (an old host without the route, or a
+ * session this process does not hold), never a transport error: the card then
+ * falls back to its own loaded-window fold instead of blanking.
+ */
+export interface CacheTurns {
+  available: boolean
+  /** Stable code when `available` is false ('sessions-unavailable' | 'session-not-loaded'). */
+  reason?: string
+  /** Where the fold came from (diagnostics; not for display). */
+  source?: string
+  turns?: CacheTurn[]
 }
 
 /**
@@ -472,6 +513,22 @@ export interface WidgetStats {  turns: number
   decodeMs: number
   decodeTokens: number
   usage: { inputTokens: number; cacheReadTokens: number; outputTokens: number } | null
+  /** The WHOLE session's per-turn cache reading, from the host
+   *  `/api/widgets-cache-turns` route (see {@link CacheTurns}). This is the
+   *  preferred source: the client transcript is paginated, so a fold over the
+   *  loaded nodes silently loses every turn the reader has not paged in yet.
+   *  `null` while the first answer is in flight. */
+  cacheTurns?: CacheTurns | null
+  /** Per-turn cache hit rates over the LOADED conversation window only, oldest
+   *  first, each 0..1 — the standalone fallback used when the host route is
+   *  absent (old host, no restart) or the session is not held by this process.
+   *  `[]` when nothing is measurable yet; capped at `CACHE_SERIES_LIMIT` turns. */
+  cacheSeries?: number[] | null
+  /** One label per `cacheSeries` point (same length, oldest first; '' when the
+   *  sample carried no usable number) — the fallback's turn numbers. The card
+   *  slices the window it draws and labels the sparkline's corners from the
+   *  SLICED ends, so the marks must stay per-point. */
+  cacheSeriesMarks?: string[] | null
   usageData: UsageData | null
   /** Multi-key pool usage (OpenCode Go): every key + host-computed total. */
   usageMulti?: UsageMulti | null

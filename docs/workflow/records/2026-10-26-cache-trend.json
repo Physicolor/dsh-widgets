@@ -1,0 +1,82 @@
+{
+  "schema": "dsh-widgets/widget-record/v1",
+  "widgetId": "cache-trend",
+  "source": "human",
+  "status": "INTEGRATION",
+  "result": "COMPLETED",
+  "createdAt": "2026-10-26T15:44:00+08:00",
+  "requirement": {
+    "name": "缓存趋势",
+    "purpose": "把缓存命中率从「一次会话的平均值」变成「每次请求的序列」：一次 116K 的请求整段未命中会在环图里被平均掉，在折线上则是一个掉到底的尖峰。",
+    "size": ["2x2"],
+    "title": "缓存趋势",
+    "coreContent": "标题下方两行数字：最近一次请求的命中率（大字）+ 整段对话的命中率（灰字）；下方是全量 0–100% 坐标轴的每次请求折线，左下/右下为窗口首尾时刻。",
+    "displayedData": [
+      "stats.usage（cacheReadTokens / inputTokens：整段对话的累计命中率）",
+      "stats.cacheSeries（每次请求的命中率，0..1，旧→新）",
+      "stats.cacheSeriesMarks（每点一个 HH:MM，用于窗口首尾标签）",
+      "cardConfigs['cache-trend@2x2'].points（窗口长度 5/10/15/20，最多 20）"
+    ],
+    "visualReference": "与 sys-gpu-line 同一套 headAfter + 弹性折线的姿态；与 cache@2x2 同组（系统），但一个是环图（平均），一个是折线（序列）。",
+    "interaction": "无卡内交互；窗口长度在 组件配置 → 显示请求数 里调。",
+    "category": "system",
+    "categoryDecision": "existing",
+    "priority": "high",
+    "confirmedByHuman": true,
+    "_confirmation": "2026-10-26 车主原话：「2*2的缓存命中率折线，放在系统组件里面，标题下方展示最近一次对话的缓存命中率、对话整体的缓存命中率」；追加「折线图是整体的折线不是局部的，如果有 50% 的就应该出现在中间；折线范围可以自定义前若干个对话的，最多 20 个」。"
+  },
+  "technicalAnalysis": {
+    "existingCapability": "cache@2x2 已证明 `stats.usage` 能给出累计命中率；collector 已经逐节点遍历 settled assistant nodes（热力图 v2 记账同一条路径），节点自带 `usage`（uncached/cacheRead/cacheWrite/output）。",
+    "requiredData": ["每次请求的命中率序列（不是时序采样）", "每个样本的 HH:MM", "窗口长度配置"],
+    "dataSource": "会话投影派生：src/client/data/session-stats.ts 新增 deriveCacheSeries(settled, limit=30)，collector 追加 cacheSeries / cacheSeriesMarks 到 Stats。",
+    "requiredProvider": null,
+    "externalDependency": null,
+    "complexity": "Low",
+    "risks": [
+      "折线若按可见窗口自适应缩放会把 96–99% 画成山脊、并把 50% 藏起来 —— 因此坐标轴固定 0–100（max:100），50% 恒在中线。",
+      "窗口可配置意味着首尾时间标签必须跟着切片走，所以 marks 按点下发而不是预先压成首尾一对。",
+      "fresh session 只有 1 次请求时不是折线：显示两个数字 + 「等待更多请求」，不得伪造一条线。"
+    ]
+  },
+  "architectureDecision": "Widget + Shared Utility",
+  "specification": {
+    "schema": "dsh-widgets/widget-spec/v1",
+    "widgetId": "cache-trend",
+    "size": ["2x2"],
+    "titlePolicy": "T2 度量型：保留标题",
+    "technicalStrategy": {
+      "sharedUtility": "data/session-stats.ts::deriveCacheSeries + contract types 的 cacheSeries/cacheSeriesMarks",
+      "contractHints": { "chart": "line{values,max:100,labels}", "configSchema": ["points(5|10|15|20)"] }
+    },
+    "acceptanceCriteria": [
+      "标题下方同时给出「最近一次」与「整体」两个命中率",
+      "折线坐标轴固定 0–100：50% 的样本落在卡片高度中部（预览 example 内含 50% 与 2% 两点）",
+      "窗口长度可在 5/10/15/20 配置，最多 20；切片后首尾时间标签同步",
+      "node scripts/validate-widget-unit.mjs src/widgets/cache-trend 全绿；pnpm test 13/13"
+    ]
+  },
+  "review": {
+    "reviewer": "main agent 自检（05-review-checklist）",
+    "result": "PASS",
+    "notes": [
+      "契约面只新增两个可选字段，未改动任何既有卡的输入；G4 基线仅新增 2 行（zh/en 各一）。",
+      "G2 units：7 处既有 warning 与本次无关（唯一 warning 来源是其它单元的家族键）。",
+      "已知限制：live rail 的实机截图未完成 —— 无头页在会话列表页点击会话行不跳转（三次尝试均停在 /；该页无 <a href>，会话行不是可点击锚点），因此实机证据只有离线画廊 PNG。",
+      "★ REWORK（车主实测 2026-10-26 15:48）：「每个对话的折线图都是一条横线和 100%」。根因：节点 usage 是 provider 记录形状（inputTokens = 未缓存部分，见 dsh-llm-deepseek/translate.ts），而此前只读投影的拼写 uncachedInputTokens → 未命中恒为 0 → 每点 = cacheRead/cacheRead = 100%。修复：deriveCacheSeries 先读 uncachedInputTokens，缺失时回退 inputTokens。用真实会话数据（session-1d6cb79d 的 172 条 assistant usage）跑修复后的编译产物复核：turn 7 step 1 = 1.8%、turn 8 step 1 = 7.0%、首个请求 0.0%、整体 97.5%，与 dsh-usage-center 的记录逐条一致，折线不再是横线。",
+      "同源缺陷（未改，属既有 shipped 代码）：collector 的热力图 v2 记账也读 nodeUsage.uncachedInputTokens，在节点形状下该值恒为 0，今日热力图会漏计请求里未缓存的那部分 token（占比小，通常每步几千）。改动会影响已发布卡片的数字，故只记录不修。",
+      "★ REWORK 3（车主 2026-10-26 16:14）：「第 6 轮要点击加载更多才显示完整折线…应该一开始就能获取；坐标轴不该显示时间，应该显示轮次，左边 1、右边最后一个数字」。修复：新增 host 路由 /api/widgets-cache-turns?session=<id>（src/host/session-cache.ts，读 host 侧 sessions 服务的完整事件日志按 turn 折叠），新增数据源 session 家族 adapter（manifest.source=cache-turns + skeleton:line），collector 发布 sessionId；客户端优先用整段路由数据，路由不存在/该进程未持有会话时回落到已加载窗口的折叠。「显示轮次 5/10/15/20」的窗口与坐标轴现在都是轮次编号（左 1、右最后）。端到端验证：用真实会话 184 条 assistant/message 事件驱动构建产物 lib/index.js，路由返回 9 轮 = 96.1 / 99.3 / 99.0 / 98.5 / 98.2 / 99.0 / **50.7** / 96.3 / 99.0；未知会话 → {available:false,'session-not-loaded'}，缺参数 → 'session-missing'；G8 新增两条 fixture 用例后 20 case 基线一致。注意：host 半边需要重启 dsh web 才生效（仅刷新页面时路由 404 → 卡片走回落）。",
+      "★ REWORK 2（车主实测 2026-10-26 15:55，带截图）：「这个对话明确有一轮轮次偏低，但折线图没有任何变化」。根因不是取数，而是粒度：一轮对话最多 40 次模型请求，按「请求」取点让 20 点窗口只覆盖同一轮里的 7 分钟，那条线必然平；车主说的「轮次偏低」是会话里 本轮用量 弹出层上的那个数（turn 7 = 232,831 tok / 50.7%）。修复：deriveCacheSeries 改为按 turn 折叠，一点 = 该轮全部请求的 ΣcacheRead / Σprompt，窗口配置改为「显示轮次」（5/10/15/20）。用真实会话（175 条 assistant usage）复核：9 轮 = 96.1 / 99.3 / 99.0 / 98.5 / 98.2 / 99.0 / **50.7** / 96.3 / 98.9，turn 7 的数字与弹出层完全一致，折线在 14:23 掉到中线。"
+    ]
+  },
+  "mvw": {
+    "validUnit": true, "contract": true, "discovery": true, "registryAuto": true,
+    "build": true, "marketplace": true, "isolation": true, "iterable": true, "verdict": "MVW_OK"
+  },
+  "validation": {
+    "validateUnit": "PASS (locale.zh/en covers 5 local keys, 0 failure / 0 warning)",
+    "registrySync": "PASS — 62 widget unit(s) up to date",
+    "build": "PASS",
+    "discoveryProbe": "PARTIAL — 离线画廊（docs/preview/cards/cache-trend@2x2.png）渲染正确；live rail 未取到（见 review.notes 的限制）",
+    "regression": "node scripts/snapshot-render.mjs：仅新增 cache-trend 2 行，其余 344 条渲染零差异；pnpm test 13/13"
+  }
+}

@@ -19,7 +19,7 @@
 
 import * as React from 'react'
 import { DEFAULT_TZ, accumulateHeatmap, buildHeatmapGrid, dateKey, loadHeatmapAnchor, loadHeatmapStore, loadSeen, mergeToday, saveHeatmapAnchor, saveSeen } from '../lib/heatmap-accounting'
-import { type Stats, deriveCompaction, deriveStats, deriveTools, deriveTrajectory, normalizeGoal, normalizeJobs, normalizeModelSelection, normalizePermissions, normalizeSubagents } from './session-stats'
+import { type Stats, deriveCacheSeries, deriveCompaction, deriveStats, deriveTools, deriveTrajectory, normalizeGoal, normalizeJobs, normalizeModelSelection, normalizePermissions, normalizeSubagents } from './session-stats'
 import { type BridgeSnapshot, type BridgeState } from '../runtime/bridge'
 import { type Prefs } from '../runtime/prefs'
 import { activeAdapters, readsSchedule } from './sources'
@@ -351,12 +351,18 @@ export function createCollector(deps: CollectorDeps): (props: any) => React.Reac
           }
         }
         const compaction = deriveCompaction(settled)
+        // The 缓存趋势 card's per-request line: one point per settled request, so
+        // a single cache MISS stands out instead of being averaged into the
+        // session's cumulative hit rate.
+        const cacheFold = deriveCacheSeries(settled)
         const stats: Stats = {
           turns: folded.turns, steps: folded.steps,
           llmMs, toolMs,
           ttftMs: folded.ttftMs, ttftSteps: folded.ttftSteps,
           decodeMs: folded.decodeMs, decodeTokens: folded.decodeTokens,
           usage: { inputTokens, cacheReadTokens: cacheRead, outputTokens },
+          cacheSeries: cacheFold.rates,
+          cacheSeriesMarks: cacheFold.marks,
           contextPercent, contextWindow, contextTokens, contextBreakdown,
           todos: Array.isArray(todosProj) && todosProj.length >= 0 ? todosProj as Stats['todos'] : null,
           heatmapGrid: buildHeatmapGrid(heatmapDays, (deps.getPrefs().cardConfigs?.heatmap?.monthMode as 'rolling' | 'quarter') || 'rolling', heatTz),
@@ -398,7 +404,10 @@ export function createCollector(deps: CollectorDeps): (props: any) => React.Reac
           liveTurnMs,
           liveStepMs,
         }
-        setState({ stats })
+        // The open session's id rides along so a session-scoped source adapter
+        // (`?session=<id>` host routes, e.g. the per-turn cache channel) can name
+        // the conversation it is asking about.
+        setState({ stats, sessionId: typeof sessionId === 'string' && sessionId.length > 0 ? sessionId : null })
       }, [settled, projected, usage, contextPres, contextBrk, todosProj, modelSelProj, agentPresetProj, goalProj, permsProj, subagentProj, jobsBySession, sessionsById, sessionId, timeline, runningCalls, now, snap.usageDaily, deps.getPrefs().cardConfigs?.heatmap?.monthMode, deps.getPrefs().cardConfigs?.heatmap?.timeZone])
       return React.createElement(React.Fragment, null, pollers)
   }
