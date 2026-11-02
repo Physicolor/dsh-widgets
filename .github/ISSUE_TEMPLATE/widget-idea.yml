@@ -1,0 +1,59 @@
+name: Widget idea
+description: Propose a card for the rail
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A good card answers one question at a glance and earns its 150px. Tell us the number, not the layout.
+  - type: input
+    id: name
+    attributes:
+      label: Working name
+      placeholder: Background job queue depth
+    validations:
+      required: true
+  - type: textarea
+    id: value
+    attributes:
+      label: What it shows, and when it matters
+      description: One or two figures plus the moment a user looks at them.
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Where the data comes from
+      options:
+        - The session itself (tokens, timing, tools)
+        - Host machine (sysinfo / GPU / disk)
+        - A host route or an external API
+        - Static — no live data
+        - Not sure yet
+    validations:
+      required: true
+  - type: dropdown
+    id: size
+    attributes:
+      label: Natural size
+      options:
+        - 2x2
+        - 2x4
+        - Either
+    validations:
+      required: false
+  - type: textarea
+    id: sketch
+    attributes:
+      label: Sketch or reference
+      description: A rough drawing, a screenshot of a similar card elsewhere, or the fields you would print.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked the market and the existing 61 cards for something close.
+          required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Install, usage and the widget marketplace
+    url: https://github.com/Physicolor/dsh-widgets#readme
+    about: The README covers installation, the 61 cards, and how to configure the rail.
+  - name: Build a card in five minutes
+    url: https://github.com/Physicolor/dsh-widgets/blob/main/CONTRIBUTING.md
+    about: Contribution guide — the unit contract, the gates to run, and what not to edit.

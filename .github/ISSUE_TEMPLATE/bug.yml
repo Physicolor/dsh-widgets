@@ -1,0 +1,57 @@
+name: Bug report
+description: A card, the market or the settings page is doing something wrong
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. One screenshot of the card itself (not the whole desktop) is the single most useful attachment — the rail's layout depends on the window.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What the card or page showed, and what you expected instead.
+      placeholder: The cache card shows 0% in a session that clearly has cache reads.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the rail
+        2. Start a long turn
+        3. Hover the cache card
+    validations:
+      required: false
+  - type: input
+    id: plugin-version
+    attributes:
+      label: dsh-widgets version
+      description: Settings → Plugins, or `npm ls dsh-widgets`
+      placeholder: 1.8.6
+    validations:
+      required: true
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DeepSeek Harness version
+      placeholder: 0.2.0-rc.1
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS and surface
+      description: Windows / macOS / Linux, and whether it is the desktop app or a browser.
+      placeholder: Windows 11, desktop app
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or console output
+      description: Paste console errors as text; drop a screenshot of the card.
+    validations:
+      required: false
