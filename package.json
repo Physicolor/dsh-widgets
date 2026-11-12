@@ -52,6 +52,7 @@
     "demo:rail": "node scripts/demo/rail-demo.cjs",
     "probe:geometry": "node scripts/probe-geometry.cjs",
     "probe:geometry:offline": "node scripts/probe-geometry.cjs --gallery-only",
+    "probe:motion": "node scripts/probe-motion.cjs",
     "prepare": "tsdown && node scripts/build-types.mjs"
   },
   "keywords": [

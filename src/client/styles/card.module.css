@@ -283,6 +283,125 @@
   }
 }
 
+/* ── Data motion (2026-11-12) ─────────────────────────────────────────────
+   Every chart used to REPAINT: a donut jumped 40% → 92%, a lane appeared at its
+   final width, a sparkline swapped its whole polyline. A card is a live reading,
+   so a repaint reads as "the number was replaced" while a ~460ms move reads as
+   "the number changed".
+
+   These are the transitions the BROWSER can interpolate natively, so they cost
+   no React work (the compositor owns the frames): a donut's `stroke-dasharray`, a
+   bar's `height`, a lane's `left`/`width`, a heat cell's tint. The one chart with
+   no such property — the sparkline, whose shape is a polyline of points — eases
+   its values in `render/motion.ts` instead.
+
+   MOUNT-SILENT BY CONSTRUCTION: a CSS transition only runs when a property
+   CHANGES after an element exists, so the magnify layer re-creating a card on
+   hover (the trap `dsx-figure-drop` documents) cannot replay any of these. The
+   two rules that DO start at insertion (`dsx-chart-enter`, `dsx-lane-seg-enter`)
+   are classes the renderer adds only on a real in-card change, never on mount.
+
+   `prefers-reduced-motion` drops both the moves and the entrances at the bottom
+   of this block; the card then reads exactly as it did before 2026-11-12. */
+.dsx-arc {
+  /* Donut arcs (head ring, `ring`, `rings`). The dash pattern is a length pair
+     whose second number is the circumference, so only the ink moves. */
+  transition: stroke-dasharray 520ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.dsx-bar {
+  /* `bars` / `barsV` grow from the floor because the bar is bottom-anchored in
+     its column — a height transition is all it takes. */
+  transition: height 460ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 260ms ease;
+}
+.dsx-seg {
+  /* The `segments` bar: one flex track whose shares are widths. */
+  transition: width 460ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.dsx-lane-seg {
+  /* 对话轨迹: as the window rolls, every beat already on screen slides to its new
+     slot (`left`) and reshapes to its new share (`width`); durations are read in
+     `time` mode, so the slide IS the data. */
+  transition: left 520ms cubic-bezier(0.22, 0.61, 0.36, 1), width 520ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 260ms linear;
+  transform-origin: left center;
+}
+@keyframes dsx-lane-in {
+  from {
+    transform: scaleX(0.06);
+  }
+  to {
+    transform: none;
+  }
+}
+.dsx-lane-seg-enter {
+  /* The beat that just arrived grows out of its own left edge. TRANSFORM ONLY:
+     the lane's own ink (`opacity: 0.78` for 输入) is set inline and an
+     `animation: … both` on opacity would paint over it permanently. */
+  animation: dsx-lane-in 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.dsx-heat-cell {
+  transition: background-color 320ms ease, opacity 320ms ease;
+}
+.dsx-quota-cell {
+  /* The filled/empty split is a background-image gradient for the boundary cell
+     (not animatable), but the crossings around it are opacity — a soft cross-fade
+     still reads as the row filling. */
+  transition: opacity 320ms ease, background-color 320ms ease;
+}
+@keyframes dsx-chart-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.dsx-chart-enter {
+  /* A chart that ARRIVES under an already-visible head (缓存趋势's first line,
+     and any card that leaves its skeleton): it rises the last few pixels into
+     place instead of blinking on. */
+  animation: dsx-chart-in 460ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.dsx-figure-move {
+  /* The FLIP `CardBody` runs when a docked head figure returns to the ladder
+     (缓存趋势: the percentage waits on the card's floor until there is a line to
+     sit above, then travels up). The transform is set imperatively; this rule
+     only supplies the travel. `position: relative` while it moves keeps it above
+     the chart it is leaving behind. */
+  transition: transform 460ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  position: relative;
+  z-index: 1;
+}
+/* A head caption the card is not ready to read yet (缓存趋势's 整体 figure while
+   the card still shows a single turn). It keeps its place in the row — the figure
+   beside it must not move when it appears — and only its ink is withheld. */
+.dsx-head-note-hidden {
+  opacity: 0;
+}
+.dsx-stats-card-legend {
+  transition: opacity 280ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dsx-arc,
+  .dsx-bar,
+  .dsx-seg,
+  .dsx-lane-seg,
+  .dsx-heat-cell,
+  .dsx-quota-cell,
+  .dsx-stats-card-legend {
+    transition: none;
+  }
+  .dsx-lane-seg-enter,
+  .dsx-chart-enter {
+    animation: none;
+  }
+  .dsx-figure-move {
+    transition: none;
+  }
+}
+
 [data-conversation-scroll] {
   /* Must be the SAME curve the AppFrame uses for its track (the official layout
      README lists "track and occupant share one curve" as a layout invariant), so

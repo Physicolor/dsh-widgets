@@ -45,7 +45,7 @@ export function SegmentsChart({ chart, side, width, pad, scale }: ChartProps): R
       // vocabulary): under `'official'` it is unused, and a `'tones'` bar without one
       // falls back to the brand primary rather than to an undefined colour.
       const tint = tintOf(i, s.tone ?? 'primary')
-      return React.createElement('div', { key: i, style: { width: `${w}%`, height: '100%', borderRadius: 0, background: tint, flex: 'none', minWidth: 2 } })
+      return React.createElement('div', { key: i, className: 'dsx-seg', style: { width: `${w}%`, height: '100%', borderRadius: 0, background: tint, flex: 'none', minWidth: 2 } })
     })
     const rows = chart.segments.map((s, i) => {
       const tint = tintOf(i, s.tone ?? 'primary')

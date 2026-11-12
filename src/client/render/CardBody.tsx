@@ -248,6 +248,71 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
     return () => window.clearTimeout(id)
   }, [out.value])
   /**
+   * A chart that ARRIVES under an already-visible head (see `headAfter.dock`).
+   *
+   * Keyed on a CHANGE, never on mount, for the reason the figure-drop above
+   * documents: the magnify layer re-creates every card on hover, so a mount-triggered
+   * animation replays the rail under the pointer. `false` is a card that was on
+   * screen with no chart at all (缓存趋势's first turn, or a card still on its
+   * skeleton); the first chart it gets rises into place.
+   */
+  const hadChart = React.useRef<boolean | null>(null)
+  const [chartEnter, setChartEnter] = React.useState(false)
+  React.useEffect(() => {
+    const has = out.chart !== undefined
+    const prev = hadChart.current
+    hadChart.current = has
+    if (prev !== false || !has) return
+    setChartEnter(true)
+    const id = window.setTimeout(() => setChartEnter(false), 520)
+    return () => window.clearTimeout(id)
+  }, [out.chart])
+  /**
+   * A head figure DOCKED to the card's floor (`headAfter.dock`, see the contract):
+   * `dockable` is the widget's standing request, `docked` is whether it applies
+   * RIGHT NOW — the row only waits on the floor while the card has no chart to sit
+   * above. `docked === false` once a chart exists.
+   *
+   * The row keeps its identity (same element, same `key`) across the two states, so
+   * the move is a FLIP: the layout effect below paints it at its PREVIOUS position
+   * for one frame and lets the CSS transition carry it to the new one. Re-mounting
+   * it instead (a second element in the body) would have made the number jump —
+   * exactly the 「直接瞬间改变状态」 this change removes.
+   */
+  const dockable = out.headAfter?.dock === 'bottom' && out.headRing === undefined && out.headIcon === undefined
+  const docked = dockable && out.chart === undefined
+  const dockRef = React.useRef<HTMLDivElement | null>(null)
+  const dockRect = React.useRef<{ x: number; y: number } | null>(null)
+  const dockedBefore = React.useRef(docked)
+  React.useLayoutEffect(() => {
+    const wasDocked = dockedBefore.current
+    dockedBefore.current = docked
+    const el = dockRef.current
+    if (el === null) {
+      dockRect.current = null
+      return
+    }
+    const rect = el.getBoundingClientRect()
+    const prev = dockRect.current
+    dockRect.current = { x: rect.left, y: rect.top }
+    // Only a real DOCK CHANGE travels. Any other re-render (a value refresh, a
+    // resize that re-laid the card out) would otherwise fly the figure around for
+    // no stated reason.
+    if (prev === null || wasDocked === docked) return
+    const dx = prev.x - rect.left
+    const dy = prev.y - rect.top
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return
+    el.classList.remove('dsx-figure-move')
+    el.style.transition = 'none'
+    el.style.transform = `translate(${dx}px, ${dy}px)`
+    void el.offsetWidth // flush the "where it was" frame before letting it travel
+    el.classList.add('dsx-figure-move')
+    el.style.transition = ''
+    el.style.transform = ''
+    const id = window.setTimeout(() => el.classList.remove('dsx-figure-move'), 520)
+    return () => window.clearTimeout(id)
+  }, [out, docked])
+  /**
    * Tile-fits guard (rendered level).
    *
    * The two surfaces express the SAME defect differently, and neither the data gate
@@ -401,9 +466,9 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
       textOverflow: 'ellipsis',
     },
   }, text)
-  const captionEl = (text: string, key: string, style?: React.CSSProperties): React.ReactElement => React.createElement('span', {
+  const captionEl = (text: string, key: string, style?: React.CSSProperties, extraClass?: string): React.ReactElement => React.createElement('span', {
     key,
-    className: 'dsx-stats-card-legend',
+    className: 'dsx-stats-card-legend' + (extraClass === undefined ? '' : ` ${extraClass}`),
     style: {
       fontSize: `${Math.round(10 * scale)}px`,
       color: 'var(--dsw-alias-label-tertiary)',
@@ -616,7 +681,7 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
     // (`small`+`smallAlign: 'bottom'`, e.g. 额度管理's `账期 10-10`), or a stacked
     // grey block (`smallLines`) that is CENTRED on the figure's line box.
     const haLines = Array.isArray(out.headAfter.smallLines) && out.headAfter.smallLines.length > 0 ? out.headAfter.smallLines : []
-    headEls.push(React.createElement('div', { key: 'ha', className: 'dsx-stats-card-headafter', style: {
+    headEls.push(React.createElement('div', { key: 'ha', className: 'dsx-stats-card-headafter', ref: dockable ? dockRef : undefined, style: {
       display: 'flex',
       // ONE grey line rides the figure's baseline by default, or sits on the row's
       // floor when it asks to (`smallAlign: 'bottom'` — the line's bottom edge
@@ -626,7 +691,11 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
       // underneath (measured 2026-09-20 on the live 额度管理 card).
       alignItems: haLines.length > 0 ? 'center' : out.headAfter.smallAlign === 'bottom' ? 'flex-end' : 'baseline',
       gap: HEAD_GAP_PX,
-      marginTop: `${Math.round(HEAD_GAP_PX * scale)}px`,
+      // DOCKED (`headAfter.dock`): out of the head's flow, on the card's floor at
+      // its left content edge — the figure waits there until a chart can carry it.
+      ...(docked
+        ? { position: 'absolute' as const, left: `${innerPad}px`, bottom: `${innerPad}px`, marginTop: 0 }
+        : { marginTop: `${Math.round(HEAD_GAP_PX * scale)}px` }),
       minWidth: 0,
       whiteSpace: 'nowrap',
     } },
@@ -634,7 +703,11 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
       haLines.length > 0
         ? React.createElement('span', { className: 'dsx-stats-card-headafter-lines', style: { display: 'flex', flexDirection: 'column', minWidth: 0 } },
           haLines.map((line, i) => captionEl(line, `ha-l${i}`, { lineHeight: 1.25 })))
-        : out.headAfter.small != null ? captionEl(out.headAfter.small, 'ha-sm', { lineHeight: 1.25 }) : null,
+        // The caption keeps its place while docked and only withholds its ink: a
+        // single turn's rate IS the overall rate, so the comparison is not yet
+        // meaningful — but the moment it becomes readable the figure beside it must
+        // not shift, so the slot is reserved rather than omitted.
+        : out.headAfter.small != null ? captionEl(out.headAfter.small, 'ha-sm', { lineHeight: 1.25 }, docked ? 'dsx-head-note-hidden' : undefined) : null,
     ))
   }
   if (out.legend && !accessoryHead) {
@@ -700,6 +773,9 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
       const c = renderChart({ chart: out.chart, side: unit, width: boxW, pad: innerPad, scale: unit / BASE_SIDE })
     if (c) body.push(React.createElement('div', {
       key: 'c',
+      // A chart that arrived under an already-visible head rises the last few pixels
+      // into place (`dsx-chart-enter`, armed by the `chartEnter` effect above).
+      className: chartEnter ? 'dsx-chart-enter' : undefined,
       // The stretch wrapper owns the card's remaining height so an elastic chart
       // (line sparkline, quotas) can fill it; fixed-footprint charts ignore it.
       // `minHeight: 0` matters: without it the flex item keeps its content's

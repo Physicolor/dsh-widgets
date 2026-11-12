@@ -1332,8 +1332,21 @@ export interface WidgetRenderOut {
    *  reads that way); `smallLines` is a STACKED grey block in that same slot, for
    *  a subtitle that is too long to sit beside the figure — the block is CENTRED
    *  on the figure's line box, so its last line never dangles below the figure and
-   *  crowds the row underneath. When both are given, `smallLines` wins. */
-  headAfter?: { big?: string; small?: string; smallLines?: string[]; smallAlign?: 'baseline' | 'bottom' }
+   *  crowds the row underneath. When both are given, `smallLines` wins.
+   *
+   *  `dock: 'bottom'` DOCK THE ROW TO THE CARD'S FLOOR while the card has no
+   *  chart (缓存趋势's first turn — the owner's ask of 2026-11-12: 「百分比数字放在
+   *  左下角」, and 「等到轮次增加后，百分比数字平滑向上移动，同时图表自然出现」).
+   *  The row keeps its identity in the head, so when the chart finally arrives
+   *  `CardBody` FLIPs the figure up to its ladder position instead of re-mounting
+   *  it, and `small` stays laid out but uninked (it describes a comparison that
+   *  does not exist yet — a single turn's rate IS the overall rate).
+   *
+   *  IT IS THE CAPABILITY, NOT THE PLACEMENT: keep `dock` declared in EVERY state
+   *  the card can return, chart or not. The renderer reads the chart to decide
+   *  where the row actually sits; a card that drops the field once its chart exists
+   *  unmounts the row's ref, and the figure then jumps instead of travelling. */
+  headAfter?: { big?: string; small?: string; smallLines?: string[]; smallAlign?: 'baseline' | 'bottom'; dock?: 'bottom' }
   /** Where the card BODY (the foot: figures, charts, sub) sits once a `headAfter`
    *  row has made the head taller than one line. Default `'top'`: the body starts
    *  right under the head — what an elastic chart (sys-gpu-line) and a rich block

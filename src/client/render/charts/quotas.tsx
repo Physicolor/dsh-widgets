@@ -162,7 +162,7 @@ export function QuotasChart({ chart, scale }: ChartProps): React.ReactElement | 
         : c === cross && crossPct > 0
           ? { flex: 1, minWidth: 0, height: '100%', backgroundColor: 'transparent', backgroundImage: `linear-gradient(90deg, ${ink(92)} ${crossPct.toFixed(2)}%, ${ink(14)} ${crossPct.toFixed(2)}%)`, backgroundRepeat: 'no-repeat' }
           : { flex: 1, minWidth: 0, height: '100%', background: tone, opacity: 0.14 }
-    const cellEls = Array.from({ length: cells }, (_, c) => React.createElement('div', { key: c, style: cellStyle(c) }))
+    const cellEls = Array.from({ length: cells }, (_, c) => React.createElement('div', { key: c, className: 'dsx-quota-cell', style: cellStyle(c) }))
     return React.createElement('div', { key: i, ref: i === 0 ? rowRef : undefined, style: { display: 'flex', flexDirection: 'column', gap: innerGap, minHeight: 0 } },
       React.createElement('div', { style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, minWidth: 0 } },
         React.createElement('span', { style: { fontSize: `${labelPx}px`, lineHeight: 1.15, fontWeight: 500, color: 'var(--dsw-alias-label-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, q.label),

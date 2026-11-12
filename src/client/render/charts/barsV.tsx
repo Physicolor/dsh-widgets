@@ -25,7 +25,7 @@ export function BarsVChart({ chart, side, width, pad, scale }: ChartProps): Reac
       // middle columns keep an empty spacer so they stay evenly sized.
       const label = (i === 0 || i === last) ? b.label : ''
       return React.createElement('div', { key: i, title: `${b.label}: ${b.value} tok`, style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 3, height: '100%' } },
-        React.createElement('div', { style: { width: '93%', maxWidth: Math.max(6, Math.round(21 * scale)), height: active ? `${Math.max(2, Math.round((barAreaH - labelH) * ratio))}px` : `${Math.max(2, Math.round(3 * scale))}px`, borderRadius: 4, background: tone, opacity: active ? 0.85 : 0.18 } }),
+        React.createElement('div', { className: 'dsx-bar', style: { width: '93%', maxWidth: Math.max(6, Math.round(21 * scale)), height: active ? `${Math.max(2, Math.round((barAreaH - labelH) * ratio))}px` : `${Math.max(2, Math.round(3 * scale))}px`, borderRadius: 4, background: tone, opacity: active ? 0.85 : 0.18 } }),
         // nowrap: a two-digit day ("9.11") is wider than its ~15px column, and
         // wrapping it into "9.1" / "1" made the label two lines tall — which
         // pushed the bars up and overflowed the 150px card (measured over CDP).

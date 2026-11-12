@@ -9,6 +9,7 @@
 
 import * as React from 'react'
 import { TRAJECTORY_WINDOW } from '../../lib/contract/types'
+import { useEnteringTail } from '../motion'
 import { CHART_TONES } from './theme'
 import type { ChartProps } from './types'
 
@@ -52,7 +53,15 @@ const LANE_GAP_MAX_PX = 1
 const LANE_MIN_PX = 2
 
 export function LanesChart({ chart, side, width, pad, scale }: ChartProps): React.ReactElement | null {
-  if (chart.kind === 'lanes' && chart.lanes) {
+  const lanes = chart.kind === 'lanes' ? chart.lanes : undefined
+  // The first index of the tail that ARRIVED since the previous render (`-1` when
+  // nothing did, and on the first render of a card): a beat that just came in grows
+  // out of its own left edge (`dsx-lane-seg-enter`), while every beat already drawn
+  // slides to its new slot through the `left`/`width` transition on `.dsx-lane-seg`.
+  // Without the split, a roll of the window either teleported the new bar or
+  // replayed the entrance for the whole strip.
+  const enteringFrom = useEnteringTail(lanes?.length ?? 0)
+  if (lanes) {
     // 对话轨迹 — the official 轨迹 timeline (`@deepseek-ai/dsh-client-ui-trajectory`,
     // TrajectoryTimeline.module.css + deriveTrajectoryTimeline) rendered inside a
     // card. ONE ROW PER LANE, in the official order 输入 / 模型 / 工具, and all
@@ -89,7 +98,6 @@ export function LanesChart({ chart, side, width, pad, scale }: ChartProps): Reac
     // (`min-width: 2px` in the official CSS), which is what keeps a quick tool
     // call visible instead of vanishing — and the official gap is subtracted
     // from the LEFT edge as well, so two neighbours can never touch.
-    const lanes = chart.lanes
     if (lanes.length === 0) return null
     const timeMode = chart.laneSizing !== 'equal' && lanes.some((l) => (l.ms ?? 0) > 0)
     // Slice per beat on the shared axis: [left%, width%].
@@ -122,7 +130,7 @@ export function LanesChart({ chart, side, width, pad, scale }: ChartProps): Reac
           const gap = gapPct(width)
           return React.createElement('div', {
             key: e.i,
-            className: 'dsx-lane-seg',
+            className: 'dsx-lane-seg' + (enteringFrom >= 0 && e.i >= enteringFrom ? ' dsx-lane-seg-enter' : ''),
             // The lane this bar belongs to — a probe asserts a row never carries
             // a foreign lane (scripts/diag-lanes-invariant.cjs).
             'data-lane': kind,

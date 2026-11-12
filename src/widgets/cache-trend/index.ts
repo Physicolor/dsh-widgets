@@ -44,6 +44,14 @@ import { t } from '../../client/i18n'
  * THE X AXIS IS THE TURN NUMBER: the left label is the window's first turn and the
  * right label is the session's last one (「左边是 1，右边是最后一个数字」).
  *
+ * ONE SAMPLE IS NOT A LINE, SO THE FIGURE WAITS ON THE FLOOR (owner, 2026-11-12):
+ * with a single turn there is nothing to compare and nothing to draw, so the
+ * percentage is docked to the card's bottom-left (`headAfter.dock`), the `整体`
+ * caption keeps its slot but stays uninked, and the 「等待更多轮次」 sentence is
+ * gone. The second turn lifts the figure up to the head's ladder and raises the
+ * sparkline under it — motion, not a different card (see `render/motion.ts` and
+ * `card.module.css`'s data-motion block).
+ *
  * This render owns the wording, the window and the axis only — it never recomputes
  * a rate from raw buckets, which is what keeps the last point equal to the big
  * figure.
@@ -76,12 +84,18 @@ function cacheTrendRender(s: WidgetStats): WidgetRenderOut | null {
   const all: number[] = hostTurns.length > 0 ? hostTurns.map(turn => turn.rate) : (s.cacheSeries ?? [])
   const marks: string[] = hostTurns.length > 0 ? hostTurns.map(turn => String(turn.turn)) : (s.cacheSeriesMarks ?? [])
   if (all.length < 2) {
-    // One turn is not a line. The figures are already known, so the card shows
-    // them with the caption that the sparkline arrives with the next turn.
+    // One turn is not a line — and a card that says so in words is a card with a
+    // sentence where its data should be (the owner, 2026-11-12: 「取消 等待更多轮次
+    // 的文字，百分比数字放在左下角，右侧整体不显示」).
+    //
+    // So the ONE known figure is DOCKED to the card's floor instead (`dock`): the
+    // percentage sits bottom-left on an otherwise empty tile, the overall caption
+    // keeps its slot but stays uninked (with a single turn it repeats the same
+    // number), and the first real line lifts the figure up to the head's ladder —
+    // the FLIP is `CardBody`'s, the rise is `dsx-chart-enter`'s.
     return {
       title: t('widget.cache-trend.name'),
-      headAfter: { big: all.length === 1 ? pct(all[0]) : '—', small: overallText },
-      legend: t('card.cache-trend.waiting'),
+      headAfter: { big: all.length === 1 ? pct(all[0]) : '—', small: overallText, dock: 'bottom' },
     }
   }
   const points = resolvePoints(s)
@@ -89,7 +103,11 @@ function cacheTrendRender(s: WidgetStats): WidgetRenderOut | null {
   const windowMarks = marks.slice(-points)
   return {
     title: t('widget.cache-trend.name'),
-    headAfter: { big: pct(all[all.length - 1]), small: overallText },
+    // `dock` STAYS DECLARED once the line exists — it is the capability, not the
+    // current placement: only a card that still asks for the dock keeps its figure
+    // row mounted across the change, which is what lets `CardBody` FLIP it up
+    // instead of re-mounting a second element in the head.
+    headAfter: { big: pct(all[all.length - 1]), small: overallText, dock: 'bottom' },
     chart: {
       kind: 'line',
       line: {

@@ -73,13 +73,19 @@ export function Donut({ radius, ratio, tone = 'primary', stroke = 3, inset = 2, 
   const overrun = Math.max(0, ink - c)
   const arc = (dash: number, key: string): React.ReactElement => React.createElement('circle', {
     key,
+    // `dsx-arc` (card.module.css) is what makes a ratio CHANGE travel instead of
+    // snapping: the dash pattern is a length pair whose tail is the circumference,
+    // so only the ink moves. The pattern rides the STYLE attribute rather than the
+    // SVG attribute — a CSS transition is driven by computed style, and a
+    // presentation attribute is the lowest-priority way to feed it.
+    className: 'dsx-arc',
     cx: radius,
     cy: radius,
     r,
     fill: 'none',
     stroke: base,
     strokeWidth: stroke,
-    strokeDasharray: `${dash} ${c}`,
+    style: { strokeDasharray: `${dash} ${c}` },
     transform: `rotate(-90 ${radius} ${radius})`,
     strokeLinecap: 'round',
   })

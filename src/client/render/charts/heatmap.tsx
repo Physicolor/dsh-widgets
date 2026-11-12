@@ -45,6 +45,7 @@ export function HeatmapChart({ chart, side, width, pad, scale }: ChartProps): Re
     const rows = chart.heatmap.map((week, wi) => {
       const cells = week.map((c) => React.createElement('div', {
         key: c.date,
+        className: 'dsx-heat-cell',
         title: `${c.date}: ${c.value} ${unit}`,
         style: { width: cell, height: cell, borderRadius: 2, background: cellBg(c), opacity: c.value > 0 ? 1 : 0.5 },
       }))

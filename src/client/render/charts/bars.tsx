@@ -24,7 +24,7 @@ export function BarsChart({ chart, side, width, pad, scale }: ChartProps): React
       const pct = Math.round(b.value ?? ratio * 100)
       return React.createElement('div', { key: i, title: `${b.label} ${pct}%`, style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 } },
         React.createElement('div', { style: { width: '100%', height: `${h}px`, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' } },
-          React.createElement('div', { style: { width: '60%', height: `${Math.max(2, Math.round(h * ratio))}px`, borderRadius: 5, background: tone, opacity: ratio >= 0.95 ? 0.9 : 0.85 } }),
+          React.createElement('div', { className: 'dsx-bar', style: { width: '60%', height: `${Math.max(2, Math.round(h * ratio))}px`, borderRadius: 5, background: tone, opacity: ratio >= 0.95 ? 0.9 : 0.85 } }),
         ),
         React.createElement('div', { style: { fontSize: `${Math.round(9 * scale)}px`, color: 'var(--dsw-alias-label-tertiary)', whiteSpace: 'nowrap' } }, b.label),
       )

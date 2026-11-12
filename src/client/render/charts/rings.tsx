@@ -44,7 +44,7 @@ export function RingsChart({ chart, side, width, pad, scale }: ChartProps): Reac
       return React.createElement('div', { key: i, title: `${rg.name ?? rg.label} ${valueText}`, style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: Math.round(4 * scale) } },
         React.createElement('svg', { width: Math.round(r * 2), height: Math.round(r * 2), viewBox: `0 0 ${Math.round(r * 2)} ${Math.round(r * 2)}`, 'aria-hidden': true },
           React.createElement('circle', { cx: r, cy: r, r: r - sw / 2, fill: 'none', stroke: 'var(--dsw-alias-interactive-bg-hover)', strokeWidth: sw }),
-          React.createElement('circle', { cx: r, cy: r, r: r - sw / 2, fill: 'none', stroke: tone, strokeWidth: sw, strokeDasharray: `${c * p} ${c}`, transform: `rotate(-90 ${r} ${r})`, strokeLinecap: 'round' }),
+          React.createElement('circle', { cx: r, cy: r, r: r - sw / 2, fill: 'none', stroke: tone, strokeWidth: sw, className: 'dsx-arc', style: { strokeDasharray: `${c * p} ${c}` }, transform: `rotate(-90 ${r} ${r})`, strokeLinecap: 'round' }),
         ),
         labelRow,
       )

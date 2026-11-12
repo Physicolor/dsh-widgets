@@ -1,10 +1,20 @@
 /** The `line` chart — body moved verbatim out of ChartBlock (Phase 3.4). */
 
 import * as React from 'react'
+import { useTweenNumbers } from '../motion'
 import type { ChartProps } from './types'
 
+/** The one array the hook may read while the chart has no line yet. */
+const NO_SAMPLES: readonly number[] = []
+
 export function LineChart({ chart, side, width, pad, scale }: ChartProps): React.ReactElement | null {
-  if (chart.kind === 'line' && chart.line) {
+  const line = chart.kind === 'line' ? chart.line : undefined
+  // THE SPARKLINE IS THE ONE CHART WITH NO CSS PROPERTY TO TRANSITION: its shape is
+  // a list of points, so the SAMPLES are eased and the polyline is rebuilt each frame
+  // (`render/motion.ts`; ≤20 points, and only while a value actually moved). A
+  // window that rolled one turn to the left therefore morphs instead of swapping.
+  const values = useTweenNumbers(line?.values ?? NO_SAMPLES)
+  if (line) {
     // Windows-task-manager style utilization sparkline: a filled area under a
     // polyline. A proportional 100×100 viewBox stretches via preserveAspectRatio
     // none, so the stroke uses vector-effect non-scaling-stroke to stay
@@ -16,9 +26,8 @@ export function LineChart({ chart, side, width, pad, scale }: ChartProps): React
     // sys-gpu-line card totalled ≈178px (value + sub + 68px chart) and burst
     // the 150px box on hover. The bottom time-labels stay fixed (flex:none).
     const labelH = Math.round(10 * scale)
-    const max = Math.max(1, chart.line.max ?? 100)
-    const vals = chart.line.values
-    const W = Math.max(1, vals.length - 1)
+    const max = Math.max(1, line.max ?? 100)
+    const W = Math.max(1, values.length - 1)
     const X = (i: number): number => (W === 0 ? 0 : (i / W) * 100)
     // The stroke must never ride the plot's edge. A 0% sample (an idle GPU is the
     // every-day case) put the polyline EXACTLY on the box's bottom, and the
@@ -31,7 +40,7 @@ export function LineChart({ chart, side, width, pad, scale }: ChartProps): React
     const Y = (v: number): number => PAD + (100 - 2 * PAD) * (1 - (Math.max(0, Math.min(max, v)) / max))
     const segs: Array<Array<[number, number]>> = []
     let cur: Array<[number, number]> = []
-    vals.forEach((v, i) => {
+    values.forEach((v, i) => {
       if (v === null || v === undefined || !Number.isFinite(v)) {
         if (cur.length > 1) { segs.push(cur); cur = [] }
         return
@@ -49,7 +58,7 @@ export function LineChart({ chart, side, width, pad, scale }: ChartProps): React
     const polylines = segs.map((seg, si) =>
       React.createElement('polyline', { key: `p${si}`, points: seg.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' '), fill: 'none', stroke: tone, strokeWidth: Math.max(1, Math.round(1.6 * scale)), strokeLinejoin: 'round', strokeLinecap: 'round', vectorEffect: 'non-scaling-stroke' }),
     )
-    const labels = chart.line.labels ?? ['', '']
+    const labels = line.labels ?? ['', '']
     // gap: 3 keeps the same sparkline→time-label spacing as the barsV bars
     // (bar→date label gap 3). The svg canvas fills the flexible middle row.
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 3, minHeight: 0, flex: 1 } },
