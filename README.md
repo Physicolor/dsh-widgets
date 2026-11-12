@@ -342,17 +342,15 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 Every release, entry by entry — including the measurement behind each change — lives in **[`CHANGELOG.md`](CHANGELOG.md)** ([中文](CHANGELOG.zh-CN.md)); each version is also published as a [GitHub Release](https://github.com/Physicolor/dsh-widgets/releases) anchored to the commit that shipped it. Raw evidence (CDP probes, screenshots, JSON receipts, per-incident fix records) lives under [`docs/`](docs/). This README keeps only the current release at a glance.
 
-### What's new — v1.8.5
+### What's new — v1.9.0
 
-**Six more cards, and the data behind every card now declares itself** — the registry goes from 55 units to **61**:
+**Cards that move instead of repainting, and a third open shape** — plus everything the never-published v1.8.6 carried:
 
-- **The time family** — a **Clock** (analog or digital, six zones, a second hand that ticks), a **Calendar** that dots the days DSH has a scheduled task on (2×2 month grid; the 2×4 adds the upcoming list), a **Task Timer** for the running turn and what it is waiting on, a **Stopwatch** you can start / pause / reset, and a **Countdown** (duration capsules, or the next scheduled task);
-- **DeepSeek balance** — the official account balance with the ledger-derived day's spend beside it, reading a host route of its own (`/api/deepseek-balance`), with the fold covered by a new offline gate;
-- **A declared data-source contract** — a unit says what it reads (`reads`, `source`, its skeleton) and one generic poller answers for all of them; the build now fails when a declaration drifts from the unit;
-- **Four defects gone** — the hover wave no longer arms a whole row below the pointer on a rail another plugin has pushed down (45 checks: 25 FAIL → 45/45 PASS); the session-header anchor stops freezing when the shell swaps its node; the whole-card rule and the wheel's end detent read the same measured inset — and `paneH` is measured at all, which it never had been; nvidia-smi's MiB are no longer passed through as bytes;
-- **The 设置 gear opens Settings → Widgets** — the app's own page, rather than a second panel of our own (that panel stays in the source as a reference, with nothing mounting it);
-- **Two card standards with teeth** — `docs/design/CARD-BODY-POSTURE.md` and `CARD-TITLE-STANDARD.md`, both written from incidents that had already passed every gate, and both machine-asserted in `scripts/probe-geometry.cjs`;
-- **CI, and the offline gates to run in it** — `node scripts/gates.mjs` (G1–G14) and `.github/workflows/ci.yml` running `pnpm run build` + `pnpm test` on every push and pull request.
+- **Data motion** — every chart now animates its own change instead of swapping pixels: a donut's arc sweeps, a bar grows from the floor, a lane bar slides to its new slot while the beat that just arrived grows out of its edge, the cache sparkline morphs point by point, a heat cell's tint cross-fades. All of it is mount-silent (a hover re-mount replays nothing) and all of it is off under `prefers-reduced-motion`;
+- **缓存趋势's first turn** — 「等待更多轮次」 is gone: the percentage waits at the card's bottom-left, then travels up to the title's ladder while the first real line rises into place;
+- **`openShape: 'slide'`** — the deck's open/close fold can move horizontally only: no scale, no anchor read, one forced layout less. Still a three-way choice in Settings → Widgets → Look & Layout;
+- **The fold runs on the compositor** (folded in from the never-published v1.8.6) — Web Animations instead of a per-frame `requestAnimationFrame`; open onset 62–85ms → 23–26ms on the owner's stage;
+- **The anchor is documented where it actually is** — the rail's own top-right corner, not the window's, in all three places that claimed otherwise.
 
 Each of these, with the measurement behind it, is written up in the [CHANGELOG](CHANGELOG.md).
 

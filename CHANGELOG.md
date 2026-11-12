@@ -13,7 +13,7 @@ Where each kind of detail lives:
 
 Every entry is written in the language of the file it lives in: English here, Chinese in `CHANGELOG.zh-CN.md`. A term that names a piece of the UI is quoted the way the UI itself says it in that language.
 
-## v1.9.0 — a third open shape that only slides, and the anchor's absolute-coordinate feel fixed
+## v1.9.0 — a third open shape that only slides, and cards that move instead of repaint
 
 > "Stagger (accordion)" reads as if it were **anchored to some absolute point on the whole window**, because it copies the group's scale map onto every card: a card's vertical start offset is `(1 − start scale) × the card's distance from the anchor`, i.e. **12%** at the shipped 88% — a card 700px down the deck falls from **84px above** its cell, and the further down it is the higher it starts. That is a faithful copy of the group map and the wrong kind of faithful for a deck. The third path, `'slide'`, keeps everything the cascade owns (one shared timeline, the rank ladder, the reversal, the visible-band filter) and keeps one channel: `translateX` only, no scale, no anchor read, a vertical offset that is identically zero.
 
@@ -34,7 +34,33 @@ The header of `deck-cascade.ts` and both READMEs still claimed the anchor was "t
 
 **Not done yet**: no live A/B (same session, same gesture, `'slide'` vs `'drop'`, rAF frame interval + Long Animation Frame) has been run, so this release claims the **structural** win — one forced layout removed, one `transform-origin` write per card removed, no scale-driven re-rasterization — and does not quote a measured frame-rate number.
 
-## v1.8.6 — the fold moves to the compositor, and starts sooner
+### Added — data motion: cards MOVE instead of repainting
+
+> Every chart used to REPAINT: a donut jumped 40% → 92%, a lane bar appeared at its final width, the 缓存趋势 sparkline swapped its whole polyline — and that card's first turn printed a sentence (「等待更多轮次」) where its data should be. The owner's report of 2026-11-12 named both halves: 「现在 dsh-widgets 的所有组件在组件内部都没有平滑的动画效果，都是直接瞬间改变状态」, and 「百分比数字放在左下角……等到轮次增加后，百分比数字平滑向上移动，同时图表自然出现」. This release adds the motion layer and re-shapes that first turn.
+
+- `render/motion.ts` — the two primitives the charts cannot get from CSS: `useTweenNumbers` (rAF-eased samples for the one chart with no animatable property, the sparkline; `null` gaps stay gaps) and `useEnteringTail` (the first index of the beats that ARRIVED since the previous render, so a new lane bar grows in while the drawn ones slide).
+- `card.module.css` — one data-motion block of compositor-only transitions: `dsx-arc` (a donut / head-ring `stroke-dasharray`, where only the ink moves), `dsx-bar` (`bars` / `barsV` height), `dsx-seg` (the `segments` track's widths), `dsx-lane-seg` (`left` / `width` / `opacity` — the slide IS the data in duration mode), `dsx-heat-cell`, `dsx-quota-cell`, plus three one-shot rules: `dsx-lane-seg-enter`, `dsx-chart-enter`, `dsx-figure-move`.
+- **Mount-silent by construction**: a CSS transition only runs on a property CHANGE, and the two classes that do start at insertion are applied only on an in-card change, never on mount — so the magnify layer re-creating a card on hover replays nothing (the trap `dsx-figure-drop` documents).
+- `headAfter.dock: 'bottom'` (new contract field) — 缓存趋势's single-turn state: the percentage waits on the card's floor at its left content edge, the `整体` caption keeps its slot but withholds its ink (a single turn's rate IS the overall rate), and 「等待更多轮次」 is gone. When the first real line lands, `CardBody` FLIPs the SAME figure row up to the ladder while the chart rises the last few pixels into place.
+- `prefers-reduced-motion` drops the whole layer (transitions `none`, entrances `none`); the card then reads exactly as it did before this release.
+
+Measured in one Chromium by the new `scripts/probe-motion.cjs` (34 checks, all passing):
+
+- the docked figure travels **79.0px** through **27 sampled intermediate frames**, monotone, no bounce; the `整体` caption fades **0 → 1** while it moves; the chart's entrance class is seen and then cleared;
+- the head ring's arc interpolates **23.9px → 119.3px** of dash ink over **92** per-frame intermediate values;
+- the sparkline morphs through **84** intermediate frames (no CSS property could have done this one);
+- the lane strip goes **3 → 5** segments, the arriving beats are marked and grow in, and a drawn bar reshapes **39.4px → 22.8px** through **86** intermediate widths;
+- under reduced motion the arc's transition duration is **0s** and **no** intermediate frame or dash value appears anywhere.
+
+### Gate — `pnpm probe:motion`, and two refreshed baselines
+
+`scripts/probe-motion.cjs` is durable rather than one-shot: it rebuilds the offline render closure (so the widget half is measured from source, never a stale `.tmp-snapshot`), builds the gallery once, and drives `CardBody` through a fixture page in one browser. The whole-gallery smoke check is part of it (144 cells, no page error). `G4`'s render baseline gains exactly one field (`headAfter.dock`, two lines) and `G5`'s CSS baseline is refreshed on purpose; `pnpm check` / `pnpm build` / `pnpm test` are 13/13 green.
+
+### Folded in — the never-published v1.8.6
+
+v1.8.6 (the fold moving to the compositor) was bumped but never published; this release ships it. Its entry is kept below for the measurements, marked as folded, and it is part of what `1.9.0` puts on npm.
+
+## v1.8.6 — the fold moves to the compositor, and starts sooner (never published on its own — folded into v1.9.0)
 
 > The rail's open/close fold was the last animation this plugin drove frame by frame from `requestAnimationFrame`. It is now a set of **Web Animations the compositor runs**, so the cards keep moving at the display's rate while the main thread is busy — and the extra whole-rail React render that publishing the fold marker used to cost is gone. Measured on the owner's stage (240Hz panel, 1707×1067 @DSF 1.5, the longest session: 11,654 nodes, 14 cards): open onset **62–85ms → 23–26ms**; under a **4× CPU slowdown** the fold's wall time was **711–985ms** and is now **293–347ms** against the design value of 300ms. Nothing visible changed: same curves, same rank order, same two end states, and the live pixel-path suite still asserts the cards ride the group's map. The details and the full stress matrix are in [`docs/architecture/FOLD-2026-10-21.md`](docs/architecture/FOLD-2026-10-21.md).
 
