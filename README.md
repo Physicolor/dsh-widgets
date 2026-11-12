@@ -342,15 +342,12 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 Every release, entry by entry — including the measurement behind each change — lives in **[`CHANGELOG.md`](CHANGELOG.md)** ([中文](CHANGELOG.zh-CN.md)); each version is also published as a [GitHub Release](https://github.com/Physicolor/dsh-widgets/releases) anchored to the commit that shipped it. Raw evidence (CDP probes, screenshots, JSON receipts, per-incident fix records) lives under [`docs/`](docs/). This README keeps only the current release at a glance.
 
-### What's new — v1.9.0
+### What's new — v1.9.1
 
-**Cards that move instead of repainting, and a third open shape** — plus everything the never-published v1.8.6 carried:
+**The rail is anchored to the window again.** DSH 0.2.2 gave the conversation's composer seat `will-change: transform`, which turns that card into a containing block for `position: fixed` descendants — and the rail is registered in `conversation.input.overlay`, i.e. inside it. The drawer is now portaled to a body-level host, so the rail and the 置顶摘要 card go back to the right column while the registration seat and the paint order stay as they were (`scripts/verify-rail-anchor.cjs`, 10/10). Also in this release:
 
-- **Data motion** — every chart now animates its own change instead of swapping pixels: a donut's arc sweeps, a bar grows from the floor, a lane bar slides to its new slot while the beat that just arrived grows out of its edge, the cache sparkline morphs point by point, a heat cell's tint cross-fades. All of it is mount-silent (a hover re-mount replays nothing) and all of it is off under `prefers-reduced-motion`;
-- **缓存趋势's first turn** — 「等待更多轮次」 is gone: the percentage waits at the card's bottom-left, then travels up to the title's ladder while the first real line rises into place;
-- **`openShape: 'slide'`** — the deck's open/close fold can move horizontally only: no scale, no anchor read, one forced layout less. Still a three-way choice in Settings → Widgets → Look & Layout;
-- **The fold runs on the compositor** (folded in from the never-published v1.8.6) — Web Animations instead of a per-frame `requestAnimationFrame`; open onset 62–85ms → 23–26ms on the owner's stage;
-- **The anchor is documented where it actually is** — the rail's own top-right corner, not the window's, in all three places that claimed otherwise.
+- **The heatmap preview reads like a real week** — the demo data was modulo arithmetic, which painted a checkerboard; it is now a hash-jittered week (weekends near empty, recent days heavier, ~2.6x day-to-day swing);
+- **Everything v1.9.0 carries**: data motion on every chart, 缓存趋势's first turn reshaped, `openShape: 'slide'`, and the never-published v1.8.6 fold.
 
 Each of these, with the measurement behind it, is written up in the [CHANGELOG](CHANGELOG.md).
 

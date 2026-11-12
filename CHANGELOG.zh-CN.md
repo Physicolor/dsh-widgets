@@ -11,6 +11,36 @@
 | GitHub Releases | 同一条目作为 release notes，锚定到发布它的那次提交（tag） | 仓库 → Releases |
 | `docs/` | 原始证据：CDP 探针脚本、截图、JSON 凭证、逐次事故的修复记录 | [`docs/`](docs/) |
 
+## v1.9.1 —— 组件栏重新锚回窗口
+
+> DSH 0.2.2 给会话的输入区 seat 加了 `will-change: transform`，于是那张卡片成了 **`position: fixed`
+> 后代的包含块**；而组件栏注册在 `conversation.input.overlay` 里，正好就是那张卡片内部。车主
+> 2026-11-12 的截图和这套盒子算术完全对得上：组件栏和置顶摘要一起落进输入条，正文却仍按一条
+> 已经不存在的右栏留白。1600x1000 同一页面、只动一个变量：rail 盒子 `[673, 912, 460, 93]` →
+> `[1140, 44, 460, 956]`。
+
+### 修复 —— 抽屉挂到 `<body>` 上，不再待在输入卡片里
+
+- `rail/rail-view.tsx` 把抽屉（rail + 放大层 + 缩放层）portal 到 `<body>` 上一个 `display: contents`
+  宿主（`drawerLayerHost`）。`position: fixed` 重新对窗口生效，而注册位置仍是
+  `conversation.input.overlay`：绘制顺序不变，因为抽屉自身不带 `z-index` —— 置顶摘要卡片（8）、
+  会话头（21）、右侧面板（40）照旧压在它上面。
+- 用 portal 而不是 `appendChild`：React 18 把事件委托挂在 root 容器上，被挪走的 React 节点会丢掉
+  全部 handler（放大波与折叠都靠 `onMouseEnter`/`onMouseMove`）。宿主每个文档只建一次，切会话
+  不会堆出多个。
+- 置顶摘要从来不是第二个 bug：它的 `right` 由 `rail.getBoundingClientRect()` 反推
+  （`dsh-pinned-summary` 的 `card.js`），所以跟着偏了同一个 477px，也随 rail 一起回来。
+- `scripts/verify-rail-anchor.cjs` —— 长期断言：宿主只有一个、抽屉确实挂在里面、rail 右沿与底边
+  贴视口、栏宽没被压、toggle 仍能触发 React。`PASSED 10/10`。
+- 同一个坑没有在这里修：其他把 fixed 浮层放进 `conversation.input.overlay` 的插件仍在同一个包含块里。
+
+### 修复 —— 热力图预览改成真实的一周
+
+- `widgets/heatmap` 的 `previewStats` 原先用取模算术生成，出来是棋盘格（车主原话「一格深一格浅」）。
+  现在改为哈希抖动的真实一周：周末接近空、近期更重、日间抖动约 2.6 倍。这份数据就是组件市场与
+  gallery 预览展示的数据，因此两处一起变；`docs/architecture/baseline/render-snapshot.json` 已重建
+  （346 次渲染），13 条 gate 全绿。
+
 ## v1.9.0 — 展开方式多了「左右平移」，卡片也从「瞬变」改成「会动」
 
 > 「逐个落入」之所以看起来像**锚在整个窗口的某个绝对位置上**，是因为它把整栏的缩放映射逐张复制给了卡片：卡片的纵向起点偏移是 `(1 − 起始缩放) × 卡片到锚点的距离`，默认 88% 即 **12%** —— 离栏顶 700px 的卡片就从 **84px 高处**落下，越靠下掉得越高。这是对整块映射的忠实复制，但作为组件区的动画是错的那种忠实。第三条路径 `'slide'` 保留级联的全部机制（共享时间轴、rank 阶梯、反转续播、可见带过滤），只留下一根通道：每张卡只做 `translateX`，不缩放、不读锚点、纵向偏移恒为 0。
