@@ -86,7 +86,7 @@ ${cardCss()}
     if (el === null) return null
     var r = el.getBoundingClientRect()
     var cs = getComputedStyle(el)
-    return { top: r.top, bottom: r.bottom, left: r.left, width: r.width, height: r.height, opacity: Number(cs.opacity), transition: cs.transitionDuration, dash: cs.strokeDasharray, cls: el.className }
+    return { top: r.top, bottom: r.bottom, left: r.left, width: r.width, height: r.height, opacity: Number(cs.opacity), transition: cs.transitionDuration, dash: cs.strokeDasharray, cls: el.className, flag: el.getAttribute('data-dsx-overflow') }
   }
 </script>
 </body>
@@ -160,7 +160,12 @@ async function main() {
   const pageErrors = []
   page.on('pageerror', (e) => pageErrors.push(e.message))
   const consoleErrors = []
-  page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()) })
+  const fitWarnings = []
+  page.on('console', (m) => {
+    const text = m.text()
+    if (m.type() === 'error') consoleErrors.push(text)
+    if (/does not fit its tile/.test(text)) fitWarnings.push(text)
+  })
   await page.goto(url, { waitUntil: 'load' })
   await page.waitForTimeout(250)
 
@@ -178,7 +183,7 @@ async function main() {
     const frames = []
     const t0 = performance.now()
     while (performance.now() - t0 < 1000) {
-      frames.push({ t: Math.round(performance.now() - t0), row: read('dock', '.dsx-stats-card-headafter'), note: read('dock', '.dsx-stats-card-headafter .dsx-stats-card-legend'), chart: read('dock', '.dsx-chart-enter') })
+      frames.push({ t: Math.round(performance.now() - t0), row: read('dock', '.dsx-stats-card-headafter'), note: read('dock', '.dsx-stats-card-headafter .dsx-stats-card-legend'), chart: read('dock', '.dsx-chart-enter'), card: read('dock') })
       await new Promise((res) => requestAnimationFrame(res))
     }
     return { before, beforeNote: note, frames }
@@ -211,6 +216,11 @@ async function main() {
   r.check(noteFrames.some((n) => n.opacity > 0 && n.opacity < 0.95), 'the caption FADES in rather than popping', `${noteFrames.map((n) => n.opacity.toFixed(2)).join(' ')}`)
   r.check(travel.frames.some((f) => f.chart !== null), 'the chart is marked as entering', 'dsx-chart-enter seen')
   r.check(travel.frames[travel.frames.length - 1]?.chart === null, 'the chart\'s entrance class is cleared afterwards')
+  // The owner's red frame (2026-11-12): a transform used to inflate the card's
+  // scrollable overflow and the tile-fits guard painted its error outline. Neither
+  // the entrance nor the travel may ever trip it.
+  r.check(!travel.frames.some((f) => f.card?.flag === '1'), 'the entrance never trips the tile-fits guard (no red frame)', `${travel.frames.filter((f) => f.card?.flag === '1').length} flagged frame(s)`)
+  r.check(!fitWarnings.length, 'the guard logged no "does not fit" warning', fitWarnings.join(' | ') || 'none')
 
   // 3) The donut arc interpolates its dash pattern.
   const donut = await page.evaluate(async () => {

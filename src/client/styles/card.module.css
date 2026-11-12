@@ -349,9 +349,14 @@
   transition: opacity 320ms ease, background-color 320ms ease;
 }
 @keyframes dsx-chart-in {
+  /* GROWTH, NOT A TRANSLATION. A `translateY` here made the card's scrollable
+     overflow 10px taller for the length of the entrance, and the tile-fits guard
+     (which reads `scrollHeight`) painted its red outline on 缓存趋势's first line
+     — the owner's report of 2026-11-12: 「缓存趋势卡片周围出现异常的红框」. A
+     scaleY anchored to the floor never leaves the box at any card size. */
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: scaleY(0.9);
   }
   to {
     opacity: 1;
@@ -361,7 +366,9 @@
 .dsx-chart-enter {
   /* A chart that ARRIVES under an already-visible head (缓存趋势's first line,
      and any card that leaves its skeleton): it rises the last few pixels into
-     place instead of blinking on. */
+     place instead of blinking on. `transform-origin` at the floor is what turns
+     the scale into "growing up from the bottom edge". */
+  transform-origin: 50% 100%;
   animation: dsx-chart-in 460ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 .dsx-figure-move {

@@ -284,6 +284,13 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
   const dockRef = React.useRef<HTMLDivElement | null>(null)
   const dockRect = React.useRef<{ x: number; y: number } | null>(null)
   const dockedBefore = React.useRef(docked)
+  /**
+   * TRUE while the row is travelling (the FLIP is on). The tile-fits guard below
+   * must not measure through it: a transform is part of a card's scrollable
+   * overflow, and a row deliberately painted at its OLD place for one frame is not
+   * a layout defect (the owner's red-frame report of 2026-11-12).
+   */
+  const [figureMoving, setFigureMoving] = React.useState(false)
   React.useLayoutEffect(() => {
     const wasDocked = dockedBefore.current
     dockedBefore.current = docked
@@ -309,7 +316,11 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
     el.classList.add('dsx-figure-move')
     el.style.transition = ''
     el.style.transform = ''
-    const id = window.setTimeout(() => el.classList.remove('dsx-figure-move'), 520)
+    setFigureMoving(true)
+    const id = window.setTimeout(() => {
+      el.classList.remove('dsx-figure-move')
+      setFigureMoving(false)
+    }, 520)
     return () => window.clearTimeout(id)
   }, [out, docked])
   /**
@@ -376,10 +387,16 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
    * largest remaining own cost of the gesture (41.2ms of the paired V8 CPU
    * profile's sampled CPU) and is left exact on purpose.
    */
-  const overflowKey = React.useRef<{ out: WidgetRenderOut; unit: number; boxW: number; pinBox: boolean; pinnedByChart: boolean } | null>(null)
+  const overflowKey = React.useRef<{ out: WidgetRenderOut; unit: number; boxW: number; pinBox: boolean; pinnedByChart: boolean; motion: boolean } | null>(null)
   React.useLayoutEffect(() => {
     const el = cardRef.current
     if (el === null) return
+    // A card that is MID-MOTION has no verdict: the head row can be painted at its
+    // old place and a chart's entrance is a transform, and both extend the
+    // scrollable overflow for the length of the move. The key stores `motion`, so
+    // the moment the move ends the tuple changes and the guard measures the
+    // SETTLED box — which is what the red outline is about.
+    const motion = chartEnter || figureMoving
     const prev = overflowKey.current
     if (
       prev !== null &&
@@ -387,9 +404,11 @@ export function CardBody({ out, unit, width, squircle, cornerPercent, pinBox, on
       prev.unit === unit &&
       prev.boxW === boxW &&
       prev.pinBox === (pinBox === true) &&
-      prev.pinnedByChart === pinnedByChart
+      prev.pinnedByChart === pinnedByChart &&
+      prev.motion === motion
     ) return
-    overflowKey.current = { out, unit, boxW, pinBox: pinBox === true, pinnedByChart }
+    overflowKey.current = { out, unit, boxW, pinBox: pinBox === true, pinnedByChart, motion }
+    if (motion) return
     // A card whose HEIGHT is already pinned by its own style (every chart card, and
     // every preview tile) can only ever fail the guard by CLIPPING, so the check is
     // the scroll-vs-client one; a card that still lets its content size it is
