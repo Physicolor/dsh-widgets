@@ -18,6 +18,7 @@
  */
 
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import { WIDGETS, WIDGET_RUNTIME } from '../lib/registry'
 import { hasSource } from '../data/sources'
 import { parseInstanceKey, sizesOf, widgetName } from '../lib/contract/helpers'
@@ -198,6 +199,41 @@ function isSourcePending(source: string, snap: BridgeSnapshot): boolean {
   // one fails the build (scripts/gen-registry.mjs), so this is the null case only.
   if (!hasSource(source)) return false
   return snap.sources[source]?.status !== 'ready'
+}
+
+/**
+ * The drawer's own seat, OUTSIDE the conversation subtree.
+ *
+ * `position: fixed` means "the viewport" only while no ancestor is a containing
+ * block for fixed descendants — `transform`, `filter`, `backdrop-filter`,
+ * `contain: paint/layout`, or `will-change` naming any of them. The rail is
+ * registered in `conversation.input.overlay`, i.e. inside the composer card, and
+ * DSH 0.2.2 puts `will-change: transform` on the conversation's composer seat
+ * (`.…_composerSeat`, measured 2026-11-12 at 1600x1000: the rail's box collapsed
+ * from the right band into the composer strip — `[673,912,460,93]` where the
+ * viewport-relative answer is `[1140,44,460,956]`, and the 置顶摘要 card, which
+ * derives `right` from the rail's rect, moved 477px off the corner with it).
+ *
+ * A portal is the only move that both restores the viewport containing block and
+ * keeps React working: React 18 delegates events at the root container, so a
+ * React-owned node re-parented with `appendChild` loses every handler on it.
+ *
+ * The host is `display: contents` — no box, so nothing joins the shell's grid —
+ * and is created once per document: re-registering the slot (every session
+ * switch) must not stack hosts. Nothing removes it while the plugin lives: a
+ * cleanup that ran after the next instance's first render would detach the live
+ * drawer with it.
+ */
+const DRAWER_LAYER_CLASS = 'dsx-stats-drawer-layer'
+
+function drawerLayerHost(): HTMLElement {
+  const found = document.querySelector<HTMLElement>(`.${DRAWER_LAYER_CLASS}`)
+  if (found !== null) return found
+  const host = document.createElement('div')
+  host.className = DRAWER_LAYER_CLASS
+  host.style.display = 'contents'
+  document.body.appendChild(host)
+  return host
 }
 
 /** Build the right-rail slot component bound to one composition root. */
@@ -1360,12 +1396,19 @@ export function createRailView(deps: RailViewDeps): () => React.ReactElement | n
           rail,
         ),
       )
-      if (!retired) return drawerEl
+      // PORTALED to the drawer layer on <body> (see `drawerLayerHost`): the slot
+      // this component is registered in lives inside the composer card, and a
+      // containing block anywhere above a `position: fixed` layer squeezes the
+      // whole rail into that card's strip. The wrapper still spans the viewport, so
+      // every fixed child (rail, deck, magnify) keeps the coordinates it had, and
+      // the group's translateX travels the same rail width.
+      const drawerLayer = createPortal(drawerEl, drawerLayerHost())
+      if (!retired) return drawerLayer
       // RETIRED: build once, then hand back the SAME element object on every later render.
       // React compares element identity and bails out of this entire subtree — no card body,
       // no chart and no layout effect runs while the rail is closed, and the deck's DOM (and
       // the folded-out transforms it is holding) simply stays where it is, hidden.
-      if (retiredElRef.current === null) retiredElRef.current = drawerEl
+      if (retiredElRef.current === null) retiredElRef.current = drawerLayer
       return retiredElRef.current
   }
 }

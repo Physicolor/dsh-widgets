@@ -344,6 +344,12 @@ export function apply(ctx: ClientContext): void {
   //     —"floating entries rendered inside the resident composer card" —is its
   //     natural home. Measured 2026-09-17: a fixed layer in any conversation slot
   //     paints below the panel, in `shell.overlay` above it.
+  // The SEAT is the registration's; the rail's DOM is PORTALED to <body> by the
+  // rail view (`rail/rail-view.tsx`, `drawerLayerHost`): DSH 0.2.2 made the
+  // composer seat a containing block for `position: fixed` descendants
+  // (`will-change: transform`), which clipped the whole rail into the composer
+  // strip. Paint order is unchanged there — the drawer carries no z-index, so the
+  // panel (40), the header (21) and the 置顶摘要 card (8) still layer as before.
   ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register(
     { name: 'conversation.input.overlay', id: 'widgets-panel', order: 1000 },
     // The rail view — resting deck, magnify wave, add panel and the sliding
