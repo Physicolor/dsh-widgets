@@ -46,8 +46,20 @@ function previewStats(config: Record<string, unknown>): Partial<WidgetStats> {
     : (() => { const b = new Date(startOfWeek); b.setDate(b.getDate() - 12 * 7); return b })())
   const grid: Array<Array<{ value: number; date: string }>> = []
   const day = (r: number, c: number): Date => { const d = new Date(base); d.setDate(base.getDate() + c * 7 + r); return d }
-  // Mirror the real seed so preview ≈ actual: the three used days carry their
-  // known absolute values (total 3203M), the rest stay small markers.
+  // A PLAUSIBLE WEEK, NOT A CHECKERBOARD (owner, 2026-11-12: 「Token 用量的热力图
+  // 就不应该是隔一个格子一个深色一个浅色」). The old seed alternated on `off % 4`
+  // and `off % 3`, which painted a visible checker pattern that no real week of
+  // use produces. This seed is still deterministic (a date hash, so the preview is
+  // stable across renders), but it carries the shape of real usage: weekends are
+  // quiet, the older half of the window is lighter than the last few weeks, and a
+  // day's own jitter spans ~2.6x — the same spread the live cards show.
+  const seed = (key: string): number => {
+    let h = 2166136261
+    for (let i = 0; i < key.length; i += 1) h = Math.imul(h ^ key.charCodeAt(i), 16777619) >>> 0
+    return h / 0xffffffff
+  }
+  const BUSY_DAY = 190_000_000
+  // The three used days keep their known absolute values (total 3203M).
   const realSeed: Record<string, number> = {
     '2026-08-14': 244_188_000,
     '2026-08-15': 1_639_548_000,
@@ -58,8 +70,13 @@ function previewStats(config: Record<string, unknown>): Partial<WidgetStats> {
     for (let c = 0; c < 13; c++) {
       const d = day(r, c)
       const dk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      const off = Math.round((d.getTime() - startOfWeek.getTime()) / 86400000)
-      const v = (dk in realSeed) ? realSeed[dk] : ((off < 0) ? (Math.abs(off) % 5 === 0 ? 600 : 0) : (off % 4 === 0 ? 1400 : (off % 3 === 0 ? 700 : 0)))
+      const weekend = d.getDay() === 0 || d.getDay() === 6
+      const jitter = 0.55 + seed(dk) * 0.9
+      // Older weeks lighter, the last few heavier — the ramp a session log has.
+      const ramp = 0.35 + (c / 12) * 0.65
+      const v = dk in realSeed
+        ? realSeed[dk]
+        : Math.round(BUSY_DAY * (weekend ? 0.08 : ramp) * jitter)
       row.push({ value: v, date: dk })
     }
     grid.push(row)
