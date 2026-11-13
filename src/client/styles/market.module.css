@@ -140,10 +140,18 @@
  * the closing half plays the SAME keyframes in reverse (`is-rev`), so open and
  * close are pixel-identical by construction. The shared card itself flies as the
  * `.dsx-zoomghost` portal on top. */
+/* BOTH layers are `inset: 0` absolute boxes, so this box has NO content height of
+ * its own: it only exists because a flex parent handed it `flex: 1`. A host that
+ * measures the section instead of stretching it (ds-bot's settings page: an
+ * auto-height `.bt-dsh-section` above our `height: 100%` root) therefore folds the
+ * whole market to 0px — tab bar visible, search field and every card clipped to
+ * nothing (reported 2026-11-13 in DS Bot's 设置 → 组件 → 组件市场). The 360px floor
+ * keeps the market readable in a content-sized host; a stretched host (the official
+ * settings dialog, the rail's add panel) resolves far above it, so it never shows. */
 .dsx-mkt {
   position: relative;
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 360px;
   overflow: hidden;
 }
 .dsx-mkt-layer {

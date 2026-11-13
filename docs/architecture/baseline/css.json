@@ -1,5 +1,5 @@
 {
- "__combined": "50515e90923770225a4aa3f9e5909b73809b9288453cfa4f66a1ec839e04d2e4",
+ "__combined": "c5a856df5446b86c20cb6545af1fb2d8c8a0a261b1c8c44fd5f26474f0faf441",
  "sheets": {
   "dsh-widgets/src/client/styles/tokens.module.css": {
    "sha256": "81f224eac3bebbf2d0d5fcdbfb868032aed3dbb2e296ac0413df47a9fc3d39bb",
@@ -18,8 +18,8 @@
    "bytes": 3892
   },
   "dsh-widgets/src/client/styles/market.module.css": {
-   "sha256": "631fc9e0241bcbcc21473b4b8e85d923b3858c99ba113edf67120248b81f4918",
-   "bytes": 6213
+   "sha256": "ab062753b315bcf7bd919a6c8410250a2a7df4193e566ee5f90c06cdbf944a0d",
+   "bytes": 6217
   },
   "dsh-widgets/src/client/styles/primitives.module.css": {
    "sha256": "4c7ebe4155ce9ecc8dd28fc1e359ab8e565a1c7df3511e6b1d020a3c6422bc98",
