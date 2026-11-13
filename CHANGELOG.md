@@ -13,6 +13,16 @@ Where each kind of detail lives:
 
 Every entry is written in the language of the file it lives in: English here, Chinese in `CHANGELOG.zh-CN.md`. A term that names a piece of the UI is quoted the way the UI itself says it in that language.
 
+## v1.9.2 — 组件市场 stops collapsing in a content-sized host
+
+> DS Bot 0.3.5 mounts DSH's `settings.section` slots in its own settings page: its wrapper is `.bt-dsh-section`, an **auto-height** block, so our `height: 100%` page root has no definite height to resolve against. Every layer of 组件市场 is `position: absolute; inset: 0` (the shared-axis push needs both layers stacked), which means `.dsx-mkt` has **no content height of its own** — it lived only on the flex parent's stretch. Measured 2026-11-13 at 1600x1000, one variable: `.dsx-mkt` **0px** in a content-height host (tab bar visible, search field and every card clipped by `overflow: hidden` — the owner's "组件市场不显示内容"), 585px in the official settings dialog, 360px after the floor below.
+
+### Fixed — the market box has a readable floor
+
+- `styles/market.module.css` gives `.dsx-mkt` `min-height: 360px` instead of `0`, with the reason in place. A stretched host (the official settings dialog, the rail's add panel) still resolves well above it, so nothing about those layouts moved; a host that measures the section instead of stretching it now renders the search field and the list, scrolling inside the box.
+- Long-standing, not new in 1.9.1: the market has been absolute-layer-only since the shared-axis transition landed, so any such host blanks the tab. DSH's own settings were the only host tested until DS Bot's page appeared.
+- `rail/rail-view.tsx`'s drawer portal (v1.9.1) is independent of this: the rail is anchored to the viewport in both hosts.
+
 ## v1.9.1 — the rail goes back to being anchored to the window
 
 > DSH 0.2.2 gave the conversation's composer seat `will-change: transform`. That makes the card a **containing block for `position: fixed` descendants**, and the rail is registered in `conversation.input.overlay` — i.e. inside that very card. The owner's report (2026-11-12) is exactly what the box arithmetic says: the rail and the 置顶摘要 card both landed in the composer strip, with the transcript still padded for a column that no longer existed. Measured at 1600x1000, same page, one variable: rail box `[673, 912, 460, 93]` before, `[1140, 44, 460, 956]` after.

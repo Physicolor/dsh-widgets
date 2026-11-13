@@ -327,12 +327,12 @@ node scripts/validate-widget-unit.mjs [dir]   # 部件单元契约校验器（Wo
 
 每个版本的逐条记录——连同每条改动背后的实测数据——都在 **[`CHANGELOG.md`](CHANGELOG.md)**（[中文](CHANGELOG.zh-CN.md)）；每个版本同时以 [GitHub Release](https://github.com/Physicolor/dsh-widgets/releases) 发布，锚定到实际发布它的那个 commit。原始证据（CDP 探针、截图、JSON 回执、逐事件的修复记录）在 [`docs/`](docs/) 下。本 README 只保留当前版本的速览。
 
-### 本次更新 — v1.9.1
+### 本次更新 — v1.9.2
 
-**组件栏重新锚回窗口。** DSH 0.2.2 给会话输入区的 seat 加了 `will-change: transform`，那张卡片于是成了 `position: fixed` 后代的包含块——而组件栏注册在 `conversation.input.overlay` 里，正好在它内部。抽屉现在 portal 到 `<body>` 上的宿主，组件栏与置顶摘要回到右栏，注册位置与绘制顺序保持原样（`scripts/verify-rail-anchor.cjs`，10/10）。同一版还包括：
+**组件市场在 DS Bot 的设置页里能正常显示了。** DS Bot 把 DSH 的 `settings.section` 挂进一个高度 auto 的外壳（`.bt-dsh-section`），于是我们 `height: 100%` 的页面根节点拿不到确定高度；而市场的两层本来就是 `position: absolute; inset: 0`（左右推拉需要堆叠两层），`.dsx-mkt` 自身没有内容高度，直接塌成 **0px**：tab 栏可见，下面全被裁掉。现在给它 360px 下限（2026-11-13 实测：该宿主里 0px → 360px，官方设置弹窗里 585px 不变）。同一版还包括：
 
-- **热力图预览改成真实的一周**——这份演示数据原先是取模算术，画出来是棋盘格；现在改为哈希抖动的真实一周（周末接近空、近期更重、日间抖动约 2.6 倍）；
-- **v1.9.0 的全部内容**：每个图表的数据动效、缓存趋势首轮的重做、`openShape: 'slide'`，以及从未单独发布的 v1.8.6 折叠实现。
+- **组件栏重新锚回窗口**（v1.9.1）：抽屉 portal 到 `<body>` 上的宿主，组件栏与置顶摘要回到右栏（`scripts/verify-rail-anchor.cjs`，10/10）；
+- **热力图预览改成真实的一周**（v1.9.1）：演示数据由取模算术改为哈希抖动的真实一周。
 
 以上每一条连同背后的实测数据，都写在 [CHANGELOG](CHANGELOG.zh-CN.md) 里。
 

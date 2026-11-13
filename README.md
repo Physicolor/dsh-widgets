@@ -342,12 +342,12 @@ node scripts/validate-widget-unit.mjs [dir]   # widget-unit contract validator (
 
 Every release, entry by entry — including the measurement behind each change — lives in **[`CHANGELOG.md`](CHANGELOG.md)** ([中文](CHANGELOG.zh-CN.md)); each version is also published as a [GitHub Release](https://github.com/Physicolor/dsh-widgets/releases) anchored to the commit that shipped it. Raw evidence (CDP probes, screenshots, JSON receipts, per-incident fix records) lives under [`docs/`](docs/). This README keeps only the current release at a glance.
 
-### What's new — v1.9.1
+### What's new — v1.9.2
 
-**The rail is anchored to the window again.** DSH 0.2.2 gave the conversation's composer seat `will-change: transform`, which turns that card into a containing block for `position: fixed` descendants — and the rail is registered in `conversation.input.overlay`, i.e. inside it. The drawer is now portaled to a body-level host, so the rail and the 置顶摘要 card go back to the right column while the registration seat and the paint order stay as they were (`scripts/verify-rail-anchor.cjs`, 10/10). Also in this release:
+**组件市场 renders inside DS Bot's settings page.** DS Bot mounts DSH's `settings.section` slots in an auto-height wrapper (`.bt-dsh-section`), so our `height: 100%` page root has no definite height — and the market's two layers are `position: absolute; inset: 0` by design (the shared-axis push stacks them), which left `.dsx-mkt` with no content height of its own: it collapsed to **0px**, tab bar visible and everything below clipped. It now carries a 360px floor (measured 2026-11-13: 0px → 360px in that host, 585px unchanged in the official settings dialog). Also in this release:
 
-- **The heatmap preview reads like a real week** — the demo data was modulo arithmetic, which painted a checkerboard; it is now a hash-jittered week (weekends near empty, recent days heavier, ~2.6x day-to-day swing);
-- **Everything v1.9.0 carries**: data motion on every chart, 缓存趋势's first turn reshaped, `openShape: 'slide'`, and the never-published v1.8.6 fold.
+- **The rail is anchored to the window again** (v1.9.1): the drawer is portaled to a body-level host, so the rail and the 置顶摘要 card stay in the right column (`scripts/verify-rail-anchor.cjs`, 10/10);
+- **The heatmap preview reads like a real week** (v1.9.1) — demo data is a hash-jittered week instead of a checkerboard.
 
 Each of these, with the measurement behind it, is written up in the [CHANGELOG](CHANGELOG.md).
 
